@@ -1,0 +1,139 @@
+Prompt:
+Create a standalone web application focused entirely on applicants looking to get hired. This platform uses AI interviews to deeply understand applicants and match them to the best jobs using a smart scoring system (0–100). This is the applicant side of a two-platform system (the employer platform already exists separately and contains job listings in a connected database). This site must be visually sleek, interactive, and professional, using 3D web design elements and UI animations similar to Zypsy.com.
+
+🧠 CORE CONCEPT
+Applicants use the platform to:
+
+Fill out personal and professional info
+
+Undergo a conversational AI interview using their resume
+
+Automatically generate a comprehensive user profile
+
+Get matched to real job postings (stored in an external or linked employer database)
+
+View all jobs they’re matched with, sorted by relevance (match score)
+
+🧱 PAGES & COMPONENTS TO BUILD
+🏠 1. Home Page
+Describe the applicant benefit:
+
+"Let AI help you get discovered by the right job"
+
+"We turn your story into a professional profile that companies want"
+
+Animated/3D layout
+
+Call-to-Action buttons: “Sign Up” and “Log In”
+
+🔐 2. Login / Signup Page
+New users must register with:
+
+Full Name
+
+Email + Password
+
+After signup, automatically assign the role "applicant"
+
+Do not ask for role choice
+
+Logged-in users are always redirected to the Applicant Dashboard
+
+🖥️ 3. Applicant Dashboard
+This is the central screen for logged-in users. Include the following interactive modals/popouts, never navigate away from this page.
+
+📄 Modal 1: Personal Info & Resume
+Form fields:
+
+Age
+
+Education (school + field)
+
+Location
+
+Resume upload (PDF or .docx)
+
+Store all data in a users or applicants table
+
+Resume content will later be parsed and passed to AI
+
+🧠 Modal 2: AI Interview
+Conversational, multi-turn interview conducted using OpenAI's API (or your custom logic)
+
+AI uses:
+
+The user’s name, education, and resume data
+
+Interview includes questions like:
+
+“Tell me more about your last role at X”
+
+“What are your strongest technical skills?”
+
+Goal: collect structured data (skills, experience, personality)
+
+Output: AI generates a complete applicant profile from the interview
+
+Store this as JSON in the database:
+
+json
+Copy
+Edit
+{
+  "applicant_id": "abc123",
+  "profile": {
+    "skills": ["Python", "Communication", "Excel"],
+    "personality": "Detail-oriented, calm under pressure",
+    "experience": [...]
+  }
+}
+💼 Modal 3: Job Matches
+Pulls job listings from the employer platform's shared job database using API or linked DB
+
+For each job, compares it to the applicant's profile
+
+Generates a match score (1–100) using your AI model or scoring algorithm
+
+Displays:
+
+Job title, company, description
+
+Match score
+
+"View Job" or "Apply" (optional)
+
+Store match results in matches table:
+
+json
+Copy
+Edit
+{
+  "applicant_id": "abc123",
+  "job_id": "xyz789",
+  "match_score": 92
+}
+📦 DATABASE STRUCTURE (On Applicant Side)
+Table	Fields
+applicants	applicant_id, name, email, location, resume_url, profile (JSON)
+matches	match_id, applicant_id, job_id, match_score
+interview_sessions (optional)	session_id, applicant_id, q_and_a, timestamp
+
+Jobs will be read-only from the shared employer DB or fetched via an API.
+
+🤖 AI USE CASES
+Interview AI: Conversationally extracts data from applicants
+
+Profile Generation AI: Summarizes skills, experience, and traits
+
+Job Matching AI: Compares user profiles to job postings and rates them
+
+All AI models should use OpenAI APIs. Prompt engineering and fine-tuning available upon request.
+
+🎨 DESIGN REQUIREMENTS
+All pages must use 3D or scroll-reactive design for a premium, futuristic aesthetic.
+
+Stay consistent with applicant-focused branding: clean, calm, modern.
+
+Modals should be slide-in or pop-up without navigating away.
+
+Dark/light toggle optional but preferred.
