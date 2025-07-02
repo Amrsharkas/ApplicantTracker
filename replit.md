@@ -103,6 +103,11 @@ The architecture prioritizes developer experience with shared TypeScript types, 
 ```
 Changelog:
 - June 30, 2025. Initial setup
+- July 2, 2025. Fixed profile completion percentage calculation to reach 100%
+- July 2, 2025. Enhanced resume upload with graceful PDF parsing failure handling
+- July 2, 2025. Limited AI interviews to exactly 5 structured questions with clear progression
+- July 2, 2025. Changed OpenAI Realtime voice from "shimmer" to "verse"
+- July 2, 2025. Updated voice interview instructions for focused 5-question structure
 ```
 
 ## User Preferences

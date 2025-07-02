@@ -229,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { ...user, ...profile }
       );
 
-      const isComplete = !followUpQuestion || sessionData.responses.length >= 6;
+      const isComplete = !followUpQuestion || sessionData.responses.length >= 5;
 
       if (isComplete) {
         // Generate AI profile

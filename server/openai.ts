@@ -33,87 +33,49 @@ export interface GeneratedProfile {
 
 export class AIInterviewService {
   async generateInitialQuestions(userData: any): Promise<InterviewQuestion[]> {
-    try {
-      const prompt = `You are an AI career coach conducting a conversational interview. 
-      Generate 3-4 initial interview questions for ${userData.firstName || 'the candidate'}.
-      
-      Available context:
-      - Name: ${userData.firstName} ${userData.lastName}
-      - Education: ${userData.education || 'Not provided'}
-      - Current Role: ${userData.currentRole || 'Not provided'}
-      - Experience: ${userData.yearsOfExperience || 'Not provided'} years
-      
-      Generate questions that are:
-      1. Conversational and friendly
-      2. Designed to understand their experience, skills, and career goals
-      3. Open-ended to encourage detailed responses
-      4. Professional but warm in tone
-      
-      Return as JSON in this format: { "questions": [{"question": "...", "context": "..."}] }`;
+    // Always return exactly 5 structured questions with clear progression
+    // This creates a purposeful interview that understands the user on personal and professional levels
+    
+    const baseQuestions = [
+      {
+        question: "Let's start with you as a person - tell me about your background and what led you to your current career path?",
+        context: "Personal foundation - understanding their journey and motivations"
+      },
+      {
+        question: "What does a typical day or week look like in your current role, and what aspects do you find most fulfilling?",
+        context: "Professional reality - current work experience and satisfaction"
+      },
+      {
+        question: "When you think about your key strengths and skills, which ones make you stand out in your field?",
+        context: "Core competencies - identifying their unique value proposition"
+      },
+      {
+        question: "Tell me about a challenge or project you're particularly proud of - what made it meaningful to you?",
+        context: "Achievement analysis - understanding their impact and values"
+      },
+      {
+        question: "Looking ahead, what kind of role or environment would be your ideal next step, and what drives that vision?",
+        context: "Future aspirations - career goals and desired growth direction"
+      }
+    ];
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-      });
-
-      const result = JSON.parse(response.choices[0].message.content || '{"questions": []}');
-      return result.questions || [];
-    } catch (error) {
-      console.error("Error generating initial questions:", error);
-      return [
-        { question: "Can you tell me about your current role and what you enjoy most about it?" },
-        { question: "What are your strongest technical skills, and how have you developed them?" },
-        { question: "Where do you see your career heading in the next few years?" }
-      ];
+    // Customize first question based on available data
+    if (userData.currentRole && userData.company) {
+      baseQuestions[0].question = `I see you're currently a ${userData.currentRole} at ${userData.company}. Tell me about your background and what led you to this position?`;
+    } else if (userData.education) {
+      baseQuestions[0].question = `I see you studied ${userData.education}. Tell me about your background and how your education shaped your career path?`;
     }
+
+    return baseQuestions;
   }
 
   async generateFollowUpQuestion(
     previousQA: InterviewResponse[],
     userData: any
   ): Promise<InterviewQuestion | null> {
-    try {
-      const conversationHistory = previousQA.map(qa => 
-        `Q: ${qa.question}\nA: ${qa.answer}`
-      ).join('\n\n');
-
-      const prompt = `You are conducting an AI interview. Based on the conversation so far, generate ONE thoughtful follow-up question.
-
-      Candidate context:
-      - Name: ${userData.firstName} ${userData.lastName}
-      - Current Role: ${userData.currentRole || 'Not provided'}
-      
-      Conversation so far:
-      ${conversationHistory}
-      
-      Generate a follow-up question that:
-      1. Builds on their previous answers
-      2. Helps understand their skills, experience, or goals better
-      3. Is conversational and engaging
-      4. Avoids repeating topics already covered
-      
-      If the interview feels complete (5+ meaningful exchanges), return null.
-      
-      Return as JSON: { "question": "...", "context": "...", "continue": true/false }`;
-
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-      });
-
-      const result = JSON.parse(response.choices[0].message.content || '{"continue": false}');
-      
-      if (!result.continue || !result.question) {
-        return null;
-      }
-
-      return { question: result.question, context: result.context };
-    } catch (error) {
-      console.error("Error generating follow-up question:", error);
-      return null;
-    }
+    // No follow-up questions - we stick to exactly 5 structured questions
+    // This prevents the interview from going on too long or asking repetitive questions
+    return null;
   }
 
   async generateProfile(
