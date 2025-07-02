@@ -108,6 +108,8 @@ Changelog:
 - July 2, 2025. Limited AI interviews to exactly 5 structured questions with clear progression
 - July 2, 2025. Changed OpenAI Realtime voice from "shimmer" to "verse"
 - July 2, 2025. Updated voice interview instructions for focused 5-question structure
+- July 2, 2025. Added full AI profile details display in interview completion with expandable summary, skills, strengths, work style, and career goals
+- July 2, 2025. Added aiProfileGenerated database field to properly track interview completion status on dashboard
 ```
 
 ## User Preferences

@@ -54,6 +54,7 @@ export const applicantProfiles = pgTable("applicant_profiles", {
   summary: text("summary"),
   skillsList: text("skills_list").array(),
   aiProfile: jsonb("ai_profile"), // Generated from AI interview
+  aiProfileGenerated: boolean("ai_profile_generated").default(false),
   completionPercentage: integer("completion_percentage").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

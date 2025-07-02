@@ -244,6 +244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId,
           ...profile,
           aiProfile: generatedProfile,
+          aiProfileGenerated: true,
           summary: generatedProfile.summary,
           skillsList: generatedProfile.skills
         });

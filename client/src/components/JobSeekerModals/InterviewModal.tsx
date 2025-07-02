@@ -66,6 +66,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
+  const [showProfileDetails, setShowProfileDetails] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -535,19 +536,109 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           {/* Completed State */}
           {currentSession?.isCompleted && (
             <div className="h-full flex items-center justify-center">
-              <div className="text-center space-y-4">
+              <div className="text-center space-y-6">
                 <div className="flex justify-center">
                   <CheckCircle className="h-16 w-16 text-green-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">Interview Complete!</h3>
-                <p className="text-gray-600 max-w-md">
-                  Your AI interview is finished and your comprehensive professional profile has been generated. 
-                  You can now access personalized job matches!
-                </p>
-                <Button onClick={handleClose}>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  View Job Matches
-                </Button>
+                <div className="space-y-2">
+                  <h3 className="text-xl font-semibold text-gray-900">Interview Complete!</h3>
+                  <p className="text-gray-600 max-w-md">
+                    Your AI interview is finished and your comprehensive professional profile has been generated. 
+                    You can now access personalized job matches!
+                  </p>
+                </div>
+                
+                {/* AI Profile Preview */}
+                {currentSession.generatedProfile && (
+                  <div className="bg-blue-50 rounded-lg p-4 max-w-md text-left space-y-3">
+                    <h4 className="font-semibold text-gray-900 flex items-center">
+                      <Brain className="h-4 w-4 mr-2 text-blue-600" />
+                      Your AI Profile Summary
+                    </h4>
+                    <p className="text-sm text-gray-700">{currentSession.generatedProfile.summary}</p>
+                    <div className="space-y-2">
+                      <div>
+                        <span className="text-xs font-medium text-gray-600">Key Skills:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {currentSession.generatedProfile.skills?.slice(0, 4).map((skill: string, index: number) => (
+                            <Badge key={index} variant="secondary" className="text-xs">{skill}</Badge>
+                          ))}
+                          {currentSession.generatedProfile.skills?.length > 4 && (
+                            <Badge variant="outline" className="text-xs">+{currentSession.generatedProfile.skills.length - 4} more</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Full AI Profile Details */}
+                {showProfileDetails && currentSession.generatedProfile && (
+                  <div className="bg-gray-50 rounded-lg p-4 max-w-lg text-left space-y-4 max-h-64 overflow-y-auto">
+                    <h4 className="font-semibold text-gray-900">Complete AI Profile</h4>
+                    
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-700">Professional Summary:</span>
+                        <p className="text-gray-600 mt-1">{currentSession.generatedProfile.summary}</p>
+                      </div>
+                      
+                      <div>
+                        <span className="font-medium text-gray-700">Key Strengths:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {currentSession.generatedProfile.strengths?.map((strength: string, index: number) => (
+                            <Badge key={index} variant="outline" className="text-xs">{strength}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <span className="font-medium text-gray-700">Skills:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {currentSession.generatedProfile.skills?.map((skill: string, index: number) => (
+                            <Badge key={index} variant="secondary" className="text-xs">{skill}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <span className="font-medium text-gray-700">Work Style:</span>
+                        <p className="text-gray-600 mt-1">{currentSession.generatedProfile.workStyle}</p>
+                      </div>
+                      
+                      <div>
+                        <span className="font-medium text-gray-700">Career Goals:</span>
+                        <p className="text-gray-600 mt-1">{currentSession.generatedProfile.careerGoals}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-col space-y-3">
+                  <Button onClick={() => setShowProfileDetails(!showProfileDetails)} variant="outline">
+                    <Brain className="h-4 w-4 mr-2" />
+                    {showProfileDetails ? 'Hide' : 'View'} Full AI Profile
+                  </Button>
+                  
+                  <Button onClick={handleClose}>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Continue to Job Matches
+                  </Button>
+                  
+                  {/* Hang Up Button for Voice Mode */}
+                  {mode === 'voice' && (
+                    <Button 
+                      onClick={() => {
+                        realtimeAPI.disconnect();
+                        handleClose();
+                      }} 
+                      variant="destructive"
+                    >
+                      <Phone className="h-4 w-4 mr-2" />
+                      End Call
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           )}
