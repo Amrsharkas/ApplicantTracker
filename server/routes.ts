@@ -70,15 +70,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let resumeContent = '';
       
       try {
+        console.log(`Processing file: ${req.file.originalname}, mimetype: ${req.file.mimetype}, size: ${req.file.size}`);
+        
         // Handle different file types
         if (req.file.mimetype === 'application/pdf') {
           // Parse PDF using pdf-parse
           const pdfParse = require('pdf-parse');
-          const pdfData = await pdfParse(req.file.buffer);
-          resumeContent = pdfData.text;
+          try {
+            const pdfData = await pdfParse(req.file.buffer);
+            resumeContent = pdfData.text;
+            console.log(`PDF parsed successfully, extracted ${resumeContent.length} characters`);
+          } catch (pdfError) {
+            console.error("PDF parsing error:", pdfError);
+            // Continue with upload even if PDF parsing fails, but save the file
+            resumeContent = `[PDF content could not be parsed - file uploaded as ${req.file.originalname}]`;
+          }
         } else if (req.file.mimetype === 'text/plain' || req.file.originalname.endsWith('.txt')) {
           // Handle plain text files
           resumeContent = req.file.buffer.toString('utf-8');
+          console.log(`Text file parsed successfully, ${resumeContent.length} characters`);
         } else if (req.file.mimetype === 'application/msword' || req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
           // For now, we'll ask users to upload PDF or text files
           return res.status(400).json({ 
@@ -90,16 +100,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       } catch (parseError) {
-        console.error("Error parsing resume file:", parseError);
-        return res.status(400).json({ 
-          message: "Failed to parse resume. Please ensure it's a valid PDF or text file." 
-        });
+        console.error("Error processing resume file:", parseError);
+        // Don't fail the entire upload, just continue without text extraction
+        resumeContent = `[File uploaded as ${req.file.originalname} - content parsing failed]`;
       }
 
+      // Allow upload even if text extraction fails - the file itself is still valuable
       if (!resumeContent.trim()) {
-        return res.status(400).json({ 
-          message: "No text content found in the resume. Please check your file and try again." 
-        });
+        resumeContent = `[Resume file uploaded: ${req.file.originalname}]`;
+        console.log("No text content extracted, but allowing upload with filename reference");
       }
 
       // Parse resume content with AI (with timeout)
