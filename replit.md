@@ -111,6 +111,7 @@ Changelog:
 - July 2, 2025. Added full AI profile details display in interview completion with expandable summary, skills, strengths, work style, and career goals
 - July 2, 2025. Added aiProfileGenerated database field to properly track interview completion status on dashboard
 - July 2, 2025. Integrated Airtable API to automatically store user profiles when interviews are completed with name and profile data columns
+- July 2, 2025. Added hang up button to voice interview interface with smart completion detection to properly end voice sessions
 ```
 
 ## User Preferences

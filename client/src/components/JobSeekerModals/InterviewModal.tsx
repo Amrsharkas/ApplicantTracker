@@ -520,6 +520,38 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                       )}
                     </Button>
                     
+                    <Button
+                      variant="destructive"
+                      onClick={async () => {
+                        realtimeAPI.disconnect();
+                        // Check if interview was completed and refresh session data
+                        try {
+                          const response = await apiRequest("GET", "/api/interview/session", {});
+                          const sessionData = await response.json();
+                          if (sessionData?.isCompleted) {
+                            setCurrentSession(sessionData);
+                            // Force a refresh of the profile data to update dashboard
+                            queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+                          } else {
+                            setMode('select');
+                            setMessages([]);
+                            setVoiceTranscript("");
+                            onClose();
+                          }
+                        } catch (error) {
+                          // If there's an error, just close normally
+                          setMode('select');
+                          setMessages([]);
+                          setVoiceTranscript("");
+                          onClose();
+                        }
+                      }}
+                      disabled={!realtimeAPI.isConnected}
+                    >
+                      <Phone className="h-4 w-4 mr-2" />
+                      Hang Up
+                    </Button>
+                    
                     <div className="text-sm text-gray-600 text-center">
                       {realtimeAPI.isConnected ? (
                         "Speak naturally - the AI will respond when you're done talking"
