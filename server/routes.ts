@@ -67,15 +67,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const resumeContent = req.file.buffer.toString('utf-8');
-      const parsedData = await aiInterviewService.parseResume(resumeContent);
+      let resumeContent = '';
+      
+      try {
+        // Handle different file types
+        if (req.file.mimetype === 'application/pdf') {
+          // Parse PDF using pdf-parse
+          const pdfParse = require('pdf-parse');
+          const pdfData = await pdfParse(req.file.buffer);
+          resumeContent = pdfData.text;
+        } else if (req.file.mimetype === 'text/plain' || req.file.originalname.endsWith('.txt')) {
+          // Handle plain text files
+          resumeContent = req.file.buffer.toString('utf-8');
+        } else if (req.file.mimetype === 'application/msword' || req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+          // For now, we'll ask users to upload PDF or text files
+          return res.status(400).json({ 
+            message: "Please upload your resume as a PDF or text file for better parsing accuracy" 
+          });
+        } else {
+          return res.status(400).json({ 
+            message: "Unsupported file type. Please upload a PDF or text file." 
+          });
+        }
+      } catch (parseError) {
+        console.error("Error parsing resume file:", parseError);
+        return res.status(400).json({ 
+          message: "Failed to parse resume. Please ensure it's a valid PDF or text file." 
+        });
+      }
+
+      if (!resumeContent.trim()) {
+        return res.status(400).json({ 
+          message: "No text content found in the resume. Please check your file and try again." 
+        });
+      }
+
+      // Parse resume content with AI
+      let parsedData = {};
+      try {
+        parsedData = await aiInterviewService.parseResume(resumeContent);
+      } catch (aiError) {
+        console.warn("AI parsing failed, continuing with resume upload:", aiError);
+        // Continue with upload even if AI parsing fails
+      }
 
       // Update profile with parsed resume data
       const existingProfile = await storage.getApplicantProfile(userId);
+      const resumeUrl = `/uploads/resume_${userId}_${Date.now()}.${req.file.originalname.split('.').pop()}`;
+      
       const updatedProfile = {
         userId,
-        resumeContent,
-        resumeUrl: `/uploads/resume_${userId}_${Date.now()}.pdf`,
+        resumeContent: resumeContent.substring(0, 10000), // Limit to 10k chars to avoid DB issues
+        resumeUrl,
         ...existingProfile,
         ...parsedData,
       };
@@ -83,10 +126,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const profile = await storage.upsertApplicantProfile(updatedProfile);
       await storage.updateProfileCompletion(userId);
 
-      res.json({ message: "Resume uploaded successfully", profile });
+      res.json({ 
+        message: "Resume uploaded successfully", 
+        profile,
+        extractedText: resumeContent.length > 0,
+        aiParsed: Object.keys(parsedData).length > 0
+      });
     } catch (error) {
       console.error("Error uploading resume:", error);
-      res.status(500).json({ message: "Failed to upload resume" });
+      res.status(500).json({ 
+        message: "Failed to upload resume. Please try again." 
+      });
     }
   });
 

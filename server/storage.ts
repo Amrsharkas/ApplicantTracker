@@ -108,10 +108,21 @@ export class DatabaseStorage implements IStorage {
     if (!profile) return;
 
     let score = 0;
-    if (profile.age && profile.education && profile.location) score += 25;
-    if (profile.currentRole && profile.company && profile.yearsOfExperience) score += 35;
-    if (profile.degree && profile.university) score += 25;
+    
+    // Basic information (20 points)
+    if (profile.age && profile.education && profile.location) score += 20;
+    
+    // Work experience (30 points)
+    if (profile.currentRole && profile.company && profile.yearsOfExperience !== null && profile.yearsOfExperience !== undefined) score += 30;
+    
+    // Education details (20 points)
+    if (profile.degree && profile.university) score += 20;
+    
+    // Skills and summary (15 points)
     if (profile.skillsList?.length && profile.summary) score += 15;
+    
+    // Resume upload (15 points)
+    if (profile.resumeContent || profile.resumeUrl) score += 15;
 
     const completionPercentage = Math.min(score, 100);
 

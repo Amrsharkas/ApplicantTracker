@@ -196,13 +196,53 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
               <p className="text-slate-600">
                 {profile?.currentRole || 'Job Seeker'} {profile?.company && `at ${profile.company}`}
               </p>
-              <div className="mt-1">
-                <Badge variant="secondary" className="bg-green-100 text-green-700">
-                  {profile?.completionPercentage || 0}% Complete
-                </Badge>
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="secondary" className="bg-green-100 text-green-700">
+                    {profile?.completionPercentage || 0}% Complete
+                  </Badge>
+                  <span className="text-xs text-gray-500">
+                    {profile?.completionPercentage >= 80 ? "Ready for AI Interview!" : "Fill out more to reach 80%"}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-green-600 h-2 rounded-full transition-all duration-300" 
+                    style={{ width: `${profile?.completionPercentage || 0}%` }}
+                  ></div>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Profile Completion Guide */}
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="p-4">
+              <h4 className="font-medium text-blue-900 mb-2">Profile Completion Guide</h4>
+              <div className="text-sm text-blue-800 space-y-1">
+                <div className="flex justify-between">
+                  <span>• Basic Info (Age, Education, Location)</span>
+                  <span className="font-medium">20 points</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>• Work Experience (Role, Company, Years)</span>
+                  <span className="font-medium">30 points</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>• Education Details (Degree, University)</span>
+                  <span className="font-medium">20 points</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>• Skills & Summary</span>
+                  <span className="font-medium">15 points</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>• Resume Upload</span>
+                  <span className="font-medium">15 points</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Resume Upload */}
           <Card className="glass-card">
@@ -213,14 +253,14 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                   <div>
                     <h4 className="font-medium text-slate-800">Resume</h4>
                     <p className="text-sm text-slate-600">
-                      {profile?.resumeUrl ? 'Resume uploaded' : 'Upload your resume for AI analysis'}
+                      {profile?.resumeUrl ? 'Resume uploaded (+15% completion)' : 'Upload your resume for AI analysis (+15% completion)'}
                     </p>
                   </div>
                 </div>
                 <div>
                   <input
                     type="file"
-                    accept=".pdf,.doc,.docx"
+                    accept=".pdf,.txt"
                     onChange={handleResumeUpload}
                     className="hidden"
                     id="resume-upload"
