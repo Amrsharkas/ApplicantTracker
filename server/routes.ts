@@ -102,10 +102,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Parse resume content with AI
+      // Parse resume content with AI (with timeout)
       let parsedData = {};
       try {
-        parsedData = await aiInterviewService.parseResume(resumeContent);
+        // Add timeout to prevent hanging
+        const parsePromise = aiInterviewService.parseResume(resumeContent);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('AI parsing timeout')), 10000)
+        );
+        parsedData = await Promise.race([parsePromise, timeoutPromise]);
       } catch (aiError) {
         console.warn("AI parsing failed, continuing with resume upload:", aiError);
         // Continue with upload even if AI parsing fails

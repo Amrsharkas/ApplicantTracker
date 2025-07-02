@@ -131,14 +131,21 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       const formData = new FormData();
       formData.append('resume', file);
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
       const response = await fetch('/api/candidate/resume', {
         method: 'POST',
         body: formData,
         credentials: 'include',
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Upload failed');
       }
 
       const result = await response.json();
@@ -150,13 +157,25 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       
       queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
     } catch (error) {
+      console.error('Resume upload error:', error);
+      
+      let errorMessage = "Failed to upload resume. Please try again.";
+      
+      if (error.name === 'AbortError') {
+        errorMessage = "Upload timed out. The file may be too large or your connection is slow. Please try again.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Upload Failed",
-        description: "Failed to upload resume. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setIsUploading(false);
+      // Reset file input
+      event.target.value = '';
     }
   };
 
