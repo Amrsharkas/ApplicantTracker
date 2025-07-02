@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { aiInterviewService } from "./openai";
+import { airtableService } from "./airtable";
 import multer from "multer";
 import { z } from "zod";
 import { insertApplicantProfileSchema, insertApplicationSchema } from "@shared/schema";
@@ -258,6 +259,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Calculate job matches
         await storage.calculateJobMatches(userId);
+
+        // Store profile in Airtable
+        try {
+          const userName = user?.firstName && user?.lastName 
+            ? `${user.firstName} ${user.lastName}` 
+            : user?.email || `User ${userId}`;
+          
+          await airtableService.storeUserProfile(userName, generatedProfile);
+        } catch (error) {
+          console.error('Failed to store profile in Airtable:', error);
+          // Don't fail the entire request if Airtable fails
+        }
 
         res.json({ 
           isComplete: true, 
