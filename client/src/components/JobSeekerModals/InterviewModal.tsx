@@ -472,6 +472,31 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                 </div>
               )}
 
+              {/* Voice Status Indicator */}
+              {mode === 'voice' && realtimeAPI.isConnected && (
+                <div className="border-t bg-gray-50 p-3">
+                  <div className="flex items-center justify-center space-x-3">
+                    {realtimeAPI.isListening ? (
+                      <>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                          <span className="text-sm font-medium text-red-600">Listening...</span>
+                        </div>
+                      </>
+                    ) : realtimeAPI.isSpeaking ? (
+                      <>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                          <span className="text-sm font-medium text-blue-600">AI Speaking...</span>
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-sm text-gray-500">Ready to listen</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Voice Controls */}
               {mode === 'voice' && (
                 <div className="border-t p-4">

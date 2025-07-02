@@ -81,6 +81,25 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
         if (serverEvent.type === 'response.audio.done') {
           setIsSpeaking(false);
           options.onAudioEnd?.();
+        } else if (serverEvent.type === 'response.audio.delta') {
+          setIsSpeaking(true);
+          options.onAudioStart?.();
+        } else if (serverEvent.type === 'input_audio_buffer.speech_started') {
+          setIsListening(true);
+        } else if (serverEvent.type === 'input_audio_buffer.speech_stopped') {
+          setIsListening(false);
+          // Trigger AI response after user stops speaking
+          setTimeout(() => {
+            if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
+              const responseCreate = {
+                type: 'response.create',
+                response: {
+                  modalities: ['text', 'audio']
+                }
+              };
+              dataChannelRef.current.send(JSON.stringify(responseCreate));
+            }
+          }, 500); // Small delay to ensure audio buffer is processed
         }
         
         options.onMessage?.(serverEvent);
@@ -105,6 +124,9 @@ Key guidelines:
 - Keep questions relevant to professional development
 - Speak clearly and at a natural pace
 - Show genuine interest in their responses
+- ALWAYS respond after the user speaks - never stay silent
+- Ask follow-up questions to dive deeper into their responses
+- Keep the conversation flowing naturally
 
 Start by greeting them warmly and asking them to tell you about themselves and their professional background.`,
             voice: 'shimmer',
@@ -117,7 +139,7 @@ Start by greeting them warmly and asking them to tell you about themselves and t
               type: 'server_vad',
               threshold: 0.5,
               prefix_padding_ms: 300,
-              silence_duration_ms: 500
+              silence_duration_ms: 1000
             },
             tools: [],
             tool_choice: 'none',
