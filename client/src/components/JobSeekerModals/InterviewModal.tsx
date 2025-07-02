@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useRealtimeAPI } from "@/hooks/useRealtimeAPI";
 import { 
   MessageCircle, 
   Send, 
@@ -18,7 +19,14 @@ import {
   CheckCircle, 
   Sparkles,
   Clock,
-  Brain
+  Brain,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  Phone,
+  MessageSquare,
+  ArrowLeft
 } from "lucide-react";
 
 interface InterviewQuestion {
@@ -50,14 +58,73 @@ interface InterviewModalProps {
 }
 
 export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
+  const [mode, setMode] = useState<'select' | 'voice' | 'text'>('select');
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
   const [currentSession, setCurrentSession] = useState<InterviewSession | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Voice interview integration
+  const realtimeAPI = useRealtimeAPI({
+    onMessage: (event) => {
+      console.log('Realtime event:', event);
+      
+      if (event.type === 'response.audio_transcript.delta') {
+        // AI speaking
+        setVoiceTranscript(prev => prev + (event.delta || ''));
+      }
+      
+      if (event.type === 'response.audio_transcript.done') {
+        // AI finished speaking
+        const aiMessage: InterviewMessage = {
+          type: 'question',
+          content: event.transcript || '',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        setVoiceTranscript("");
+      }
+      
+      if (event.type === 'conversation.item.input_audio_transcription.completed') {
+        // User finished speaking
+        const userMessage: InterviewMessage = {
+          type: 'answer',
+          content: event.transcript || '',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, userMessage]);
+        
+        // Update conversation history
+        setConversationHistory(prev => [
+          ...prev,
+          { role: 'user', content: event.transcript || '' }
+        ]);
+      }
+      
+      if (event.type === 'input_audio_buffer.speech_started') {
+        console.log('User started speaking');
+      }
+      
+      if (event.type === 'input_audio_buffer.speech_stopped') {
+        console.log('User stopped speaking');
+      }
+    },
+    onError: (error) => {
+      console.error('Voice interview error:', error);
+      toast({
+        title: 'Voice Interview Error',
+        description: 'There was an issue with the voice interview. Please try text mode instead.',
+        variant: 'destructive'
+      });
+      setMode('text');
+    }
+  });
 
   const { data: existingSession } = useQuery({
     queryKey: ["/api/interview/session"],
@@ -91,387 +158,371 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         },
         isCompleted: false,
       });
-      
-      // Initialize messages with first question
-      if (data.questions && data.questions.length > 0) {
-        setMessages([{
+
+      // Initialize messages with first question for text mode
+      if (mode === 'text' && data.questions.length > 0) {
+        const firstQuestion: InterviewMessage = {
           type: 'question',
           content: data.questions[0].question,
-          timestamp: new Date(),
-        }]);
-        setCurrentQuestionIndex(0);
+          timestamp: new Date()
+        };
+        setMessages([firstQuestion]);
       }
-      
-      setIsStarting(false);
-      toast({
-        title: "Interview Started",
-        description: "Let's begin your AI interview!",
-      });
     },
-    onError: (error) => {
-      setIsStarting(false);
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
+    onError: (error: Error) => {
       toast({
-        title: "Failed to Start Interview",
-        description: error.message || "Something went wrong",
+        title: "Error",
+        description: "Failed to start interview",
         variant: "destructive",
       });
     },
   });
 
   const respondMutation = useMutation({
-    mutationFn: async ({ question, answer }: { question: string; answer: string }) => {
+    mutationFn: async (answer: string) => {
       const response = await apiRequest("POST", "/api/interview/respond", {
         sessionId: currentSession?.id,
-        question,
         answer,
+        questionIndex: currentQuestionIndex
       });
       return response.json();
     },
     onSuccess: (data) => {
       if (data.isComplete) {
-        // Interview completed
-        setCurrentSession(prev => prev ? {
-          ...prev,
-          isCompleted: true,
-          generatedProfile: data.profile,
-        } : null);
-        
-        toast({
-          title: "Interview Completed!",
-          description: "Your profile has been generated successfully.",
-        });
-        
-        // Refresh profile and job matches
+        setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
         queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/job-matches"] });
+        toast({
+          title: "Interview Complete!",
+          description: "Your AI profile has been generated successfully.",
+        });
       } else if (data.nextQuestion) {
-        // Add next question to messages
-        setMessages(prev => [...prev, {
+        const nextQuestion: InterviewMessage = {
           type: 'question',
-          content: data.nextQuestion.question,
-          timestamp: new Date(),
-        }]);
+          content: data.nextQuestion,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, nextQuestion]);
         setCurrentQuestionIndex(prev => prev + 1);
       }
     },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
+    onError: () => {
       toast({
-        title: "Failed to Submit Response",
-        description: error.message || "Something went wrong",
+        title: "Error",
+        description: "Failed to process your response",
         variant: "destructive",
       });
     },
   });
 
-  const handleStartInterview = async () => {
-    setIsStarting(true);
-    startInterviewMutation.mutate();
-  };
-
-  const handleSubmitAnswer = () => {
+  const submitAnswer = () => {
     if (!currentAnswer.trim() || !currentSession) return;
 
-    const currentQuestion = messages[messages.length - 1];
-    if (currentQuestion.type !== 'question') return;
-
-    // Add user's answer to messages
-    setMessages(prev => [...prev, {
+    const answerMessage: InterviewMessage = {
       type: 'answer',
       content: currentAnswer,
-      timestamp: new Date(),
-    }]);
+      timestamp: new Date()
+    };
 
-    // Submit response
-    respondMutation.mutate({
-      question: currentQuestion.content,
-      answer: currentAnswer,
-    });
-
+    setMessages(prev => [...prev, answerMessage]);
+    respondMutation.mutate(currentAnswer);
     setCurrentAnswer("");
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmitAnswer();
+  const startVoiceInterview = async () => {
+    setMode('voice');
+    setMessages([]);
+    try {
+      await realtimeAPI.connect();
+      toast({
+        title: "Voice Interview Started",
+        description: "You can now speak naturally with the AI interviewer.",
+      });
+    } catch (error) {
+      toast({
+        title: "Connection Failed",
+        description: "Could not start voice interview. Please try text mode.",
+        variant: "destructive",
+      });
+      setMode('text');
     }
   };
 
+  const startTextInterview = () => {
+    setMode('text');
+    setMessages([]);
+    startInterviewMutation.mutate();
+  };
+
+  const handleClose = () => {
+    if (mode === 'voice') {
+      realtimeAPI.disconnect();
+    }
+    setMode('select');
+    setMessages([]);
+    setCurrentAnswer("");
+    setVoiceTranscript("");
+    setConversationHistory([]);
+    setCurrentSession(null);
+    setCurrentQuestionIndex(0);
+    onClose();
+  };
+
+  const goBack = () => {
+    if (mode === 'voice') {
+      realtimeAPI.disconnect();
+    }
+    setMode('select');
+    setMessages([]);
+    setCurrentAnswer("");
+    setVoiceTranscript("");
+  };
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   useEffect(() => {
-    if (existingSession && !currentSession) {
+    if (existingSession?.isCompleted) {
       setCurrentSession(existingSession);
-      
-      // Reconstruct messages from session data
-      if (existingSession.sessionData?.responses) {
-        const reconstructedMessages: InterviewMessage[] = [];
-        
-        existingSession.sessionData.responses.forEach((response, index) => {
-          reconstructedMessages.push({
-            type: 'question',
-            content: response.question,
-            timestamp: new Date(),
-          });
-          reconstructedMessages.push({
-            type: 'answer',
-            content: response.answer,
-            timestamp: new Date(),
-          });
-        });
-        
-        setMessages(reconstructedMessages);
-        setCurrentQuestionIndex(existingSession.sessionData.responses.length);
-      }
     }
-  }, [existingSession, currentSession]);
+  }, [existingSession]);
 
-  const getProgress = () => {
-    if (!currentSession) return 0;
-    const totalQuestions = 6; // Expected number of questions
-    const answeredQuestions = currentSession.sessionData?.responses?.length || 0;
-    return Math.min((answeredQuestions / totalQuestions) * 100, 100);
-  };
-
-  const isWaitingForResponse = respondMutation.isPending;
-  const canSubmitAnswer = currentAnswer.trim() && !isWaitingForResponse && currentSession && !currentSession.isCompleted;
+  if (!isOpen) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-            <Brain className="w-6 h-6 text-purple-600" />
-            AI Interview
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-4">
-          {/* Progress Bar */}
-          {currentSession && (
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Interview Progress
-                </span>
-                <span className="text-sm text-slate-600 dark:text-slate-400">
-                  {Math.round(getProgress())}% Complete
-                </span>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              {mode !== 'select' && (
+                <Button variant="ghost" size="sm" onClick={goBack}>
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
+              <DialogTitle className="flex items-center space-x-2">
+                <Brain className="h-5 w-5 text-blue-600" />
+                <span>AI Interview</span>
+              </DialogTitle>
+            </div>
+            {mode === 'voice' && (
+              <div className="flex items-center space-x-2">
+                <Badge variant={realtimeAPI.isConnected ? "default" : "secondary"}>
+                  {realtimeAPI.isConnected ? "Connected" : "Connecting..."}
+                </Badge>
+                {realtimeAPI.isSpeaking && (
+                  <div className="flex items-center space-x-1 text-green-600">
+                    <Volume2 className="h-4 w-4" />
+                    <span className="text-sm">AI Speaking</span>
+                  </div>
+                )}
+                {realtimeAPI.isListening && (
+                  <div className="flex items-center space-x-1 text-blue-600">
+                    <Mic className="h-4 w-4" />
+                    <span className="text-sm">Listening</span>
+                  </div>
+                )}
               </div>
-              <Progress value={getProgress()} className="h-2" />
+            )}
+          </div>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-hidden">
+          {mode === 'select' && (
+            <div className="h-full flex items-center justify-center">
+              <div className="max-w-md mx-auto space-y-6 text-center">
+                <div className="space-y-2">
+                  <h3 className="text-xl font-semibold text-gray-900">Choose Interview Mode</h3>
+                  <p className="text-gray-600">
+                    Select how you'd like to complete your AI interview
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-blue-300" onClick={startVoiceInterview}>
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-4">
+                        <div className="bg-blue-100 p-3 rounded-lg">
+                          <Phone className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div className="text-left">
+                          <h4 className="font-semibold text-gray-900">Voice Interview</h4>
+                          <p className="text-sm text-gray-600">
+                            Speak naturally with our AI interviewer - more intuitive and conversational
+                          </p>
+                          <Badge variant="outline" className="mt-2">Recommended</Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-gray-300" onClick={startTextInterview}>
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-4">
+                        <div className="bg-gray-100 p-3 rounded-lg">
+                          <MessageSquare className="h-6 w-6 text-gray-600" />
+                        </div>
+                        <div className="text-left">
+                          <h4 className="font-semibold text-gray-900">Text Interview</h4>
+                          <p className="text-sm text-gray-600">
+                            Type your responses - take your time to craft detailed answers
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800">
+                  <strong>Note:</strong> Both modes will generate the same comprehensive AI profile. 
+                  Choose based on your preference for interaction style.
+                </div>
+              </div>
             </div>
           )}
 
-          {!currentSession ? (
-            /* Welcome Screen */
-            <Card className="glass-card bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
-              <CardContent className="p-8 text-center space-y-6">
-                <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto">
-                  <Sparkles className="w-10 h-10 text-white" />
-                </div>
-                
-                <div>
-                  <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2">
-                    Welcome to Your AI Interview
-                  </h3>
-                  <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-                    I'll ask you a few questions to understand your background, skills, and career goals. 
-                    This will help me create a comprehensive profile and match you with the best job opportunities.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div className="flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400">
-                    <MessageCircle className="w-4 h-4 text-blue-500" />
-                    <span>Conversational</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400">
-                    <Clock className="w-4 h-4 text-green-500" />
-                    <span>5-10 minutes</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400">
-                    <Brain className="w-4 h-4 text-purple-500" />
-                    <span>AI-Powered</span>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleStartInterview}
-                  disabled={isStarting}
-                  size="lg"
-                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-3"
-                >
-                  {isStarting ? "Starting Interview..." : "Start Interview"}
-                </Button>
-              </CardContent>
-            </Card>
-          ) : currentSession.isCompleted ? (
-            /* Completion Screen */
-            <Card className="glass-card bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
-              <CardContent className="p-8 text-center space-y-6">
-                <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle className="w-10 h-10 text-white" />
-                </div>
-                
-                <div>
-                  <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2">
-                    Interview Completed!
-                  </h3>
-                  <p className="text-slate-600 dark:text-slate-400">
-                    Thank you for completing the interview. Your profile has been generated and you should now see personalized job matches.
-                  </p>
-                </div>
-
-                {currentSession.generatedProfile && (
-                  <div className="bg-white dark:bg-slate-800/50 rounded-lg p-4 text-left max-w-2xl mx-auto">
-                    <h4 className="font-semibold text-slate-800 dark:text-slate-200 mb-3">
-                      Generated Profile Summary:
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      {currentSession.generatedProfile.summary && (
-                        <p className="text-slate-600 dark:text-slate-400">
-                          {currentSession.generatedProfile.summary}
-                        </p>
-                      )}
-                      {currentSession.generatedProfile.skills && currentSession.generatedProfile.skills.length > 0 && (
-                        <div>
-                          <span className="font-medium text-slate-700 dark:text-slate-300">Key Skills: </span>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {currentSession.generatedProfile.skills.slice(0, 6).map((skill: string) => (
-                              <Badge key={skill} variant="secondary" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <Button
-                  onClick={onClose}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
-                >
-                  Close Interview
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            /* Chat Interface */
-            <div className="space-y-4">
-              {/* Messages */}
-              <div className="max-h-[50vh] overflow-y-auto space-y-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+          {(mode === 'voice' || mode === 'text') && (
+            <div className="h-full flex flex-col">
+              {/* Messages Area */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 <AnimatePresence>
                   {messages.map((message, index) => (
                     <motion.div
                       key={index}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3 }}
                       className={`flex ${message.type === 'answer' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`max-w-[80%] ${
-                        message.type === 'answer' 
-                          ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white' 
-                          : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200'
-                      } rounded-lg p-4 shadow-sm`}>
-                        <div className="flex items-start gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            message.type === 'answer' 
-                              ? 'bg-white/20' 
-                              : 'bg-gradient-to-r from-purple-500 to-blue-500'
-                          }`}>
-                            {message.type === 'answer' ? (
-                              <User className="w-4 h-4 text-white" />
-                            ) : (
-                              <Bot className="w-4 h-4 text-white" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm leading-relaxed">{message.content}</p>
-                          </div>
+                      <div className={`max-w-[80%] flex items-start space-x-2 ${message.type === 'answer' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${message.type === 'answer' ? 'bg-blue-600' : 'bg-gray-600'}`}>
+                          {message.type === 'answer' ? (
+                            <User className="h-4 w-4 text-white" />
+                          ) : (
+                            <Bot className="h-4 w-4 text-white" />
+                          )}
+                        </div>
+                        <div className={`rounded-lg p-3 ${message.type === 'answer' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'}`}>
+                          <p className="text-sm">{message.content}</p>
                         </div>
                       </div>
                     </motion.div>
                   ))}
                 </AnimatePresence>
-                
-                {isWaitingForResponse && (
+
+                {/* Live voice transcript */}
+                {mode === 'voice' && voiceTranscript && (
                   <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     className="flex justify-start"
                   >
-                    <div className="bg-white dark:bg-slate-700 rounded-lg p-4 shadow-sm">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center">
-                          <Bot className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="flex gap-1">
-                          <div className="w-2 h-2 bg-slate-400 rounded-full animate-pulse"></div>
-                          <div className="w-2 h-2 bg-slate-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                          <div className="w-2 h-2 bg-slate-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                    <div className="max-w-[80%] flex items-start space-x-2">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-600">
+                        <Bot className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="rounded-lg p-3 bg-gray-100 text-gray-900 border-2 border-blue-200">
+                        <p className="text-sm">{voiceTranscript}</p>
+                        <div className="flex items-center space-x-1 mt-1">
+                          <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                          <span className="text-xs text-gray-500">Speaking...</span>
                         </div>
                       </div>
                     </div>
                   </motion.div>
                 )}
-                
+
+                {(startInterviewMutation.isPending || respondMutation.isPending) && (
+                  <div className="flex justify-start">
+                    <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-3">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <span className="text-sm text-gray-600">AI is thinking...</span>
+                    </div>
+                  </div>
+                )}
+
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input Area */}
-              <div className="space-y-3">
-                <Textarea
-                  value={currentAnswer}
-                  onChange={(e) => setCurrentAnswer(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Type your answer here... (Press Enter to send, Shift+Enter for new line)"
-                  rows={3}
-                  disabled={isWaitingForResponse || currentSession.isCompleted}
-                  className="glass-card resize-none"
-                />
-                
-                <div className="flex justify-between items-center">
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Be authentic and detailed in your responses for the best matches.
-                  </p>
-                  
-                  <Button
-                    onClick={handleSubmitAnswer}
-                    disabled={!canSubmitAnswer}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    {isWaitingForResponse ? "Sending..." : "Send"}
-                  </Button>
+              {/* Input Area for Text Mode */}
+              {mode === 'text' && currentSession && !currentSession.isCompleted && (
+                <div className="border-t p-4">
+                  <div className="flex space-x-3">
+                    <Textarea
+                      value={currentAnswer}
+                      onChange={(e) => setCurrentAnswer(e.target.value)}
+                      placeholder="Type your response here..."
+                      className="flex-1 min-h-[80px] resize-none"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          submitAnswer();
+                        }
+                      }}
+                    />
+                    <Button 
+                      onClick={submitAnswer}
+                      disabled={!currentAnswer.trim() || respondMutation.isPending}
+                      size="lg"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
+              )}
+
+              {/* Voice Controls */}
+              {mode === 'voice' && (
+                <div className="border-t p-4">
+                  <div className="flex items-center justify-center space-x-4">
+                    <Button
+                      variant="outline"
+                      onClick={realtimeAPI.toggleMute}
+                      disabled={!realtimeAPI.isConnected}
+                    >
+                      {realtimeAPI.isListening ? (
+                        <>
+                          <Mic className="h-4 w-4 mr-2" />
+                          Mute
+                        </>
+                      ) : (
+                        <>
+                          <MicOff className="h-4 w-4 mr-2" />
+                          Unmute
+                        </>
+                      )}
+                    </Button>
+                    
+                    <div className="text-sm text-gray-600 text-center">
+                      {realtimeAPI.isConnected ? (
+                        "Speak naturally - the AI will respond when you're done talking"
+                      ) : (
+                        "Connecting to voice interview..."
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Completed State */}
+          {currentSession?.isCompleted && (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center space-y-4">
+                <div className="flex justify-center">
+                  <CheckCircle className="h-16 w-16 text-green-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">Interview Complete!</h3>
+                <p className="text-gray-600 max-w-md">
+                  Your AI interview is finished and your comprehensive professional profile has been generated. 
+                  You can now access personalized job matches!
+                </p>
+                <Button onClick={handleClose}>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  View Job Matches
+                </Button>
               </div>
             </div>
           )}

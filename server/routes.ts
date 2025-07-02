@@ -90,6 +90,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create ephemeral token for Realtime API
+  app.post("/api/realtime/session", isAuthenticated, async (req, res) => {
+    try {
+      const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-realtime-preview-2024-10-01",
+          voice: "alloy",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error creating realtime session:", error);
+      res.status(500).json({ message: "Failed to create realtime session" });
+    }
+  });
+
   // Interview routes
   app.post('/api/interview/start', isAuthenticated, async (req: any, res) => {
     try {
