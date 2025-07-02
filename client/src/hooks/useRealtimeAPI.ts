@@ -107,7 +107,7 @@ Key guidelines:
 - Show genuine interest in their responses
 
 Start by greeting them warmly and asking them to tell you about themselves and their professional background.`,
-            voice: 'alloy',
+            voice: 'shimmer',
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
             input_audio_transcription: {
