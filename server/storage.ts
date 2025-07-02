@@ -108,23 +108,54 @@ export class DatabaseStorage implements IStorage {
     if (!profile) return;
 
     let score = 0;
+    const details = {
+      basicInfo: false,
+      workExperience: false,
+      educationDetails: false,
+      skillsAndSummary: false,
+      resumeUpload: false
+    };
     
     // Basic information (20 points)
-    if (profile.age && profile.education && profile.location) score += 20;
+    if (profile.age && profile.education && profile.location) {
+      score += 20;
+      details.basicInfo = true;
+    }
     
     // Work experience (30 points)
-    if (profile.currentRole && profile.company && profile.yearsOfExperience !== null && profile.yearsOfExperience !== undefined) score += 30;
+    if (profile.currentRole && profile.company && profile.yearsOfExperience !== null && profile.yearsOfExperience !== undefined) {
+      score += 30;
+      details.workExperience = true;
+    }
     
     // Education details (20 points)
-    if (profile.degree && profile.university) score += 20;
+    if (profile.degree && profile.university) {
+      score += 20;
+      details.educationDetails = true;
+    }
     
     // Skills and summary (15 points)
-    if (profile.skillsList?.length && profile.summary) score += 15;
+    if (profile.skillsList?.length || profile.summary) {
+      score += 15;
+      details.skillsAndSummary = true;
+    }
     
     // Resume upload (15 points)
-    if (profile.resumeContent || profile.resumeUrl) score += 15;
+    if (profile.resumeContent || profile.resumeUrl) {
+      score += 15;
+      details.resumeUpload = true;
+    }
 
     const completionPercentage = Math.min(score, 100);
+    
+    console.log(`Profile completion for user ${userId}:`, {
+      score,
+      completionPercentage,
+      details,
+      hasSkills: !!profile.skillsList?.length,
+      hasSummary: !!profile.summary,
+      hasResume: !!(profile.resumeContent || profile.resumeUrl)
+    });
 
     await db
       .update(applicantProfiles)
