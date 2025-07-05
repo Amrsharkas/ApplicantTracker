@@ -240,17 +240,12 @@ export class AirtableService {
         return;
       }
 
-      // Create job match record with high score since it's from Airtable (employer acceptance)
+      // Simply create job match - no scoring needed, employer has already matched
       await storage.createJobMatch({
         userId: jobMatch.userId,
         jobId: job.id,
-        matchScore: 95, // High score indicates employer acceptance
-        matchReasons: [
-          'Employer has shown interest in your profile',
-          'Pre-selected based on your qualifications',
-          'Great fit based on your experience and skills',
-          'Matched through employer review process'
-        ]
+        matchScore: 100, // Perfect match since employer selected this candidate
+        matchReasons: ['Employer has selected you for this position']
       });
 
       console.log(`✅ Created job match for user ${jobMatch.userId}: ${jobMatch.jobTitle}`);
