@@ -414,6 +414,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test Airtable connection (no auth required for testing)
+  app.post('/api/test-airtable-connection', async (req: any, res) => {
+    console.log('🧪 Testing Airtable connection...');
+    try {
+      await airtableService.testConnection();
+      console.log('✅ Airtable connection test successful');
+      res.json({ success: true, message: "Airtable connection successful" });
+    } catch (error) {
+      console.error("❌ Airtable connection test failed:", error);
+      res.status(500).json({ success: false, message: "Airtable connection failed", error: error.message });
+    }
+  });
+
   // Test Airtable endpoint (no auth required for testing)
   app.post('/api/test-airtable-direct', async (req: any, res) => {
     console.log('🧪 Testing Airtable integration...');

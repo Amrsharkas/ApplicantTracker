@@ -1,9 +1,9 @@
 import Airtable from 'airtable';
 
 // Configure Airtable
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID; // You'll need to provide this
-const TABLE_NAME = process.env.AIRTABLE_TABLE_NAME || 'platouserprofiles';
+const AIRTABLE_API_KEY = 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
+const TABLE_NAME = 'platouserprofiles';
 
 if (!AIRTABLE_BASE_ID) {
   console.warn('AIRTABLE_BASE_ID not configured. Airtable integration will be disabled.');
@@ -60,6 +60,30 @@ export class AirtableService {
       console.log('Test profile added successfully');
     } catch (error) {
       console.error('Failed to add test profile:', error);
+      throw error;
+    }
+  }
+
+  async testConnection(): Promise<void> {
+    if (!base) {
+      console.warn('Airtable not configured');
+      return;
+    }
+
+    try {
+      console.log('Testing Airtable connection...');
+      console.log('Base ID:', AIRTABLE_BASE_ID);
+      console.log('Table Name:', TABLE_NAME);
+      
+      // Try to read records to test the connection
+      const records = await base!(TABLE_NAME).select({ maxRecords: 1 }).firstPage();
+      console.log('✅ Connection successful! Records found:', records.length);
+      
+      if (records.length > 0) {
+        console.log('Sample record fields:', Object.keys(records[0].fields));
+      }
+    } catch (error) {
+      console.error('❌ Connection failed:', error);
       throw error;
     }
   }
