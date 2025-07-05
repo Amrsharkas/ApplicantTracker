@@ -149,19 +149,37 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           ) : matches.length === 0 ? (
-            <div className="text-center py-8">
-              <Target className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-slate-700 mb-2">No matches found</h3>
-              <p className="text-slate-600 mb-4">
-                Complete your profile and take the AI interview to get personalized job matches.
-              </p>
-              <Button
-                onClick={() => refreshMutation.mutate()}
-                disabled={refreshMutation.isPending}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-              >
-                Find Matches
-              </Button>
+            <div className="text-center py-12">
+              <Target className="w-20 h-20 text-slate-400 mx-auto mb-6" />
+              <h3 className="text-2xl font-bold text-slate-700 mb-3">🔍 Still Hunting for Your Perfect Match!</h3>
+              <div className="space-y-2 mb-6">
+                <p className="text-lg text-slate-600">
+                  Our AI matchmaker is working overtime, but your dream job is playing hard to get! 
+                </p>
+                <p className="text-slate-500">
+                  Don't worry - we're like a persistent dating app but for careers. We never give up! 💪
+                </p>
+                <p className="text-sm text-slate-400 italic">
+                  (Pro tip: The more interviews you complete, the better we get at finding your professional soulmate)
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button
+                  onClick={() => refreshMutation.mutate()}
+                  disabled={refreshMutation.isPending}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+                  Check Again (Pretty Please!)
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={onClose}
+                  className="border-slate-300 hover:bg-slate-50"
+                >
+                  I'll Wait Patiently 😌
+                </Button>
+              </div>
             </div>
           ) : (
             matches.map((match: JobMatch, index: number) => (

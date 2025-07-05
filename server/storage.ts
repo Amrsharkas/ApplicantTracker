@@ -51,6 +51,7 @@ export interface IStorage {
   createInterviewSession(session: InsertInterviewSession): Promise<InterviewSession>;
   getInterviewSession(userId: string): Promise<InterviewSession | undefined>;
   updateInterviewSession(id: number, data: Partial<InterviewSession>): Promise<void>;
+  getInterviewHistory(userId: string): Promise<InterviewSession[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -390,6 +391,16 @@ export class DatabaseStorage implements IStorage {
       .update(interviewSessions)
       .set(data)
       .where(eq(interviewSessions.id, id));
+  }
+
+  async getInterviewHistory(userId: string): Promise<InterviewSession[]> {
+    const sessions = await db
+      .select()
+      .from(interviewSessions)
+      .where(eq(interviewSessions.userId, userId))
+      .orderBy(desc(interviewSessions.createdAt));
+    
+    return sessions;
   }
 }
 

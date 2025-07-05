@@ -307,6 +307,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/interview/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const history = await storage.getInterviewHistory(userId);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching interview history:", error);
+      res.status(500).json({ message: "Failed to fetch interview history" });
+    }
+  });
+
   // Job routes
   app.get('/api/jobs', isAuthenticated, async (req: any, res) => {
     try {
