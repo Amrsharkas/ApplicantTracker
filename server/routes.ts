@@ -713,14 +713,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newJobEntries = await airtableService.checkForNewJobEntries();
       
       if (newJobEntries.length > 0) {
-        console.log(`🔍 Found ${newJobEntries.length} new job entries in Airtable`);
+        console.log(`🔍 Found ${newJobEntries.length} new approved jobs in Airtable`);
         
         for (const jobEntry of newJobEntries) {
           try {
             await airtableService.processJobEntry(jobEntry);
-            console.log(`✅ Auto-processed job: ${jobEntry.jobTitle} for user ${jobEntry.userId}`);
+            console.log(`✅ Auto-created approved application for user ${jobEntry.userId}: ${jobEntry.jobTitle}`);
           } catch (error) {
-            console.error(`❌ Auto-processing failed for user ${jobEntry.userId}:`, error);
+            console.error(`❌ Failed to create approved application for user ${jobEntry.userId}:`, error);
           }
         }
       }

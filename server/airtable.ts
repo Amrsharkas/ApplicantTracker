@@ -164,25 +164,24 @@ export class AirtableService {
 
       console.log(`Created job ${job.id}: ${job.title} at ${job.company}`);
 
-      // Get user's profile to create personalized match
-      const userProfile = await storage.getApplicantProfile(jobEntry.userId);
-      
-      if (userProfile) {
-        // Generate AI-powered match score and reasons
-        const matchData = await this.generateJobMatch(userProfile, job, jobEntry.userProfile);
-        
-        // Create the job match
-        await storage.createJobMatch({
-          userId: jobEntry.userId,
-          jobId: job.id,
-          matchScore: matchData.score,
-          matchReasons: matchData.reasons
-        });
-
-        console.log(`Created job match for user ${jobEntry.userId} with score ${matchData.score}%`);
-      } else {
-        console.warn(`No profile found for user ${jobEntry.userId}, skipping match creation`);
+      // Check if user already has an application for this job
+      const existingApplication = await storage.getApplication(jobEntry.userId, job.id);
+      if (existingApplication) {
+        console.log(`User ${jobEntry.userId} already has application for job ${job.id}`);
+        return;
       }
+
+      // Since job title and description are populated in Airtable, user is pre-approved
+      // Create application record with "approved" status
+      await storage.createApplication({
+        userId: jobEntry.userId,
+        jobId: job.id,
+        status: 'approved',
+        coverLetter: 'Pre-approved through Airtable matching system',
+        notes: `Automatically approved for ${job.title} at ${job.company}`
+      });
+
+      console.log(`✅ Created approved application for user ${jobEntry.userId} for job: ${job.title}`);
       
     } catch (error) {
       console.error(`Error processing job entry for user ${jobEntry.userId}:`, error);
