@@ -134,9 +134,15 @@ export class AirtableService {
 
   async checkForNewJobEntries(): Promise<AirtableJobEntry[]> {
     const allJobEntries = await this.getRecordsWithJobData();
+    console.log(`📋 Found ${allJobEntries.length} total entries with job data in Airtable`);
+    
+    if (allJobEntries.length > 0) {
+      console.log('Job entries:', allJobEntries.map(e => ({ userId: e.userId, jobTitle: e.jobTitle })));
+    }
     
     // Filter out already processed records
     const newEntries = allJobEntries.filter(entry => !this.processedRecords.has(entry.recordId));
+    console.log(`🔍 New unprocessed entries: ${newEntries.length} (already processed: ${this.processedRecords.size})`);
     
     // Mark new entries as processed
     newEntries.forEach(entry => this.processedRecords.add(entry.recordId));

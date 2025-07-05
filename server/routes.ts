@@ -707,9 +707,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint to check Airtable connection
+  app.get('/api/debug-airtable', async (req, res) => {
+    try {
+      console.log("🔍 Debug: Checking Airtable connection...");
+      const allJobEntries = await airtableService.getRecordsWithJobData();
+      
+      res.json({
+        success: true,
+        totalEntries: allJobEntries.length,
+        entries: allJobEntries.map(entry => ({
+          userId: entry.userId,
+          jobTitle: entry.jobTitle,
+          hasJobDescription: !!entry.jobDescription
+        }))
+      });
+    } catch (error) {
+      console.error("Airtable debug error:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
   // Set up automatic Airtable monitoring (every 30 seconds)
   setInterval(async () => {
     try {
+      console.log("⏰ Running Airtable monitoring check...");
       const newJobEntries = await airtableService.checkForNewJobEntries();
       
       if (newJobEntries.length > 0) {
@@ -723,6 +748,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error(`❌ Failed to create approved application for user ${jobEntry.userId}:`, error);
           }
         }
+      } else {
+        console.log("🔍 No new job entries found in current monitoring cycle");
       }
     } catch (error) {
       console.error("❌ Airtable monitoring error:", error);
