@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Mic, MicOff, MessageCircle, Phone, PhoneOff, Users, Briefcase, Target, User } from 'lucide-react';
+import { Mic, MicOff, MessageCircle, Phone, PhoneOff, Users, Briefcase, Target, User, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRealtimeAPI } from '@/hooks/useRealtimeAPI';
 import { apiRequest } from '@/lib/queryClient';
@@ -51,6 +51,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
   const [showProfileDetails, setShowProfileDetails] = useState(false);
   const [isInterviewConcluded, setIsInterviewConcluded] = useState(false);
+  const [isProcessingInterview, setIsProcessingInterview] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -183,6 +184,45 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       toast({
         title: "Error",
         description: "Failed to process your response",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const processVoiceInterviewMutation = useMutation({
+    mutationFn: async () => {
+      setIsProcessingInterview(true);
+      
+      // Convert conversation history to the format expected by the API
+      const responses = conversationHistory
+        .filter((_, index) => index % 2 === 1) // Get only user responses (odd indices)
+        .map((item, index) => ({
+          question: conversationHistory[index * 2]?.content || `Question ${index + 1}`,
+          answer: item.content
+        }));
+
+      const response = await apiRequest("POST", "/api/interview/complete-voice", {
+        conversationHistory: responses
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setIsProcessingInterview(false);
+      setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+      toast({
+        title: "Interview Complete!",
+        description: "Your AI profile has been generated and saved to your database.",
+      });
+      realtimeAPI.disconnect();
+      setIsInterviewConcluded(false);
+      onClose();
+    },
+    onError: (error) => {
+      setIsProcessingInterview(false);
+      toast({
+        title: "Processing Failed",
+        description: "There was an issue processing your interview. Please try again.",
         variant: "destructive",
       });
     },
@@ -518,7 +558,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         </Card>
       )}
 
-      <div className="space-y-2">
+      <div className="h-48 overflow-y-auto space-y-2 p-2 border rounded-lg bg-gray-50">
         {conversationHistory.slice(-4).map((item, index) => (
           <Card key={index} className={`${
             item.role === 'assistant' 
@@ -533,10 +573,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                   <MessageCircle className="h-4 w-4 mt-1 text-green-600" />
                 )}
                 <div className="flex-1">
-                  <p className="text-sm font-medium {item.role === 'assistant' ? 'text-blue-800' : 'text-green-800'}">
+                  <p className={`text-sm font-medium ${item.role === 'assistant' ? 'text-blue-800' : 'text-green-800'}`}>
                     {item.role === 'assistant' ? 'AI Interviewer' : 'You'}
                   </p>
-                  <p className="text-sm {item.role === 'assistant' ? 'text-blue-700' : 'text-green-700'}">
+                  <p className={`text-sm ${item.role === 'assistant' ? 'text-blue-700' : 'text-green-700'}`}>
                     {item.content}
                   </p>
                 </div>
@@ -655,67 +695,25 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           {realtimeAPI.isConnected && (
             <Button
               variant={isInterviewConcluded ? "default" : "destructive"}
-              onClick={async () => {
+              onClick={() => {
                 if (isInterviewConcluded) {
-                  // Submit the completed interview
-                  try {
-                    // Process the conversation history to create an interview session
-                    const responses = [];
-                    for (let i = 0; i < conversationHistory.length; i += 2) {
-                      if (conversationHistory[i]?.role === 'assistant' && conversationHistory[i + 1]?.role === 'user') {
-                        responses.push({
-                          question: conversationHistory[i]?.content || '',
-                          answer: conversationHistory[i + 1]?.content || ''
-                        });
-                      }
-                    }
-                    
-                    // Submit the voice interview responses
-                    const submitResponse = await apiRequest("POST", "/api/interview/voice-submit", {
-                      responses,
-                      conversationHistory
-                    });
-                    const result = await submitResponse.json();
-                    
-                    if (result.profile) {
-                      setCurrentSession({
-                        id: result.sessionId || Date.now(),
-                        sessionData: { 
-                          questions: responses.map(r => ({ question: r.question })), 
-                          responses, 
-                          currentQuestionIndex: responses.length,
-                          isComplete: true
-                        },
-                        isCompleted: true,
-                        generatedProfile: result.profile
-                      });
-                      
-                      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
-                      queryClient.invalidateQueries({ queryKey: ["/api/interview/history"] });
-                      
-                      toast({
-                        title: "Interview Submitted!",
-                        description: "Your voice interview has been processed and your AI profile generated.",
-                      });
-                    }
-                  } catch (error) {
-                    console.error("Error submitting voice interview:", error);
-                    toast({
-                      title: "Submission Error",
-                      description: "Failed to process your interview. Please try again.",
-                      variant: "destructive",
-                    });
-                  }
+                  processVoiceInterviewMutation.mutate();
                 } else {
                   // Just hang up
                   realtimeAPI.disconnect();
                   setMode('select');
                 }
               }}
+              disabled={isProcessingInterview || processVoiceInterviewMutation.isPending}
             >
-              {isInterviewConcluded ? (
+              {isProcessingInterview || processVoiceInterviewMutation.isPending ? (
                 <>
-                  <Phone className="h-4 w-4 mr-2" />
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Processing Interview...
+                </>
+              ) : isInterviewConcluded ? (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
                   Submit Interview
                 </>
               ) : (

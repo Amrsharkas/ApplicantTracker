@@ -174,7 +174,8 @@ Be specific and insightful. This analysis will be used for job matching and care
           }
         ],
         response_format: { type: "json_object" },
-        temperature: 0.3
+        temperature: 0.1,
+        max_tokens: 1500
       });
 
       const profile = JSON.parse(response.choices[0].message.content || '{}');

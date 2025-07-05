@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { aiInterviewService } from "./openai";
+import { aiInterviewService, aiProfileAnalysisAgent } from "./openai";
 import { airtableService } from "./airtable";
 import multer from "multer";
 import { z } from "zod";
@@ -328,6 +328,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error processing interview response:", error);
       res.status(500).json({ message: "Failed to process response" });
+    }
+  });
+
+  app.post('/api/interview/complete-voice', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { conversationHistory } = req.body;
+
+      if (!conversationHistory || !Array.isArray(conversationHistory)) {
+        return res.status(400).json({ message: "Invalid conversation history" });
+      }
+
+      // Get user and profile data for AI Agent 2
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+
+      // Get resume content if available
+      let resumeContent = null;
+      if (profile?.resumeUrl) {
+        try {
+          resumeContent = null; // TODO: Implement resume fetching
+        } catch (error) {
+          console.warn("Could not fetch resume content:", error);
+        }
+      }
+
+      // Use AI Agent 2 to generate comprehensive profile
+      const generatedProfile = await aiProfileAnalysisAgent.generateComprehensiveProfile(
+        { ...user, ...profile },
+        resumeContent,
+        conversationHistory
+      );
+
+      // Save the interview session with completion
+      const session = await storage.createInterviewSession({
+        userId,
+        sessionData: { 
+          questions: conversationHistory.map(item => ({ question: item.question })),
+          responses: conversationHistory,
+          currentQuestionIndex: conversationHistory.length 
+        },
+        isCompleted: true,
+        generatedProfile
+      });
+
+      // Update profile with AI-generated data and mark as complete
+      await storage.upsertApplicantProfile({
+        userId,
+        aiProfile: generatedProfile,
+        aiProfileGenerated: true,
+        summary: generatedProfile.summary
+      });
+
+      // Store in Airtable
+      try {
+        const userName = user?.firstName 
+          ? `${user.firstName} ${user.lastName || ''}`.trim()
+          : user?.email || 'Unknown User';
+        
+        await airtableService.storeUserProfile(userName, generatedProfile);
+      } catch (error) {
+        console.error('Failed to store profile in Airtable:', error);
+      }
+
+      res.json({ 
+        isComplete: true, 
+        profile: generatedProfile,
+        message: "Voice interview completed successfully!" 
+      });
+    } catch (error) {
+      console.error("Error completing voice interview:", error);
+      res.status(500).json({ message: "Failed to complete voice interview" });
     }
   });
 
