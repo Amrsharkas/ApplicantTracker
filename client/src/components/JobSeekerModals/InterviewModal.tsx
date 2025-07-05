@@ -133,8 +133,20 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       return response.json();
     },
     onSuccess: (data) => {
-      setCurrentSession(data.session);
+      // Create session object from the response data
+      const session = {
+        id: data.sessionId,
+        sessionData: {
+          questions: data.questions || [],
+          responses: [],
+          currentQuestionIndex: 0
+        },
+        isCompleted: false
+      };
+      
+      setCurrentSession(session);
       setCurrentQuestionIndex(0);
+      
       if (data.firstQuestion) {
         const firstQuestion: InterviewMessage = {
           type: 'question',
