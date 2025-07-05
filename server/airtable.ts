@@ -19,10 +19,11 @@ const base = AIRTABLE_BASE_ID ? Airtable.base(AIRTABLE_BASE_ID) : null;
 export interface AirtableUserProfile {
   name: string;
   userProfile: string;
+  userId: string;
 }
 
 export class AirtableService {
-  async storeUserProfile(name: string, profileData: any): Promise<void> {
+  async storeUserProfile(name: string, profileData: any, userId: string): Promise<void> {
     if (!base) {
       console.warn('Airtable not configured, skipping profile storage');
       return;
@@ -35,12 +36,13 @@ export class AirtableService {
         {
           fields: {
             'Name': name,
-            'User profile': profileString
+            'User profile': profileString,
+            'User ID': userId
           }
         }
       ]);
 
-      console.log(`Successfully stored profile for ${name} in Airtable`);
+      console.log(`Successfully stored profile for ${name} (ID: ${userId}) in Airtable`);
     } catch (error) {
       console.error('Error storing profile in Airtable:', error);
       throw new Error('Failed to store profile in Airtable');
@@ -61,7 +63,8 @@ export class AirtableService {
 
       return records.map((record: any) => ({
         name: record.fields['Name'] || 'Unknown',
-        userProfile: record.fields['User profile'] || 'No profile data'
+        userProfile: record.fields['User profile'] || 'No profile data',
+        userId: record.fields['User ID'] || 'Unknown'
       }));
     } catch (error) {
       console.error('Error fetching user profiles from Airtable:', error);

@@ -292,7 +292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? `${user.firstName} ${user.lastName}` 
             : user?.email || `User ${userId}`;
           
-          await airtableService.storeUserProfile(userName, generatedProfile);
+          await airtableService.storeUserProfile(userName, generatedProfile, userId);
         } catch (error) {
           console.error('Failed to store profile in Airtable:', error);
           // Don't fail the entire request if Airtable fails
@@ -387,7 +387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? `${user.firstName} ${user.lastName || ''}`.trim()
           : user?.email || 'Unknown User';
         
-        await airtableService.storeUserProfile(userName, generatedProfile);
+        await airtableService.storeUserProfile(userName, generatedProfile, userId);
       } catch (error) {
         console.error('Failed to store profile in Airtable:', error);
       }
@@ -479,7 +479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? `${user.firstName} ${user.lastName}` 
           : user?.email || 'Unknown User';
         
-        await airtableService.storeUserProfile(userName, generatedProfile);
+        await airtableService.storeUserProfile(userName, generatedProfile, userId);
       } catch (airtableError) {
         console.warn("Failed to store profile in Airtable:", airtableError);
         // Continue without failing the interview
