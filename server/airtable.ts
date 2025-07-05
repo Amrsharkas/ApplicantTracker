@@ -23,13 +23,19 @@ export interface AirtableUserProfile {
 
 export class AirtableService {
   async storeUserProfile(name: string, profileData: any): Promise<void> {
+    console.log('Attempting to store profile in Airtable...');
+    console.log('AIRTABLE_BASE_ID:', AIRTABLE_BASE_ID ? 'configured' : 'missing');
+    console.log('TABLE_NAME:', TABLE_NAME);
+    
     if (!base) {
       console.warn('Airtable not configured, skipping profile storage');
       return;
     }
 
     try {
-      const profileString = JSON.stringify(profileData, null, 2);
+      const profileString = typeof profileData === 'string' ? profileData : JSON.stringify(profileData, null, 2);
+      
+      console.log(`Storing profile for ${name}...`);
       
       await base!(TABLE_NAME).create([
         {
@@ -43,7 +49,18 @@ export class AirtableService {
       console.log(`Successfully stored profile for ${name} in Airtable`);
     } catch (error) {
       console.error('Error storing profile in Airtable:', error);
+      console.error('Full error details:', JSON.stringify(error, null, 2));
       throw new Error('Failed to store profile in Airtable');
+    }
+  }
+
+  async addTestProfile(): Promise<void> {
+    try {
+      await this.storeUserProfile('Platotester', 'test123');
+      console.log('Test profile added successfully');
+    } catch (error) {
+      console.error('Failed to add test profile:', error);
+      throw error;
     }
   }
 }

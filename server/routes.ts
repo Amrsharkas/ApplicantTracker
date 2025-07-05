@@ -414,6 +414,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test Airtable endpoint (no auth required for testing)
+  app.post('/api/test-airtable-direct', async (req: any, res) => {
+    console.log('🧪 Testing Airtable integration...');
+    try {
+      await airtableService.addTestProfile();
+      console.log('✅ Airtable test successful');
+      res.json({ success: true, message: "Test profile added to Airtable successfully" });
+    } catch (error) {
+      console.error("❌ Airtable test failed:", error);
+      res.status(500).json({ success: false, message: "Failed to add test profile to Airtable", error: error.message });
+    }
+  });
+
+  // Test Airtable endpoint
+  app.post('/api/test-airtable', isAuthenticated, async (req: any, res) => {
+    try {
+      await airtableService.addTestProfile();
+      res.json({ success: true, message: "Test profile added to Airtable successfully" });
+    } catch (error) {
+      console.error("Airtable test failed:", error);
+      res.status(500).json({ success: false, message: "Failed to add test profile to Airtable", error: error.message });
+    }
+  });
+
   app.get('/api/interview/history', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
