@@ -120,6 +120,7 @@ Changelog:
 - July 5, 2025. Updated Airtable job system - when Job title and Job description fields are populated for a user, it indicates pre-approval and automatically creates an approved application (no AI matching needed)
 - July 5, 2025. Implemented dual-table Airtable system: "platouserprofiles" table stores interview completions, new "platojobmatches" table creates job matches for the Job Matches modal when employers accept candidates
 - July 5, 2025. Corrected workflow: "platouserprofiles" only stores interview data (no job processing), "platojobmatches" directly populates Job Matches modal with employer-selected matches (no scoring/AI needed)
+- July 5, 2025. Successfully configured dual-base Airtable system with field name mapping - job matches now properly detected from dedicated base (app1u4N2W46jD43mP) and automatically create 100% match job entries
 ```
 
 ## User Preferences

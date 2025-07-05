@@ -3,13 +3,20 @@ import { storage } from './storage';
 import { aiProfileAnalysisAgent } from './openai';
 
 // Configure Airtable
-const AIRTABLE_API_KEY = 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
+const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
 const AIRTABLE_BASE_ID = 'app3tA4UpKQCT2s17'; // platouserprofiles base
+const AIRTABLE_JOB_MATCHES_BASE_ID = process.env.AIRTABLE_JOB_MATCHES_BASE_ID; // platojobmatches base
 const TABLE_NAME = 'Table 1'; // For user profiles
-const JOB_MATCHES_TABLE = 'platojobmatches'; // For job matches
+const JOB_MATCHES_TABLE = 'Table 1'; // For job matches in the dedicated base
 
 if (!AIRTABLE_BASE_ID) {
   console.warn('AIRTABLE_BASE_ID not configured. Airtable integration will be disabled.');
+}
+
+if (!AIRTABLE_JOB_MATCHES_BASE_ID) {
+  console.warn('AIRTABLE_JOB_MATCHES_BASE_ID not configured. Will fallback to main base for job matches.');
+} else {
+  console.log('✅ Job matches base configured:', AIRTABLE_JOB_MATCHES_BASE_ID);
 }
 
 Airtable.configure({
@@ -18,6 +25,7 @@ Airtable.configure({
 });
 
 const base = AIRTABLE_BASE_ID ? Airtable.base(AIRTABLE_BASE_ID) : null;
+const jobMatchesBase = AIRTABLE_JOB_MATCHES_BASE_ID ? Airtable.base(AIRTABLE_JOB_MATCHES_BASE_ID) : null;
 
 export interface AirtableUserProfile {
   name: string;
@@ -140,70 +148,99 @@ export class AirtableService {
 
   // New method to get job matches from the platojobmatches table
   async getJobMatchesFromAirtable(): Promise<AirtableJobMatch[]> {
+    // Try the dedicated job matches base first
+    if (jobMatchesBase) {
+      try {
+        console.log('📋 Checking dedicated job matches base with ID:', AIRTABLE_JOB_MATCHES_BASE_ID);
+        console.log('📋 Looking for table:', JOB_MATCHES_TABLE);
+        
+        // Try to access the table and get records
+        const records = await jobMatchesBase(JOB_MATCHES_TABLE).select({
+          maxRecords: 100
+        }).all();
+
+        console.log(`📋 Found ${records.length} records in dedicated job matches base`);
+        console.log('📋 Raw record fields:', records.map(r => Object.keys(r.fields)));
+        const filteredRecords = records
+          .filter((record: any) => {
+            console.log('📋 All fields in record:', Object.keys(record.fields));
+            console.log('📋 Field values:', record.fields);
+            
+            // Try multiple possible field name variations
+            const jobTitle = record.fields['Job title'] || record.fields['Job Title'] || record.fields['JobTitle'] || record.fields['Job_title'];
+            const jobDescription = record.fields['Job Description'] || record.fields['Job description'] || record.fields['JobDescription'] || record.fields['Job_Description'];
+            const userId = record.fields['User ID'] || record.fields['UserID'] || record.fields['User_ID'] || record.fields['user_id'];
+            
+            console.log('📋 Field match results:', { 
+              jobTitle: !!jobTitle, 
+              jobDescription: !!jobDescription, 
+              userId: !!userId,
+              actualJobTitle: jobTitle,
+              actualJobDescription: jobDescription?.substring(0, 50) + '...',
+              actualUserId: userId
+            });
+            
+            return jobTitle && jobDescription && userId;
+          })
+          .map((record: any) => {
+            const jobTitle = record.fields['Job title'] || record.fields['Job Title'] || record.fields['JobTitle'] || record.fields['Job_title'];
+            const jobDescription = record.fields['Job Description'] || record.fields['Job description'] || record.fields['JobDescription'] || record.fields['Job_Description'];
+            const userId = record.fields['User ID'] || record.fields['UserID'] || record.fields['User_ID'] || record.fields['user_id'];
+            
+            return {
+              recordId: record.id,
+              name: record.fields['Name'] || 'Unknown',
+              userId: userId,
+              jobTitle: jobTitle,
+              jobDescription: jobDescription
+            };
+          });
+
+        console.log(`📋 Found ${filteredRecords.length} valid job match records`);
+        if (filteredRecords.length > 0) {
+          console.log('Job matches:', filteredRecords.map(m => ({ userId: m.userId, jobTitle: m.jobTitle })));
+        }
+        return filteredRecords;
+      } catch (error) {
+        console.error('❌ Error accessing dedicated job matches base:', error);
+        console.error('❌ Error message:', error instanceof Error ? error.message : String(error));
+        console.log('📋 Falling back to main base for job matches...');
+      }
+    }
+
+    // Fallback to main base if dedicated base not available
     if (!base) {
-      console.warn('Airtable not configured, returning empty array');
+      console.warn('No Airtable bases configured, returning empty array');
       return [];
     }
 
     try {
-      // First try the dedicated job matches table
-      try {
-        const records = await base!(JOB_MATCHES_TABLE).select({
-          maxRecords: 100,
-          view: 'Grid view'
-        }).all();
+      console.log('📋 Checking main table for job match entries...');
+      const records = await base(TABLE_NAME).select({
+        maxRecords: 100,
+        view: 'Grid view'
+      }).all();
 
-        console.log(`📋 Found ${records.length} records in job matches table`);
-        return records
-          .filter((record: any) => 
-            record.fields['Job title'] && 
-            record.fields['Job description'] && 
-            record.fields['User ID']
-          )
-          .map((record: any) => ({
-            recordId: record.id,
-            name: record.fields['Name'] || 'Unknown',
-            userId: record.fields['User ID'],
-            jobTitle: record.fields['Job title'],
-            jobDescription: record.fields['Job description']
-          }));
-      } catch (tableError) {
-        // If dedicated table doesn't exist, check the main table for job match entries
-        console.log('📋 Job matches table not found, checking main table for new job match entries...');
-        
-        const records = await base!(TABLE_NAME).select({
-          maxRecords: 100,
-          view: 'Grid view'
-        }).all();
+      console.log(`📋 Found ${records.length} total records in main table`);
+      
+      const jobMatchRecords = records
+        .filter((record: any) => {
+          const hasJobData = record.fields['Job title'] && record.fields['Job description'] && record.fields['User ID'];
+          return hasJobData;
+        })
+        .map((record: any) => ({
+          recordId: record.id,
+          name: record.fields['Name'] || 'Unknown',
+          userId: record.fields['User ID'],
+          jobTitle: record.fields['Job title'],
+          jobDescription: record.fields['Job description']
+        }));
 
-        console.log(`📋 Found ${records.length} total records in main table`);
-        
-        // Look for records with job data that are NOT already processed as applications
-        // These would be new job matches from employers
-        const jobMatchRecords = records
-          .filter((record: any) => {
-            const hasJobData = record.fields['Job title'] && record.fields['Job description'] && record.fields['User ID'];
-            const hasUserProfile = record.fields['User profile']; // Has interview data
-            
-            // If it has both job data AND user profile, it might be either an application or a job match
-            // For now, treat entries with job data as potential job matches
-            return hasJobData;
-          })
-          .map((record: any) => ({
-            recordId: record.id,
-            name: record.fields['Name'] || 'Unknown',
-            userId: record.fields['User ID'],
-            jobTitle: record.fields['Job title'],
-            jobDescription: record.fields['Job description']
-          }));
-
-        console.log(`📋 Found ${jobMatchRecords.length} potential job match records`);
-        return jobMatchRecords;
-      }
+      console.log(`📋 Found ${jobMatchRecords.length} potential job match records in main table`);
+      return jobMatchRecords;
     } catch (error) {
-      console.error('Error fetching job matches from Airtable:', error);
-      console.log('Unable to access any Airtable tables - returning empty array');
-      return []; // Return empty array instead of throwing to prevent monitoring crashes
+      console.error('Error fetching job matches from main table:', error);
+      return [];
     }
   }
 

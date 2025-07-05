@@ -731,6 +731,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint specifically for job matches base
+  app.get('/api/debug-job-matches', async (req, res) => {
+    try {
+      console.log("🧪 Debug: Checking job matches base directly...");
+      const Airtable = await import('airtable');
+      const airtable = new Airtable.default({
+        endpointUrl: 'https://api.airtable.com',
+        apiKey: process.env.AIRTABLE_API_KEY
+      });
+      const jobMatchesBase = airtable.base(process.env.AIRTABLE_JOB_MATCHES_BASE_ID!);
+      
+      const records = await jobMatchesBase('Table 1').select({
+        maxRecords: 10
+      }).all();
+      
+      console.log('🧪 Raw records found:', records.length);
+      const recordDetails = records.map(record => ({
+        id: record.id,
+        fields: record.fields,
+        fieldNames: Object.keys(record.fields)
+      }));
+      
+      console.log('🧪 Record details:', JSON.stringify(recordDetails, null, 2));
+      
+      res.json({
+        success: true,
+        baseId: process.env.AIRTABLE_JOB_MATCHES_BASE_ID,
+        count: records.length,
+        records: recordDetails
+      });
+    } catch (error) {
+      console.error('Job matches debug error:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Set up automatic Airtable monitoring (every 30 seconds)
   setInterval(async () => {
     try {
