@@ -94,15 +94,15 @@ export function InterviewHistoryModal({ isOpen, onClose, onResumeInterview }: In
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
             Interview History
           </DialogTitle>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 space-y-6">
+        <div className="overflow-y-auto flex-1 space-y-6 pr-2">
           {/* Statistics Overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>

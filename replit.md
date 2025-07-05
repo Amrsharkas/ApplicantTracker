@@ -116,6 +116,7 @@ Changelog:
 - July 5, 2025. Implemented two-AI system: AI Agent 1 (Interview Conductor) analyzes resume/profile and generates personalized questions; AI Agent 2 (Profile Analyzer) creates comprehensive user analysis from all data sources
 - July 5, 2025. Updated Airtable integration to use "platouserprofiles" table and automatically store complete user analysis profiles after interview completion
 - July 5, 2025. Enhanced Airtable integration to include User ID field - now stores Name, User profile data, and unique User ID for each completed interview with automatic fallback handling
+- July 5, 2025. Fixed scrolling issue in interview history modal profile view and replaced dashboard checklist with engaging hiring statistics section for completed users
 ```
 
 ## User Preferences

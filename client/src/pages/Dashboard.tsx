@@ -113,103 +113,156 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-6 py-8">
-        {/* Getting Started Section */}
+        {/* Getting Started Section or Hiring Stats */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Plato!</h2>
-          <p className="text-gray-600 mb-6">
-            Get started by completing these two simple steps to unlock personalized job matching:
-          </p>
-          
-          <div className="space-y-4">
-            {/* Step 1: Complete Profile */}
-            <div className={`bg-white rounded-lg p-6 border-2 transition-all ${
-              hasCompletedProfile 
-                ? 'border-green-200 bg-green-50' 
-                : 'border-blue-200 shadow-md'
-            }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
-                    hasCompletedProfile ? 'bg-green-600' : 'bg-blue-600'
-                  }`}>
-                    {hasCompletedProfile ? '✓' : '1'}
+          {/* Show hiring statistics for completed users */}
+          {hasCompletedProfile && hasCompletedInterview ? (
+            <div className="space-y-6">
+              <div className="text-center">
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">Ready to Find Your Perfect Role!</h2>
+                <p className="text-gray-600 max-w-2xl mx-auto">
+                  Your profile is complete and your AI interview has generated a comprehensive professional analysis. 
+                  Use the tools below to discover opportunities that match your unique skills and career goals.
+                </p>
+              </div>
+              
+              {/* Hiring Statistics */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-8 border border-blue-200">
+                <h3 className="text-2xl font-bold text-center text-gray-900 mb-6">
+                  Why Traditional Job Hunting Doesn't Work
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-red-600 mb-2">75%</div>
+                    <p className="text-sm text-gray-700">
+                      of resumes are rejected by ATS systems before human review
+                    </p>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Complete Your Profile</h3>
-                    <p className="text-gray-600">
-                      {hasCompletedProfile 
-                        ? 'Great! Your profile is complete.' 
-                        : 'Add your personal information, skills, and experience to get started.'
-                      }
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-orange-600 mb-2">3 mins</div>
+                    <p className="text-sm text-gray-700">
+                      average time recruiters spend reading each resume
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-purple-600 mb-2">250+</div>
+                    <p className="text-sm text-gray-700">
+                      applications submitted for each job posting on average
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-gray-900">{profileProgress}%</div>
-                    <div className="text-xs text-gray-500">Complete</div>
+                
+                <div className="mt-6 pt-6 border-t border-blue-200">
+                  <div className="text-center">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-2">How Plato Changes the Game</h4>
+                    <p className="text-gray-700 max-w-3xl mx-auto">
+                      Our AI understands your true potential beyond keywords. We match you with opportunities 
+                      based on your skills, personality, and career goals - not just resume scanning.
+                    </p>
                   </div>
-                  <button
-                    onClick={() => openModal('profile')}
-                    className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                      hasCompletedProfile 
-                        ? 'bg-green-600 text-white hover:bg-green-700' 
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
-                  >
-                    {hasCompletedProfile ? 'Edit Profile' : 'Complete Profile'}
-                  </button>
                 </div>
               </div>
             </div>
+          ) : (
+            /* Show getting started checklist for incomplete users */
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Plato!</h2>
+              <p className="text-gray-600 mb-6">
+                Get started by completing these two simple steps to unlock personalized job matching:
+              </p>
+              
+              <div className="space-y-4">
+                {/* Step 1: Complete Profile */}
+                <div className={`bg-white rounded-lg p-6 border-2 transition-all ${
+                  hasCompletedProfile 
+                    ? 'border-green-200 bg-green-50' 
+                    : 'border-blue-200 shadow-md'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
+                        hasCompletedProfile ? 'bg-green-600' : 'bg-blue-600'
+                      }`}>
+                        {hasCompletedProfile ? '✓' : '1'}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Complete Your Profile</h3>
+                        <p className="text-gray-600">
+                          {hasCompletedProfile 
+                            ? 'Great! Your profile is complete.' 
+                            : 'Add your personal information, skills, and experience to get started.'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-gray-900">{profileProgress}%</div>
+                        <div className="text-xs text-gray-500">Complete</div>
+                      </div>
+                      <button
+                        onClick={() => openModal('profile')}
+                        className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                          hasCompletedProfile 
+                            ? 'bg-green-600 text-white hover:bg-green-700' 
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
+                      >
+                        {hasCompletedProfile ? 'Edit Profile' : 'Complete Profile'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
-            {/* Step 2: AI Interview */}
-            <div className={`bg-white rounded-lg p-6 border-2 transition-all ${
-              !hasCompletedProfile 
-                ? 'border-gray-200 opacity-60' 
-                : hasCompletedInterview 
-                  ? 'border-green-200 bg-green-50' 
-                  : 'border-orange-200 shadow-md'
-            }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
-                    !hasCompletedProfile 
-                      ? 'bg-gray-400' 
-                      : hasCompletedInterview 
-                        ? 'bg-green-600' 
-                        : 'bg-orange-600'
-                  }`}>
-                    {hasCompletedInterview ? '✓' : '2'}
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Take AI Interview</h3>
-                    <p className="text-gray-600">
-                      {!hasCompletedProfile 
-                        ? 'Complete your profile first to unlock the AI interview.' 
-                        : hasCompletedInterview 
-                          ? 'Excellent! Your AI interview is complete.' 
-                          : 'Chat with our AI to create your comprehensive professional profile.'
-                      }
-                    </p>
+                {/* Step 2: AI Interview */}
+                <div className={`bg-white rounded-lg p-6 border-2 transition-all ${
+                  !hasCompletedProfile 
+                    ? 'border-gray-200 opacity-60' 
+                    : hasCompletedInterview 
+                      ? 'border-green-200 bg-green-50' 
+                      : 'border-orange-200 shadow-md'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
+                        !hasCompletedProfile 
+                          ? 'bg-gray-400' 
+                          : hasCompletedInterview 
+                            ? 'bg-green-600' 
+                            : 'bg-orange-600'
+                      }`}>
+                        {hasCompletedInterview ? '✓' : '2'}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Take AI Interview</h3>
+                        <p className="text-gray-600">
+                          {!hasCompletedProfile 
+                            ? 'Complete your profile first to unlock the AI interview.' 
+                            : hasCompletedInterview 
+                              ? 'Excellent! Your AI interview is complete.' 
+                              : 'Chat with our AI to create your comprehensive professional profile.'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => openModal('interview')}
+                      disabled={!hasCompletedProfile}
+                      className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                        !hasCompletedProfile 
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                          : hasCompletedInterview 
+                            ? 'bg-green-600 text-white hover:bg-green-700' 
+                            : 'bg-orange-600 text-white hover:bg-orange-700'
+                      }`}
+                    >
+                      {hasCompletedInterview ? 'Review Interview' : 'Start Interview'}
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={() => openModal('interview')}
-                  disabled={!hasCompletedProfile}
-                  className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                    !hasCompletedProfile 
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                      : hasCompletedInterview 
-                        ? 'bg-green-600 text-white hover:bg-green-700' 
-                        : 'bg-orange-600 text-white hover:bg-orange-700'
-                  }`}
-                >
-                  {hasCompletedInterview ? 'Review Interview' : 'Start Interview'}
-                </button>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Job Features - Only show if both steps are complete */}
