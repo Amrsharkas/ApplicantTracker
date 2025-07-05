@@ -8,7 +8,8 @@ import {
   FileText, 
   TrendingUp,
   MessageCircle,
-  History
+  History,
+  Database
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -18,6 +19,7 @@ import { ProfileModal } from "@/components/JobSeekerModals/ProfileModal";
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
 import { InterviewModal } from "@/components/JobSeekerModals/InterviewModal";
 import { InterviewHistoryModal } from "@/components/JobSeekerModals/InterviewHistoryModal";
+import { AirtableDataModal } from "@/components/AirtableDataModal";
 
 export default function Dashboard() {
   const { user, isLoading } = useAuth();
@@ -252,7 +254,7 @@ export default function Dashboard() {
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <button
                   onClick={() => openModal('matches')}
                   className="bg-white rounded-lg p-6 border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-left group"
@@ -284,6 +286,17 @@ export default function Dashboard() {
                     <h4 className="text-lg font-semibold text-gray-900">Interview History</h4>
                   </div>
                   <p className="text-sm text-gray-600">Review past interviews and generated profiles</p>
+                </button>
+
+                <button
+                  onClick={() => openModal('airtable')}
+                  className="bg-white rounded-lg p-6 border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-all text-left group"
+                >
+                  <div className="flex items-center space-x-3 mb-2">
+                    <Database className="h-6 w-6 text-green-600 group-hover:scale-110 transition-transform" />
+                    <h4 className="text-lg font-semibold text-gray-900">Airtable Data</h4>
+                  </div>
+                  <p className="text-sm text-gray-600">View current data stored in your Airtable</p>
                 </button>
               </div>
 

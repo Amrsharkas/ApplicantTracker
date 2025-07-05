@@ -1,9 +1,9 @@
 import Airtable from 'airtable';
 
 // Configure Airtable
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID; // You'll need to provide this
-const TABLE_NAME = process.env.AIRTABLE_TABLE_NAME || 'platouserprofiles';
+const AIRTABLE_API_KEY = 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
+const AIRTABLE_BASE_ID = 'app3tA4UpKQCT2s17'; // platouserprofiles base
+const TABLE_NAME = 'Table 1';
 
 if (!AIRTABLE_BASE_ID) {
   console.warn('AIRTABLE_BASE_ID not configured. Airtable integration will be disabled.');
@@ -35,7 +35,7 @@ export class AirtableService {
         {
           fields: {
             'Name': name,
-            'User Profile': profileString
+            'User profile': profileString
           }
         }
       ]);
@@ -44,6 +44,28 @@ export class AirtableService {
     } catch (error) {
       console.error('Error storing profile in Airtable:', error);
       throw new Error('Failed to store profile in Airtable');
+    }
+  }
+
+  async getAllUserProfiles(): Promise<AirtableUserProfile[]> {
+    if (!base) {
+      console.warn('Airtable not configured, returning empty array');
+      return [];
+    }
+
+    try {
+      const records = await base!(TABLE_NAME).select({
+        maxRecords: 100,
+        view: 'Grid view'
+      }).all();
+
+      return records.map((record: any) => ({
+        name: record.fields['Name'] || 'Unknown',
+        userProfile: record.fields['User profile'] || 'No profile data'
+      }));
+    } catch (error) {
+      console.error('Error fetching user profiles from Airtable:', error);
+      throw new Error('Failed to fetch profiles from Airtable');
     }
   }
 }

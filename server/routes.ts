@@ -29,6 +29,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Airtable endpoints
+  app.get('/api/airtable/profiles', isAuthenticated, async (req: any, res) => {
+    try {
+      const profiles = await airtableService.getAllUserProfiles();
+      res.json(profiles);
+    } catch (error) {
+      console.error('Error fetching Airtable profiles:', error);
+      res.status(500).json({ message: 'Failed to fetch profiles from Airtable' });
+    }
+  });
+
   // Profile routes
   app.get('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
     try {
