@@ -8,8 +8,7 @@ import {
   FileText, 
   TrendingUp,
   MessageCircle,
-  History,
-  Users
+  History
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -19,7 +18,6 @@ import { ProfileModal } from "@/components/JobSeekerModals/ProfileModal";
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
 import { InterviewModal } from "@/components/JobSeekerModals/InterviewModal";
 import { InterviewHistoryModal } from "@/components/JobSeekerModals/InterviewHistoryModal";
-import { CandidatesModal } from "@/components/JobSeekerModals/CandidatesModal";
 
 export default function Dashboard() {
   const { user, isLoading } = useAuth();
@@ -254,7 +252,7 @@ export default function Dashboard() {
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <button
                   onClick={() => openModal('matches')}
                   className="bg-white rounded-lg p-6 border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-left group"
@@ -286,17 +284,6 @@ export default function Dashboard() {
                     <h4 className="text-lg font-semibold text-gray-900">Interview History</h4>
                   </div>
                   <p className="text-sm text-gray-600">Review past interviews and generated profiles</p>
-                </button>
-
-                <button
-                  onClick={() => openModal('candidates')}
-                  className="bg-white rounded-lg p-6 border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all text-left group"
-                >
-                  <div className="flex items-center space-x-3 mb-2">
-                    <Users className="h-6 w-6 text-purple-600 group-hover:scale-110 transition-transform" />
-                    <h4 className="text-lg font-semibold text-gray-900">View Candidates</h4>
-                  </div>
-                  <p className="text-sm text-gray-600">Browse candidate profiles from Airtable</p>
                 </button>
               </div>
 
@@ -364,10 +351,6 @@ export default function Dashboard() {
       />
       <ApplicationsModal 
         isOpen={activeModal === 'applications'} 
-        onClose={closeModal} 
-      />
-      <CandidatesModal 
-        isOpen={activeModal === 'candidates'} 
         onClose={closeModal} 
       />
     </div>
