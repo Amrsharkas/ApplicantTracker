@@ -735,10 +735,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setInterval(async () => {
     try {
       console.log("⏰ Running Airtable monitoring check...");
+      
+      // Monitor platouserprofiles table for job entries (creates applications)
       const newJobEntries = await airtableService.checkForNewJobEntries();
       
       if (newJobEntries.length > 0) {
-        console.log(`🔍 Found ${newJobEntries.length} new approved jobs in Airtable`);
+        console.log(`🔍 Found ${newJobEntries.length} new approved jobs in user profiles table`);
         
         for (const jobEntry of newJobEntries) {
           try {
@@ -748,8 +750,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error(`❌ Failed to create approved application for user ${jobEntry.userId}:`, error);
           }
         }
-      } else {
-        console.log("🔍 No new job entries found in current monitoring cycle");
+      }
+
+      // Monitor platojobmatches table for job matches (creates job matches)
+      const newJobMatches = await airtableService.checkForNewJobMatches();
+      
+      if (newJobMatches.length > 0) {
+        console.log(`🎯 Found ${newJobMatches.length} new job matches in job matches table`);
+        
+        for (const jobMatch of newJobMatches) {
+          try {
+            await airtableService.processJobMatch(jobMatch);
+            console.log(`✅ Auto-created job match for user ${jobMatch.userId}: ${jobMatch.jobTitle}`);
+          } catch (error) {
+            console.error(`❌ Failed to create job match for user ${jobMatch.userId}:`, error);
+          }
+        }
+      }
+
+      if (newJobEntries.length === 0 && newJobMatches.length === 0) {
+        console.log("🔍 No new entries found in current monitoring cycle");
       }
     } catch (error) {
       console.error("❌ Airtable monitoring error:", error);
