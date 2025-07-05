@@ -2,7 +2,7 @@ import Airtable from 'airtable';
 
 // Configure Airtable
 const AIRTABLE_API_KEY = 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
+const AIRTABLE_BASE_ID = 'app3tA4UpKQCT2s17';
 const TABLE_NAME = 'platouserprofiles';
 
 if (!AIRTABLE_BASE_ID) {
@@ -37,14 +37,16 @@ export class AirtableService {
       
       console.log(`Storing profile for ${name}...`);
       
-      await base!(TABLE_NAME).create([
-        {
-          fields: {
-            'Name': name,
-            'User Profile': profileString
-          }
+      // Try different field name variations
+      const recordData = {
+        fields: {
+          'Name': name,
+          'User Profile': profileString
         }
-      ]);
+      };
+      
+      console.log('Creating record with data:', recordData);
+      await base!(TABLE_NAME).create([recordData]);
 
       console.log(`Successfully stored profile for ${name} in Airtable`);
     } catch (error) {
