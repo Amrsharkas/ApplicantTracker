@@ -676,6 +676,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Airtable job monitoring routes
+  app.post('/api/admin/process-airtable-jobs', async (req, res) => {
+    try {
+      const newJobEntries = await airtableService.checkForNewJobEntries();
+      
+      if (newJobEntries.length === 0) {
+        return res.json({ message: "No new job entries found", processed: 0 });
+      }
+
+      let processed = 0;
+      for (const jobEntry of newJobEntries) {
+        try {
+          await airtableService.processJobEntry(jobEntry);
+          processed++;
+          console.log(`✅ Processed job entry for user ${jobEntry.userId}: ${jobEntry.jobTitle}`);
+        } catch (error) {
+          console.error(`❌ Failed to process job entry for user ${jobEntry.userId}:`, error);
+        }
+      }
+
+      res.json({ 
+        message: `Processed ${processed} out of ${newJobEntries.length} job entries`,
+        processed,
+        total: newJobEntries.length
+      });
+    } catch (error) {
+      console.error("Error processing Airtable job entries:", error);
+      res.status(500).json({ message: "Failed to process Airtable job entries" });
+    }
+  });
+
+  // Set up automatic Airtable monitoring (every 30 seconds)
+  setInterval(async () => {
+    try {
+      const newJobEntries = await airtableService.checkForNewJobEntries();
+      
+      if (newJobEntries.length > 0) {
+        console.log(`🔍 Found ${newJobEntries.length} new job entries in Airtable`);
+        
+        for (const jobEntry of newJobEntries) {
+          try {
+            await airtableService.processJobEntry(jobEntry);
+            console.log(`✅ Auto-processed job: ${jobEntry.jobTitle} for user ${jobEntry.userId}`);
+          } catch (error) {
+            console.error(`❌ Auto-processing failed for user ${jobEntry.userId}:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("❌ Airtable monitoring error:", error);
+    }
+  }, 30000); // Check every 30 seconds
+
+  console.log("🚀 Airtable job monitoring system started - checking every 30 seconds");
+
   const httpServer = createServer(app);
   return httpServer;
 }

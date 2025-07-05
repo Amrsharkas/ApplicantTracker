@@ -36,6 +36,15 @@ export interface IStorage {
   getAllJobs(): Promise<Job[]>;
   getJob(id: number): Promise<Job | undefined>;
   searchJobs(query: string, location?: string, experienceLevel?: string): Promise<Job[]>;
+  createJobFromAirtable(jobData: {
+    title: string;
+    company: string;
+    description: string;
+    location?: string;
+    experienceLevel?: string;
+    skills?: string[];
+    jobType?: string;
+  }): Promise<Job>;
 
   // Job matching operations
   getJobMatches(userId: string): Promise<(JobMatch & { job: Job })[]>;
@@ -200,6 +209,33 @@ export class DatabaseStorage implements IStorage {
       .from(jobs)
       .where(and(...conditions))
       .orderBy(desc(jobs.postedAt));
+  }
+
+  async createJobFromAirtable(jobData: {
+    title: string;
+    company: string;
+    description: string;
+    location?: string;
+    experienceLevel?: string;
+    skills?: string[];
+    jobType?: string;
+  }): Promise<Job> {
+    const [job] = await db
+      .insert(jobs)
+      .values({
+        title: jobData.title,
+        company: jobData.company,
+        description: jobData.description,
+        location: jobData.location || 'Remote',
+        experienceLevel: jobData.experienceLevel || 'mid',
+        skills: jobData.skills || [],
+        jobType: jobData.jobType || 'remote',
+        isActive: true,
+        postedAt: new Date()
+      })
+      .returning();
+    
+    return job;
   }
 
   // Job matching operations

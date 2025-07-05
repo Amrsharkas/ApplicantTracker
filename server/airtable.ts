@@ -1,4 +1,6 @@
 import Airtable from 'airtable';
+import { storage } from './storage';
+import { aiProfileAnalysisAgent } from './openai';
 
 // Configure Airtable
 const AIRTABLE_API_KEY = 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
@@ -20,6 +22,15 @@ export interface AirtableUserProfile {
   name: string;
   userProfile: string;
   userId: string;
+}
+
+export interface AirtableJobEntry {
+  recordId: string;
+  name: string;
+  userProfile: string;
+  userId: string;
+  jobTitle?: string;
+  jobDescription?: string;
 }
 
 export class AirtableService {
@@ -84,6 +95,260 @@ export class AirtableService {
       console.error('Error fetching user profiles from Airtable:', error);
       throw new Error('Failed to fetch profiles from Airtable');
     }
+  }
+
+  async getRecordsWithJobData(): Promise<AirtableJobEntry[]> {
+    if (!base) {
+      console.warn('Airtable not configured, returning empty array');
+      return [];
+    }
+
+    try {
+      const records = await base!(TABLE_NAME).select({
+        maxRecords: 100,
+        view: 'Grid view'
+      }).all();
+
+      return records
+        .filter((record: any) => 
+          record.fields['Job title'] && 
+          record.fields['Job description'] && 
+          record.fields['User ID']
+        )
+        .map((record: any) => ({
+          recordId: record.id,
+          name: record.fields['Name'] || 'Unknown',
+          userProfile: record.fields['User profile'] || 'No profile data',
+          userId: record.fields['User ID'],
+          jobTitle: record.fields['Job title'],
+          jobDescription: record.fields['Job description']
+        }));
+    } catch (error) {
+      console.error('Error fetching job entries from Airtable:', error);
+      throw new Error('Failed to fetch job entries from Airtable');
+    }
+  }
+
+  // Track processed records to avoid duplicates
+  private processedRecords = new Set<string>();
+
+  async checkForNewJobEntries(): Promise<AirtableJobEntry[]> {
+    const allJobEntries = await this.getRecordsWithJobData();
+    
+    // Filter out already processed records
+    const newEntries = allJobEntries.filter(entry => !this.processedRecords.has(entry.recordId));
+    
+    // Mark new entries as processed
+    newEntries.forEach(entry => this.processedRecords.add(entry.recordId));
+    
+    return newEntries;
+  }
+
+  async processJobEntry(jobEntry: AirtableJobEntry): Promise<void> {
+    try {
+      console.log(`Processing job entry for user ${jobEntry.userId}: ${jobEntry.jobTitle}`);
+      
+      // Extract company name from job title if possible, or use a default
+      const company = this.extractCompany(jobEntry.jobTitle!) || 'Company from Airtable';
+      
+      // Create the job in the database
+      const job = await storage.createJobFromAirtable({
+        title: jobEntry.jobTitle!,
+        company: company,
+        description: jobEntry.jobDescription!,
+        location: 'Remote', // Default location
+        experienceLevel: 'mid', // Default level
+        skills: this.extractSkills(jobEntry.jobDescription!),
+        jobType: 'remote'
+      });
+
+      console.log(`Created job ${job.id}: ${job.title} at ${job.company}`);
+
+      // Get user's profile to create personalized match
+      const userProfile = await storage.getApplicantProfile(jobEntry.userId);
+      
+      if (userProfile) {
+        // Generate AI-powered match score and reasons
+        const matchData = await this.generateJobMatch(userProfile, job, jobEntry.userProfile);
+        
+        // Create the job match
+        await storage.createJobMatch({
+          userId: jobEntry.userId,
+          jobId: job.id,
+          matchScore: matchData.score,
+          matchReasons: matchData.reasons
+        });
+
+        console.log(`Created job match for user ${jobEntry.userId} with score ${matchData.score}%`);
+      } else {
+        console.warn(`No profile found for user ${jobEntry.userId}, skipping match creation`);
+      }
+      
+    } catch (error) {
+      console.error(`Error processing job entry for user ${jobEntry.userId}:`, error);
+      throw error;
+    }
+  }
+
+  private extractCompany(jobTitle: string): string | null {
+    // Try to extract company name from job title patterns like "Software Engineer at Google"
+    const patterns = [
+      /at\s+([^,\n]+)/i,
+      /@\s+([^,\n]+)/i,
+      /-\s+([^,\n]+)$/i
+    ];
+    
+    for (const pattern of patterns) {
+      const match = jobTitle.match(pattern);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    }
+    
+    return null;
+  }
+
+  private extractSkills(jobDescription: string): string[] {
+    // Extract skills from job description using common patterns
+    const skillPatterns = [
+      /(?:skills?|technologies?|experience with|proficient in|knowledge of)[\s:]+([^.]+)/gi,
+      /(?:javascript|python|react|node\.?js|typescript|sql|aws|docker|kubernetes|git|api|html|css)/gi
+    ];
+    
+    const skills = new Set<string>();
+    
+    for (const pattern of skillPatterns) {
+      const matches = Array.from(jobDescription.matchAll(pattern));
+      for (const match of matches) {
+        if (match[1]) {
+          // Split by common delimiters and clean up
+          match[1].split(/[,;&|]/).forEach((skill: string) => {
+            const cleanSkill = skill.trim().replace(/^(and|or)\s+/i, '');
+            if (cleanSkill.length > 2 && cleanSkill.length < 30) {
+              skills.add(cleanSkill);
+            }
+          });
+        } else {
+          // Direct skill match
+          skills.add(match[0]);
+        }
+      }
+    }
+    
+    return Array.from(skills).slice(0, 10); // Limit to top 10 skills
+  }
+
+  private async generateJobMatch(userProfile: any, job: any, aiProfileData: string): Promise<{score: number, reasons: string[]}> {
+    try {
+      // Parse the AI profile data
+      let parsedProfile;
+      try {
+        parsedProfile = JSON.parse(aiProfileData);
+      } catch {
+        // If parsing fails, create a basic profile structure
+        parsedProfile = { summary: aiProfileData };
+      }
+
+      // Use AI to generate match score and reasons
+      const prompt = `
+        Analyze this job match between a candidate and a job opportunity. Provide a match score (0-100) and 3-5 specific reasons.
+
+        CANDIDATE PROFILE:
+        ${JSON.stringify(parsedProfile, null, 2)}
+        
+        ADDITIONAL PROFILE DATA:
+        - Current Role: ${userProfile.currentRole || 'Not specified'}
+        - Experience: ${userProfile.yearsOfExperience || 0} years
+        - Skills: ${userProfile.skillsList?.join(', ') || 'Not specified'}
+        - Summary: ${userProfile.summary || 'Not provided'}
+
+        JOB OPPORTUNITY:
+        - Title: ${job.title}
+        - Company: ${job.company}
+        - Description: ${job.description}
+        - Required Skills: ${job.skills?.join(', ') || 'Not specified'}
+        - Experience Level: ${job.experienceLevel || 'Not specified'}
+
+        Please respond with JSON in this format:
+        {
+          "score": 85,
+          "reasons": [
+            "Strong technical skills match in React and JavaScript",
+            "Previous experience in similar industry",
+            "Career goals align with company growth opportunities"
+          ]
+        }
+      `;
+
+      // Create a mock response using the prompt directly for job matching
+      const mockResponses = [{
+        question: prompt,
+        answer: JSON.stringify(parsedProfile)
+      }];
+
+      const response = await aiProfileAnalysisAgent.generateComprehensiveProfile(
+        mockResponses, 
+        '', 
+        parsedProfile
+      );
+      
+      try {
+        const result = JSON.parse(response.summary);
+        return {
+          score: Math.min(100, Math.max(0, result.score || 75)),
+          reasons: result.reasons || ['AI-generated match based on profile analysis']
+        };
+      } catch {
+        // Fallback to basic matching
+        return this.calculateBasicMatch(userProfile, job);
+      }
+      
+    } catch (error) {
+      console.error('Error generating AI match:', error);
+      return this.calculateBasicMatch(userProfile, job);
+    }
+  }
+
+  private calculateBasicMatch(userProfile: any, job: any): {score: number, reasons: string[]} {
+    let score = 60; // Base score
+    const reasons: string[] = [];
+
+    // Skills matching
+    const userSkills = userProfile.skillsList || [];
+    const jobSkills = job.skills || [];
+    const matchingSkills = userSkills.filter((skill: string) => 
+      jobSkills.some((jobSkill: string) => 
+        skill.toLowerCase().includes(jobSkill.toLowerCase()) ||
+        jobSkill.toLowerCase().includes(skill.toLowerCase())
+      )
+    );
+
+    if (matchingSkills.length > 0) {
+      score += Math.min(20, matchingSkills.length * 5);
+      reasons.push(`Matching skills: ${matchingSkills.slice(0, 3).join(', ')}`);
+    }
+
+    // Experience level matching
+    const userExp = userProfile.yearsOfExperience || 0;
+    if (job.experienceLevel === 'entry' && userExp <= 2) {
+      score += 10;
+      reasons.push('Experience level matches entry requirements');
+    } else if (job.experienceLevel === 'mid' && userExp >= 2 && userExp <= 7) {
+      score += 15;
+      reasons.push('Experience level matches mid-level requirements');
+    } else if (job.experienceLevel === 'senior' && userExp >= 5) {
+      score += 15;
+      reasons.push('Experience level matches senior requirements');
+    }
+
+    // Add default reason if none found
+    if (reasons.length === 0) {
+      reasons.push('Profile shows potential for this role');
+    }
+
+    reasons.push('Personalized job match from Airtable');
+
+    return { score: Math.min(100, score), reasons };
   }
 }
 
