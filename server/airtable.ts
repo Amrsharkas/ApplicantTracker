@@ -2,8 +2,8 @@ import Airtable from 'airtable';
 
 // Configure Airtable
 const AIRTABLE_API_KEY = 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
-const AIRTABLE_BASE_ID = 'app3tA4UpKQCT2s17';
-const TABLE_NAME = 'platouserprofiles';
+const AIRTABLE_BASE_ID = 'appYbQs7ZiWmf6xQF';
+const TABLE_ID = 'tblBQI4cx9MBgR11N';
 
 if (!AIRTABLE_BASE_ID) {
   console.warn('AIRTABLE_BASE_ID not configured. Airtable integration will be disabled.');
@@ -25,7 +25,7 @@ export class AirtableService {
   async storeUserProfile(name: string, profileData: any): Promise<void> {
     console.log('Attempting to store profile in Airtable...');
     console.log('AIRTABLE_BASE_ID:', AIRTABLE_BASE_ID ? 'configured' : 'missing');
-    console.log('TABLE_NAME:', TABLE_NAME);
+    console.log('TABLE_ID:', TABLE_ID);
     
     if (!base) {
       console.warn('Airtable not configured, skipping profile storage');
@@ -37,16 +37,16 @@ export class AirtableService {
       
       console.log(`Storing profile for ${name}...`);
       
-      // Try different field name variations
+      // Use the working field structure - store both name and profile data
+      const combinedData = `${name} | ${profileString}`;
       const recordData = {
         fields: {
-          'Name': name,
-          'User Profile': profileString
+          'Name': combinedData
         }
       };
       
-      console.log('Creating record with data:', recordData);
-      await base!(TABLE_NAME).create([recordData]);
+      console.log('Creating record with Name field containing both name and profile');
+      await base!(TABLE_ID).create([recordData]);
 
       console.log(`Successfully stored profile for ${name} in Airtable`);
     } catch (error) {
@@ -75,10 +75,10 @@ export class AirtableService {
     try {
       console.log('Testing Airtable connection...');
       console.log('Base ID:', AIRTABLE_BASE_ID);
-      console.log('Table Name:', TABLE_NAME);
+      console.log('Table ID:', TABLE_ID);
       
       // Try to read records to test the connection
-      const records = await base!(TABLE_NAME).select({ maxRecords: 1 }).firstPage();
+      const records = await base!(TABLE_ID).select({ maxRecords: 1 }).firstPage();
       console.log('✅ Connection successful! Records found:', records.length);
       
       if (records.length > 0) {
