@@ -115,6 +115,7 @@ Changelog:
 - July 5, 2025. Enhanced voice interview button to change from "Hang Up" to "Submit Interview" when AI uses "conclude" in final response, with automatic interview processing and profile generation
 - July 5, 2025. Implemented two-AI system: AI Agent 1 (Interview Conductor) analyzes resume/profile and generates personalized questions; AI Agent 2 (Profile Analyzer) creates comprehensive user analysis from all data sources
 - July 5, 2025. Updated Airtable integration to use "platouserprofiles" table and automatically store complete user analysis profiles after interview completion
+- July 5, 2025. Enhanced Airtable service with native fetch API implementation, candidate profile fetching with intelligent field parsing, and added candidates modal to dashboard for viewing stored profiles
 ```
 
 ## User Preferences

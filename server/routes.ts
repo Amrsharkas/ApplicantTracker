@@ -451,6 +451,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all candidate profiles from Airtable
+  app.get('/api/candidates', isAuthenticated, async (req: any, res) => {
+    try {
+      const candidates = await airtableService.getAllCandidateProfiles();
+      res.json(candidates);
+    } catch (error) {
+      console.error("Error fetching candidates:", error);
+      res.status(500).json({ message: "Failed to fetch candidates from Airtable" });
+    }
+  });
+
+  // Get Airtable bases
+  app.get('/api/airtable/bases', isAuthenticated, async (req: any, res) => {
+    try {
+      const bases = await airtableService.getBases();
+      res.json(bases);
+    } catch (error) {
+      console.error("Error fetching Airtable bases:", error);
+      res.status(500).json({ message: "Failed to fetch Airtable bases" });
+    }
+  });
+
+  // Get tables for a specific base
+  app.get('/api/airtable/bases/:baseId/tables', isAuthenticated, async (req: any, res) => {
+    try {
+      const { baseId } = req.params;
+      const tables = await airtableService.getTables(baseId);
+      res.json(tables);
+    } catch (error) {
+      console.error("Error fetching Airtable tables:", error);
+      res.status(500).json({ message: "Failed to fetch Airtable tables" });
+    }
+  });
+
   app.get('/api/interview/history', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
