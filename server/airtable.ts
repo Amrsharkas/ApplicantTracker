@@ -48,6 +48,7 @@ export interface AirtableJobMatch {
   userId: string;
   jobTitle: string;
   jobDescription: string;
+  companyName: string;
 }
 
 export class AirtableService {
@@ -170,14 +171,17 @@ export class AirtableService {
             const jobTitle = record.fields['Job title'] || record.fields['Job Title'] || record.fields['JobTitle'] || record.fields['Job_title'];
             const jobDescription = record.fields['Job Description'] || record.fields['Job description'] || record.fields['JobDescription'] || record.fields['Job_Description'];
             const userId = record.fields['User ID'] || record.fields['UserID'] || record.fields['User_ID'] || record.fields['user_id'];
+            const companyName = record.fields['company name'] || record.fields['Company Name'] || record.fields['Company_Name'] || record.fields['companyname'];
             
             console.log('📋 Field match results:', { 
               jobTitle: !!jobTitle, 
               jobDescription: !!jobDescription, 
               userId: !!userId,
+              companyName: !!companyName,
               actualJobTitle: jobTitle,
               actualJobDescription: jobDescription?.substring(0, 50) + '...',
-              actualUserId: userId
+              actualUserId: userId,
+              actualCompanyName: companyName
             });
             
             return jobTitle && jobDescription && userId;
@@ -186,13 +190,15 @@ export class AirtableService {
             const jobTitle = record.fields['Job title'] || record.fields['Job Title'] || record.fields['JobTitle'] || record.fields['Job_title'];
             const jobDescription = record.fields['Job Description'] || record.fields['Job description'] || record.fields['JobDescription'] || record.fields['Job_Description'];
             const userId = record.fields['User ID'] || record.fields['UserID'] || record.fields['User_ID'] || record.fields['user_id'];
+            const companyName = record.fields['company name'] || record.fields['Company Name'] || record.fields['Company_Name'] || record.fields['companyname'];
             
             return {
               recordId: record.id,
               name: record.fields['Name'] || 'Unknown',
               userId: userId,
               jobTitle: jobTitle,
-              jobDescription: jobDescription
+              jobDescription: jobDescription,
+              companyName: companyName || 'Company from Airtable' // fallback if no company name provided
             };
           });
 
@@ -233,7 +239,8 @@ export class AirtableService {
           name: record.fields['Name'] || 'Unknown',
           userId: record.fields['User ID'],
           jobTitle: record.fields['Job title'],
-          jobDescription: record.fields['Job description']
+          jobDescription: record.fields['Job description'],
+          companyName: record.fields['Company name'] || 'Company from Airtable'
         }));
 
       console.log(`📋 Found ${jobMatchRecords.length} potential job match records in main table`);
@@ -294,8 +301,8 @@ export class AirtableService {
     try {
       console.log(`Processing job match for user ${jobMatch.userId}: ${jobMatch.jobTitle}`);
       
-      // Extract company name from job title if possible, or use a default
-      const company = this.extractCompany(jobMatch.jobTitle!) || 'Company from Airtable';
+      // Use company name from Airtable field
+      const company = jobMatch.companyName || 'Company from Airtable';
       
       // Create the job in the database
       const job = await storage.createJobFromAirtable({

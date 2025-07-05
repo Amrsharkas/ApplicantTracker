@@ -72,56 +72,11 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
     },
   });
 
-  const applyMutation = useMutation({
-    mutationFn: async (jobId: number) => {
-      await apiRequest("POST", "/api/applications", { jobId });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Application Submitted",
-        description: "Your application has been submitted successfully!",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Application Failed",
-        description: error.message || "Failed to submit application",
-        variant: "destructive",
-      });
-    },
-  });
-
   const formatSalary = (min?: number, max?: number) => {
     if (!min && !max) return "Salary not specified";
     if (min && max) return `$${(min / 1000).toFixed(0)}k - $${(max / 1000).toFixed(0)}k`;
     if (min) return `$${(min / 1000).toFixed(0)}k+`;
     return `Up to $${(max! / 1000).toFixed(0)}k`;
-  };
-
-  const getMatchColor = (score: number) => {
-    if (score >= 90) return "text-green-600 bg-green-100";
-    if (score >= 80) return "text-blue-600 bg-blue-100";
-    if (score >= 70) return "text-orange-600 bg-orange-100";
-    return "text-slate-600 bg-slate-100";
-  };
-
-  const getMatchLabel = (score: number) => {
-    if (score >= 90) return "Excellent Match";
-    if (score >= 80) return "Great Match";
-    if (score >= 70) return "Good Match";
-    return "Fair Match";
   };
 
   return (
@@ -199,8 +154,8 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
                           </h3>
                           <div className="flex items-center gap-2">
                             <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                            <Badge className={`${getMatchColor(match.matchScore)} font-semibold`}>
-                              {match.matchScore}% Match
+                            <Badge className="text-green-600 bg-green-100 font-semibold">
+                              Employer Selected
                             </Badge>
                           </div>
                         </div>
@@ -249,42 +204,25 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
                           </div>
                         )}
 
-                        {match.matchReasons && match.matchReasons.length > 0 && (
-                          <div className="bg-slate-50 rounded-lg p-3">
-                            <p className="text-sm font-medium text-slate-700 mb-1">Why this matches:</p>
-                            <ul className="text-sm text-slate-600">
-                              {match.matchReasons.slice(0, 3).map((reason, idx) => (
-                                <li key={idx} className="flex items-start gap-1">
-                                  <span className="text-green-500 mt-1">•</span>
-                                  <span>{reason}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
+                        <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                          <p className="text-sm font-medium text-green-700 mb-1">✨ Pre-Approved Position</p>
+                          <p className="text-sm text-green-600">
+                            Congratulations! The employer has already reviewed your profile and selected you for this position.
+                          </p>
+                        </div>
                       </div>
                       
                       <div className="flex flex-col items-end gap-2 ml-4">
-                        <div className="text-right">
-                          <div className={`text-2xl font-bold ${match.matchScore >= 80 ? 'text-green-600' : 'text-blue-600'}`}>
-                            {match.matchScore}
-                          </div>
-                          <div className="text-xs text-slate-500">Match Score</div>
-                          <div className="text-xs text-slate-500 mt-1">
-                            {getMatchLabel(match.matchScore)}
-                          </div>
-                        </div>
-                        
                         <Button
-                          onClick={() => applyMutation.mutate(match.job.id)}
-                          disabled={applyMutation.isPending}
-                          className={`${
-                            match.matchScore >= 80 
-                              ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' 
-                              : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
-                          } text-white`}
+                          onClick={() => {
+                            toast({
+                              title: "Interview Request Sent",
+                              description: "We'll connect you with the employer to arrange your interview!",
+                            });
+                          }}
+                          className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
                         >
-                          {applyMutation.isPending ? "Applying..." : "Apply Now"}
+                          Arrange Interview
                         </Button>
                       </div>
                     </div>
