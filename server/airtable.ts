@@ -32,17 +32,31 @@ export class AirtableService {
     try {
       const profileString = JSON.stringify(profileData, null, 2);
       
-      await base!(TABLE_NAME).create([
-        {
-          fields: {
-            'Name': name,
-            'User profile': profileString,
-            'User ID': userId
+      // Try to store with User ID field first
+      try {
+        await base!(TABLE_NAME).create([
+          {
+            fields: {
+              'Name': name,
+              'User profile': profileString,
+              'User ID': userId
+            }
           }
-        }
-      ]);
-
-      console.log(`Successfully stored profile for ${name} (ID: ${userId}) in Airtable`);
+        ]);
+        console.log(`Successfully stored profile for ${name} (ID: ${userId}) in Airtable`);
+      } catch (userIdError) {
+        // If User ID field doesn't exist, store without it
+        console.warn('User ID field not found, storing without User ID:', userIdError.message);
+        await base!(TABLE_NAME).create([
+          {
+            fields: {
+              'Name': name,
+              'User profile': profileString
+            }
+          }
+        ]);
+        console.log(`Successfully stored profile for ${name} in Airtable (without User ID field)`);
+      }
     } catch (error) {
       console.error('Error storing profile in Airtable:', error);
       throw new Error('Failed to store profile in Airtable');
