@@ -3,7 +3,7 @@ import Airtable from 'airtable';
 // Configure Airtable
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID; // You'll need to provide this
-const TABLE_NAME = process.env.AIRTABLE_TABLE_NAME || 'User Profiles';
+const TABLE_NAME = process.env.AIRTABLE_TABLE_NAME || 'platouserprofiles';
 
 if (!AIRTABLE_BASE_ID) {
   console.warn('AIRTABLE_BASE_ID not configured. Airtable integration will be disabled.');

@@ -189,10 +189,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
+      // Get resume content if available
+      let resumeContent = null;
+      if (profile?.resumeUrl) {
+        try {
+          // If resume exists, we'd fetch it here - for now we'll use null
+          resumeContent = null; // TODO: Implement resume fetching from URL
+        } catch (error) {
+          console.warn("Could not fetch resume content:", error);
+        }
+      }
+
+      // Use AI Agent 1 to generate personalized interview questions
       const questions = await aiInterviewService.generateInitialQuestions({
         ...user,
         ...profile
-      });
+      }, resumeContent);
 
       const session = await storage.createInterviewSession({
         userId,
@@ -200,7 +212,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isCompleted: false
       });
 
-      res.json({ sessionId: session.id, questions });
+      // Return the first question for text interview
+      const firstQuestion = questions[0]?.question || "Tell me about yourself and your career journey.";
+
+      res.json({ 
+        sessionId: session.id, 
+        questions,
+        firstQuestion 
+      });
     } catch (error) {
       console.error("Error starting interview:", error);
       res.status(500).json({ message: "Failed to start interview" });
@@ -221,23 +240,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       sessionData.responses = sessionData.responses || [];
       sessionData.responses.push({ question, answer });
 
-      // Generate follow-up question
-      const user = await storage.getUser(userId);
-      const profile = await storage.getApplicantProfile(userId);
-      
-      const followUpQuestion = await aiInterviewService.generateFollowUpQuestion(
-        sessionData.responses,
-        { ...user, ...profile }
-      );
-
-      const isComplete = !followUpQuestion || sessionData.responses.length >= 5;
+      // Check if interview is complete (5 questions answered)
+      const isComplete = sessionData.responses.length >= 5;
 
       if (isComplete) {
-        // Generate AI profile
+        // Get user and profile data for comprehensive analysis
+        const user = await storage.getUser(userId);
+        const profile = await storage.getApplicantProfile(userId);
+        
+        // Get resume content if available
+        let resumeContent = null;
+        if (profile?.resumeUrl) {
+          try {
+            // If resume exists, we'd fetch it here - for now we'll use null
+            resumeContent = null; // TODO: Implement resume fetching from URL
+          } catch (error) {
+            console.warn("Could not fetch resume content:", error);
+          }
+        }
+
+        // Use AI Agent 2 to generate comprehensive profile
         const generatedProfile = await aiInterviewService.generateProfile(
-          sessionData.responses,
           { ...user, ...profile },
-          profile?.resumeContent
+          resumeContent,
+          sessionData.responses
         );
 
         // Update profile with AI data
@@ -278,17 +304,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Interview completed successfully!" 
         });
       } else {
-        sessionData.questions = sessionData.questions || [];
-        sessionData.questions.push(followUpQuestion);
+        // Get next question from pre-defined question set (we have exactly 5 questions)
+        const currentQuestionIndex = sessionData.responses.length;
+        const questions = sessionData.questions || [];
+        const nextQuestion = questions[currentQuestionIndex];
+        
+        if (nextQuestion) {
+          await storage.updateInterviewSession(session.id, {
+            sessionData
+          });
 
-        await storage.updateInterviewSession(session.id, {
-          sessionData
-        });
-
-        res.json({ 
-          isComplete: false, 
-          nextQuestion: followUpQuestion 
-        });
+          res.json({ 
+            isComplete: false, 
+            nextQuestion: nextQuestion.question 
+          });
+        } else {
+          res.json({ 
+            isComplete: false, 
+            message: "No more questions available" 
+          });
+        }
       }
     } catch (error) {
       console.error("Error processing interview response:", error);
@@ -327,10 +362,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
-      // Generate AI profile from the voice conversation
+      // Get resume content if available
+      let resumeContent = null;
+      if (profile?.resumeUrl) {
+        try {
+          // If resume exists, we'd fetch it here - for now we'll use null
+          resumeContent = null; // TODO: Implement resume fetching from URL
+        } catch (error) {
+          console.warn("Could not fetch resume content:", error);
+        }
+      }
+
+      // Use AI Agent 2 to generate comprehensive profile from resume, profile, and interview responses
       const generatedProfile = await aiInterviewService.generateProfile(
-        responses,
-        { ...user, ...profile }
+        { ...user, ...profile },
+        resumeContent,
+        responses
       );
 
       // Create interview session

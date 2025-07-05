@@ -54,16 +54,12 @@ Based on this information, create exactly 5 progressive interview questions that
 4. Discuss meaningful projects or challenges
 5. Understand their career aspirations
 
-Make each question personalized by referencing their specific background, role, or experience when relevant. Return ONLY a JSON object with a "questions" array in this format:
-{
-  "questions": [
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."}
-  ]
-}`;
+Make each question personalized by referencing their specific background, role, or experience when relevant. Return ONLY a JSON array of questions in this format:
+[
+  {"question": "...", "context": "..."},
+  {"question": "...", "context": "..."},
+  ...
+]`;
 
     try {
       const response = await openai.chat.completions.create({
@@ -114,128 +110,114 @@ export class AIProfileAnalysisAgent {
     resumeContent: string | null,
     interviewResponses: InterviewResponse[]
   ): Promise<GeneratedProfile> {
-    const conversationHistory = interviewResponses.map(qa => 
-      `Q: ${qa.question}\nA: ${qa.answer}`
-    ).join('\n\n');
-
-    const prompt = `You are an expert AI career analyst specializing in comprehensive candidate assessment. Your job is to analyze ALL available data about a candidate and create a detailed professional profile.
-
-CANDIDATE PROFILE DATA:
-${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
-${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
-${userData?.yearsOfExperience ? `Experience: ${userData.yearsOfExperience} years` : ''}
-${userData?.education ? `Education: ${userData.education}${userData.university ? ` from ${userData.university}` : ''}` : ''}
-${userData?.location ? `Location: ${userData.location}` : ''}
-${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
-
-${resumeContent ? `RESUME CONTENT:
-${resumeContent}
-
-` : ''}INTERVIEW RESPONSES:
-${conversationHistory}
-
-Based on this comprehensive data (profile, resume, and interview responses), create a detailed professional analysis. Consider:
-- What their resume reveals about their career trajectory
-- How their profile data shows their current situation
-- What their interview responses reveal about their personality, work style, and goals
-- Patterns across all data sources that show their true professional identity
-
-Generate a comprehensive profile in JSON format:
-{
-  "summary": "A 2-3 sentence professional summary that captures who they are",
-  "skills": ["skill1", "skill2", "skill3", ...] (8-12 specific technical and soft skills),
-  "personality": "A detailed paragraph describing their personality, communication style, and work approach",
-  "experience": [
-    {
-      "role": "Position Title",
-      "company": "Company Name", 
-      "duration": "Time period",
-      "description": "Key responsibilities and achievements"
-    }
-  ] (extract from resume and interview),
-  "strengths": ["strength1", "strength2", ...] (5-8 key professional strengths),
-  "careerGoals": "A paragraph about their career aspirations and desired growth",
-  "workStyle": "A paragraph describing how they prefer to work, collaborate, and approach tasks"
-}
-
-Be specific and insightful. This analysis will be used for job matching and career guidance.`;
-
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
+      const conversationHistory = interviewData.map(qa => 
+        `Q: ${qa.question}\nA: ${qa.answer}`
+      ).join('\n\n');
+
+      const prompt = `You are an AI career analyst. Generate a comprehensive professional profile based on the interview and available data.
+
+      Candidate Information:
+      - Name: ${userData.firstName} ${userData.lastName}
+      - Education: ${userData.education || 'Not provided'}
+      - Current Role: ${userData.currentRole || 'Not provided'}
+      - Company: ${userData.company || 'Not provided'}
+      - Experience: ${userData.yearsOfExperience || 'Not provided'} years
+      - Location: ${userData.location || 'Not provided'}
+      
+      Interview Conversation:
+      ${conversationHistory}
+      
+      ${resumeContent ? `Resume Content:\n${resumeContent}\n` : ''}
+      
+      Generate a comprehensive profile in JSON format:
+      {
+        "skills": ["skill1", "skill2", ...], // Extract technical and soft skills
+        "personality": "Brief personality assessment",
+        "experience": [
           {
-            role: "system",
-            content: "You are an expert career analyst. Provide detailed, accurate professional assessments based on all available candidate data."
-          },
-          {
-            role: "user",
-            content: prompt
+            "role": "Job title",
+            "company": "Company name",
+            "duration": "Time period",
+            "description": "Key achievements and responsibilities"
           }
         ],
+        "strengths": ["strength1", "strength2", ...], // Top 3-5 strengths
+        "careerGoals": "Summary of career aspirations",
+        "workStyle": "Preferred work environment and style",
+        "summary": "Professional summary paragraph (2-3 sentences)"
+      }`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
-        temperature: 0.3
       });
 
       const profile = JSON.parse(response.choices[0].message.content || '{}');
       
+      // Ensure required fields exist
       return {
-        summary: profile.summary || "Professional candidate with demonstrated experience.",
         skills: profile.skills || [],
-        personality: profile.personality || "Dedicated professional with strong work ethic.",
+        personality: profile.personality || "Professional and motivated individual",
         experience: profile.experience || [],
         strengths: profile.strengths || [],
-        careerGoals: profile.careerGoals || "Seeking opportunities for professional growth.",
-        workStyle: profile.workStyle || "Collaborative and results-oriented approach to work."
+        careerGoals: profile.careerGoals || "Seeking growth opportunities",
+        workStyle: profile.workStyle || "Collaborative and results-oriented",
+        summary: profile.summary || "Experienced professional seeking new opportunities"
       };
     } catch (error) {
-      console.error("Error generating comprehensive profile:", error);
+      console.error("Error generating profile:", error);
+      // Return default profile structure
       return {
-        summary: "Professional candidate seeking new opportunities.",
         skills: [],
-        personality: "Dedicated and motivated professional.",
+        personality: "Professional and motivated individual",
         experience: [],
         strengths: [],
-        careerGoals: "Looking to advance career in chosen field.",
-        workStyle: "Team-oriented with focus on results."
+        careerGoals: "Seeking growth opportunities",
+        workStyle: "Collaborative and results-oriented",
+        summary: "Experienced professional seeking new opportunities"
       };
     }
   }
 
   async parseResume(resumeContent: string): Promise<any> {
-    const prompt = `Extract structured information from this resume:
-
-${resumeContent}
-
-Return a JSON object with:
-{
-  "name": "Full name",
-  "email": "email address",
-  "phone": "phone number", 
-  "experience": [
-    {
-      "role": "Job title",
-      "company": "Company name",
-      "duration": "Time period",
-      "description": "Key responsibilities"
-    }
-  ],
-  "education": [
-    {
-      "degree": "Degree type",
-      "school": "Institution name",
-      "year": "Graduation year"
-    }
-  ],
-  "skills": ["skill1", "skill2", ...],
-  "summary": "Brief professional summary"
-}`;
-
     try {
+      const prompt = `Extract structured information from this resume content:
+
+      ${resumeContent}
+
+      Return JSON with these fields:
+      {
+        "name": "Full name",
+        "email": "Email address",
+        "phone": "Phone number",
+        "location": "Location/Address",
+        "summary": "Professional summary",
+        "experience": [
+          {
+            "role": "Job title",
+            "company": "Company name",
+            "duration": "Time period",
+            "description": "Responsibilities and achievements"
+          }
+        ],
+        "education": [
+          {
+            "degree": "Degree type",
+            "school": "Institution name",
+            "year": "Graduation year",
+            "field": "Field of study"
+          }
+        ],
+        "skills": ["skill1", "skill2", ...],
+        "certifications": ["cert1", "cert2", ...]
+      }`;
+
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
       });
 
       return JSON.parse(response.choices[0].message.content || '{}');
@@ -246,13 +228,4 @@ Return a JSON object with:
   }
 }
 
-// Create instances of both AI agents
-export const aiInterviewAgent = new AIInterviewAgent();
-export const aiProfileAnalysisAgent = new AIProfileAnalysisAgent();
-
-// Legacy export for backward compatibility
-export const aiInterviewService = {
-  generateInitialQuestions: aiInterviewAgent.generatePersonalizedQuestions.bind(aiInterviewAgent),
-  generateProfile: aiProfileAnalysisAgent.generateComprehensiveProfile.bind(aiProfileAnalysisAgent),
-  parseResume: aiProfileAnalysisAgent.parseResume.bind(aiProfileAnalysisAgent)
-};
+export const aiInterviewService = new AIInterviewService();

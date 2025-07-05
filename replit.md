@@ -113,6 +113,8 @@ Changelog:
 - July 2, 2025. Integrated Airtable API to automatically store user profiles when interviews are completed with name and profile data columns
 - July 2, 2025. Added hang up button to voice interview interface with smart completion detection to properly end voice sessions
 - July 5, 2025. Enhanced voice interview button to change from "Hang Up" to "Submit Interview" when AI uses "conclude" in final response, with automatic interview processing and profile generation
+- July 5, 2025. Implemented two-AI system: AI Agent 1 (Interview Conductor) analyzes resume/profile and generates personalized questions; AI Agent 2 (Profile Analyzer) creates comprehensive user analysis from all data sources
+- July 5, 2025. Updated Airtable integration to use "platouserprofiles" table and automatically store complete user analysis profiles after interview completion
 ```
 
 ## User Preferences
