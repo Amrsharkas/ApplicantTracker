@@ -1,33 +1,17 @@
-import { useState, useRef, useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { isUnauthorizedError } from "@/lib/authUtils";
-import { useRealtimeAPI } from "@/hooks/useRealtimeAPI";
-import { 
-  MessageCircle, 
-  Send, 
-  Bot, 
-  User, 
-  CheckCircle, 
-  Sparkles,
-  Clock,
-  Brain,
-  Mic,
-  MicOff,
-  Volume2,
-  VolumeX,
-  Phone,
-  MessageSquare,
-  ArrowLeft
-} from "lucide-react";
+import { useState, useRef, useEffect, memo } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Mic, MicOff, MessageCircle, Phone, PhoneOff, Users, Briefcase, Target, User } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useRealtimeAPI } from '@/hooks/useRealtimeAPI';
+import { apiRequest } from '@/lib/queryClient';
+import { isUnauthorizedError } from '@/lib/authUtils';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface InterviewQuestion {
   question: string;
@@ -58,12 +42,11 @@ interface InterviewModalProps {
 }
 
 export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
-  const [mode, setMode] = useState<'select' | 'voice' | 'text'>('select');
-  const [currentAnswer, setCurrentAnswer] = useState("");
+  const [mode, setMode] = useState<'select' | 'text' | 'voice'>('select');
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
-  const [currentSession, setCurrentSession] = useState<InterviewSession | null>(null);
-  const [isStarting, setIsStarting] = useState(false);
+  const [currentAnswer, setCurrentAnswer] = useState("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [currentSession, setCurrentSession] = useState<InterviewSession | null>(null);
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
   const [showProfileDetails, setShowProfileDetails] = useState(false);
@@ -72,8 +55,16 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Fetch user profile data for personalized interview questions
+  const { data: userProfile } = useQuery({
+    queryKey: ["/api/candidate/profile"],
+    enabled: isOpen,
+    retry: false,
+  });
+
   // Voice interview integration
   const realtimeAPI = useRealtimeAPI({
+    userProfile,
     onMessage: (event) => {
       console.log('Realtime event:', event);
       
@@ -83,44 +74,26 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       }
       
       if (event.type === 'response.audio_transcript.done') {
-        // AI finished speaking
-        const transcript = event.transcript || '';
-        const aiMessage: InterviewMessage = {
-          type: 'question',
-          content: transcript,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, aiMessage]);
+        const aiText = event.transcript;
         setVoiceTranscript("");
         
-        // Check if the AI used "conclude" to signal interview completion
-        if (transcript.toLowerCase().includes('conclude')) {
+        // Add AI message to conversation history
+        setConversationHistory(prev => [...prev, { role: 'assistant', content: aiText }]);
+        
+        // Check if the AI is concluding the interview
+        if (aiText && aiText.toLowerCase().includes('conclude')) {
           setIsInterviewConcluded(true);
         }
       }
       
-      if (event.type === 'conversation.item.input_audio_transcription.completed') {
-        // User finished speaking
-        const userMessage: InterviewMessage = {
-          type: 'answer',
-          content: event.transcript || '',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, userMessage]);
-        
-        // Update conversation history
-        setConversationHistory(prev => [
-          ...prev,
-          { role: 'user', content: event.transcript || '' }
-        ]);
-      }
-      
       if (event.type === 'input_audio_buffer.speech_started') {
-        console.log('User started speaking');
+        setVoiceTranscript("");
       }
       
-      if (event.type === 'input_audio_buffer.speech_stopped') {
-        console.log('User stopped speaking');
+      if (event.type === 'conversation.item.input_audio_transcription.completed') {
+        const userText = event.transcript;
+        // Add user message to conversation history
+        setConversationHistory(prev => [...prev, { role: 'user', content: userText }]);
       }
     },
     onError: (error) => {
@@ -137,8 +110,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const { data: existingSession } = useQuery({
     queryKey: ["/api/interview/session"],
     enabled: isOpen,
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error as Error)) {
         toast({
           title: "Unauthorized",
           description: "You are logged out. Logging in again...",
@@ -147,7 +120,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         setTimeout(() => {
           window.location.href = "/api/login";
         }, 500);
+        return false;
       }
+      return failureCount < 3;
     },
   });
 
@@ -157,27 +132,18 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       return response.json();
     },
     onSuccess: (data) => {
-      setCurrentSession({
-        id: data.sessionId,
-        sessionData: {
-          questions: data.questions,
-          responses: [],
-          currentQuestionIndex: 0,
-        },
-        isCompleted: false,
-      });
-
-      // Initialize messages with first question for text mode
-      if (mode === 'text' && data.questions.length > 0) {
+      setCurrentSession(data.session);
+      setCurrentQuestionIndex(0);
+      if (data.firstQuestion) {
         const firstQuestion: InterviewMessage = {
           type: 'question',
-          content: data.questions[0].question,
+          content: data.firstQuestion,
           timestamp: new Date()
         };
         setMessages([firstQuestion]);
       }
     },
-    onError: (error: Error) => {
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to start interview",
@@ -222,7 +188,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     },
   });
 
-  const submitAnswer = () => {
+  const handleSubmitAnswer = () => {
     if (!currentAnswer.trim() || !currentSession) return;
 
     const answerMessage: InterviewMessage = {
@@ -270,472 +236,511 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     setMode('select');
     setMessages([]);
     setCurrentAnswer("");
-    setVoiceTranscript("");
-    setConversationHistory([]);
     setCurrentSession(null);
-    setCurrentQuestionIndex(0);
     setIsInterviewConcluded(false);
+    setConversationHistory([]);
     onClose();
   };
 
-  const goBack = () => {
-    if (mode === 'voice') {
-      realtimeAPI.disconnect();
-    }
-    setMode('select');
-    setMessages([]);
-    setCurrentAnswer("");
-    setVoiceTranscript("");
-  };
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, voiceTranscript]);
 
   useEffect(() => {
-    if (messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
-
-  useEffect(() => {
-    if (existingSession?.isCompleted) {
+    if (existingSession?.isCompleted && !currentSession) {
       setCurrentSession(existingSession);
     }
-  }, [existingSession]);
+  }, [existingSession, currentSession]);
 
-  if (!isOpen) return null;
+  const renderModeSelection = () => (
+    <div className="space-y-6">
+      <div className="text-center space-y-3">
+        <h3 className="text-lg font-semibold">Choose Your Interview Style</h3>
+        <p className="text-sm text-muted-foreground">
+          Select how you'd like to experience your AI interview
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={startVoiceInterview}>
+          <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
+            <Mic className="h-8 w-8 text-primary" />
+            <div className="text-center">
+              <h4 className="font-medium">Voice Interview</h4>
+              <p className="text-sm text-muted-foreground">
+                Speak naturally with the AI interviewer
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={startTextInterview}>
+          <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
+            <MessageCircle className="h-8 w-8 text-primary" />
+            <div className="text-center">
+              <h4 className="font-medium">Text Interview</h4>
+              <p className="text-sm text-muted-foreground">
+                Type your responses at your own pace
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+
+  const renderTextInterview = () => (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Text Interview</h3>
+        <Badge variant="outline">
+          Question {currentQuestionIndex + 1} of 5
+        </Badge>
+      </div>
+      
+      <div className="max-h-96 overflow-y-auto space-y-4">
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            className={`p-3 rounded-lg ${
+              message.type === 'question'
+                ? 'bg-blue-50 border-l-4 border-blue-400'
+                : 'bg-green-50 border-l-4 border-green-400 ml-8'
+            }`}
+          >
+            <div className="flex items-start space-x-2">
+              {message.type === 'question' ? (
+                <User className="h-4 w-4 mt-1 text-blue-600" />
+              ) : (
+                <MessageCircle className="h-4 w-4 mt-1 text-green-600" />
+              )}
+              <div className="flex-1">
+                <p className="text-sm">{message.content}</p>
+                <span className="text-xs text-muted-foreground">
+                  {message.timestamp.toLocaleTimeString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {currentSession?.isCompleted ? (
+        <div className="space-y-4">
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <div className="h-2 w-2 bg-green-500 rounded-full" />
+                <span className="text-sm font-medium text-green-700">Interview Complete!</span>
+              </div>
+              <p className="text-sm text-green-600 mt-1">
+                Your AI profile has been generated successfully.
+              </p>
+            </CardContent>
+          </Card>
+
+          {currentSession.generatedProfile && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="h-5 w-5" />
+                  <span>Your Generated AI Profile</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="text-sm text-muted-foreground">
+                    {currentSession.generatedProfile.summary}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowProfileDetails(!showProfileDetails)}
+                  >
+                    {showProfileDetails ? 'Hide' : 'Show'} Full Profile Details
+                  </Button>
+
+                  {showProfileDetails && (
+                    <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="skills">
+                        <AccordionTrigger className="text-sm">
+                          <div className="flex items-center space-x-2">
+                            <Target className="h-4 w-4" />
+                            <span>Skills & Expertise</span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="flex flex-wrap gap-2">
+                            {currentSession.generatedProfile.skills?.map((skill: string, index: number) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem value="strengths">
+                        <AccordionTrigger className="text-sm">
+                          <div className="flex items-center space-x-2">
+                            <Users className="h-4 w-4" />
+                            <span>Key Strengths</span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <ul className="list-disc list-inside space-y-1 text-sm">
+                            {currentSession.generatedProfile.strengths?.map((strength: string, index: number) => (
+                              <li key={index}>{strength}</li>
+                            ))}
+                          </ul>
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem value="workstyle">
+                        <AccordionTrigger className="text-sm">
+                          <div className="flex items-center space-x-2">
+                            <Briefcase className="h-4 w-4" />
+                            <span>Work Style & Goals</span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-3 text-sm">
+                            <div>
+                              <span className="font-medium">Work Style:</span>
+                              <p className="text-muted-foreground mt-1">{currentSession.generatedProfile.workStyle}</p>
+                            </div>
+                            <div>
+                              <span className="font-medium">Career Goals:</span>
+                              <p className="text-muted-foreground mt-1">{currentSession.generatedProfile.careerGoals}</p>
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <Textarea
+            placeholder="Type your answer here..."
+            value={currentAnswer}
+            onChange={(e) => setCurrentAnswer(e.target.value)}
+            className="min-h-24"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmitAnswer();
+              }
+            }}
+          />
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={() => setMode('select')}>
+              ← Back to Options
+            </Button>
+            <Button 
+              onClick={handleSubmitAnswer}
+              disabled={!currentAnswer.trim() || respondMutation.isPending}
+            >
+              {respondMutation.isPending ? 'Processing...' : 'Submit Answer'}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderVoiceInterview = () => (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Voice Interview</h3>
+        <div className="flex items-center space-x-2">
+          {realtimeAPI.isConnected && (
+            <Badge variant="default" className="flex items-center space-x-1">
+              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+              <span>Live</span>
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
+        <CardContent className="p-6">
+          <div className="text-center space-y-4">
+            <div className="relative">
+              <div className={`h-20 w-20 mx-auto rounded-full border-4 flex items-center justify-center transition-all duration-300 ${
+                realtimeAPI.isConnected 
+                  ? 'border-green-500 bg-green-100 animate-pulse' 
+                  : 'border-gray-300 bg-gray-100'
+              }`}>
+                {realtimeAPI.isConnected ? (
+                  <Mic className="h-8 w-8 text-green-600" />
+                ) : (
+                  <MicOff className="h-8 w-8 text-gray-600" />
+                )}
+              </div>
+              {realtimeAPI.isConnected && (
+                <div className="absolute inset-0 h-20 w-20 mx-auto rounded-full border-4 border-green-500 animate-ping opacity-30" />
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <p className="font-medium">
+                {realtimeAPI.isConnected ? 'AI Interview Active' : 'Connecting...'}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {realtimeAPI.isConnected 
+                  ? 'Speak naturally - the AI will guide you through 5 focused questions'
+                  : 'Setting up your voice interview...'
+                }
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {voiceTranscript && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-2">
+              <User className="h-4 w-4 mt-1 text-blue-600" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-blue-800">AI Interviewer</p>
+                <p className="text-sm text-blue-700">{voiceTranscript}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-2">
+        {conversationHistory.slice(-4).map((item, index) => (
+          <Card key={index} className={`${
+            item.role === 'assistant' 
+              ? 'border-blue-200 bg-blue-50' 
+              : 'border-green-200 bg-green-50 ml-8'
+          }`}>
+            <CardContent className="p-3">
+              <div className="flex items-start space-x-2">
+                {item.role === 'assistant' ? (
+                  <User className="h-4 w-4 mt-1 text-blue-600" />
+                ) : (
+                  <MessageCircle className="h-4 w-4 mt-1 text-green-600" />
+                )}
+                <div className="flex-1">
+                  <p className="text-sm font-medium {item.role === 'assistant' ? 'text-blue-800' : 'text-green-800'}">
+                    {item.role === 'assistant' ? 'AI Interviewer' : 'You'}
+                  </p>
+                  <p className="text-sm {item.role === 'assistant' ? 'text-blue-700' : 'text-green-700'}">
+                    {item.content}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {currentSession?.isCompleted && (
+        <div className="space-y-4">
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <div className="h-2 w-2 bg-green-500 rounded-full" />
+                <span className="text-sm font-medium text-green-700">Voice Interview Complete!</span>
+              </div>
+              <p className="text-sm text-green-600 mt-1">
+                Your AI profile has been generated successfully.
+              </p>
+            </CardContent>
+          </Card>
+
+          {currentSession.generatedProfile && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="h-5 w-5" />
+                  <span>Your Generated AI Profile</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="text-sm text-muted-foreground">
+                    {currentSession.generatedProfile.summary}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowProfileDetails(!showProfileDetails)}
+                  >
+                    {showProfileDetails ? 'Hide' : 'Show'} Full Profile Details
+                  </Button>
+
+                  {showProfileDetails && (
+                    <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="skills">
+                        <AccordionTrigger className="text-sm">
+                          <div className="flex items-center space-x-2">
+                            <Target className="h-4 w-4" />
+                            <span>Skills & Expertise</span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="flex flex-wrap gap-2">
+                            {currentSession.generatedProfile.skills?.map((skill: string, index: number) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem value="strengths">
+                        <AccordionTrigger className="text-sm">
+                          <div className="flex items-center space-x-2">
+                            <Users className="h-4 w-4" />
+                            <span>Key Strengths</span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <ul className="list-disc list-inside space-y-1 text-sm">
+                            {currentSession.generatedProfile.strengths?.map((strength: string, index: number) => (
+                              <li key={index}>{strength}</li>
+                            ))}
+                          </ul>
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem value="workstyle">
+                        <AccordionTrigger className="text-sm">
+                          <div className="flex items-center space-x-2">
+                            <Briefcase className="h-4 w-4" />
+                            <span>Work Style & Goals</span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-3 text-sm">
+                            <div>
+                              <span className="font-medium">Work Style:</span>
+                              <p className="text-muted-foreground mt-1">{currentSession.generatedProfile.workStyle}</p>
+                            </div>
+                            <div>
+                              <span className="font-medium">Career Goals:</span>
+                              <p className="text-muted-foreground mt-1">{currentSession.generatedProfile.careerGoals}</p>
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={() => setMode('select')}>
+          ← Back to Options
+        </Button>
+        <div className="space-x-2">
+          {realtimeAPI.isConnected && (
+            <Button
+              variant={isInterviewConcluded ? "default" : "destructive"}
+              onClick={async () => {
+                if (isInterviewConcluded) {
+                  // Submit the completed interview
+                  try {
+                    // Process the conversation history to create an interview session
+                    const responses = [];
+                    for (let i = 0; i < conversationHistory.length; i += 2) {
+                      if (conversationHistory[i]?.role === 'assistant' && conversationHistory[i + 1]?.role === 'user') {
+                        responses.push({
+                          question: conversationHistory[i]?.content || '',
+                          answer: conversationHistory[i + 1]?.content || ''
+                        });
+                      }
+                    }
+                    
+                    // Submit the voice interview responses
+                    const submitResponse = await apiRequest("POST", "/api/interview/voice-submit", {
+                      responses,
+                      conversationHistory
+                    });
+                    const result = await submitResponse.json();
+                    
+                    if (result.profile) {
+                      setCurrentSession({
+                        id: result.sessionId || Date.now(),
+                        sessionData: { 
+                          questions: responses.map(r => ({ question: r.question })), 
+                          responses, 
+                          currentQuestionIndex: responses.length,
+                          isComplete: true
+                        },
+                        isCompleted: true,
+                        generatedProfile: result.profile
+                      });
+                      
+                      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/interview/history"] });
+                      
+                      toast({
+                        title: "Interview Submitted!",
+                        description: "Your voice interview has been processed and your AI profile generated.",
+                      });
+                    }
+                  } catch (error) {
+                    console.error("Error submitting voice interview:", error);
+                    toast({
+                      title: "Submission Error",
+                      description: "Failed to process your interview. Please try again.",
+                      variant: "destructive",
+                    });
+                  }
+                } else {
+                  // Just hang up
+                  realtimeAPI.disconnect();
+                  setMode('select');
+                }
+              }}
+            >
+              {isInterviewConcluded ? (
+                <>
+                  <Phone className="h-4 w-4 mr-2" />
+                  Submit Interview
+                </>
+              ) : (
+                <>
+                  <PhoneOff className="h-4 w-4 mr-2" />
+                  Hang Up
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              {mode !== 'select' && (
-                <Button variant="ghost" size="sm" onClick={goBack}>
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              )}
-              <DialogTitle className="flex items-center space-x-2">
-                <Brain className="h-5 w-5 text-blue-600" />
-                <span>AI Interview</span>
-              </DialogTitle>
-            </div>
-            {mode === 'voice' && (
-              <div className="flex items-center space-x-2">
-                <Badge variant={realtimeAPI.isConnected ? "default" : "secondary"}>
-                  {realtimeAPI.isConnected ? "Connected" : "Connecting..."}
-                </Badge>
-                {realtimeAPI.isSpeaking && (
-                  <div className="flex items-center space-x-1 text-green-600">
-                    <Volume2 className="h-4 w-4" />
-                    <span className="text-sm">AI Speaking</span>
-                  </div>
-                )}
-                {realtimeAPI.isListening && (
-                  <div className="flex items-center space-x-1 text-blue-600">
-                    <Mic className="h-4 w-4" />
-                    <span className="text-sm">Listening</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>AI Interview</DialogTitle>
         </DialogHeader>
-
-        <div className="flex-1 overflow-hidden">
-          {mode === 'select' && (
-            <div className="h-full flex items-center justify-center">
-              <div className="max-w-md mx-auto space-y-6 text-center">
-                <div className="space-y-2">
-                  <h3 className="text-xl font-semibold text-gray-900">Choose Interview Mode</h3>
-                  <p className="text-gray-600">
-                    Select how you'd like to complete your AI interview
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-blue-300" onClick={startVoiceInterview}>
-                    <CardContent className="p-6">
-                      <div className="flex items-center space-x-4">
-                        <div className="bg-blue-100 p-3 rounded-lg">
-                          <Phone className="h-6 w-6 text-blue-600" />
-                        </div>
-                        <div className="text-left">
-                          <h4 className="font-semibold text-gray-900">Voice Interview</h4>
-                          <p className="text-sm text-gray-600">
-                            Speak naturally with our AI interviewer - more intuitive and conversational
-                          </p>
-                          <Badge variant="outline" className="mt-2">Recommended</Badge>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-gray-300" onClick={startTextInterview}>
-                    <CardContent className="p-6">
-                      <div className="flex items-center space-x-4">
-                        <div className="bg-gray-100 p-3 rounded-lg">
-                          <MessageSquare className="h-6 w-6 text-gray-600" />
-                        </div>
-                        <div className="text-left">
-                          <h4 className="font-semibold text-gray-900">Text Interview</h4>
-                          <p className="text-sm text-gray-600">
-                            Type your responses - take your time to craft detailed answers
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800">
-                  <strong>Note:</strong> Both modes will generate the same comprehensive AI profile. 
-                  Choose based on your preference for interaction style.
-                </div>
-              </div>
-            </div>
-          )}
-
-          {(mode === 'voice' || mode === 'text') && (
-            <div className="h-full flex flex-col">
-              {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                <AnimatePresence>
-                  {messages.map((message, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`flex ${message.type === 'answer' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className={`max-w-[80%] flex items-start space-x-2 ${message.type === 'answer' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${message.type === 'answer' ? 'bg-blue-600' : 'bg-gray-600'}`}>
-                          {message.type === 'answer' ? (
-                            <User className="h-4 w-4 text-white" />
-                          ) : (
-                            <Bot className="h-4 w-4 text-white" />
-                          )}
-                        </div>
-                        <div className={`rounded-lg p-3 ${message.type === 'answer' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'}`}>
-                          <p className="text-sm">{message.content}</p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-
-                {/* Live voice transcript */}
-                {mode === 'voice' && voiceTranscript && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex justify-start"
-                  >
-                    <div className="max-w-[80%] flex items-start space-x-2">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-600">
-                        <Bot className="h-4 w-4 text-white" />
-                      </div>
-                      <div className="rounded-lg p-3 bg-gray-100 text-gray-900 border-2 border-blue-200">
-                        <p className="text-sm">{voiceTranscript}</p>
-                        <div className="flex items-center space-x-1 mt-1">
-                          <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-                          <span className="text-xs text-gray-500">Speaking...</span>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {(startInterviewMutation.isPending || respondMutation.isPending) && (
-                  <div className="flex justify-start">
-                    <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-3">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                      <span className="text-sm text-gray-600">AI is thinking...</span>
-                    </div>
-                  </div>
-                )}
-
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Input Area for Text Mode */}
-              {mode === 'text' && currentSession && !currentSession.isCompleted && (
-                <div className="border-t p-4">
-                  <div className="flex space-x-3">
-                    <Textarea
-                      value={currentAnswer}
-                      onChange={(e) => setCurrentAnswer(e.target.value)}
-                      placeholder="Type your response here..."
-                      className="flex-1 min-h-[80px] resize-none"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          submitAnswer();
-                        }
-                      }}
-                    />
-                    <Button 
-                      onClick={submitAnswer}
-                      disabled={!currentAnswer.trim() || respondMutation.isPending}
-                      size="lg"
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Voice Status Indicator */}
-              {mode === 'voice' && realtimeAPI.isConnected && (
-                <div className="border-t bg-gray-50 p-3">
-                  <div className="flex items-center justify-center space-x-3">
-                    {realtimeAPI.isListening ? (
-                      <>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                          <span className="text-sm font-medium text-red-600">Listening...</span>
-                        </div>
-                      </>
-                    ) : realtimeAPI.isSpeaking ? (
-                      <>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-                          <span className="text-sm font-medium text-blue-600">AI Speaking...</span>
-                        </div>
-                      </>
-                    ) : (
-                      <span className="text-sm text-gray-500">Ready to listen</span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Voice Controls */}
-              {mode === 'voice' && (
-                <div className="border-t p-4">
-                  <div className="flex items-center justify-center space-x-4">
-                    <Button
-                      variant="outline"
-                      onClick={realtimeAPI.toggleMute}
-                      disabled={!realtimeAPI.isConnected}
-                    >
-                      {realtimeAPI.isListening ? (
-                        <>
-                          <Mic className="h-4 w-4 mr-2" />
-                          Mute
-                        </>
-                      ) : (
-                        <>
-                          <MicOff className="h-4 w-4 mr-2" />
-                          Unmute
-                        </>
-                      )}
-                    </Button>
-                    
-                    <Button
-                      variant={isInterviewConcluded ? "default" : "destructive"}
-                      onClick={async () => {
-                        realtimeAPI.disconnect();
-                        
-                        if (isInterviewConcluded) {
-                          // Submit the completed interview
-                          try {
-                            // Process the conversation history to create an interview session
-                            const responses = [];
-                            for (let i = 0; i < conversationHistory.length; i += 2) {
-                              if (conversationHistory[i]?.role === 'user' && conversationHistory[i + 1]?.role === 'assistant') {
-                                responses.push({
-                                  question: conversationHistory[i + 1]?.content || '',
-                                  answer: conversationHistory[i]?.content || ''
-                                });
-                              }
-                            }
-                            
-                            // Submit the voice interview responses
-                            const submitResponse = await apiRequest("POST", "/api/interview/voice-submit", {
-                              responses,
-                              conversationHistory
-                            });
-                            const result = await submitResponse.json();
-                            
-                            if (result.profile) {
-                              setCurrentSession({
-                                id: result.sessionId || Date.now(),
-                                sessionData: { questions: [], responses, currentQuestionIndex: responses.length },
-                                isCompleted: true,
-                                generatedProfile: result.profile
-                              });
-                              // Force a refresh of the profile data to update dashboard
-                              queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
-                            }
-                          } catch (error) {
-                            toast({
-                              title: "Submission Error",
-                              description: "Failed to submit interview. Please try again.",
-                              variant: "destructive",
-                            });
-                          }
-                        } else {
-                          // Check if interview was completed and refresh session data
-                          try {
-                            const response = await apiRequest("GET", "/api/interview/session", {});
-                            const sessionData = await response.json();
-                            if (sessionData?.isCompleted) {
-                              setCurrentSession(sessionData);
-                              // Force a refresh of the profile data to update dashboard
-                              queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
-                            } else {
-                              setMode('select');
-                              setMessages([]);
-                              setVoiceTranscript("");
-                              onClose();
-                            }
-                          } catch (error) {
-                            // If there's an error, just close normally
-                            setMode('select');
-                            setMessages([]);
-                            setVoiceTranscript("");
-                            onClose();
-                          }
-                        }
-                      }}
-                      disabled={!realtimeAPI.isConnected}
-                      className={isInterviewConcluded ? "bg-green-600 hover:bg-green-700" : ""}
-                    >
-                      {isInterviewConcluded ? (
-                        <>
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Submit Interview
-                        </>
-                      ) : (
-                        <>
-                          <Phone className="h-4 w-4 mr-2" />
-                          Hang Up
-                        </>
-                      )}
-                    </Button>
-                    
-                    <div className="text-sm text-gray-600 text-center">
-                      {realtimeAPI.isConnected ? (
-                        "Speak naturally - the AI will respond when you're done talking"
-                      ) : (
-                        "Connecting to voice interview..."
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Completed State */}
-          {currentSession?.isCompleted && (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center space-y-6">
-                <div className="flex justify-center">
-                  <CheckCircle className="h-16 w-16 text-green-600" />
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-semibold text-gray-900">Interview Complete!</h3>
-                  <p className="text-gray-600 max-w-md">
-                    Your AI interview is finished and your comprehensive professional profile has been generated. 
-                    You can now access personalized job matches!
-                  </p>
-                </div>
-                
-                {/* AI Profile Preview */}
-                {currentSession.generatedProfile && (
-                  <div className="bg-blue-50 rounded-lg p-4 max-w-md text-left space-y-3">
-                    <h4 className="font-semibold text-gray-900 flex items-center">
-                      <Brain className="h-4 w-4 mr-2 text-blue-600" />
-                      Your AI Profile Summary
-                    </h4>
-                    <p className="text-sm text-gray-700">{currentSession.generatedProfile.summary}</p>
-                    <div className="space-y-2">
-                      <div>
-                        <span className="text-xs font-medium text-gray-600">Key Skills:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {currentSession.generatedProfile.skills?.slice(0, 4).map((skill: string, index: number) => (
-                            <Badge key={index} variant="secondary" className="text-xs">{skill}</Badge>
-                          ))}
-                          {currentSession.generatedProfile.skills?.length > 4 && (
-                            <Badge variant="outline" className="text-xs">+{currentSession.generatedProfile.skills.length - 4} more</Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Full AI Profile Details */}
-                {showProfileDetails && currentSession.generatedProfile && (
-                  <div className="bg-gray-50 rounded-lg p-4 max-w-lg text-left space-y-4 max-h-64 overflow-y-auto">
-                    <h4 className="font-semibold text-gray-900">Complete AI Profile</h4>
-                    
-                    <div className="space-y-3 text-sm">
-                      <div>
-                        <span className="font-medium text-gray-700">Professional Summary:</span>
-                        <p className="text-gray-600 mt-1">{currentSession.generatedProfile.summary}</p>
-                      </div>
-                      
-                      <div>
-                        <span className="font-medium text-gray-700">Key Strengths:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {currentSession.generatedProfile.strengths?.map((strength: string, index: number) => (
-                            <Badge key={index} variant="outline" className="text-xs">{strength}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <span className="font-medium text-gray-700">Skills:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {currentSession.generatedProfile.skills?.map((skill: string, index: number) => (
-                            <Badge key={index} variant="secondary" className="text-xs">{skill}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <span className="font-medium text-gray-700">Work Style:</span>
-                        <p className="text-gray-600 mt-1">{currentSession.generatedProfile.workStyle}</p>
-                      </div>
-                      
-                      <div>
-                        <span className="font-medium text-gray-700">Career Goals:</span>
-                        <p className="text-gray-600 mt-1">{currentSession.generatedProfile.careerGoals}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex flex-col space-y-3">
-                  <Button onClick={() => setShowProfileDetails(!showProfileDetails)} variant="outline">
-                    <Brain className="h-4 w-4 mr-2" />
-                    {showProfileDetails ? 'Hide' : 'View'} Full AI Profile
-                  </Button>
-                  
-                  <Button onClick={handleClose}>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Continue to Job Matches
-                  </Button>
-                  
-                  {/* Hang Up Button for Voice Mode */}
-                  {mode === 'voice' && (
-                    <Button 
-                      onClick={() => {
-                        realtimeAPI.disconnect();
-                        handleClose();
-                      }} 
-                      variant="destructive"
-                    >
-                      <Phone className="h-4 w-4 mr-2" />
-                      End Call
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        
+        {mode === 'select' && renderModeSelection()}
+        {mode === 'text' && renderTextInterview()}
+        {mode === 'voice' && renderVoiceInterview()}
       </DialogContent>
     </Dialog>
   );

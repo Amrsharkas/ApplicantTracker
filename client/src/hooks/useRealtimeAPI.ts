@@ -6,6 +6,7 @@ interface RealtimeAPIOptions {
   onAudioStart?: () => void;
   onAudioEnd?: () => void;
   onError?: (error: Error) => void;
+  userProfile?: any;
 }
 
 export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
@@ -109,12 +110,22 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
         setIsConnected(true);
         setIsConnecting(false);
         
-        // Initialize session with interview-specific settings
-        const sessionUpdate = {
-          type: 'session.update',
-          session: {
-            modalities: ['text', 'audio'],
-            instructions: `You are an AI interviewer conducting a focused professional interview. Your goal is to understand the candidate on both a personal and professional level through exactly 5 structured questions.
+        // Generate dynamic instructions based on user profile
+        const buildInstructions = (userProfile: any) => {
+          const profileContext = userProfile ? `
+
+CANDIDATE BACKGROUND:
+${userProfile.firstName ? `Name: ${userProfile.firstName} ${userProfile.lastName || ''}` : ''}
+${userProfile.currentRole ? `Current Role: ${userProfile.currentRole}${userProfile.company ? ` at ${userProfile.company}` : ''}` : ''}
+${userProfile.yearsOfExperience ? `Experience: ${userProfile.yearsOfExperience} years` : ''}
+${userProfile.education ? `Education: ${userProfile.education}${userProfile.university ? ` from ${userProfile.university}` : ''}` : ''}
+${userProfile.location ? `Location: ${userProfile.location}` : ''}
+${userProfile.summary ? `Profile Summary: ${userProfile.summary}` : ''}
+${userProfile.resumeUrl ? `NOTE: The candidate has uploaded a resume. Use this background information to ask more personalized and relevant follow-up questions.` : ''}
+
+Use this information to tailor your questions and make them more specific to their background. Reference their experience and current situation when appropriate.` : '';
+
+          return `You are an AI interviewer conducting a focused professional interview. Your goal is to understand the candidate on both a personal and professional level through exactly 5 structured questions.${profileContext}
 
 The 5 questions to ask in order:
 1. "Let's start with you as a person - tell me about your background and what led you to your current career path?"
@@ -127,6 +138,7 @@ Key guidelines:
 - Start with a warm greeting, then proceed through each question in order
 - Be conversational and encouraging, not robotic
 - Listen carefully to their responses and show genuine interest
+- If you have background information about them, reference it naturally to make questions more relevant
 - Keep the conversation moving toward the goal of understanding them deeply
 - After each answer, acknowledge what they shared before moving to the next question
 - Speak clearly and at a natural pace
@@ -134,7 +146,15 @@ Key guidelines:
 - After question 5, thank them warmly and use the word "conclude" ONLY in your final response to signal the interview is complete. For example: "Thank you so much for sharing all of that with me. This concludes our interview today, and I have everything I need to create your professional profile."
 - IMPORTANT: Only use the word "conclude" in your very last response when the interview is finished. Never use this word at any other time during the conversation.
 
-This focused approach ensures we understand them comprehensively while respecting their time.`,
+This focused approach ensures we understand them comprehensively while respecting their time.`;
+        };
+
+        // Initialize session with interview-specific settings
+        const sessionUpdate = {
+          type: 'session.update',
+          session: {
+            modalities: ['text', 'audio'],
+            instructions: buildInstructions(options.userProfile),
             voice: 'verse',
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
