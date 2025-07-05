@@ -112,6 +112,7 @@ Changelog:
 - July 2, 2025. Added aiProfileGenerated database field to properly track interview completion status on dashboard
 - July 2, 2025. Integrated Airtable API to automatically store user profiles when interviews are completed with name and profile data columns
 - July 2, 2025. Added hang up button to voice interview interface with smart completion detection to properly end voice sessions
+- July 5, 2025. Enhanced voice interview button to change from "Hang Up" to "Submit Interview" when AI uses "conclude" in final response, with automatic interview processing and profile generation
 ```
 
 ## User Preferences

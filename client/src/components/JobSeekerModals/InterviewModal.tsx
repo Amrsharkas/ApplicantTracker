@@ -67,6 +67,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
   const [showProfileDetails, setShowProfileDetails] = useState(false);
+  const [isInterviewConcluded, setIsInterviewConcluded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -83,13 +84,19 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       
       if (event.type === 'response.audio_transcript.done') {
         // AI finished speaking
+        const transcript = event.transcript || '';
         const aiMessage: InterviewMessage = {
           type: 'question',
-          content: event.transcript || '',
+          content: transcript,
           timestamp: new Date()
         };
         setMessages(prev => [...prev, aiMessage]);
         setVoiceTranscript("");
+        
+        // Check if the AI used "conclude" to signal interview completion
+        if (transcript.toLowerCase().includes('conclude')) {
+          setIsInterviewConcluded(true);
+        }
       }
       
       if (event.type === 'conversation.item.input_audio_transcription.completed') {
@@ -232,6 +239,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const startVoiceInterview = async () => {
     setMode('voice');
     setMessages([]);
+    setIsInterviewConcluded(false);
+    setConversationHistory([]);
     try {
       await realtimeAPI.connect();
       toast({
@@ -265,6 +274,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     setConversationHistory([]);
     setCurrentSession(null);
     setCurrentQuestionIndex(0);
+    setIsInterviewConcluded(false);
     onClose();
   };
 
@@ -521,35 +531,86 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                     </Button>
                     
                     <Button
-                      variant="destructive"
+                      variant={isInterviewConcluded ? "default" : "destructive"}
                       onClick={async () => {
                         realtimeAPI.disconnect();
-                        // Check if interview was completed and refresh session data
-                        try {
-                          const response = await apiRequest("GET", "/api/interview/session", {});
-                          const sessionData = await response.json();
-                          if (sessionData?.isCompleted) {
-                            setCurrentSession(sessionData);
-                            // Force a refresh of the profile data to update dashboard
-                            queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
-                          } else {
+                        
+                        if (isInterviewConcluded) {
+                          // Submit the completed interview
+                          try {
+                            // Process the conversation history to create an interview session
+                            const responses = [];
+                            for (let i = 0; i < conversationHistory.length; i += 2) {
+                              if (conversationHistory[i]?.role === 'user' && conversationHistory[i + 1]?.role === 'assistant') {
+                                responses.push({
+                                  question: conversationHistory[i + 1]?.content || '',
+                                  answer: conversationHistory[i]?.content || ''
+                                });
+                              }
+                            }
+                            
+                            // Submit the voice interview responses
+                            const submitResponse = await apiRequest("POST", "/api/interview/voice-submit", {
+                              responses,
+                              conversationHistory
+                            });
+                            const result = await submitResponse.json();
+                            
+                            if (result.profile) {
+                              setCurrentSession({
+                                id: result.sessionId || Date.now(),
+                                sessionData: { questions: [], responses, currentQuestionIndex: responses.length },
+                                isCompleted: true,
+                                generatedProfile: result.profile
+                              });
+                              // Force a refresh of the profile data to update dashboard
+                              queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+                            }
+                          } catch (error) {
+                            toast({
+                              title: "Submission Error",
+                              description: "Failed to submit interview. Please try again.",
+                              variant: "destructive",
+                            });
+                          }
+                        } else {
+                          // Check if interview was completed and refresh session data
+                          try {
+                            const response = await apiRequest("GET", "/api/interview/session", {});
+                            const sessionData = await response.json();
+                            if (sessionData?.isCompleted) {
+                              setCurrentSession(sessionData);
+                              // Force a refresh of the profile data to update dashboard
+                              queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+                            } else {
+                              setMode('select');
+                              setMessages([]);
+                              setVoiceTranscript("");
+                              onClose();
+                            }
+                          } catch (error) {
+                            // If there's an error, just close normally
                             setMode('select');
                             setMessages([]);
                             setVoiceTranscript("");
                             onClose();
                           }
-                        } catch (error) {
-                          // If there's an error, just close normally
-                          setMode('select');
-                          setMessages([]);
-                          setVoiceTranscript("");
-                          onClose();
                         }
                       }}
                       disabled={!realtimeAPI.isConnected}
+                      className={isInterviewConcluded ? "bg-green-600 hover:bg-green-700" : ""}
                     >
-                      <Phone className="h-4 w-4 mr-2" />
-                      Hang Up
+                      {isInterviewConcluded ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Submit Interview
+                        </>
+                      ) : (
+                        <>
+                          <Phone className="h-4 w-4 mr-2" />
+                          Hang Up
+                        </>
+                      )}
                     </Button>
                     
                     <div className="text-sm text-gray-600 text-center">

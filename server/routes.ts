@@ -318,6 +318,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/interview/voice-submit', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { responses, conversationHistory } = req.body;
+
+      // Get user and profile data
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+
+      // Generate AI profile from the voice conversation
+      const generatedProfile = await aiInterviewService.generateProfile(
+        responses,
+        { ...user, ...profile }
+      );
+
+      // Create interview session
+      const session = await storage.createInterviewSession({
+        userId,
+        sessionData: { 
+          questions: responses.map((r: any) => ({ question: r.question })), 
+          responses, 
+          currentQuestionIndex: responses.length 
+        },
+        isCompleted: true,
+        generatedProfile
+      });
+
+      // Update profile with AI generated data
+      const aiProfile = generatedProfile;
+      await storage.upsertApplicantProfile({
+        ...profile,
+        userId,
+        aiProfile,
+        aiProfileGenerated: true
+      });
+
+      // Store in Airtable
+      try {
+        const userName = user?.firstName && user?.lastName 
+          ? `${user.firstName} ${user.lastName}` 
+          : user?.email || 'Unknown User';
+        
+        await airtableService.storeUserProfile(userName, generatedProfile);
+      } catch (airtableError) {
+        console.warn("Failed to store profile in Airtable:", airtableError);
+        // Continue without failing the interview
+      }
+
+      res.json({ 
+        isComplete: true, 
+        profile: generatedProfile,
+        sessionId: session.id,
+        message: "Voice interview completed successfully!" 
+      });
+    } catch (error) {
+      console.error("Error processing voice interview:", error);
+      res.status(500).json({ message: "Failed to process voice interview" });
+    }
+  });
+
   // Job routes
   app.get('/api/jobs', isAuthenticated, async (req: any, res) => {
     try {

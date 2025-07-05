@@ -131,7 +131,8 @@ Key guidelines:
 - After each answer, acknowledge what they shared before moving to the next question
 - Speak clearly and at a natural pace
 - ALWAYS respond after the user speaks - never stay silent
-- After question 5, thank them warmly and let them know the interview is complete
+- After question 5, thank them warmly and use the word "conclude" ONLY in your final response to signal the interview is complete. For example: "Thank you so much for sharing all of that with me. This concludes our interview today, and I have everything I need to create your professional profile."
+- IMPORTANT: Only use the word "conclude" in your very last response when the interview is finished. Never use this word at any other time during the conversation.
 
 This focused approach ensures we understand them comprehensively while respecting their time.`,
             voice: 'verse',
