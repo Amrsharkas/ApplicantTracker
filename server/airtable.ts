@@ -171,7 +171,7 @@ export class AirtableService {
             const jobTitle = record.fields['Job title'] || record.fields['Job Title'] || record.fields['JobTitle'] || record.fields['Job_title'];
             const jobDescription = record.fields['Job Description'] || record.fields['Job description'] || record.fields['JobDescription'] || record.fields['Job_Description'];
             const userId = record.fields['User ID'] || record.fields['UserID'] || record.fields['User_ID'] || record.fields['user_id'];
-            const companyName = record.fields['company name'] || record.fields['Company Name'] || record.fields['Company_Name'] || record.fields['companyname'];
+            const companyName = record.fields['Company name'] || record.fields['Company Name'] || record.fields['Company_Name'] || record.fields['companyname'];
             
             console.log('📋 Field match results:', { 
               jobTitle: !!jobTitle, 
@@ -190,7 +190,7 @@ export class AirtableService {
             const jobTitle = record.fields['Job title'] || record.fields['Job Title'] || record.fields['JobTitle'] || record.fields['Job_title'];
             const jobDescription = record.fields['Job Description'] || record.fields['Job description'] || record.fields['JobDescription'] || record.fields['Job_Description'];
             const userId = record.fields['User ID'] || record.fields['UserID'] || record.fields['User_ID'] || record.fields['user_id'];
-            const companyName = record.fields['company name'] || record.fields['Company Name'] || record.fields['Company_Name'] || record.fields['companyname'];
+            const companyName = record.fields['Company name'] || record.fields['Company Name'] || record.fields['Company_Name'] || record.fields['companyname'];
             
             return {
               recordId: record.id,
