@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { BrowseJobsModal } from "@/components/JobSeekerModals/BrowseJobsModal";
+import { JobExplorerModal } from "@/components/JobSeekerModals/JobExplorerModal";
 import { MatchesModal } from "@/components/JobSeekerModals/MatchesModal";
 import { ProfileModal } from "@/components/JobSeekerModals/ProfileModal";
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
@@ -330,9 +330,9 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center space-x-3 mb-2">
                     <Search className="h-6 w-6 text-blue-600 group-hover:scale-110 transition-transform" />
-                    <h4 className="text-lg font-semibold text-gray-900">Browse Available Positions</h4>
+                    <h4 className="text-lg font-semibold text-gray-900">Explore Open Positions</h4>
                   </div>
-                  <p className="text-sm text-gray-600">Explore open positions and start interviews</p>
+                  <p className="text-sm text-gray-600">Discover jobs and start application interviews</p>
                 </button>
 
                 <button
@@ -402,7 +402,7 @@ export default function Dashboard() {
           openModal('interview');
         }}
       />
-      <BrowseJobsModal 
+      <JobExplorerModal 
         isOpen={activeModal === 'jobSearch'} 
         onClose={closeModal} 
         onStartJobInterview={handleStartJobInterview}

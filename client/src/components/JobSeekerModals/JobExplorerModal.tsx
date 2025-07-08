@@ -1,30 +1,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Building,
-  MapPin,
-  DollarSign,
-  Clock,
-  Search,
-} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { MapPin, DollarSign, Building, Clock, Search, Briefcase } from "lucide-react";
 
 interface Job {
   id: string;
@@ -37,23 +22,38 @@ interface Job {
   datePosted: string;
 }
 
-interface BrowseJobsModalProps {
+interface JobExplorerModalProps {
   isOpen: boolean;
   onClose: () => void;
   onStartJobInterview?: (job: any) => void;
 }
 
-export function BrowseJobsModal({ isOpen, onClose, onStartJobInterview }: BrowseJobsModalProps) {
+export function JobExplorerModal({ isOpen, onClose, onStartJobInterview }: JobExplorerModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useState("");
   const [jobType, setJobType] = useState("");
+  const { toast } = useToast();
 
   const { data: jobs = [], isLoading, error } = useQuery({
     queryKey: ["/api/jobs", { search: searchQuery, location, jobType }],
     enabled: isOpen,
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to view available positions.",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 1500);
+        return;
+      }
+      console.error("Error fetching jobs:", error);
+    },
   });
 
-  const handleStartJobInterview = (job: Job) => {
+  const handleStartInterview = (job: Job) => {
     if (onStartJobInterview) {
       onStartJobInterview(job);
       onClose();
@@ -92,16 +92,16 @@ export function BrowseJobsModal({ isOpen, onClose, onStartJobInterview }: Browse
   );
 
   const LoadingState = () => (
-    <div className="flex items-center justify-center py-12">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      <p className="text-slate-600 ml-3">Loading available positions...</p>
+    <div className="text-center py-12">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-slate-600">Discovering available positions...</p>
     </div>
   );
 
   const ErrorState = () => (
     <div className="text-center py-12">
-      <p className="text-red-600 mb-2">Error loading job postings</p>
-      <p className="text-slate-600 text-sm">Please try again or contact support if the issue persists.</p>
+      <p className="text-red-600 mb-2">Unable to load job postings</p>
+      <p className="text-slate-600 text-sm">Please refresh the page or try again later.</p>
     </div>
   );
 
@@ -109,8 +109,9 @@ export function BrowseJobsModal({ isOpen, onClose, onStartJobInterview }: Browse
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-slate-800">
-            Browse Available Positions
+          <DialogTitle className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <Briefcase className="h-6 w-6 text-blue-600" />
+            Explore Open Positions
           </DialogTitle>
         </DialogHeader>
         
@@ -120,7 +121,7 @@ export function BrowseJobsModal({ isOpen, onClose, onStartJobInterview }: Browse
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
               <Input
-                placeholder="Job title or keywords"
+                placeholder="Search job titles..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 border-slate-200 focus:border-blue-500"
@@ -137,7 +138,7 @@ export function BrowseJobsModal({ isOpen, onClose, onStartJobInterview }: Browse
                 <SelectValue placeholder="Job Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Job Types</SelectItem>
+                <SelectItem value="">All Types</SelectItem>
                 <SelectItem value="Full-time">Full-time</SelectItem>
                 <SelectItem value="Part-time">Part-time</SelectItem>
                 <SelectItem value="Contract">Contract</SelectItem>
@@ -203,10 +204,10 @@ export function BrowseJobsModal({ isOpen, onClose, onStartJobInterview }: Browse
                         </div>
                         
                         <Button
-                          onClick={() => handleStartJobInterview(job)}
+                          onClick={() => handleStartInterview(job)}
                           className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white ml-6 px-6"
                         >
-                          Start Interview
+                          Apply Now
                         </Button>
                       </div>
                     </CardContent>

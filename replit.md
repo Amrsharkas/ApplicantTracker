@@ -126,6 +126,7 @@ Changelog:
 - July 8, 2025. Enhanced job applications with Job ID tracking - added job ID field to both local database and Airtable job applications table for accurate job posting tracking and better data integrity
 - July 8, 2025. Fixed "Browse Available Positions" modal to fetch jobs from platojobpostings Airtable table with proper error handling, loading states, and humorous empty state messaging
 - July 8, 2025. Completely rebuilt BrowseJobsModal from scratch to fix white page navigation issues - removed problematic JobSearchModal and created new clean modal with all functionality preserved
+- July 8, 2025. Created JobExplorerModal based on working MatchesModal pattern - fixed authentication issues, added proper error handling, and renamed to "Explore Open Positions" with improved UX
 ```
 
 ## User Preferences
