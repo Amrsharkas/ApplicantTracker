@@ -62,20 +62,36 @@ function CompanyCarousel() {
       </div>
 
       <div className="flex justify-center items-center">
-        <div className="company-carousel w-64 h-32 p-8 mx-auto">
+        <div className="company-carousel w-96 h-48 p-12 mx-auto">
           <div className="relative w-full h-full overflow-hidden">
+            {/* Main current logo */}
             <motion.div
               key={currentIndex}
-              initial={{ opacity: 0, scale: 0.8, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: -10 }}
+              initial={{ opacity: 0, scale: 0.7, x: 60 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.7, x: -60 }}
               transition={{ duration: 0.8, ease: "easeInOut" }}
-              className="absolute inset-0 flex items-center justify-center"
+              className="absolute inset-0 flex items-center justify-center z-10"
             >
               <img
                 src={companyLogos[currentIndex].logo}
                 alt={companyLogos[currentIndex].name}
                 className="company-logo max-w-full max-h-full object-contain"
+              />
+            </motion.div>
+            
+            {/* Preview of next logo */}
+            <motion.div
+              key={`preview-${currentIndex}`}
+              initial={{ opacity: 0.2, scale: 0.6, x: 100 }}
+              animate={{ opacity: 0.3, scale: 0.7, x: 80 }}
+              transition={{ duration: 0.8, ease: "easeInOut" }}
+              className="absolute inset-0 flex items-center justify-center z-0"
+            >
+              <img
+                src={companyLogos[(currentIndex + 1) % companyLogos.length].logo}
+                alt={companyLogos[(currentIndex + 1) % companyLogos.length].name}
+                className="company-logo max-w-full max-h-full object-contain filter blur-sm"
               />
             </motion.div>
           </div>
