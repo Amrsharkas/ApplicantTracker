@@ -497,44 +497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Job routes
-  app.get('/api/jobs', isAuthenticated, async (req: any, res) => {
-    try {
-      const { search, location, experienceLevel } = req.query;
-      
-      let jobs;
-      if (search || location || experienceLevel) {
-        jobs = await storage.searchJobs(
-          search as string,
-          location as string,
-          experienceLevel as string
-        );
-      } else {
-        jobs = await storage.getAllJobs();
-      }
-      
-      res.json(jobs);
-    } catch (error) {
-      console.error("Error fetching jobs:", error);
-      res.status(500).json({ message: "Failed to fetch jobs" });
-    }
-  });
 
-  app.get('/api/jobs/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const jobId = parseInt(req.params.id);
-      const job = await storage.getJob(jobId);
-      
-      if (!job) {
-        return res.status(404).json({ message: "Job not found" });
-      }
-      
-      res.json(job);
-    } catch (error) {
-      console.error("Error fetching job:", error);
-      res.status(500).json({ message: "Failed to fetch job" });
-    }
-  });
 
   // Job matches routes
   app.get('/api/job-matches', isAuthenticated, async (req: any, res) => {
@@ -594,87 +557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Seed some sample jobs for demonstration
-  app.post('/api/admin/seed-jobs', async (req, res) => {
-    try {
-      const sampleJobs = [
-        {
-          title: "Senior Frontend Developer",
-          company: "TechCorp Inc.",
-          description: "Build amazing user experiences with React and TypeScript. Work with a dynamic team to create cutting-edge web applications.",
-          location: "San Francisco, CA",
-          salaryMin: 120000,
-          salaryMax: 150000,
-          experienceLevel: "Senior",
-          skills: ["React", "TypeScript", "JavaScript", "CSS", "HTML"],
-          jobType: "hybrid",
-          requirements: "5+ years of frontend development experience, strong React skills",
-          benefits: "Health insurance, stock options, flexible hours"
-        },
-        {
-          title: "React Developer",
-          company: "InnovateAI",
-          description: "Join our dynamic team building the future of AI-powered applications. Work with cutting-edge technology and talented engineers.",
-          location: "Remote",
-          salaryMin: 130000,
-          salaryMax: 160000,
-          experienceLevel: "Mid Level",
-          skills: ["React", "Node.js", "TypeScript", "GraphQL", "AWS"],
-          jobType: "remote",
-          requirements: "3+ years React experience, full-stack capabilities preferred",
-          benefits: "Competitive salary, equity, unlimited PTO"
-        },
-        {
-          title: "Full Stack Engineer",
-          company: "StartupXYZ",
-          description: "Build scalable web applications from the ground up. Great opportunity for someone looking to make a big impact.",
-          location: "New York, NY",
-          salaryMin: 100000,
-          salaryMax: 130000,
-          experienceLevel: "Mid Level",
-          skills: ["React", "Node.js", "Python", "PostgreSQL", "Docker"],
-          jobType: "onsite",
-          requirements: "2+ years full-stack development, startup experience a plus",
-          benefits: "Equity, learning budget, catered meals"
-        },
-        {
-          title: "Junior Frontend Developer",
-          company: "GrowthCo",
-          description: "Perfect opportunity for a recent graduate or career changer. We provide mentorship and growth opportunities.",
-          location: "Austin, TX",
-          salaryMin: 70000,
-          salaryMax: 90000,
-          experienceLevel: "Entry Level",
-          skills: ["JavaScript", "HTML", "CSS", "React", "Git"],
-          jobType: "hybrid",
-          requirements: "Computer Science degree or bootcamp graduate, passion for web development",
-          benefits: "Mentorship program, health insurance, growth opportunities"
-        },
-        {
-          title: "Lead Software Engineer",
-          company: "Enterprise Solutions",
-          description: "Lead a team of talented engineers building enterprise-grade software solutions.",
-          location: "Chicago, IL",
-          salaryMin: 160000,
-          salaryMax: 200000,
-          experienceLevel: "Senior",
-          skills: ["React", "TypeScript", "Node.js", "Kubernetes", "Microservices"],
-          jobType: "hybrid",
-          requirements: "7+ years experience, 2+ years leadership experience",
-          benefits: "Excellent benefits, leadership development, stock options"
-        }
-      ];
 
-      for (const jobData of sampleJobs) {
-        await storage.getAllJobs(); // This will insert if using seeding logic
-      }
-
-      res.json({ message: "Sample jobs seeded successfully" });
-    } catch (error) {
-      console.error("Error seeding jobs:", error);
-      res.status(500).json({ message: "Failed to seed jobs" });
-    }
-  });
 
   // Airtable job monitoring routes
   app.post('/api/admin/process-airtable-jobs', async (req, res) => {

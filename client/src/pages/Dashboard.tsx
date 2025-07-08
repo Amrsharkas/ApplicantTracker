@@ -3,7 +3,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { 
   User, 
-  Search, 
   Target, 
   FileText, 
   TrendingUp,
@@ -12,7 +11,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { JobSearchModal } from "@/components/JobSeekerModals/JobSearchModal";
+
 import { MatchesModal } from "@/components/JobSeekerModals/MatchesModal";
 import { ProfileModal } from "@/components/JobSeekerModals/ProfileModal";
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
@@ -317,16 +316,7 @@ export default function Dashboard() {
                   <p className="text-sm text-gray-600">See jobs that match your profile with AI scoring</p>
                 </button>
 
-                <button
-                  onClick={() => openModal('jobSearch')}
-                  className="bg-white rounded-lg p-6 border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-left group"
-                >
-                  <div className="flex items-center space-x-3 mb-2">
-                    <Search className="h-6 w-6 text-blue-600 group-hover:scale-110 transition-transform" />
-                    <h4 className="text-lg font-semibold text-gray-900">Search All Jobs</h4>
-                  </div>
-                  <p className="text-sm text-gray-600">Browse and search all available opportunities</p>
-                </button>
+
 
                 <button
                   onClick={() => openModal('interviewHistory')}
@@ -394,10 +384,7 @@ export default function Dashboard() {
           openModal('interview');
         }}
       />
-      <JobSearchModal 
-        isOpen={activeModal === 'jobSearch'} 
-        onClose={closeModal} 
-      />
+
       <MatchesModal 
         isOpen={activeModal === 'matches'} 
         onClose={closeModal} 
