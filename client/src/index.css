@@ -123,35 +123,21 @@
   /* Company Carousel Styles */
   .company-carousel {
     position: relative;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 24px;
-    backdrop-filter: blur(12px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   }
 
-  .company-logo-center {
+  .company-logo {
+    filter: grayscale(30%) brightness(0.9);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .company-logo:hover {
     filter: grayscale(0%) brightness(1);
-    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  }
-
-  .company-logo-center:hover {
-    filter: brightness(1.05);
-    transform: scale(1.03);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
-  }
-
-  .company-logo-side {
-    filter: grayscale(40%) brightness(0.8);
-    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    opacity: 0.7;
-  }
-
-  .company-logo-side:hover {
-    filter: grayscale(20%) brightness(0.9);
     transform: scale(1.05);
-    opacity: 0.9;
   }
 
   .carousel-dot {

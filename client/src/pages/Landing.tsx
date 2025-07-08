@@ -2,8 +2,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Brain, Target, Zap, CheckCircle } from "lucide-react";
-import { useState, useEffect } from "react";
-
+import { useEffect, useState } from "react";
 
 // Import company logos
 import moderatorLogo from "@assets/image_1752003560205.png";
@@ -13,10 +12,6 @@ import neuroLogo from "@assets/image_1752003578397.png";
 import polygonLogo from "@assets/image_1752003581991.png";
 import groveLogo from "@assets/image_1752003586635.png";
 import melaniteLogo from "@assets/image_1752003591909.png";
-import managementLogo from "@assets/image_1752004101938.png";
-import skillcredsLogo from "@assets/image_1752004111932.png";
-import jaugmentorLogo from "@assets/image_1752004119316.png";
-import aicansellLogo from "@assets/image_1752004124905.png";
 
 // Company logos data
 const companyLogos = [
@@ -26,11 +21,7 @@ const companyLogos = [
   { name: "Neuro", logo: neuroLogo },
   { name: "Polygon", logo: polygonLogo },
   { name: "Grove", logo: groveLogo },
-  { name: "Melanite", logo: melaniteLogo },
-  { name: "Management", logo: managementLogo },
-  { name: "SkillCreds", logo: skillcredsLogo },
-  { name: "Jaugmentor", logo: jaugmentorLogo },
-  { name: "AiCanSell", logo: aicansellLogo }
+  { name: "Melanite", logo: melaniteLogo }
 ];
 
 // Carousel component
@@ -40,7 +31,7 @@ function CompanyCarousel() {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % companyLogos.length);
-    }, 4000); // Slower transition - 4 seconds
+    }, 3000); // Change every 3 seconds
 
     return () => clearInterval(interval);
   }, []);
@@ -62,58 +53,40 @@ function CompanyCarousel() {
         </p>
       </div>
 
-      <div className="w-full px-4">
-        <div className="company-carousel w-full max-w-6xl h-80 p-24 mx-auto">
-          <div className="relative w-full h-full flex items-center justify-center">
-            {/* Previous logo (left side) */}
+      <div className="flex justify-center items-center">
+        <div className="company-carousel w-64 h-32 p-8 mx-auto">
+          <div className="relative w-full h-full overflow-hidden">
             <motion.div
-              key={`prev-${currentIndex}`}
-              initial={{ opacity: 0, scale: 0.5, x: -150 }}
-              animate={{ opacity: 0.6, scale: 0.7, x: -200 }}
-              transition={{ duration: 2.5, ease: "easeInOut" }}
-              className="absolute left-16 flex items-center justify-center z-10"
-            >
-              <img
-                src={companyLogos[(currentIndex - 1 + companyLogos.length) % companyLogos.length].logo}
-                alt={companyLogos[(currentIndex - 1 + companyLogos.length) % companyLogos.length].name}
-                className="company-logo-side max-w-48 max-h-32 object-contain"
-              />
-            </motion.div>
-            
-            {/* Main current logo (center) */}
-            <motion.div
-              key={`current-${currentIndex}`}
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              key={currentIndex}
+              initial={{ opacity: 0, scale: 0.8, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ duration: 2.5, ease: "easeInOut" }}
-              className="flex items-center justify-center z-20"
+              exit={{ opacity: 0, scale: 0.8, y: -10 }}
+              transition={{ duration: 0.8, ease: "easeInOut" }}
+              className="absolute inset-0 flex items-center justify-center"
             >
               <img
                 src={companyLogos[currentIndex].logo}
                 alt={companyLogos[currentIndex].name}
-                className="company-logo-center max-w-96 max-h-60 object-contain"
-              />
-            </motion.div>
-            
-            {/* Next logo (right side) */}
-            <motion.div
-              key={`next-${currentIndex}`}
-              initial={{ opacity: 0, scale: 0.5, x: 150 }}
-              animate={{ opacity: 0.6, scale: 0.7, x: 200 }}
-              transition={{ duration: 2.5, ease: "easeInOut" }}
-              className="absolute right-16 flex items-center justify-center z-10"
-            >
-              <img
-                src={companyLogos[(currentIndex + 1) % companyLogos.length].logo}
-                alt={companyLogos[(currentIndex + 1) % companyLogos.length].name}
-                className="company-logo-side max-w-48 max-h-32 object-contain"
+                className="company-logo max-w-full max-h-full object-contain"
               />
             </motion.div>
           </div>
         </div>
       </div>
 
-
+      <div className="flex justify-center space-x-3">
+        {companyLogos.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrentIndex(index)}
+            className={`carousel-dot w-2 h-2 rounded-full ${
+              index === currentIndex 
+                ? 'active w-8' 
+                : 'bg-slate-300 hover:bg-slate-400'
+            }`}
+          />
+        ))}
+      </div>
 
       <div className="text-center space-y-2">
         <p className="text-slate-700 font-semibold text-lg">
