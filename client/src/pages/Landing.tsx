@@ -12,6 +12,10 @@ import neuroLogo from "@assets/image_1752003578397.png";
 import polygonLogo from "@assets/image_1752003581991.png";
 import groveLogo from "@assets/image_1752003586635.png";
 import melaniteLogo from "@assets/image_1752003591909.png";
+import managementLogo from "@assets/image_1752004101938.png";
+import skillcredsLogo from "@assets/image_1752004111932.png";
+import jaugmentorLogo from "@assets/image_1752004119316.png";
+import aicansellLogo from "@assets/image_1752004124905.png";
 
 // Company logos data
 const companyLogos = [
@@ -21,7 +25,11 @@ const companyLogos = [
   { name: "Neuro", logo: neuroLogo },
   { name: "Polygon", logo: polygonLogo },
   { name: "Grove", logo: groveLogo },
-  { name: "Melanite", logo: melaniteLogo }
+  { name: "Melanite", logo: melaniteLogo },
+  { name: "Management", logo: managementLogo },
+  { name: "SkillCreds", logo: skillcredsLogo },
+  { name: "Jaugmentor", logo: jaugmentorLogo },
+  { name: "AiCanSell", logo: aicansellLogo }
 ];
 
 // Carousel component
