@@ -752,8 +752,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isCompleted: true
       });
 
-      // If approved, store in Airtable job applications
+      // If approved, store in both local database and Airtable
       if (evaluation.isApproved) {
+        // Store in local database
+        try {
+          const applicationData = {
+            userId,
+            jobId: parseInt(String(jobContext.jobId)),
+            status: 'applied' as const,
+            notes: `Interview score: ${evaluation.score}. ${evaluation.feedback}`
+          };
+
+          await storage.createApplication(applicationData);
+          console.log(`✅ Successfully stored local application for user ${userId}`);
+        } catch (dbError) {
+          console.error('Failed to store application in local database:', dbError);
+        }
+
+        // Store in Airtable
         try {
           const userName = user?.firstName && user?.lastName 
             ? `${user.firstName} ${user.lastName}` 
@@ -772,6 +788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userName,
             userId,
             userEmail: user?.email || '',
+            jobId: String(jobContext.jobId || ''), // Include job ID for accurate tracking
             jobTitle: jobContext.jobTitle,
             jobDescription: jobContext.jobDescription,
             company: jobContext.company,

@@ -72,6 +72,7 @@ export interface AirtableJobApplication {
   userName: string;
   userId: string;
   userEmail: string;
+  jobId: string; // Job ID for accurate tracking
   jobTitle: string;
   jobDescription: string;
   company: string;
@@ -714,6 +715,7 @@ export class AirtableService {
             'User Name': applicationData.userName,
             'User ID': applicationData.userId,
             'User Email': applicationData.userEmail,
+            'Job ID': applicationData.jobId,
             'Job Title': applicationData.jobTitle,
             'Job Description': applicationData.jobDescription,
             'Company': applicationData.company,

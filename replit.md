@@ -123,6 +123,7 @@ Changelog:
 - July 5, 2025. Successfully configured dual-base Airtable system with field name mapping - job matches now properly detected from dedicated base (app1u4N2W46jD43mP) and automatically create 100% match job entries
 - July 7, 2025. Enhanced Airtable profile storage with beautiful formatting - profiles now stored with professional markdown-style formatting including headers, bold text, emojis, bullet points, and clear sections instead of raw JSON
 - July 7, 2025. Added email field integration to Airtable profile storage - all user profiles now include the user's email address in the "email" field alongside name, user ID, and formatted profile data
+- July 8, 2025. Enhanced job applications with Job ID tracking - added job ID field to both local database and Airtable job applications table for accurate job posting tracking and better data integrity
 ```
 
 ## User Preferences
