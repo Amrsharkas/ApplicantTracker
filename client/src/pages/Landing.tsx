@@ -2,6 +2,103 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Brain, Target, Zap, CheckCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+
+// Import company logos
+import moderatorLogo from "@assets/image_1752003560205.png";
+import quantaLogo from "@assets/image_1752003568386.png";
+import impleLogo from "@assets/image_1752003573875.png";
+import neuroLogo from "@assets/image_1752003578397.png";
+import polygonLogo from "@assets/image_1752003581991.png";
+import groveLogo from "@assets/image_1752003586635.png";
+import melaniteLogo from "@assets/image_1752003591909.png";
+
+// Company logos data
+const companyLogos = [
+  { name: "Moderator", logo: moderatorLogo },
+  { name: "Quanta", logo: quantaLogo },
+  { name: "Imple", logo: impleLogo },
+  { name: "Neuro", logo: neuroLogo },
+  { name: "Polygon", logo: polygonLogo },
+  { name: "Grove", logo: groveLogo },
+  { name: "Melanite", logo: melaniteLogo }
+];
+
+// Carousel component
+function CompanyCarousel() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % companyLogos.length);
+    }, 3000); // Change every 3 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.5 }}
+      className="text-center space-y-8 py-16"
+    >
+      <div className="space-y-4">
+        <h2 className="text-3xl font-bold text-slate-800">
+          Trusted by Industry Leaders
+        </h2>
+        <p className="text-lg text-slate-600 max-w-3xl mx-auto">
+          Forward-thinking companies are already transforming their hiring with our AI-powered platform, 
+          discovering exceptional talent faster than ever before.
+        </p>
+      </div>
+
+      <div className="flex justify-center items-center">
+        <div className="company-carousel w-64 h-32 p-8 mx-auto">
+          <div className="relative w-full h-full overflow-hidden">
+            <motion.div
+              key={currentIndex}
+              initial={{ opacity: 0, scale: 0.8, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: -10 }}
+              transition={{ duration: 0.8, ease: "easeInOut" }}
+              className="absolute inset-0 flex items-center justify-center"
+            >
+              <img
+                src={companyLogos[currentIndex].logo}
+                alt={companyLogos[currentIndex].name}
+                className="company-logo max-w-full max-h-full object-contain"
+              />
+            </motion.div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-center space-x-3">
+        {companyLogos.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrentIndex(index)}
+            className={`carousel-dot w-2 h-2 rounded-full ${
+              index === currentIndex 
+                ? 'active w-8' 
+                : 'bg-slate-300 hover:bg-slate-400'
+            }`}
+          />
+        ))}
+      </div>
+
+      <div className="text-center space-y-2">
+        <p className="text-slate-700 font-semibold text-lg">
+          "Revolutionary approach to talent acquisition"
+        </p>
+        <p className="text-slate-500 text-sm">
+          Join the companies shaping the future of hiring
+        </p>
+      </div>
+    </motion.div>
+  );
+}
 
 export default function Landing() {
   const handleLogin = () => {
@@ -197,6 +294,9 @@ export default function Landing() {
               </motion.div>
             </motion.div>
           </div>
+
+          {/* Company Carousel Section */}
+          <CompanyCarousel />
 
           {/* Bottom CTA Section */}
           <motion.div

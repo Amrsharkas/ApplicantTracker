@@ -119,4 +119,33 @@
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(5px);
   }
+
+  /* Company Carousel Styles */
+  .company-carousel {
+    position: relative;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  }
+
+  .company-logo {
+    filter: grayscale(30%) brightness(0.9);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .company-logo:hover {
+    filter: grayscale(0%) brightness(1);
+    transform: scale(1.05);
+  }
+
+  .carousel-dot {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .carousel-dot.active {
+    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
 }
