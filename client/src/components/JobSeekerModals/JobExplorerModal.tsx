@@ -7,8 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { MapPin, DollarSign, Building, Clock, Search, Briefcase } from "lucide-react";
 
 interface Job {
@@ -32,25 +30,10 @@ export function JobExplorerModal({ isOpen, onClose, onStartJobInterview }: JobEx
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useState("");
   const [jobType, setJobType] = useState("");
-  const { toast } = useToast();
 
   const { data: jobs = [], isLoading, error } = useQuery({
     queryKey: ["/api/jobs", { search: searchQuery, location, jobType }],
     enabled: isOpen,
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to view available positions.",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 1500);
-        return;
-      }
-      console.error("Error fetching jobs:", error);
-    },
   });
 
   const handleStartInterview = (job: Job) => {

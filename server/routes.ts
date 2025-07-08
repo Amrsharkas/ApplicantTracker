@@ -497,8 +497,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Job routes - Fetch from platojobpostings Airtable table
-  app.get('/api/jobs', isAuthenticated, async (req: any, res) => {
+  // Job routes - Fetch from platojobpostings Airtable table (public endpoint)
+  app.get('/api/jobs', async (req: any, res) => {
     try {
       const { search, location, experienceLevel, jobType } = req.query;
       
