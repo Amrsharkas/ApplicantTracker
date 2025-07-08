@@ -44,7 +44,7 @@ function CompanyCarousel() {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5 }}
-      className="text-center space-y-12 py-20"
+      className="text-center space-y-8 py-16"
     >
       <div className="space-y-6">
         <h2 className="text-4xl font-bold text-slate-800">
@@ -57,21 +57,21 @@ function CompanyCarousel() {
       </div>
 
       {/* 3D Carousel with Podium Effect */}
-      <div className="relative w-full h-64 flex items-center justify-center perspective-1000">
-        <div className="relative w-full max-w-6xl h-full">
+      <div className="relative w-full h-80 flex items-center justify-center perspective-1000 mb-8">
+        <div className="relative w-full max-w-5xl h-full flex items-center justify-center">
           {/* Left Logo */}
           <motion.div
             key={`left-${getPrevIndex()}`}
-            initial={{ opacity: 0, scale: 0.6, x: -100 }}
-            animate={{ opacity: 0.4, scale: 0.7, x: 0 }}
+            initial={{ opacity: 0, scale: 0.6, x: -50 }}
+            animate={{ opacity: 0.4, scale: 0.6, x: 0 }}
             transition={{ duration: 1, ease: "easeInOut" }}
-            className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10"
+            className="absolute left-8 top-1/2 transform -translate-y-1/2 z-10"
           >
-            <div className="w-48 h-32 flex items-center justify-center">
+            <div className="w-40 h-28 flex items-center justify-center">
               <img
                 src={companyLogos[getPrevIndex()].logo}
                 alt={companyLogos[getPrevIndex()].name}
-                className="max-w-full max-h-full object-contain filter blur-sm grayscale-50"
+                className="max-w-full max-h-full object-contain grayscale-50"
               />
             </div>
           </motion.div>
@@ -79,42 +79,40 @@ function CompanyCarousel() {
           {/* Center Logo (Main Focus) */}
           <motion.div
             key={`center-${currentIndex}`}
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 1.2, ease: "easeInOut" }}
-            className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"
+            className="relative z-20 flex items-center justify-center"
           >
-            <div className="company-carousel w-80 h-48 p-12 mx-auto">
-              <div className="relative w-full h-full overflow-hidden">
-                <img
-                  src={companyLogos[currentIndex].logo}
-                  alt={companyLogos[currentIndex].name}
-                  className="company-logo max-w-full max-h-full object-contain"
-                />
-              </div>
+            <div className="company-carousel w-96 h-64 p-16 flex items-center justify-center">
+              <img
+                src={companyLogos[currentIndex].logo}
+                alt={companyLogos[currentIndex].name}
+                className="company-logo max-w-full max-h-full object-contain"
+              />
             </div>
           </motion.div>
 
           {/* Right Logo */}
           <motion.div
             key={`right-${getNextIndex()}`}
-            initial={{ opacity: 0, scale: 0.6, x: 100 }}
-            animate={{ opacity: 0.4, scale: 0.7, x: 0 }}
+            initial={{ opacity: 0, scale: 0.6, x: 50 }}
+            animate={{ opacity: 0.4, scale: 0.6, x: 0 }}
             transition={{ duration: 1, ease: "easeInOut" }}
-            className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10"
+            className="absolute right-8 top-1/2 transform -translate-y-1/2 z-10"
           >
-            <div className="w-48 h-32 flex items-center justify-center">
+            <div className="w-40 h-28 flex items-center justify-center">
               <img
                 src={companyLogos[getNextIndex()].logo}
                 alt={companyLogos[getNextIndex()].name}
-                className="max-w-full max-h-full object-contain filter blur-sm grayscale-50"
+                className="max-w-full max-h-full object-contain grayscale-50"
               />
             </div>
           </motion.div>
         </div>
       </div>
 
-      <div className="flex justify-center space-x-3">
+      <div className="flex justify-center space-x-3 mt-4">
         {companyLogos.map((_, index) => (
           <button
             key={index}
