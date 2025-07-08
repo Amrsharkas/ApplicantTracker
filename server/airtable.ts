@@ -122,7 +122,7 @@ export class AirtableService {
     return formatted;
   }
 
-  async storeUserProfile(name: string, profileData: any, userId: string): Promise<void> {
+  async storeUserProfile(name: string, profileData: any, userId: string, email?: string): Promise<void> {
     if (!base) {
       console.warn('Airtable not configured, skipping profile storage');
       return;
@@ -131,21 +131,25 @@ export class AirtableService {
     try {
       const profileString = this.formatProfileForDisplay(profileData);
       
-      // Try to store with User ID field first
+      // Prepare the fields object
+      const fields: any = {
+        'Name': name,
+        'User profile': profileString,
+        'User ID': userId
+      };
+
+      // Add email if provided
+      if (email) {
+        fields['email'] = email;
+      }
+
+      // Try to store with all fields
       try {
-        await base!(TABLE_NAME).create([
-          {
-            fields: {
-              'Name': name,
-              'User profile': profileString,
-              'User ID': userId
-            }
-          }
-        ]);
-        console.log(`Successfully stored profile for ${name} (ID: ${userId}) in Airtable`);
+        await base!(TABLE_NAME).create([{ fields }]);
+        console.log(`Successfully stored profile for ${name} (ID: ${userId}, Email: ${email || 'N/A'}) in Airtable`);
       } catch (userIdError) {
-        // If User ID field doesn't exist, store without it
-        console.warn('User ID field not found, storing without User ID:', userIdError.message);
+        // If some fields don't exist, try with minimal fields
+        console.warn('Some fields not found, trying with minimal fields:', userIdError.message);
         await base!(TABLE_NAME).create([
           {
             fields: {
@@ -154,7 +158,7 @@ export class AirtableService {
             }
           }
         ]);
-        console.log(`Successfully stored profile for ${name} in Airtable (without User ID field)`);
+        console.log(`Successfully stored profile for ${name} in Airtable (minimal fields)`);
       }
     } catch (error) {
       console.error('Error storing profile in Airtable:', error);
