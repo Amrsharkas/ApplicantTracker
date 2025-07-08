@@ -121,6 +121,7 @@ Changelog:
 - July 5, 2025. Implemented dual-table Airtable system: "platouserprofiles" table stores interview completions, new "platojobmatches" table creates job matches for the Job Matches modal when employers accept candidates
 - July 5, 2025. Corrected workflow: "platouserprofiles" only stores interview data (no job processing), "platojobmatches" directly populates Job Matches modal with employer-selected matches (no scoring/AI needed)
 - July 5, 2025. Successfully configured dual-base Airtable system with field name mapping - job matches now properly detected from dedicated base (app1u4N2W46jD43mP) and automatically create 100% match job entries
+- July 7, 2025. Enhanced Airtable profile storage with beautiful formatting - profiles now stored with professional markdown-style formatting including headers, bold text, emojis, bullet points, and clear sections instead of raw JSON
 ```
 
 ## User Preferences

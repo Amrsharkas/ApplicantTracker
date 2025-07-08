@@ -52,6 +52,76 @@ export interface AirtableJobMatch {
 }
 
 export class AirtableService {
+  private formatProfileForDisplay(profileData: any): string {
+    const profile = typeof profileData === 'string' ? JSON.parse(profileData) : profileData;
+    
+    let formatted = '';
+    
+    // Header with name if available
+    formatted += '# 📋 **PROFESSIONAL PROFILE**\n\n';
+    
+    // Summary Section
+    if (profile.summary) {
+      formatted += '## 🎯 **EXECUTIVE SUMMARY**\n';
+      formatted += `${profile.summary}\n\n`;
+    }
+    
+    // Experience Section
+    if (profile.experience && profile.experience.length > 0) {
+      formatted += '## 💼 **PROFESSIONAL EXPERIENCE**\n';
+      profile.experience.forEach((exp: any, index: number) => {
+        formatted += `### ${exp.role}\n`;
+        formatted += `**Company:** ${exp.company}\n`;
+        formatted += `**Duration:** ${exp.duration}\n`;
+        formatted += `**Description:** ${exp.description}\n\n`;
+      });
+    }
+    
+    // Skills Section
+    if (profile.skills && profile.skills.length > 0) {
+      formatted += '## 🛠️ **CORE SKILLS & COMPETENCIES**\n';
+      const skillsPerRow = 3;
+      for (let i = 0; i < profile.skills.length; i += skillsPerRow) {
+        const skillsRow = profile.skills.slice(i, i + skillsPerRow);
+        formatted += skillsRow.map((skill: string) => `• **${skill}**`).join(' | ') + '\n';
+      }
+      formatted += '\n';
+    }
+    
+    // Strengths Section
+    if (profile.strengths && profile.strengths.length > 0) {
+      formatted += '## 💪 **KEY STRENGTHS**\n';
+      profile.strengths.forEach((strength: string) => {
+        formatted += `✓ **${strength}**\n`;
+      });
+      formatted += '\n';
+    }
+    
+    // Work Style Section
+    if (profile.workStyle) {
+      formatted += '## 🎨 **WORK STYLE & APPROACH**\n';
+      formatted += `${profile.workStyle}\n\n`;
+    }
+    
+    // Career Goals Section
+    if (profile.careerGoals) {
+      formatted += '## 🚀 **CAREER ASPIRATIONS**\n';
+      formatted += `${profile.careerGoals}\n\n`;
+    }
+    
+    // Personality Section
+    if (profile.personality) {
+      formatted += '## 🧠 **PERSONALITY & BEHAVIORAL INSIGHTS**\n';
+      formatted += `${profile.personality}\n\n`;
+    }
+    
+    // Footer
+    formatted += '---\n';
+    formatted += '*Profile generated through AI-powered interview analysis*';
+    
+    return formatted;
+  }
+
   async storeUserProfile(name: string, profileData: any, userId: string): Promise<void> {
     if (!base) {
       console.warn('Airtable not configured, skipping profile storage');
@@ -59,7 +129,7 @@ export class AirtableService {
     }
 
     try {
-      const profileString = JSON.stringify(profileData, null, 2);
+      const profileString = this.formatProfileForDisplay(profileData);
       
       // Try to store with User ID field first
       try {
