@@ -125,8 +125,17 @@ export function JobSearchModal({ isOpen, onClose, onStartJobInterview }: JobSear
                 <p className="text-slate-600 text-sm">Please try again or contact support if the issue persists.</p>
               </div>
             ) : jobs.length === 0 ? (
-              <div className="text-center py-8 text-slate-600">
-                No jobs found. Try adjusting your search criteria.
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">🦗</div>
+                <h3 className="text-xl font-semibold text-slate-700 mb-2">
+                  It's quieter than a library here!
+                </h3>
+                <p className="text-slate-600 mb-1">
+                  No job postings are currently available.
+                </p>
+                <p className="text-slate-500 text-sm">
+                  The jobs are probably still getting their coffee ☕
+                </p>
               </div>
             ) : (
               jobs.map((job: Job, index: number) => (
