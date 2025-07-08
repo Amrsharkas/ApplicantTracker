@@ -62,36 +62,51 @@ function CompanyCarousel() {
       </div>
 
       <div className="w-full px-6">
-        <div className="company-carousel w-full max-w-6xl h-64 p-16 mx-auto">
-          <div className="relative w-full h-full overflow-hidden">
-            {/* Main current logo */}
+        <div className="company-carousel w-full max-w-7xl h-72 p-20 mx-auto">
+          <div className="relative w-full h-full flex items-center justify-center">
+            {/* Previous logo (left side) */}
             <motion.div
-              key={currentIndex}
-              initial={{ opacity: 0, scale: 0.7, x: 60 }}
-              animate={{ opacity: 1, scale: 1, x: 0 }}
-              exit={{ opacity: 0, scale: 0.7, x: -60 }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
-              className="absolute inset-0 flex items-center justify-center z-10"
+              key={`prev-${currentIndex}`}
+              initial={{ opacity: 0, scale: 0.4, x: -200 }}
+              animate={{ opacity: 0.4, scale: 0.6, x: -300 }}
+              transition={{ duration: 1.2, ease: "easeInOut" }}
+              className="absolute left-8 flex items-center justify-center z-0"
+            >
+              <img
+                src={companyLogos[(currentIndex - 1 + companyLogos.length) % companyLogos.length].logo}
+                alt={companyLogos[(currentIndex - 1 + companyLogos.length) % companyLogos.length].name}
+                className="company-logo-small max-w-32 max-h-20 object-contain filter grayscale-50 blur-sm"
+              />
+            </motion.div>
+            
+            {/* Main current logo (center) */}
+            <motion.div
+              key={`current-${currentIndex}`}
+              initial={{ opacity: 0, scale: 0.6, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.6, y: -20 }}
+              transition={{ duration: 1.2, ease: "easeInOut" }}
+              className="flex items-center justify-center z-20"
             >
               <img
                 src={companyLogos[currentIndex].logo}
                 alt={companyLogos[currentIndex].name}
-                className="company-logo max-w-full max-h-full object-contain"
+                className="company-logo-main max-w-80 max-h-48 object-contain"
               />
             </motion.div>
             
-            {/* Preview of next logo */}
+            {/* Next logo (right side) */}
             <motion.div
-              key={`preview-${currentIndex}`}
-              initial={{ opacity: 0.2, scale: 0.6, x: 100 }}
-              animate={{ opacity: 0.3, scale: 0.7, x: 80 }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
-              className="absolute inset-0 flex items-center justify-center z-0"
+              key={`next-${currentIndex}`}
+              initial={{ opacity: 0, scale: 0.4, x: 200 }}
+              animate={{ opacity: 0.4, scale: 0.6, x: 300 }}
+              transition={{ duration: 1.2, ease: "easeInOut" }}
+              className="absolute right-8 flex items-center justify-center z-0"
             >
               <img
                 src={companyLogos[(currentIndex + 1) % companyLogos.length].logo}
                 alt={companyLogos[(currentIndex + 1) % companyLogos.length].name}
-                className="company-logo max-w-full max-h-full object-contain filter blur-sm"
+                className="company-logo-small max-w-32 max-h-20 object-contain filter grayscale-50 blur-sm"
               />
             </motion.div>
           </div>

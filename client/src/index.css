@@ -130,16 +130,26 @@
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
   }
 
-  .company-logo {
-    filter: grayscale(20%) brightness(0.95);
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    max-width: 300px;
-    max-height: 160px;
+  .company-logo-main {
+    filter: grayscale(0%) brightness(1);
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   }
 
-  .company-logo:hover {
-    filter: grayscale(0%) brightness(1);
-    transform: scale(1.08);
+  .company-logo-main:hover {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+  }
+
+  .company-logo-small {
+    filter: grayscale(60%) brightness(0.7);
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0.6;
+  }
+
+  .company-logo-small:hover {
+    filter: grayscale(30%) brightness(0.9);
+    transform: scale(1.1);
   }
 
   .carousel-dot {
