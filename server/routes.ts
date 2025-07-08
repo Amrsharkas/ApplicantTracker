@@ -557,7 +557,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
+  // Job postings routes
+  app.get('/api/job-postings', isAuthenticated, async (req: any, res) => {
+    try {
+      const jobPostings = await airtableService.getAllJobPostings();
+      res.json(jobPostings);
+    } catch (error) {
+      console.error("Error fetching job postings:", error);
+      res.status(500).json({ message: "Failed to fetch job postings" });
+    }
+  });
 
   // Airtable job monitoring routes
   app.post('/api/admin/process-airtable-jobs', async (req, res) => {

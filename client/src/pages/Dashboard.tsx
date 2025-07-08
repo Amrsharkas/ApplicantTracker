@@ -7,7 +7,8 @@ import {
   FileText, 
   TrendingUp,
   MessageCircle,
-  History
+  History,
+  Briefcase
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -17,6 +18,7 @@ import { ProfileModal } from "@/components/JobSeekerModals/ProfileModal";
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
 import { InterviewModal } from "@/components/JobSeekerModals/InterviewModal";
 import { InterviewHistoryModal } from "@/components/JobSeekerModals/InterviewHistoryModal";
+import { JobPostingsModal } from "@/components/JobSeekerModals/JobPostingsModal";
 
 export default function Dashboard() {
   const { user, isLoading } = useAuth();
@@ -319,6 +321,17 @@ export default function Dashboard() {
 
 
                 <button
+                  onClick={() => openModal('jobPostings')}
+                  className="bg-white rounded-lg p-6 border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-all text-left group"
+                >
+                  <div className="flex items-center space-x-3 mb-2">
+                    <Briefcase className="h-6 w-6 text-green-600 group-hover:scale-110 transition-transform" />
+                    <h4 className="text-lg font-semibold text-gray-900">View Job Postings</h4>
+                  </div>
+                  <p className="text-sm text-gray-600">Browse all available job opportunities from employers</p>
+                </button>
+
+                <button
                   onClick={() => openModal('interviewHistory')}
                   className="bg-white rounded-lg p-6 border border-gray-200 hover:border-orange-300 hover:bg-orange-50 transition-all text-left group"
                 >
@@ -391,6 +404,10 @@ export default function Dashboard() {
       />
       <ApplicationsModal 
         isOpen={activeModal === 'applications'} 
+        onClose={closeModal} 
+      />
+      <JobPostingsModal 
+        isOpen={activeModal === 'jobPostings'} 
         onClose={closeModal} 
       />
     </div>
