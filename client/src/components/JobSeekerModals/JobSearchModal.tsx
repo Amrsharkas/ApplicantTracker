@@ -13,17 +13,18 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { MapPin, DollarSign, Clock, Building } from "lucide-react";
 
 interface Job {
-  id: number;
+  id: string; // Changed to string for Airtable record IDs
   title: string;
   company: string;
   description: string;
   location: string;
+  salary?: string; // Changed to string for Airtable format
   salaryMin?: number;
   salaryMax?: number;
   experienceLevel?: string;
   skills?: string[];
   jobType?: string;
-  postedAt: string;
+  datePosted: string; // Changed from postedAt to datePosted
 }
 
 interface JobSearchModalProps {
@@ -34,17 +35,17 @@ interface JobSearchModalProps {
 export function JobSearchModal({ isOpen, onClose }: JobSearchModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useState("");
-  const [experienceLevel, setExperienceLevel] = useState("");
+  const [jobType, setJobType] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: jobs = [], isLoading } = useQuery({
-    queryKey: ["/api/jobs", { search: searchQuery, location, experienceLevel }],
+    queryKey: ["/api/jobs", { search: searchQuery, location, jobType }],
     enabled: isOpen,
   });
 
   const applyMutation = useMutation({
-    mutationFn: async (jobId: number) => {
+    mutationFn: async (jobId: string) => {
       await apiRequest("POST", "/api/applications", { jobId });
     },
     onSuccess: () => {
@@ -74,8 +75,12 @@ export function JobSearchModal({ isOpen, onClose }: JobSearchModalProps) {
     },
   });
 
-  const formatSalary = (min?: number, max?: number) => {
-    if (!min && !max) return "Salary not specified";
+  const formatSalary = (salary?: string, min?: number, max?: number) => {
+    // Use string salary if available (from Airtable)
+    if (salary && salary.trim() !== '') return salary;
+    
+    // Fallback to numeric format for backward compatibility
+    if (!min && !max) return "Competitive";
     if (min && max) return `$${(min / 1000).toFixed(0)}k - $${(max / 1000).toFixed(0)}k`;
     if (min) return `$${(min / 1000).toFixed(0)}k+`;
     return `Up to $${(max! / 1000).toFixed(0)}k`;
@@ -115,15 +120,17 @@ export function JobSearchModal({ isOpen, onClose }: JobSearchModalProps) {
               onChange={(e) => setLocation(e.target.value)}
               className="glass-card"
             />
-            <Select value={experienceLevel} onValueChange={setExperienceLevel}>
+            <Select value={jobType} onValueChange={setJobType}>
               <SelectTrigger className="glass-card">
-                <SelectValue placeholder="Experience Level" />
+                <SelectValue placeholder="Job Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Experience Levels</SelectItem>
-                <SelectItem value="Entry Level">Entry Level</SelectItem>
-                <SelectItem value="Mid Level">Mid Level</SelectItem>
-                <SelectItem value="Senior">Senior Level</SelectItem>
+                <SelectItem value="">All Job Types</SelectItem>
+                <SelectItem value="Full-time">Full-time</SelectItem>
+                <SelectItem value="Part-time">Part-time</SelectItem>
+                <SelectItem value="Contract">Contract</SelectItem>
+                <SelectItem value="Remote">Remote</SelectItem>
+                <SelectItem value="Hybrid">Hybrid</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -169,12 +176,17 @@ export function JobSearchModal({ isOpen, onClose }: JobSearchModalProps) {
                             </div>
                             <div className="flex items-center gap-1">
                               <DollarSign className="w-4 h-4" />
-                              <span>{formatSalary(job.salaryMin, job.salaryMax)}</span>
+                              <span>{formatSalary(job.salary, job.salaryMin, job.salaryMax)}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <Clock className="w-4 h-4" />
-                              <span>{formatDate(job.postedAt)}</span>
+                              <span>{formatDate(job.datePosted)}</span>
                             </div>
+                            {job.jobType && (
+                              <Badge variant="outline" className="text-xs">
+                                {job.jobType}
+                              </Badge>
+                            )}
                           </div>
 
                           {job.skills && job.skills.length > 0 && (

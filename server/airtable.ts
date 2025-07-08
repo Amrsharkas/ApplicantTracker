@@ -6,8 +6,10 @@ import { aiProfileAnalysisAgent } from './openai';
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
 const AIRTABLE_BASE_ID = 'app3tA4UpKQCT2s17'; // platouserprofiles base
 const AIRTABLE_JOB_MATCHES_BASE_ID = process.env.AIRTABLE_JOB_MATCHES_BASE_ID; // platojobmatches base
+const AIRTABLE_JOBS_BASE_ID = 'appCjIvd73lvp0oLf'; // jobs listing base
 const TABLE_NAME = 'Table 1'; // For user profiles
 const JOB_MATCHES_TABLE = 'Table 1'; // For job matches in the dedicated base
+const JOBS_TABLE = 'Table 1'; // For job listings
 
 if (!AIRTABLE_BASE_ID) {
   console.warn('AIRTABLE_BASE_ID not configured. Airtable integration will be disabled.');
@@ -26,6 +28,7 @@ Airtable.configure({
 
 const base = AIRTABLE_BASE_ID ? Airtable.base(AIRTABLE_BASE_ID) : null;
 const jobMatchesBase = AIRTABLE_JOB_MATCHES_BASE_ID ? Airtable.base(AIRTABLE_JOB_MATCHES_BASE_ID) : null;
+const jobsBase = AIRTABLE_JOBS_BASE_ID ? Airtable.base(AIRTABLE_JOBS_BASE_ID) : null;
 
 export interface AirtableUserProfile {
   name: string;
@@ -49,6 +52,17 @@ export interface AirtableJobMatch {
   jobTitle: string;
   jobDescription: string;
   companyName: string;
+}
+
+export interface AirtableJobListing {
+  recordId: string;
+  jobTitle: string;
+  jobDescription: string;
+  datePosted: string;
+  company: string;
+  jobType?: string;
+  salary?: string;
+  location?: string;
 }
 
 export class AirtableService {
@@ -620,6 +634,53 @@ export class AirtableService {
     reasons.push('Personalized job match from Airtable');
 
     return { score: Math.min(100, score), reasons };
+  }
+
+  // Method to fetch all job listings from the jobs base
+  async getAllJobListings(): Promise<AirtableJobListing[]> {
+    if (!jobsBase) {
+      console.log('📋 Jobs base not configured, returning empty jobs list');
+      return [];
+    }
+
+    try {
+      console.log('📋 Fetching all job listings from Airtable jobs base...');
+      
+      const records = await jobsBase(JOBS_TABLE).select({
+        maxRecords: 100, // Limit to prevent excessive API calls
+        sort: [{ field: 'Date posted', direction: 'desc' }] // Sort by newest first
+      }).all();
+
+      console.log(`📋 Found ${records.length} job records in Airtable`);
+
+      const jobListings: AirtableJobListing[] = records
+        .filter(record => {
+          const fields = record.fields;
+          // Require at minimum job title and description
+          return fields['Job title'] && fields['Job description'];
+        })
+        .map(record => {
+          const fields = record.fields;
+          
+          return {
+            recordId: record.id,
+            jobTitle: String(fields['Job title'] || ''),
+            jobDescription: String(fields['Job description'] || ''),
+            datePosted: String(fields['Date posted'] || new Date().toISOString()),
+            company: String(fields['Company'] || 'Company Name'),
+            jobType: String(fields['Job type'] || 'Full-time'),
+            salary: String(fields['Salary'] || ''),
+            location: String(fields['Location'] || 'Remote')
+          };
+        });
+
+      console.log(`📋 Processed ${jobListings.length} valid job listings`);
+      
+      return jobListings;
+    } catch (error) {
+      console.error('Error fetching job listings from Airtable:', error);
+      return [];
+    }
   }
 }
 

@@ -497,25 +497,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Job routes
+  // Job routes - Fetch from Airtable jobs base
   app.get('/api/jobs', isAuthenticated, async (req: any, res) => {
     try {
-      const { search, location, experienceLevel } = req.query;
+      const { search, location, experienceLevel, jobType } = req.query;
       
-      let jobs;
-      if (search || location || experienceLevel) {
-        jobs = await storage.searchJobs(
-          search as string,
-          location as string,
-          experienceLevel as string
+      // Fetch all jobs from Airtable
+      const allJobs = await airtableService.getAllJobListings();
+      
+      // Apply filters if provided
+      let filteredJobs = allJobs;
+      
+      if (search) {
+        const searchLower = (search as string).toLowerCase();
+        filteredJobs = filteredJobs.filter(job => 
+          job.jobTitle.toLowerCase().includes(searchLower) ||
+          job.jobDescription.toLowerCase().includes(searchLower) ||
+          job.company.toLowerCase().includes(searchLower)
         );
-      } else {
-        jobs = await storage.getAllJobs();
       }
+      
+      if (location) {
+        const locationLower = (location as string).toLowerCase();
+        filteredJobs = filteredJobs.filter(job => 
+          job.location?.toLowerCase().includes(locationLower)
+        );
+      }
+      
+      if (jobType) {
+        const jobTypeLower = (jobType as string).toLowerCase();
+        filteredJobs = filteredJobs.filter(job => 
+          job.jobType?.toLowerCase().includes(jobTypeLower)
+        );
+      }
+      
+      // Transform Airtable format to expected API format
+      const jobs = filteredJobs.map(job => ({
+        id: job.recordId,
+        title: job.jobTitle,
+        company: job.company,
+        description: job.jobDescription,
+        location: job.location || 'Remote',
+        jobType: job.jobType || 'Full-time',
+        salary: job.salary || 'Competitive',
+        datePosted: job.datePosted,
+        // Add some computed fields for compatibility
+        salaryMin: null,
+        salaryMax: null,
+        experienceLevel: 'mid',
+        skills: []
+      }));
       
       res.json(jobs);
     } catch (error) {
-      console.error("Error fetching jobs:", error);
+      console.error("Error fetching jobs from Airtable:", error);
       res.status(500).json({ message: "Failed to fetch jobs" });
     }
   });
@@ -575,9 +610,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/applications', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      let { jobId } = req.body;
+
+      // If jobId is a string (Airtable record ID), we need to create/find the corresponding database job
+      if (typeof jobId === 'string' && !jobId.match(/^\d+$/)) {
+        // This is an Airtable record ID, get the job data from Airtable
+        const allJobs = await airtableService.getAllJobListings();
+        const airtableJob = allJobs.find(job => job.recordId === jobId);
+        
+        if (!airtableJob) {
+          return res.status(404).json({ message: "Job not found" });
+        }
+        
+        // Create the job in our database
+        const dbJob = await storage.createJobFromAirtable({
+          title: airtableJob.jobTitle,
+          company: airtableJob.company,
+          description: airtableJob.jobDescription,
+          location: airtableJob.location || 'Remote',
+          experienceLevel: 'mid',
+          skills: [],
+          jobType: airtableJob.jobType || 'Full-time'
+        });
+        
+        jobId = dbJob.id;
+      }
+
       const applicationData = insertApplicationSchema.parse({
         ...req.body,
-        userId
+        userId,
+        jobId: parseInt(jobId.toString())
       });
 
       // Check if already applied
