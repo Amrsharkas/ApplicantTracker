@@ -644,15 +644,21 @@ export class AirtableService {
     }
 
     try {
+      console.log('📋 Fetching job postings from base:', process.env.AIRTABLE_JOB_POSTINGS_BASE_ID);
+      
       const records = await jobPostingsBase('Table 1').select({
         maxRecords: 100,
         sort: [{field: 'Posted Date', direction: 'desc'}]
       }).firstPage();
 
+      console.log(`📋 Found ${records.length} raw records in job postings table`);
+      
       const jobPostings: AirtableJobPosting[] = [];
 
       records.forEach(record => {
         const fields = record.fields as any;
+        console.log('📋 Processing record fields:', Object.keys(fields));
+        console.log('📋 Record data:', fields);
         
         // Extract job posting data from the record
         const jobPosting: AirtableJobPosting = {
@@ -668,6 +674,7 @@ export class AirtableService {
           postedDate: fields['Posted Date'] || fields['Date'] || new Date().toISOString()
         };
 
+        console.log('📋 Created job posting:', jobPosting);
         jobPostings.push(jobPosting);
       });
 
