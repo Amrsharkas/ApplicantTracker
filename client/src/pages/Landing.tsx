@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Brain, Target, Zap, CheckCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 
 
 // Import company logos
@@ -34,6 +35,15 @@ const companyLogos = [
 
 // Carousel component
 function CompanyCarousel() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % companyLogos.length);
+    }, 4000); // Slower transition - 4 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <motion.div
@@ -53,33 +63,51 @@ function CompanyCarousel() {
       </div>
 
       <div className="w-full px-4">
-        <div className="company-carousel w-full max-w-none h-80 p-24 mx-auto">
-          <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
-            {/* Create a seamless sliding track */}
+        <div className="company-carousel w-full max-w-6xl h-80 p-24 mx-auto">
+          <div className="relative w-full h-full flex items-center justify-center">
+            {/* Previous logo (left side) */}
             <motion.div
-              className="flex items-center justify-center space-x-32"
-              animate={{ x: [0, -400] }}
-              transition={{
-                duration: 3,
-                ease: "linear",
-                repeat: Infinity,
-                repeatType: "loop"
-              }}
+              key={`prev-${currentIndex}`}
+              initial={{ opacity: 0, scale: 0.5, x: -150 }}
+              animate={{ opacity: 0.6, scale: 0.7, x: -200 }}
+              transition={{ duration: 2.5, ease: "easeInOut" }}
+              className="absolute left-16 flex items-center justify-center z-10"
             >
-              {/* Render all logos multiple times for seamless loop */}
-              {[...Array(3)].map((_, setIndex) => (
-                <div key={setIndex} className="flex items-center space-x-32">
-                  {companyLogos.map((company, index) => (
-                    <div key={`${setIndex}-${index}`} className="flex-shrink-0">
-                      <img
-                        src={company.logo}
-                        alt={company.name}
-                        className="company-logo-seamless max-w-96 max-h-64 object-contain"
-                      />
-                    </div>
-                  ))}
-                </div>
-              ))}
+              <img
+                src={companyLogos[(currentIndex - 1 + companyLogos.length) % companyLogos.length].logo}
+                alt={companyLogos[(currentIndex - 1 + companyLogos.length) % companyLogos.length].name}
+                className="company-logo-side max-w-48 max-h-32 object-contain"
+              />
+            </motion.div>
+            
+            {/* Main current logo (center) */}
+            <motion.div
+              key={`current-${currentIndex}`}
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 2.5, ease: "easeInOut" }}
+              className="flex items-center justify-center z-20"
+            >
+              <img
+                src={companyLogos[currentIndex].logo}
+                alt={companyLogos[currentIndex].name}
+                className="company-logo-center max-w-96 max-h-60 object-contain"
+              />
+            </motion.div>
+            
+            {/* Next logo (right side) */}
+            <motion.div
+              key={`next-${currentIndex}`}
+              initial={{ opacity: 0, scale: 0.5, x: 150 }}
+              animate={{ opacity: 0.6, scale: 0.7, x: 200 }}
+              transition={{ duration: 2.5, ease: "easeInOut" }}
+              className="absolute right-16 flex items-center justify-center z-10"
+            >
+              <img
+                src={companyLogos[(currentIndex + 1) % companyLogos.length].logo}
+                alt={companyLogos[(currentIndex + 1) % companyLogos.length].name}
+                className="company-logo-side max-w-48 max-h-32 object-contain"
+              />
             </motion.div>
           </div>
         </div>
