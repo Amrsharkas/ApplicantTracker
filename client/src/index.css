@@ -123,16 +123,16 @@
   /* Company Carousel Styles */
   .company-carousel {
     position: relative;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 24px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.08);
   }
 
   .company-logo {
-    filter: grayscale(30%) brightness(0.9);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: grayscale(20%) brightness(0.95);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .company-logo:hover {
@@ -141,11 +141,31 @@
   }
 
   .carousel-dot {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .carousel-dot.active {
     background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+  }
+
+  /* 3D Perspective Effect */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  /* Side logo effects */
+  .filter {
+    filter: grayscale(60%) brightness(0.8) blur(1px);
+  }
+
+  .grayscale-50 {
+    filter: grayscale(50%) brightness(0.85) blur(1px);
+  }
+
+  /* Smooth transitions for 3D carousel */
+  .carousel-3d {
+    transform-style: preserve-3d;
+    transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }

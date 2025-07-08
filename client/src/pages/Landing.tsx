@@ -31,46 +31,86 @@ function CompanyCarousel() {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % companyLogos.length);
-    }, 3000); // Change every 3 seconds
+    }, 5000); // Change every 5 seconds (slower)
 
     return () => clearInterval(interval);
   }, []);
+
+  const getPrevIndex = () => (currentIndex - 1 + companyLogos.length) % companyLogos.length;
+  const getNextIndex = () => (currentIndex + 1) % companyLogos.length;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5 }}
-      className="text-center space-y-8 py-16"
+      className="text-center space-y-12 py-20"
     >
-      <div className="space-y-4">
-        <h2 className="text-3xl font-bold text-slate-800">
+      <div className="space-y-6">
+        <h2 className="text-4xl font-bold text-slate-800">
           Trusted by Industry Leaders
         </h2>
-        <p className="text-lg text-slate-600 max-w-3xl mx-auto">
+        <p className="text-xl text-slate-600 max-w-4xl mx-auto">
           Forward-thinking companies are already transforming their hiring with our AI-powered platform, 
           discovering exceptional talent faster than ever before.
         </p>
       </div>
 
-      <div className="flex justify-center items-center">
-        <div className="company-carousel w-64 h-32 p-8 mx-auto">
-          <div className="relative w-full h-full overflow-hidden">
-            <motion.div
-              key={currentIndex}
-              initial={{ opacity: 0, scale: 0.8, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: -10 }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
-              className="absolute inset-0 flex items-center justify-center"
-            >
+      {/* 3D Carousel with Podium Effect */}
+      <div className="relative w-full h-64 flex items-center justify-center perspective-1000">
+        <div className="relative w-full max-w-6xl h-full">
+          {/* Left Logo */}
+          <motion.div
+            key={`left-${getPrevIndex()}`}
+            initial={{ opacity: 0, scale: 0.6, x: -100 }}
+            animate={{ opacity: 0.4, scale: 0.7, x: 0 }}
+            transition={{ duration: 1, ease: "easeInOut" }}
+            className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10"
+          >
+            <div className="w-48 h-32 flex items-center justify-center">
               <img
-                src={companyLogos[currentIndex].logo}
-                alt={companyLogos[currentIndex].name}
-                className="company-logo max-w-full max-h-full object-contain"
+                src={companyLogos[getPrevIndex()].logo}
+                alt={companyLogos[getPrevIndex()].name}
+                className="max-w-full max-h-full object-contain filter blur-sm grayscale-50"
               />
-            </motion.div>
-          </div>
+            </div>
+          </motion.div>
+
+          {/* Center Logo (Main Focus) */}
+          <motion.div
+            key={`center-${currentIndex}`}
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 1.2, ease: "easeInOut" }}
+            className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"
+          >
+            <div className="company-carousel w-80 h-48 p-12 mx-auto">
+              <div className="relative w-full h-full overflow-hidden">
+                <img
+                  src={companyLogos[currentIndex].logo}
+                  alt={companyLogos[currentIndex].name}
+                  className="company-logo max-w-full max-h-full object-contain"
+                />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Right Logo */}
+          <motion.div
+            key={`right-${getNextIndex()}`}
+            initial={{ opacity: 0, scale: 0.6, x: 100 }}
+            animate={{ opacity: 0.4, scale: 0.7, x: 0 }}
+            transition={{ duration: 1, ease: "easeInOut" }}
+            className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10"
+          >
+            <div className="w-48 h-32 flex items-center justify-center">
+              <img
+                src={companyLogos[getNextIndex()].logo}
+                alt={companyLogos[getNextIndex()].name}
+                className="max-w-full max-h-full object-contain filter blur-sm grayscale-50"
+              />
+            </div>
+          </motion.div>
         </div>
       </div>
 
@@ -79,20 +119,20 @@ function CompanyCarousel() {
           <button
             key={index}
             onClick={() => setCurrentIndex(index)}
-            className={`carousel-dot w-2 h-2 rounded-full ${
+            className={`carousel-dot w-3 h-3 rounded-full ${
               index === currentIndex 
-                ? 'active w-8' 
+                ? 'active w-10' 
                 : 'bg-slate-300 hover:bg-slate-400'
             }`}
           />
         ))}
       </div>
 
-      <div className="text-center space-y-2">
-        <p className="text-slate-700 font-semibold text-lg">
+      <div className="text-center space-y-3">
+        <p className="text-slate-700 font-semibold text-xl">
           "Revolutionary approach to talent acquisition"
         </p>
-        <p className="text-slate-500 text-sm">
+        <p className="text-slate-500 text-base">
           Join the companies shaping the future of hiring
         </p>
       </div>

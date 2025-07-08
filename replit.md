@@ -124,6 +124,7 @@ Changelog:
 - July 7, 2025. Enhanced Airtable profile storage with beautiful formatting - profiles now stored with professional markdown-style formatting including headers, bold text, emojis, bullet points, and clear sections instead of raw JSON
 - July 7, 2025. Added email field integration to Airtable profile storage - all user profiles now include the user's email address in the "email" field alongside name, user ID, and formatted profile data
 - July 8, 2025. Removed job search functionality - eliminated "View Job Postings" button, JobSearchModal component, and all related API endpoints to focus solely on Airtable-based job matching system
+- July 8, 2025. Added 3D company carousel to homepage landing page with podium effect - center logo prominently displayed, side logos smaller and blurred, slower 5-second transitions, and persuasive messaging about successful company adoption
 ```
 
 ## User Preferences
