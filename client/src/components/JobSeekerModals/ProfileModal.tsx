@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/useAuth";
+import { isUnauthorizedError } from "@/lib/authUtils";
 import { Upload, User, FileText } from "lucide-react";
 
 const profileFormSchema = z.object({
@@ -38,11 +38,15 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
 
   const { data: profile, isLoading } = useQuery({
-    queryKey: ["/api/candidate/profile", { userId: user?.uid }],
-    enabled: isOpen && !!user,
+    queryKey: ["/api/candidate/profile"],
+    enabled: isOpen,
+  });
+
+  const { data: user } = useQuery({
+    queryKey: ["/api/auth/user"],
+    enabled: isOpen,
   });
 
   const form = useForm<ProfileFormData>({
@@ -79,10 +83,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
-      await apiRequest("POST", "/api/candidate/profile", {
-        ...data,
-        userId: user?.uid,
-      });
+      await apiRequest("POST", "/api/candidate/profile", data);
     },
     onSuccess: () => {
       toast({
@@ -93,6 +94,17 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/job-matches"] });
     },
     onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
       toast({
         title: "Update Failed",
         description: error.message || "Failed to update profile",
@@ -118,7 +130,6 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     try {
       const formData = new FormData();
       formData.append('resume', file);
-      formData.append('userId', user?.uid || '');
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout

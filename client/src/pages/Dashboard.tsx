@@ -8,12 +8,11 @@ import {
   FileText, 
   TrendingUp,
   MessageCircle,
-  History,
-  LogOut
+  History
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { signOutUser } from "@/lib/firebase";
-import { JobExplorerModal } from "@/components/JobSeekerModals/JobExplorerModal";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { JobSearchModal } from "@/components/JobSeekerModals/JobSearchModal";
 import { MatchesModal } from "@/components/JobSeekerModals/MatchesModal";
 import { ProfileModal } from "@/components/JobSeekerModals/ProfileModal";
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
@@ -24,43 +23,36 @@ export default function Dashboard() {
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [jobInterviewData, setJobInterviewData] = useState<any>(null);
 
   const { data: profile } = useQuery({
-    queryKey: ["/api/candidate/profile", { userId: user?.uid }],
+    queryKey: ["/api/candidate/profile"],
     retry: false,
     refetchOnWindowFocus: false,
-    enabled: !!user,
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+    },
   });
 
-  const handleSignOut = async () => {
-    try {
-      await signOutUser();
-      toast({
-        title: "Signed Out",
-        description: "You have been successfully signed out.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to sign out. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const { data: matches = [] } = useQuery({
-    queryKey: ["/api/job-matches", { userId: user?.uid }],
+    queryKey: ["/api/job-matches"],
     retry: false,
     refetchOnWindowFocus: false,
-    enabled: !!user,
   });
 
   const { data: applications = [] } = useQuery({
-    queryKey: ["/api/applications", { userId: user?.uid }],
+    queryKey: ["/api/applications"],
     retry: false,
     refetchOnWindowFocus: false,
-    enabled: !!user,
   });
 
   if (isLoading) {
@@ -77,12 +69,6 @@ export default function Dashboard() {
 
   const closeModal = () => {
     setActiveModal(null);
-    setJobInterviewData(null);
-  };
-
-  const handleStartJobInterview = (job: any) => {
-    setJobInterviewData(job);
-    setActiveModal('interview');
   };
 
   const profileProgress = profile?.completionPercentage || 0;
@@ -111,15 +97,14 @@ export default function Dashboard() {
                   <User className="h-4 w-4 text-white" />
                 </div>
                 <span className="text-sm font-medium text-gray-900">
-                  {user?.displayName || user?.email || 'Job Seeker'}
+                  {user?.firstName || 'Job Seeker'}
                 </span>
               </div>
               <button
-                onClick={handleSignOut}
-                className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                onClick={() => window.location.href = '/api/logout'}
+                className="text-sm text-gray-600 hover:text-gray-800"
               >
-                <LogOut className="h-4 w-4" />
-                <span>Sign Out</span>
+                Sign Out
               </button>
             </div>
           </div>
@@ -338,9 +323,9 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center space-x-3 mb-2">
                     <Search className="h-6 w-6 text-blue-600 group-hover:scale-110 transition-transform" />
-                    <h4 className="text-lg font-semibold text-gray-900">Explore Open Positions</h4>
+                    <h4 className="text-lg font-semibold text-gray-900">Search All Jobs</h4>
                   </div>
-                  <p className="text-sm text-gray-600">Discover jobs and start application interviews</p>
+                  <p className="text-sm text-gray-600">Browse and search all available opportunities</p>
                 </button>
 
                 <button
@@ -400,7 +385,6 @@ export default function Dashboard() {
       <InterviewModal 
         isOpen={activeModal === 'interview'} 
         onClose={closeModal} 
-        jobData={jobInterviewData}
       />
       <InterviewHistoryModal 
         isOpen={activeModal === 'interviewHistory'} 
@@ -410,10 +394,9 @@ export default function Dashboard() {
           openModal('interview');
         }}
       />
-      <JobExplorerModal 
+      <JobSearchModal 
         isOpen={activeModal === 'jobSearch'} 
         onClose={closeModal} 
-        onStartJobInterview={handleStartJobInterview}
       />
       <MatchesModal 
         isOpen={activeModal === 'matches'} 

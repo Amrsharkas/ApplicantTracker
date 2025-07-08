@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { aiInterviewService, aiProfileAnalysisAgent, aiJobInterviewAgent } from "./openai";
+import { aiInterviewService, aiProfileAnalysisAgent } from "./openai";
 import { airtableService } from "./airtable";
 import multer from "multer";
 import { z } from "zod";
@@ -14,60 +14,25 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Firebase auth routes
-  app.post('/api/auth/register', async (req: any, res) => {
+  // Auth middleware
+  await setupAuth(app);
+
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const { uid, email, displayName, photoURL } = req.body;
-      
-      if (!uid || !email) {
-        return res.status(400).json({ message: "Missing required user data" });
-      }
-
-      const parsedName = displayName ? displayName.trim().split(" ") : ["", ""];
-      
-      // Upsert user in database
-      const user = await storage.upsertUser({
-        id: uid,
-        email,
-        displayName: displayName || null,
-        firstName: parsedName[0] || "",
-        lastName: parsedName.slice(1).join(" ") || "",
-        profileImageUrl: photoURL || null,
-      });
-
-      res.json(user);
-    } catch (error) {
-      console.error("User registration error:", error);
-      res.status(500).json({ message: "Failed to register user" });
-    }
-  });
-
-  app.get('/api/auth/user', async (req: any, res) => {
-    try {
-      const authHeader = req.headers.authorization;
-      
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
-      const token = authHeader.split(' ')[1];
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const userId = payload.user_id || payload.sub;
-      
+      const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
-      res.status(401).json({ message: "Unauthorized" });
+      res.status(500).json({ message: "Failed to fetch user" });
     }
   });
 
   // Profile routes
-  app.get('/api/candidate/profile', async (req: any, res) => {
+  app.get('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
     try {
-      // For now, make this endpoint public - Firebase auth will be handled on frontend
-      // In production, add proper Firebase token validation
-      const userId = req.query.userId || 'test-user';
+      const userId = req.user.claims.sub;
       const profile = await storage.getApplicantProfile(userId);
       res.json(profile || null);
     } catch (error) {
@@ -76,10 +41,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/candidate/profile', async (req: any, res) => {
+  app.post('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
     try {
-      // For now, make this endpoint public - Firebase auth will be handled on frontend
-      const userId = req.body.userId || 'test-user';
+      const userId = req.user.claims.sub;
       const profileData = insertApplicantProfileSchema.parse({
         ...req.body,
         userId
@@ -96,9 +60,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Resume upload route
-  app.post('/api/candidate/resume', upload.single('resume'), async (req: any, res) => {
+  app.post('/api/candidate/resume', isAuthenticated, upload.single('resume'), async (req: any, res) => {
     try {
-      const userId = req.body.userId || 'test-user';
+      const userId = req.user.claims.sub;
       
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -219,9 +183,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Interview routes
-  app.post('/api/interview/start', async (req: any, res) => {
+  app.post('/api/interview/start', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.body.userId || 'test-user';
+      const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
@@ -262,9 +226,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/respond', async (req: any, res) => {
+  app.post('/api/interview/respond', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.body.userId || 'test-user';
+      const userId = req.user.claims.sub;
       const { sessionId, question, answer } = req.body;
 
       const session = await storage.getInterviewSession(userId);
@@ -367,9 +331,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/complete-voice', async (req: any, res) => {
+  app.post('/api/interview/complete-voice', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.body.userId || 'test-user';
+      const userId = req.user.claims.sub;
       const { conversationHistory } = req.body;
 
       if (!conversationHistory || !Array.isArray(conversationHistory)) {
@@ -439,9 +403,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/interview/session', async (req: any, res) => {
+  app.get('/api/interview/session', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.query.userId || 'test-user';
+      const userId = req.user.claims.sub;
       const session = await storage.getInterviewSession(userId);
       res.json(session);
     } catch (error) {
@@ -450,9 +414,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/interview/history', async (req: any, res) => {
+  app.get('/api/interview/history', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.query.userId || 'test-user';
+      const userId = req.user.claims.sub;
       const history = await storage.getInterviewHistory(userId);
       res.json(history);
     } catch (error) {
@@ -461,9 +425,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/voice-submit', async (req: any, res) => {
+  app.post('/api/interview/voice-submit', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.body.userId || 'test-user';
+      const userId = req.user.claims.sub;
       const { responses, conversationHistory } = req.body;
 
       // Get user and profile data
@@ -533,84 +497,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Job routes - Fetch from platojobpostings Airtable table (public endpoint)
-  app.get('/api/jobs', async (req: any, res) => {
+  // Job routes
+  app.get('/api/jobs', isAuthenticated, async (req: any, res) => {
     try {
-      const { search, location, experienceLevel, jobType } = req.query;
+      const { search, location, experienceLevel } = req.query;
       
-      console.log("🔍 Fetching jobs from platojobpostings table...");
-      
-      // Import Airtable directly to fetch from platojobpostings
-      const Airtable = await import('airtable');
-      const airtable = new Airtable.default({
-        endpointUrl: 'https://api.airtable.com',
-        apiKey: process.env.AIRTABLE_API_KEY
-      });
-      
-      // Use platojobpostings base (appCjIvd73lvp0oLf)
-      const jobPostingsBase = airtable.base('appCjIvd73lvp0oLf');
-      
-      const records = await jobPostingsBase('Table 1').select({
-        view: 'Grid view'
-      }).all();
-      
-      console.log(`📋 Found ${records.length} job records in platojobpostings`);
-      
-      // Transform records to API format
-      let jobs = records
-        .filter(record => {
-          const fields = record.fields;
-          return fields['Job title'] && fields['Job description']; // Basic validation
-        })
-        .map(record => {
-          const fields = record.fields;
-          return {
-            id: record.id,
-            title: String(fields['Job title'] || ''),
-            company: String(fields['Company'] || 'Company'),
-            description: String(fields['Job description'] || ''),
-            location: String(fields['Location'] || 'Remote'),
-            jobType: String(fields['Job type'] || 'Full-time'),
-            salary: String(fields['Salary'] || 'Competitive'),
-            datePosted: String(fields['Date Posted'] || new Date().toISOString()),
-            experienceLevel: 'All levels',
-            skills: []
-          };
-        });
-      
-      // Apply filters if provided
-      if (search) {
-        const searchLower = (search as string).toLowerCase();
-        jobs = jobs.filter(job => 
-          job.title.toLowerCase().includes(searchLower) ||
-          job.description.toLowerCase().includes(searchLower) ||
-          job.company.toLowerCase().includes(searchLower)
+      let jobs;
+      if (search || location || experienceLevel) {
+        jobs = await storage.searchJobs(
+          search as string,
+          location as string,
+          experienceLevel as string
         );
+      } else {
+        jobs = await storage.getAllJobs();
       }
       
-      if (location) {
-        const locationLower = (location as string).toLowerCase();
-        jobs = jobs.filter(job => 
-          job.location.toLowerCase().includes(locationLower)
-        );
-      }
-      
-      if (jobType) {
-        const jobTypeLower = (jobType as string).toLowerCase();
-        jobs = jobs.filter(job => 
-          job.jobType.toLowerCase().includes(jobTypeLower)
-        );
-      }
-      
-      console.log(`✅ Returning ${jobs.length} filtered jobs`);
       res.json(jobs);
     } catch (error) {
-      console.error("Error fetching jobs from platojobpostings:", error);
-      res.status(500).json({ message: "Failed to fetch jobs from platojobpostings table" });
+      console.error("Error fetching jobs:", error);
+      res.status(500).json({ message: "Failed to fetch jobs" });
     }
   });
 
-  app.get('/api/jobs/:id', async (req: any, res) => {
+  app.get('/api/jobs/:id', isAuthenticated, async (req: any, res) => {
     try {
       const jobId = parseInt(req.params.id);
       const job = await storage.getJob(jobId);
@@ -627,9 +537,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Job matches routes
-  app.get('/api/job-matches', async (req: any, res) => {
+  app.get('/api/job-matches', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.query.userId || 'test-user';
+      const userId = req.user.claims.sub;
       const matches = await storage.getJobMatches(userId);
       res.json(matches);
     } catch (error) {
@@ -638,9 +548,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/job-matches/refresh', async (req: any, res) => {
+  app.post('/api/job-matches/refresh', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.body.userId || 'test-user';
+      const userId = req.user.claims.sub;
       await storage.calculateJobMatches(userId);
       const matches = await storage.getJobMatches(userId);
       res.json(matches);
@@ -651,9 +561,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Application routes
-  app.get('/api/applications', async (req: any, res) => {
+  app.get('/api/applications', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.query.userId || 'test-user';
+      const userId = req.user.claims.sub;
       const applications = await storage.getApplications(userId);
       res.json(applications);
     } catch (error) {
@@ -662,39 +572,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/applications', async (req: any, res) => {
+  app.post('/api/applications', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.body.userId || 'test-user';
-      let { jobId } = req.body;
-
-      // If jobId is a string (Airtable record ID), we need to create/find the corresponding database job
-      if (typeof jobId === 'string' && !jobId.match(/^\d+$/)) {
-        // This is an Airtable record ID, get the job data from Airtable
-        const allJobs = await airtableService.getAllJobListings();
-        const airtableJob = allJobs.find(job => job.recordId === jobId);
-        
-        if (!airtableJob) {
-          return res.status(404).json({ message: "Job not found" });
-        }
-        
-        // Create the job in our database
-        const dbJob = await storage.createJobFromAirtable({
-          title: airtableJob.jobTitle,
-          company: airtableJob.company,
-          description: airtableJob.jobDescription,
-          location: airtableJob.location || 'Remote',
-          experienceLevel: 'mid',
-          skills: [],
-          jobType: airtableJob.jobType || 'Full-time'
-        });
-        
-        jobId = dbJob.id;
-      }
-
+      const userId = req.user.claims.sub;
       const applicationData = insertApplicationSchema.parse({
         ...req.body,
-        userId,
-        jobId: parseInt(jobId.toString())
+        userId
       });
 
       // Check if already applied
@@ -708,166 +591,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating application:", error);
       res.status(500).json({ message: "Failed to create application" });
-    }
-  });
-
-  // Job Application Interview Routes
-  app.post('/api/job-interview/start', async (req: any, res) => {
-    try {
-      const userId = req.body.userId || 'test-user';
-      const { jobId, jobTitle, jobDescription, company } = req.body;
-
-      if (!jobTitle || !jobDescription) {
-        return res.status(400).json({ message: "Job title and description are required" });
-      }
-
-      // Get user profile for context
-      const [user, profile] = await Promise.all([
-        storage.getUser(userId),
-        storage.getApplicantProfile(userId)
-      ]);
-
-      if (!profile) {
-        return res.status(400).json({ message: "Please complete your profile first" });
-      }
-
-      // Generate job-specific interview questions
-      const questions = await aiJobInterviewAgent.generateJobSpecificQuestions(
-        jobTitle,
-        jobDescription,
-        { ...user, ...profile }
-      );
-
-      // Create interview session titled for the company
-      const session = await storage.createInterviewSession({
-        userId,
-        sessionData: { 
-          questions, 
-          responses: [], 
-          currentQuestionIndex: 0,
-          jobContext: { jobId, jobTitle, jobDescription, company }
-        },
-        isCompleted: false
-      });
-
-      res.json({ 
-        sessionId: session.id, 
-        questions,
-        firstQuestion: questions[0]?.question || "Tell me about your interest in this position.",
-        company
-      });
-    } catch (error) {
-      console.error("Error starting job interview:", error);
-      res.status(500).json({ message: "Failed to start job interview" });
-    }
-  });
-
-  app.post('/api/job-interview/submit', async (req: any, res) => {
-    try {
-      const userId = req.body.userId || 'test-user';
-      const { sessionId, responses } = req.body;
-
-      if (!sessionId || !responses || responses.length === 0) {
-        return res.status(400).json({ message: "Session ID and responses are required" });
-      }
-
-      // Get interview session
-      const session = await storage.getInterviewSession(userId);
-      if (!session || session.id !== sessionId) {
-        return res.status(404).json({ message: "Interview session not found" });
-      }
-
-      const jobContext = session.sessionData.jobContext;
-      if (!jobContext) {
-        return res.status(400).json({ message: "Job context not found in interview session" });
-      }
-
-      // Get user profile for evaluation
-      const [user, profile] = await Promise.all([
-        storage.getUser(userId),
-        storage.getApplicantProfile(userId)
-      ]);
-
-      // Evaluate job fitness
-      const evaluation = await aiJobInterviewAgent.evaluateJobFitness(
-        jobContext.jobTitle,
-        jobContext.jobDescription,
-        { ...user, ...profile },
-        responses
-      );
-
-      // Mark interview as completed
-      await storage.updateInterviewSession(sessionId, {
-        sessionData: {
-          ...session.sessionData,
-          responses,
-          isComplete: true,
-          evaluation
-        },
-        isCompleted: true
-      });
-
-      // If approved, store in both local database and Airtable
-      if (evaluation.isApproved) {
-        // Store in local database
-        try {
-          const applicationData = {
-            userId,
-            jobId: parseInt(String(jobContext.jobId)),
-            status: 'applied' as const,
-            notes: `Interview score: ${evaluation.score}. ${evaluation.feedback}`
-          };
-
-          await storage.createApplication(applicationData);
-          console.log(`✅ Successfully stored local application for user ${userId}`);
-        } catch (dbError) {
-          console.error('Failed to store application in local database:', dbError);
-        }
-
-        // Store in Airtable
-        try {
-          const userName = user?.firstName && user?.lastName 
-            ? `${user.firstName} ${user.lastName}` 
-            : user?.email || `User ${userId}`;
-
-          // Create comprehensive user profile for application
-          const userProfileData = {
-            basicInfo: { ...user, ...profile },
-            interviewResponses: responses,
-            evaluationScore: evaluation.score,
-            strengths: evaluation.strengths || [],
-            overallFeedback: evaluation.overallFeedback || ''
-          };
-
-          await airtableService.storeJobApplication({
-            userName,
-            userId,
-            userEmail: user?.email || '',
-            jobId: String(jobContext.jobId || ''), // Include job ID for accurate tracking
-            jobTitle: jobContext.jobTitle,
-            jobDescription: jobContext.jobDescription,
-            company: jobContext.company,
-            userProfile: JSON.stringify(userProfileData, null, 2),
-            interviewScore: evaluation.score,
-            applicationDate: new Date().toISOString()
-          });
-
-          console.log(`✅ Successfully stored job application for user ${userId} to ${jobContext.company}`);
-        } catch (airtableError) {
-          console.error('Failed to store application in Airtable:', airtableError);
-          // Don't fail the entire request if Airtable fails
-        }
-      }
-
-      res.json({ 
-        evaluation,
-        message: evaluation.feedback,
-        approved: evaluation.isApproved,
-        score: evaluation.score
-      });
-    } catch (error) {
-      console.error("Error submitting job interview:", error);
-      res.status(500).json({ message: "Failed to submit job interview" });
     }
   });
 

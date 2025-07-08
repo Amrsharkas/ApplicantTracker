@@ -7,7 +7,6 @@ interface RealtimeAPIOptions {
   onAudioEnd?: () => void;
   onError?: (error: Error) => void;
   userProfile?: any;
-  jobData?: any; // For job-specific interviews
 }
 
 export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
@@ -111,8 +110,8 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
         setIsConnected(true);
         setIsConnecting(false);
         
-        // Generate dynamic instructions based on user profile and job context
-        const buildInstructions = (userProfile: any, jobData: any) => {
+        // Generate dynamic instructions based on user profile
+        const buildInstructions = (userProfile: any) => {
           const profileContext = userProfile ? `
 
 CANDIDATE BACKGROUND:
@@ -126,40 +125,7 @@ ${userProfile.resumeUrl ? `NOTE: The candidate has uploaded a resume. Use this b
 
 Use this information to tailor your questions and make them more specific to their background. Reference their experience and current situation when appropriate.` : '';
 
-          const jobContext = jobData ? `
-
-JOB DETAILS:
-Position: ${jobData.title}
-Company: ${jobData.company}
-Location: ${jobData.location || 'Not specified'}
-Job Description: ${jobData.description}
-
-This is a JOB-SPECIFIC INTERVIEW. Focus on evaluating how well the candidate fits this specific role and company.` : '';
-
-          if (jobData) {
-            // Job-specific interview (2 questions)
-            return `You are an AI interviewer conducting a job-specific interview for the position of ${jobData.title} at ${jobData.company}. Your goal is to assess the candidate's fit for this specific role through exactly 2 focused questions.${profileContext}${jobContext}
-
-The 2 questions to ask in order:
-1. "I'd like to understand why you're interested in this ${jobData.title} role at ${jobData.company}. What draws you to this position and how does it align with your career goals?"
-2. "Based on the job requirements, can you tell me about your relevant experience and skills that make you a strong candidate for this ${jobData.title} position?"
-
-Key guidelines:
-- Start with a warm greeting mentioning the specific role and company
-- Be conversational and encouraging, not robotic
-- Listen carefully to their responses and show genuine interest
-- Reference their background information to make questions more relevant
-- Keep the conversation focused on job fit and role suitability
-- After each answer, acknowledge what they shared before moving to the next question
-- Speak clearly and at a natural pace
-- ALWAYS respond after the user speaks - never stay silent
-- After question 2, thank them warmly and use the word "conclude" ONLY in your final response to signal the interview is complete. For example: "Thank you for sharing your thoughts about this ${jobData.title} role. This concludes our interview today, and I have everything I need to evaluate your application."
-- IMPORTANT: Only use the word "conclude" in your very last response when the interview is finished. Never use this word at any other time during the conversation.
-
-This focused approach ensures we understand their fit for this specific role while respecting their time.`;
-          } else {
-            // Regular profile interview (5 questions)
-            return `You are an AI interviewer conducting a focused professional interview. Your goal is to understand the candidate on both a personal and professional level through exactly 5 structured questions.${profileContext}
+          return `You are an AI interviewer conducting a focused professional interview. Your goal is to understand the candidate on both a personal and professional level through exactly 5 structured questions.${profileContext}
 
 The 5 questions to ask in order:
 1. "Let's start with you as a person - tell me about your background and what led you to your current career path?"
@@ -181,7 +147,6 @@ Key guidelines:
 - IMPORTANT: Only use the word "conclude" in your very last response when the interview is finished. Never use this word at any other time during the conversation.
 
 This focused approach ensures we understand them comprehensively while respecting their time.`;
-          }
         };
 
         // Initialize session with interview-specific settings
@@ -189,7 +154,7 @@ This focused approach ensures we understand them comprehensively while respectin
           type: 'session.update',
           session: {
             modalities: ['text', 'audio'],
-            instructions: buildInstructions(options.userProfile, options.jobData),
+            instructions: buildInstructions(options.userProfile),
             voice: 'verse',
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',

@@ -27,11 +27,10 @@ export const sessions = pgTable(
 
 // User storage table (mandatory for Replit Auth)
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().notNull(), // Firebase UID
+  id: varchar("id").primaryKey().notNull(),
   email: varchar("email").unique(),
-  displayName: varchar("display_name"),
-  firstName: varchar("first_name"), // Parsed from displayName
-  lastName: varchar("last_name"), // Parsed from displayName  
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").default("applicant"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -190,9 +189,7 @@ export const insertInterviewSessionSchema = createInsertSchema(interviewSessions
 });
 
 // Types
-export type UpsertUser = typeof users.$inferInsert & {
-  displayName?: string | null;
-};
+export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type InsertApplicantProfile = z.infer<typeof insertApplicantProfileSchema>;
 export type ApplicantProfile = typeof applicantProfiles.$inferSelect;
