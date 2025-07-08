@@ -14,18 +14,51 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
-
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Firebase auth routes
+  app.post('/api/auth/register', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const { uid, email, displayName, photoURL } = req.body;
+      
+      if (!uid || !email) {
+        return res.status(400).json({ message: "Missing required user data" });
+      }
+
+      const parsedName = displayName ? displayName.trim().split(" ") : ["", ""];
+      
+      // Upsert user in database
+      const user = await storage.upsertUser({
+        id: uid,
+        email,
+        displayName: displayName || null,
+        firstName: parsedName[0] || "",
+        lastName: parsedName.slice(1).join(" ") || "",
+        profileImageUrl: photoURL || null,
+      });
+
+      res.json(user);
+    } catch (error) {
+      console.error("User registration error:", error);
+      res.status(500).json({ message: "Failed to register user" });
+    }
+  });
+
+  app.get('/api/auth/user', async (req: any, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const token = authHeader.split(' ')[1];
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const userId = payload.user_id || payload.sub;
+      
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
+      res.status(401).json({ message: "Unauthorized" });
     }
   });
 

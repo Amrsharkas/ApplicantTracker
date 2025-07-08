@@ -8,10 +8,11 @@ import {
   FileText, 
   TrendingUp,
   MessageCircle,
-  History
+  History,
+  LogOut
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
+import { signOutUser } from "@/lib/firebase";
 import { JobExplorerModal } from "@/components/JobSeekerModals/JobExplorerModal";
 import { MatchesModal } from "@/components/JobSeekerModals/MatchesModal";
 import { ProfileModal } from "@/components/JobSeekerModals/ProfileModal";
@@ -29,20 +30,24 @@ export default function Dashboard() {
     queryKey: ["/api/candidate/profile"],
     retry: false,
     refetchOnWindowFocus: false,
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-    },
+    enabled: !!user,
   });
+
+  const handleSignOut = async () => {
+    try {
+      await signOutUser();
+      toast({
+        title: "Signed Out",
+        description: "You have been successfully signed out.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const { data: matches = [] } = useQuery({
     queryKey: ["/api/job-matches"],
@@ -104,14 +109,15 @@ export default function Dashboard() {
                   <User className="h-4 w-4 text-white" />
                 </div>
                 <span className="text-sm font-medium text-gray-900">
-                  {user?.firstName || 'Job Seeker'}
+                  {user?.displayName || user?.email || 'Job Seeker'}
                 </span>
               </div>
               <button
-                onClick={() => window.location.href = '/api/logout'}
-                className="text-sm text-gray-600 hover:text-gray-800"
+                onClick={handleSignOut}
+                className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
               >
-                Sign Out
+                <LogOut className="h-4 w-4" />
+                <span>Sign Out</span>
               </button>
             </div>
           </div>
