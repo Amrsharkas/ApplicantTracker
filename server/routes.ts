@@ -497,61 +497,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Job routes - Fetch from Airtable jobs base
+  // Job routes - Fetch from platojobpostings Airtable table
   app.get('/api/jobs', isAuthenticated, async (req: any, res) => {
     try {
       const { search, location, experienceLevel, jobType } = req.query;
       
-      // Fetch all jobs from Airtable
-      const allJobs = await airtableService.getAllJobListings();
+      console.log("🔍 Fetching jobs from platojobpostings table...");
+      
+      // Import Airtable directly to fetch from platojobpostings
+      const Airtable = await import('airtable');
+      const airtable = new Airtable.default({
+        endpointUrl: 'https://api.airtable.com',
+        apiKey: process.env.AIRTABLE_API_KEY
+      });
+      
+      // Use platojobpostings base (appCjIvd73lvp0oLf)
+      const jobPostingsBase = airtable.base('appCjIvd73lvp0oLf');
+      
+      const records = await jobPostingsBase('Table 1').select({
+        view: 'Grid view'
+      }).all();
+      
+      console.log(`📋 Found ${records.length} job records in platojobpostings`);
+      
+      // Transform records to API format
+      let jobs = records
+        .filter(record => {
+          const fields = record.fields;
+          return fields['Job title'] && fields['Job description']; // Basic validation
+        })
+        .map(record => {
+          const fields = record.fields;
+          return {
+            id: record.id,
+            title: String(fields['Job title'] || ''),
+            company: String(fields['Company'] || 'Company'),
+            description: String(fields['Job description'] || ''),
+            location: String(fields['Location'] || 'Remote'),
+            jobType: String(fields['Job type'] || 'Full-time'),
+            salary: String(fields['Salary'] || 'Competitive'),
+            datePosted: String(fields['Date Posted'] || new Date().toISOString()),
+            experienceLevel: 'All levels',
+            skills: []
+          };
+        });
       
       // Apply filters if provided
-      let filteredJobs = allJobs;
-      
       if (search) {
         const searchLower = (search as string).toLowerCase();
-        filteredJobs = filteredJobs.filter(job => 
-          job.jobTitle.toLowerCase().includes(searchLower) ||
-          job.jobDescription.toLowerCase().includes(searchLower) ||
+        jobs = jobs.filter(job => 
+          job.title.toLowerCase().includes(searchLower) ||
+          job.description.toLowerCase().includes(searchLower) ||
           job.company.toLowerCase().includes(searchLower)
         );
       }
       
       if (location) {
         const locationLower = (location as string).toLowerCase();
-        filteredJobs = filteredJobs.filter(job => 
-          job.location?.toLowerCase().includes(locationLower)
+        jobs = jobs.filter(job => 
+          job.location.toLowerCase().includes(locationLower)
         );
       }
       
       if (jobType) {
         const jobTypeLower = (jobType as string).toLowerCase();
-        filteredJobs = filteredJobs.filter(job => 
-          job.jobType?.toLowerCase().includes(jobTypeLower)
+        jobs = jobs.filter(job => 
+          job.jobType.toLowerCase().includes(jobTypeLower)
         );
       }
       
-      // Transform Airtable format to expected API format
-      const jobs = filteredJobs.map(job => ({
-        id: job.recordId,
-        title: job.jobTitle,
-        company: job.company,
-        description: job.jobDescription,
-        location: job.location || 'Remote',
-        jobType: job.jobType || 'Full-time',
-        salary: job.salary || 'Competitive',
-        datePosted: job.datePosted,
-        // Add some computed fields for compatibility
-        salaryMin: null,
-        salaryMax: null,
-        experienceLevel: 'mid',
-        skills: []
-      }));
-      
+      console.log(`✅ Returning ${jobs.length} filtered jobs`);
       res.json(jobs);
     } catch (error) {
-      console.error("Error fetching jobs from Airtable:", error);
-      res.status(500).json({ message: "Failed to fetch jobs" });
+      console.error("Error fetching jobs from platojobpostings:", error);
+      res.status(500).json({ message: "Failed to fetch jobs from platojobpostings table" });
     }
   });
 

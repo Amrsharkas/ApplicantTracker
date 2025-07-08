@@ -40,7 +40,7 @@ export function JobSearchModal({ isOpen, onClose, onStartJobInterview }: JobSear
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: jobs = [], isLoading } = useQuery({
+  const { data: jobs = [], isLoading, error } = useQuery({
     queryKey: ["/api/jobs", { search: searchQuery, location, jobType }],
     enabled: isOpen,
   });
@@ -79,7 +79,7 @@ export function JobSearchModal({ isOpen, onClose, onStartJobInterview }: JobSear
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-slate-800">Search Jobs</DialogTitle>
+          <DialogTitle className="text-2xl font-bold text-slate-800">Browse Available Positions</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6">
@@ -117,6 +117,12 @@ export function JobSearchModal({ isOpen, onClose, onStartJobInterview }: JobSear
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="text-slate-600 mt-2">Loading jobs from platojobpostings...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <p className="text-red-600 mb-2">Error loading jobs</p>
+                <p className="text-slate-600 text-sm">Please try again or contact support if the issue persists.</p>
               </div>
             ) : jobs.length === 0 ? (
               <div className="text-center py-8 text-slate-600">

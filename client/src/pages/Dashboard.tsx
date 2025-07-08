@@ -330,9 +330,9 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center space-x-3 mb-2">
                     <Search className="h-6 w-6 text-blue-600 group-hover:scale-110 transition-transform" />
-                    <h4 className="text-lg font-semibold text-gray-900">Search All Jobs</h4>
+                    <h4 className="text-lg font-semibold text-gray-900">Browse Available Positions</h4>
                   </div>
-                  <p className="text-sm text-gray-600">Browse and search all available opportunities</p>
+                  <p className="text-sm text-gray-600">Explore open positions and start interviews</p>
                 </button>
 
                 <button
