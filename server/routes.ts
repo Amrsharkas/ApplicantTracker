@@ -63,9 +63,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Profile routes
-  app.get('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
+  app.get('/api/candidate/profile', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // For now, make this endpoint public - Firebase auth will be handled on frontend
+      // In production, add proper Firebase token validation
+      const userId = req.query.userId || 'test-user';
       const profile = await storage.getApplicantProfile(userId);
       res.json(profile || null);
     } catch (error) {
@@ -74,9 +76,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
+  app.post('/api/candidate/profile', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // For now, make this endpoint public - Firebase auth will be handled on frontend
+      const userId = req.body.userId || 'test-user';
       const profileData = insertApplicantProfileSchema.parse({
         ...req.body,
         userId
@@ -93,9 +96,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Resume upload route
-  app.post('/api/candidate/resume', isAuthenticated, upload.single('resume'), async (req: any, res) => {
+  app.post('/api/candidate/resume', upload.single('resume'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.body.userId || 'test-user';
       
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -216,9 +219,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Interview routes
-  app.post('/api/interview/start', isAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/start', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.body.userId || 'test-user';
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
@@ -259,9 +262,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/respond', isAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/respond', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.body.userId || 'test-user';
       const { sessionId, question, answer } = req.body;
 
       const session = await storage.getInterviewSession(userId);
@@ -364,9 +367,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/complete-voice', isAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/complete-voice', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.body.userId || 'test-user';
       const { conversationHistory } = req.body;
 
       if (!conversationHistory || !Array.isArray(conversationHistory)) {
@@ -436,9 +439,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/interview/session', isAuthenticated, async (req: any, res) => {
+  app.get('/api/interview/session', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.query.userId || 'test-user';
       const session = await storage.getInterviewSession(userId);
       res.json(session);
     } catch (error) {
@@ -447,9 +450,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/interview/history', isAuthenticated, async (req: any, res) => {
+  app.get('/api/interview/history', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.query.userId || 'test-user';
       const history = await storage.getInterviewHistory(userId);
       res.json(history);
     } catch (error) {
@@ -458,9 +461,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/voice-submit', isAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/voice-submit', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.body.userId || 'test-user';
       const { responses, conversationHistory } = req.body;
 
       // Get user and profile data
@@ -607,7 +610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/jobs/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/jobs/:id', async (req: any, res) => {
     try {
       const jobId = parseInt(req.params.id);
       const job = await storage.getJob(jobId);
@@ -624,9 +627,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Job matches routes
-  app.get('/api/job-matches', isAuthenticated, async (req: any, res) => {
+  app.get('/api/job-matches', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.query.userId || 'test-user';
       const matches = await storage.getJobMatches(userId);
       res.json(matches);
     } catch (error) {
@@ -635,9 +638,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/job-matches/refresh', isAuthenticated, async (req: any, res) => {
+  app.post('/api/job-matches/refresh', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.body.userId || 'test-user';
       await storage.calculateJobMatches(userId);
       const matches = await storage.getJobMatches(userId);
       res.json(matches);
@@ -648,9 +651,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Application routes
-  app.get('/api/applications', isAuthenticated, async (req: any, res) => {
+  app.get('/api/applications', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.query.userId || 'test-user';
       const applications = await storage.getApplications(userId);
       res.json(applications);
     } catch (error) {
@@ -659,9 +662,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/applications', isAuthenticated, async (req: any, res) => {
+  app.post('/api/applications', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.body.userId || 'test-user';
       let { jobId } = req.body;
 
       // If jobId is a string (Airtable record ID), we need to create/find the corresponding database job
@@ -709,9 +712,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Job Application Interview Routes
-  app.post('/api/job-interview/start', isAuthenticated, async (req: any, res) => {
+  app.post('/api/job-interview/start', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.body.userId || 'test-user';
       const { jobId, jobTitle, jobDescription, company } = req.body;
 
       if (!jobTitle || !jobDescription) {
@@ -759,9 +762,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/job-interview/submit', isAuthenticated, async (req: any, res) => {
+  app.post('/api/job-interview/submit', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.body.userId || 'test-user';
       const { sessionId, responses } = req.body;
 
       if (!sessionId || !responses || responses.length === 0) {

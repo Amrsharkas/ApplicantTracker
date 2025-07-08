@@ -10,7 +10,7 @@ import { Mic, MicOff, MessageCircle, Phone, PhoneOff, Users, Briefcase, Target, 
 import { useToast } from '@/hooks/use-toast';
 import { useRealtimeAPI } from '@/hooks/useRealtimeAPI';
 import { apiRequest } from '@/lib/queryClient';
-import { isUnauthorizedError } from '@/lib/authUtils';
+// Removed old auth import - now using Firebase
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface InterviewQuestion {
@@ -59,8 +59,8 @@ export function InterviewModal({ isOpen, onClose, jobData }: InterviewModalProps
 
   // Fetch user profile data for personalized interview questions
   const { data: userProfile } = useQuery({
-    queryKey: ["/api/candidate/profile"],
-    enabled: isOpen,
+    queryKey: ["/api/candidate/profile", { userId: user?.uid }],
+    enabled: isOpen && !!user,
     retry: false,
   });
 
@@ -111,22 +111,9 @@ export function InterviewModal({ isOpen, onClose, jobData }: InterviewModalProps
   });
 
   const { data: existingSession } = useQuery({
-    queryKey: ["/api/interview/session"],
-    enabled: isOpen,
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error as Error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return false;
-      }
-      return failureCount < 3;
-    },
+    queryKey: ["/api/interview/session", { userId: user?.uid }],
+    enabled: isOpen && !!user,
+    retry: false,
   });
 
   const startInterviewMutation = useMutation({
@@ -134,6 +121,7 @@ export function InterviewModal({ isOpen, onClose, jobData }: InterviewModalProps
       if (jobData) {
         // Start job-specific interview
         const response = await apiRequest("POST", "/api/job-interview/start", {
+          userId: user?.uid,
           jobId: jobData.id,
           jobTitle: jobData.title,
           jobDescription: jobData.description,
@@ -142,7 +130,9 @@ export function InterviewModal({ isOpen, onClose, jobData }: InterviewModalProps
         return response.json();
       } else {
         // Start regular profile interview
-        const response = await apiRequest("POST", "/api/interview/start", {});
+        const response = await apiRequest("POST", "/api/interview/start", {
+          userId: user?.uid,
+        });
         return response.json();
       }
     },
@@ -188,6 +178,7 @@ export function InterviewModal({ isOpen, onClose, jobData }: InterviewModalProps
   const respondMutation = useMutation({
     mutationFn: async (answer: string) => {
       const response = await apiRequest("POST", "/api/interview/respond", {
+        userId: user?.uid,
         sessionId: currentSession?.id,
         answer,
         questionIndex: currentQuestionIndex
@@ -236,6 +227,7 @@ export function InterviewModal({ isOpen, onClose, jobData }: InterviewModalProps
       if (jobData) {
         // Submit job-specific interview
         const response = await apiRequest("POST", "/api/job-interview/submit", {
+          userId: user?.uid,
           sessionId: currentSession?.id,
           responses
         });
@@ -243,6 +235,7 @@ export function InterviewModal({ isOpen, onClose, jobData }: InterviewModalProps
       } else {
         // Submit regular profile interview
         const response = await apiRequest("POST", "/api/interview/complete-voice", {
+          userId: user?.uid,
           conversationHistory: responses
         });
         return response.json();

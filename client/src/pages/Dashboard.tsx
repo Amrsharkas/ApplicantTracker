@@ -27,7 +27,7 @@ export default function Dashboard() {
   const [jobInterviewData, setJobInterviewData] = useState<any>(null);
 
   const { data: profile } = useQuery({
-    queryKey: ["/api/candidate/profile"],
+    queryKey: ["/api/candidate/profile", { userId: user?.uid }],
     retry: false,
     refetchOnWindowFocus: false,
     enabled: !!user,
@@ -50,15 +50,17 @@ export default function Dashboard() {
   };
 
   const { data: matches = [] } = useQuery({
-    queryKey: ["/api/job-matches"],
+    queryKey: ["/api/job-matches", { userId: user?.uid }],
     retry: false,
     refetchOnWindowFocus: false,
+    enabled: !!user,
   });
 
   const { data: applications = [] } = useQuery({
-    queryKey: ["/api/applications"],
+    queryKey: ["/api/applications", { userId: user?.uid }],
     retry: false,
     refetchOnWindowFocus: false,
+    enabled: !!user,
   });
 
   if (isLoading) {
