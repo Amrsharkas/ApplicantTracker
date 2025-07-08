@@ -61,8 +61,8 @@ function CompanyCarousel() {
         </p>
       </div>
 
-      <div className="flex justify-center items-center">
-        <div className="company-carousel w-96 h-48 p-12 mx-auto">
+      <div className="w-full px-6">
+        <div className="company-carousel w-full max-w-6xl h-64 p-16 mx-auto">
           <div className="relative w-full h-full overflow-hidden">
             {/* Main current logo */}
             <motion.div

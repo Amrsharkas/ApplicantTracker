@@ -133,8 +133,8 @@
   .company-logo {
     filter: grayscale(20%) brightness(0.95);
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    max-width: 200px;
-    max-height: 120px;
+    max-width: 300px;
+    max-height: 160px;
   }
 
   .company-logo:hover {
