@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { JobSearchModal } from "@/components/JobSeekerModals/JobSearchModal";
+import { BrowseJobsModal } from "@/components/JobSeekerModals/BrowseJobsModal";
 import { MatchesModal } from "@/components/JobSeekerModals/MatchesModal";
 import { ProfileModal } from "@/components/JobSeekerModals/ProfileModal";
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
@@ -402,7 +402,7 @@ export default function Dashboard() {
           openModal('interview');
         }}
       />
-      <JobSearchModal 
+      <BrowseJobsModal 
         isOpen={activeModal === 'jobSearch'} 
         onClose={closeModal} 
         onStartJobInterview={handleStartJobInterview}
