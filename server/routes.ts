@@ -568,6 +568,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint to manually trigger job postings fetch
+  app.get('/api/test-job-postings', async (req, res) => {
+    try {
+      console.log('🧪 Manual test of job postings fetch');
+      const jobPostings = await airtableService.getAllJobPostings();
+      res.json({ 
+        count: jobPostings.length, 
+        data: jobPostings,
+        message: `Found ${jobPostings.length} job postings`
+      });
+    } catch (error) {
+      console.error("Error in test fetch:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Airtable job monitoring routes
   app.post('/api/admin/process-airtable-jobs', async (req, res) => {
     try {

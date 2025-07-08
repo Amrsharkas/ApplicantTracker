@@ -6,7 +6,7 @@ import { aiProfileAnalysisAgent } from './openai';
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
 const AIRTABLE_BASE_ID = 'app3tA4UpKQCT2s17'; // platouserprofiles base
 const AIRTABLE_JOB_MATCHES_BASE_ID = process.env.AIRTABLE_JOB_MATCHES_BASE_ID; // platojobmatches base
-const AIRTABLE_JOB_POSTINGS_BASE_ID = 'appCjIvd73lvp0oLf'; // platojobpostings base
+const AIRTABLE_JOB_POSTINGS_BASE_ID = process.env.AIRTABLE_JOB_POSTINGS_BASE_ID; // platojobpostings base
 const TABLE_NAME = 'Table 1'; // For user profiles
 const JOB_MATCHES_TABLE = 'Table 1'; // For job matches in the dedicated base
 
@@ -18,6 +18,12 @@ if (!AIRTABLE_JOB_MATCHES_BASE_ID) {
   console.warn('AIRTABLE_JOB_MATCHES_BASE_ID not configured. Will fallback to main base for job matches.');
 } else {
   console.log('✅ Job matches base configured:', AIRTABLE_JOB_MATCHES_BASE_ID);
+}
+
+if (!AIRTABLE_JOB_POSTINGS_BASE_ID) {
+  console.warn('⚠️ Job postings base NOT configured - missing AIRTABLE_JOB_POSTINGS_BASE_ID');
+} else {
+  console.log('✅ Job postings base configured:', AIRTABLE_JOB_POSTINGS_BASE_ID);
 }
 
 Airtable.configure({
@@ -644,37 +650,42 @@ export class AirtableService {
     }
 
     try {
-      console.log('📋 Fetching job postings from base:', process.env.AIRTABLE_JOB_POSTINGS_BASE_ID);
-      
       const records = await jobPostingsBase('Table 1').select({
         maxRecords: 100,
-        sort: [{field: 'Posted Date', direction: 'desc'}]
+        sort: [{field: 'Date Posted', direction: 'desc'}]
       }).firstPage();
 
-      console.log(`📋 Found ${records.length} raw records in job postings table`);
-      
       const jobPostings: AirtableJobPosting[] = [];
 
-      records.forEach(record => {
+      records.forEach((record) => {
         const fields = record.fields as any;
-        console.log('📋 Processing record fields:', Object.keys(fields));
-        console.log('📋 Record data:', fields);
         
-        // Extract job posting data from the record
+        // Find field names dynamically to handle different naming conventions
+        const fieldKeys = Object.keys(fields);
+        const titleField = fieldKeys.find(key => 
+          key.toLowerCase().includes('title') || 
+          key.toLowerCase().includes('job')
+        );
+        const descField = fieldKeys.find(key => 
+          key.toLowerCase().includes('description')
+        );
+        
+        const jobTitle = titleField ? fields[titleField] : 'Untitled Position';
+        const jobDescription = descField ? fields[descField] : 'No description available';
+        
         const jobPosting: AirtableJobPosting = {
           recordId: record.id,
-          jobTitle: fields['Job Title'] || fields['Title'] || 'Untitled Position',
-          jobDescription: fields['Job Description'] || fields['Description'] || 'No description available',
+          jobTitle: jobTitle,
+          jobDescription: jobDescription,
           companyName: fields['Company Name'] || fields['Company'] || 'Unknown Company',
           location: fields['Location'] || 'Remote',
           salaryRange: fields['Salary Range'] || fields['Salary'] || undefined,
-          employmentType: fields['Employment Type'] || fields['Job Type'] || 'Full-time',
+          employmentType: fields['Employment Type'] || fields['Job type'] || fields['Job Type'] || 'Full-time',
           experienceLevel: fields['Experience Level'] || 'Mid Level',
           skills: fields['Skills'] ? (Array.isArray(fields['Skills']) ? fields['Skills'] : fields['Skills'].split(',').map((s: string) => s.trim())) : [],
-          postedDate: fields['Posted Date'] || fields['Date'] || new Date().toISOString()
+          postedDate: fields['Posted Date'] || fields['Date Posted'] || fields['Date'] || new Date().toISOString()
         };
 
-        console.log('📋 Created job posting:', jobPosting);
         jobPostings.push(jobPosting);
       });
 
