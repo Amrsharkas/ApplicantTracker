@@ -30,9 +30,10 @@ interface Job {
 interface JobSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onStartJobInterview?: (job: any) => void;
 }
 
-export function JobSearchModal({ isOpen, onClose }: JobSearchModalProps) {
+export function JobSearchModal({ isOpen, onClose, onStartJobInterview }: JobSearchModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useState("");
   const [jobType, setJobType] = useState("");
@@ -44,36 +45,12 @@ export function JobSearchModal({ isOpen, onClose }: JobSearchModalProps) {
     enabled: isOpen,
   });
 
-  const applyMutation = useMutation({
-    mutationFn: async (jobId: string) => {
-      await apiRequest("POST", "/api/applications", { jobId });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Application Submitted",
-        description: "Your application has been submitted successfully!",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Application Failed",
-        description: error.message || "Failed to submit application",
-        variant: "destructive",
-      });
-    },
-  });
+  const handleStartJobInterview = (job: any) => {
+    if (onStartJobInterview) {
+      onStartJobInterview(job);
+      onClose(); // Close the job search modal
+    }
+  };
 
   const formatSalary = (salary?: string, min?: number, max?: number) => {
     // Use string salary if available (from Airtable)
@@ -210,11 +187,10 @@ export function JobSearchModal({ isOpen, onClose }: JobSearchModalProps) {
                         </div>
                         
                         <Button
-                          onClick={() => applyMutation.mutate(job.id)}
-                          disabled={applyMutation.isPending}
+                          onClick={() => handleStartJobInterview(job)}
                           className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white ml-4"
                         >
-                          {applyMutation.isPending ? "Applying..." : "Apply"}
+                          Interview
                         </Button>
                       </div>
                     </CardContent>

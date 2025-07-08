@@ -7,9 +7,11 @@ const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'pat770a3TZsbDther.a2b7
 const AIRTABLE_BASE_ID = 'app3tA4UpKQCT2s17'; // platouserprofiles base
 const AIRTABLE_JOB_MATCHES_BASE_ID = process.env.AIRTABLE_JOB_MATCHES_BASE_ID; // platojobmatches base
 const AIRTABLE_JOBS_BASE_ID = 'appCjIvd73lvp0oLf'; // jobs listing base
+const AIRTABLE_JOB_APPLICATIONS_BASE_ID = 'appEYs1fTytFXoJ7x'; // job applications base
 const TABLE_NAME = 'Table 1'; // For user profiles
 const JOB_MATCHES_TABLE = 'Table 1'; // For job matches in the dedicated base
 const JOBS_TABLE = 'Table 1'; // For job listings
+const JOB_APPLICATIONS_TABLE = 'Table 1'; // For job applications
 
 if (!AIRTABLE_BASE_ID) {
   console.warn('AIRTABLE_BASE_ID not configured. Airtable integration will be disabled.');
@@ -29,6 +31,7 @@ Airtable.configure({
 const base = AIRTABLE_BASE_ID ? Airtable.base(AIRTABLE_BASE_ID) : null;
 const jobMatchesBase = AIRTABLE_JOB_MATCHES_BASE_ID ? Airtable.base(AIRTABLE_JOB_MATCHES_BASE_ID) : null;
 const jobsBase = AIRTABLE_JOBS_BASE_ID ? Airtable.base(AIRTABLE_JOBS_BASE_ID) : null;
+const jobApplicationsBase = AIRTABLE_JOB_APPLICATIONS_BASE_ID ? Airtable.base(AIRTABLE_JOB_APPLICATIONS_BASE_ID) : null;
 
 export interface AirtableUserProfile {
   name: string;
@@ -63,6 +66,18 @@ export interface AirtableJobListing {
   jobType?: string;
   salary?: string;
   location?: string;
+}
+
+export interface AirtableJobApplication {
+  userName: string;
+  userId: string;
+  userEmail: string;
+  jobTitle: string;
+  jobDescription: string;
+  company: string;
+  userProfile: string;
+  interviewScore: number;
+  applicationDate: string;
 }
 
 export class AirtableService {
@@ -680,6 +695,39 @@ export class AirtableService {
     } catch (error) {
       console.error('Error fetching job listings from Airtable:', error);
       return [];
+    }
+  }
+
+  // Method to store successful job applications
+  async storeJobApplication(applicationData: AirtableJobApplication): Promise<void> {
+    if (!jobApplicationsBase) {
+      console.log('📋 Job applications base not configured, skipping application storage');
+      return;
+    }
+
+    try {
+      console.log(`📋 Storing job application for user ${applicationData.userId} to ${applicationData.company}`);
+      
+      await jobApplicationsBase(JOB_APPLICATIONS_TABLE).create([
+        {
+          fields: {
+            'User Name': applicationData.userName,
+            'User ID': applicationData.userId,
+            'User Email': applicationData.userEmail,
+            'Job Title': applicationData.jobTitle,
+            'Job Description': applicationData.jobDescription,
+            'Company': applicationData.company,
+            'User Profile': applicationData.userProfile,
+            'Interview Score': applicationData.interviewScore,
+            'Application Date': applicationData.applicationDate
+          }
+        }
+      ]);
+
+      console.log(`✅ Successfully stored job application for user ${applicationData.userId}`);
+    } catch (error) {
+      console.error('Error storing job application in Airtable:', error);
+      throw error; // Re-throw to handle in calling function
     }
   }
 }

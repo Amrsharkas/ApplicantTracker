@@ -39,9 +39,10 @@ interface InterviewSession {
 interface InterviewModalProps {
   isOpen: boolean;
   onClose: () => void;
+  jobData?: any; // For job-specific interviews
 }
 
-export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
+export function InterviewModal({ isOpen, onClose, jobData }: InterviewModalProps) {
   const [mode, setMode] = useState<'select' | 'text' | 'voice'>('select');
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState("");
@@ -66,6 +67,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   // Voice interview integration
   const realtimeAPI = useRealtimeAPI({
     userProfile,
+    jobData,
     onMessage: (event) => {
       console.log('Realtime event:', event);
       
@@ -129,8 +131,20 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
   const startInterviewMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/interview/start", {});
-      return response.json();
+      if (jobData) {
+        // Start job-specific interview
+        const response = await apiRequest("POST", "/api/job-interview/start", {
+          jobId: jobData.id,
+          jobTitle: jobData.title,
+          jobDescription: jobData.description,
+          company: jobData.company
+        });
+        return response.json();
+      } else {
+        // Start regular profile interview
+        const response = await apiRequest("POST", "/api/interview/start", {});
+        return response.json();
+      }
     },
     onSuccess: (data) => {
       // Create session object from the response data
@@ -139,7 +153,13 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         sessionData: {
           questions: data.questions || [],
           responses: [],
-          currentQuestionIndex: 0
+          currentQuestionIndex: 0,
+          jobContext: jobData ? { 
+            jobId: jobData.id, 
+            jobTitle: jobData.title, 
+            jobDescription: jobData.description, 
+            company: jobData.company 
+          } : undefined
         },
         isCompleted: false
       };
@@ -159,7 +179,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to start interview",
+        description: `Failed to start ${jobData ? 'job' : 'profile'} interview`,
         variant: "destructive",
       });
     },
@@ -213,19 +233,41 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           answer: item.content
         }));
 
-      const response = await apiRequest("POST", "/api/interview/complete-voice", {
-        conversationHistory: responses
-      });
-      return response.json();
+      if (jobData) {
+        // Submit job-specific interview
+        const response = await apiRequest("POST", "/api/job-interview/submit", {
+          sessionId: currentSession?.id,
+          responses
+        });
+        return response.json();
+      } else {
+        // Submit regular profile interview
+        const response = await apiRequest("POST", "/api/interview/complete-voice", {
+          conversationHistory: responses
+        });
+        return response.json();
+      }
     },
     onSuccess: (data) => {
       setIsProcessingInterview(false);
-      setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
+      setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile || data.evaluation } : null);
       queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
-      toast({
-        title: "Interview Complete!",
-        description: "Your AI profile has been generated and saved to your database.",
-      });
+      
+      if (jobData) {
+        // Job interview completed
+        toast({
+          title: data.approved ? "Congratulations!" : "Interview Complete",
+          description: data.message || "Your job interview has been evaluated.",
+          variant: data.approved ? "default" : "destructive",
+        });
+      } else {
+        // Regular profile interview completed
+        toast({
+          title: "Interview Complete!",
+          description: "Your AI profile has been generated and saved to your database.",
+        });
+      }
+      
       realtimeAPI.disconnect();
       setIsInterviewConcluded(false);
       onClose();
@@ -320,7 +362,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             <div className="text-center">
               <h4 className="font-medium">Voice Interview</h4>
               <p className="text-sm text-muted-foreground">
-                Speak naturally with the AI interviewer
+                {jobData 
+                  ? '2 job-specific questions via voice'
+                  : '5 focused questions via voice'
+                }
               </p>
             </div>
           </CardContent>
@@ -332,7 +377,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             <div className="text-center">
               <h4 className="font-medium">Text Interview</h4>
               <p className="text-sm text-muted-foreground">
-                Type your responses at your own pace
+                {jobData 
+                  ? '2 job-specific questions via text'
+                  : '5 focused questions via text'
+                }
               </p>
             </div>
           </CardContent>
@@ -344,9 +392,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const renderTextInterview = () => (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Text Interview</h3>
+        <h3 className="text-lg font-semibold">
+          {jobData ? 'Job Application Interview' : 'Text Interview'}
+        </h3>
         <Badge variant="outline">
-          Question {currentQuestionIndex + 1} of 5
+          Question {currentQuestionIndex + 1} of {jobData ? 2 : 5}
         </Badge>
       </div>
       
@@ -547,7 +597,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               </p>
               <p className="text-sm text-muted-foreground">
                 {realtimeAPI.isConnected 
-                  ? 'Speak naturally - the AI will guide you through 5 focused questions'
+                  ? (jobData 
+                      ? 'Speak naturally - the AI will guide you through 2 job-specific questions'
+                      : 'Speak naturally - the AI will guide you through 5 focused questions'
+                    )
                   : 'Setting up your voice interview...'
                 }
               </p>
@@ -745,7 +798,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>AI Interview</DialogTitle>
+          <DialogTitle>
+            {jobData ? `Interview for ${jobData.title} at ${jobData.company}` : 'AI Interview'}
+          </DialogTitle>
         </DialogHeader>
         
         {mode === 'select' && renderModeSelection()}

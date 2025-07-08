@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { aiInterviewService, aiProfileAnalysisAgent } from "./openai";
+import { aiInterviewService, aiProfileAnalysisAgent, aiJobInterviewAgent } from "./openai";
 import { airtableService } from "./airtable";
 import multer from "multer";
 import { z } from "zod";
@@ -653,6 +653,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating application:", error);
       res.status(500).json({ message: "Failed to create application" });
+    }
+  });
+
+  // Job Application Interview Routes
+  app.post('/api/job-interview/start', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { jobId, jobTitle, jobDescription, company } = req.body;
+
+      if (!jobTitle || !jobDescription) {
+        return res.status(400).json({ message: "Job title and description are required" });
+      }
+
+      // Get user profile for context
+      const [user, profile] = await Promise.all([
+        storage.getUser(userId),
+        storage.getApplicantProfile(userId)
+      ]);
+
+      if (!profile) {
+        return res.status(400).json({ message: "Please complete your profile first" });
+      }
+
+      // Generate job-specific interview questions
+      const questions = await aiJobInterviewAgent.generateJobSpecificQuestions(
+        jobTitle,
+        jobDescription,
+        { ...user, ...profile }
+      );
+
+      // Create interview session titled for the company
+      const session = await storage.createInterviewSession({
+        userId,
+        sessionData: { 
+          questions, 
+          responses: [], 
+          currentQuestionIndex: 0,
+          jobContext: { jobId, jobTitle, jobDescription, company }
+        },
+        isCompleted: false
+      });
+
+      res.json({ 
+        sessionId: session.id, 
+        questions,
+        firstQuestion: questions[0]?.question || "Tell me about your interest in this position.",
+        company
+      });
+    } catch (error) {
+      console.error("Error starting job interview:", error);
+      res.status(500).json({ message: "Failed to start job interview" });
+    }
+  });
+
+  app.post('/api/job-interview/submit', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { sessionId, responses } = req.body;
+
+      if (!sessionId || !responses || responses.length === 0) {
+        return res.status(400).json({ message: "Session ID and responses are required" });
+      }
+
+      // Get interview session
+      const session = await storage.getInterviewSession(userId);
+      if (!session || session.id !== sessionId) {
+        return res.status(404).json({ message: "Interview session not found" });
+      }
+
+      const jobContext = session.sessionData.jobContext;
+      if (!jobContext) {
+        return res.status(400).json({ message: "Job context not found in interview session" });
+      }
+
+      // Get user profile for evaluation
+      const [user, profile] = await Promise.all([
+        storage.getUser(userId),
+        storage.getApplicantProfile(userId)
+      ]);
+
+      // Evaluate job fitness
+      const evaluation = await aiJobInterviewAgent.evaluateJobFitness(
+        jobContext.jobTitle,
+        jobContext.jobDescription,
+        { ...user, ...profile },
+        responses
+      );
+
+      // Mark interview as completed
+      await storage.updateInterviewSession(sessionId, {
+        sessionData: {
+          ...session.sessionData,
+          responses,
+          isComplete: true,
+          evaluation
+        },
+        isCompleted: true
+      });
+
+      // If approved, store in Airtable job applications
+      if (evaluation.isApproved) {
+        try {
+          const userName = user?.firstName && user?.lastName 
+            ? `${user.firstName} ${user.lastName}` 
+            : user?.email || `User ${userId}`;
+
+          // Create comprehensive user profile for application
+          const userProfileData = {
+            basicInfo: { ...user, ...profile },
+            interviewResponses: responses,
+            evaluationScore: evaluation.score,
+            strengths: evaluation.strengths || [],
+            overallFeedback: evaluation.overallFeedback || ''
+          };
+
+          await airtableService.storeJobApplication({
+            userName,
+            userId,
+            userEmail: user?.email || '',
+            jobTitle: jobContext.jobTitle,
+            jobDescription: jobContext.jobDescription,
+            company: jobContext.company,
+            userProfile: JSON.stringify(userProfileData, null, 2),
+            interviewScore: evaluation.score,
+            applicationDate: new Date().toISOString()
+          });
+
+          console.log(`✅ Successfully stored job application for user ${userId} to ${jobContext.company}`);
+        } catch (airtableError) {
+          console.error('Failed to store application in Airtable:', airtableError);
+          // Don't fail the entire request if Airtable fails
+        }
+      }
+
+      res.json({ 
+        evaluation,
+        message: evaluation.feedback,
+        approved: evaluation.isApproved,
+        score: evaluation.score
+      });
+    } catch (error) {
+      console.error("Error submitting job interview:", error);
+      res.status(500).json({ message: "Failed to submit job interview" });
     }
   });
 

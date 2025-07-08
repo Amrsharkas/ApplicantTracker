@@ -23,6 +23,7 @@ export default function Dashboard() {
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [jobInterviewData, setJobInterviewData] = useState<any>(null);
 
   const { data: profile } = useQuery({
     queryKey: ["/api/candidate/profile"],
@@ -69,6 +70,12 @@ export default function Dashboard() {
 
   const closeModal = () => {
     setActiveModal(null);
+    setJobInterviewData(null);
+  };
+
+  const handleStartJobInterview = (job: any) => {
+    setJobInterviewData(job);
+    setActiveModal('interview');
   };
 
   const profileProgress = profile?.completionPercentage || 0;
@@ -385,6 +392,7 @@ export default function Dashboard() {
       <InterviewModal 
         isOpen={activeModal === 'interview'} 
         onClose={closeModal} 
+        jobData={jobInterviewData}
       />
       <InterviewHistoryModal 
         isOpen={activeModal === 'interviewHistory'} 
@@ -397,6 +405,7 @@ export default function Dashboard() {
       <JobSearchModal 
         isOpen={activeModal === 'jobSearch'} 
         onClose={closeModal} 
+        onStartJobInterview={handleStartJobInterview}
       />
       <MatchesModal 
         isOpen={activeModal === 'matches'} 
