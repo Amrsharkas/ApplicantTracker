@@ -33,6 +33,45 @@ export interface GeneratedProfile {
 
 // AI Agent 1: Interview Conductor - analyzes resume/profile and conducts personalized interviews
 export class AIInterviewAgent {
+  async generateWelcomeMessage(userData: any): Promise<string> {
+    const prompt = `You are an AI interview assistant for Plato, an innovative AI-powered job matching platform. Generate a warm, professional welcome message for a candidate starting their interview.
+
+CANDIDATE DATA:
+${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : 'Candidate'}
+${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
+${userData?.yearsOfExperience ? `Experience: ${userData.yearsOfExperience} years` : ''}
+
+Create a personalized welcome message that:
+1. Warmly welcomes them to Plato
+2. Briefly explains what the interview will accomplish
+3. Sets a positive, encouraging tone
+4. Mentions it will be about 5 questions
+5. Personalizes it with their name if available
+
+Keep it conversational, professional, and encouraging. This should feel like a real person welcoming them. The message should be 2-3 sentences maximum.
+
+Return ONLY the welcome message text, no JSON or additional formatting.`;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        max_tokens: 200
+      });
+
+      return response.choices[0].message.content?.trim() || this.getFallbackWelcomeMessage(userData?.firstName);
+    } catch (error) {
+      console.error("Error generating welcome message:", error);
+      return this.getFallbackWelcomeMessage(userData?.firstName);
+    }
+  }
+
+  private getFallbackWelcomeMessage(firstName?: string): string {
+    const name = firstName ? `, ${firstName}` : '';
+    return `Welcome to Plato${name}! I'm excited to get to know you better through our conversation today. We'll go through about 5 questions together to understand your background, skills, and career goals so we can help match you with the perfect opportunities.`;
+  }
+
   async generatePersonalizedQuestions(userData: any, resumeContent?: string): Promise<InterviewQuestion[]> {
     // This AI agent analyzes user data and creates personalized interview questions
     
@@ -253,6 +292,7 @@ export const aiProfileAnalysisAgent = new AIProfileAnalysisAgent();
 
 // Legacy export for backward compatibility
 export const aiInterviewService = {
+  generateWelcomeMessage: aiInterviewAgent.generateWelcomeMessage.bind(aiInterviewAgent),
   generateInitialQuestions: aiInterviewAgent.generatePersonalizedQuestions.bind(aiInterviewAgent),
   generateProfile: aiProfileAnalysisAgent.generateComprehensiveProfile.bind(aiProfileAnalysisAgent),
   parseResume: aiProfileAnalysisAgent.parseResume.bind(aiProfileAnalysisAgent)

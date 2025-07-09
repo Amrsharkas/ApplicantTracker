@@ -183,6 +183,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Interview routes
+  app.post('/api/interview/welcome', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+
+      // Generate personalized welcome message
+      const welcomeMessage = await aiInterviewService.generateWelcomeMessage({
+        ...user,
+        ...profile
+      });
+
+      res.json({ welcomeMessage });
+    } catch (error) {
+      console.error("Error generating welcome message:", error);
+      res.status(500).json({ message: "Failed to generate welcome message" });
+    }
+  });
+
   app.post('/api/interview/start', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

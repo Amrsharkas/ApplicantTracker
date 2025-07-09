@@ -125,6 +125,7 @@ Changelog:
 - July 7, 2025. Added email field integration to Airtable profile storage - all user profiles now include the user's email address in the "email" field alongside name, user ID, and formatted profile data
 - July 8, 2025. Removed job search functionality - eliminated "View Job Postings" button, JobSearchModal component, and all related API endpoints to focus solely on Airtable-based job matching system
 - July 8, 2025. Added 3D company carousel to homepage landing page with podium effect - center logo prominently displayed, side logos smaller and blurred, slower 5-second transitions, and persuasive messaging about successful company adoption
+- July 9, 2025. Added personalized AI welcome message to interview system - users now receive a warm, personalized greeting from the AI interview system before starting the 5 questions, independent of the structured interview questions
 ```
 
 ## User Preferences

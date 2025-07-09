@@ -63,6 +63,13 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     retry: false,
   });
 
+  // Fetch welcome message
+  const { data: welcomeMessageData } = useQuery({
+    queryKey: ["/api/interview/welcome"],
+    enabled: isOpen && mode !== 'select',
+    retry: false,
+  });
+
   // Voice interview integration
   const realtimeAPI = useRealtimeAPI({
     userProfile,
@@ -153,7 +160,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           content: data.firstQuestion,
           timestamp: new Date()
         };
-        setMessages([firstQuestion]);
+        // Append first question to existing messages (which might include welcome message)
+        setMessages(prev => [...prev, firstQuestion]);
       }
     },
     onError: () => {
@@ -259,6 +267,17 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     setMessages([]);
     setIsInterviewConcluded(false);
     setConversationHistory([]);
+    
+    // Show welcome message first
+    if (welcomeMessageData?.welcomeMessage) {
+      const welcomeMessage: InterviewMessage = {
+        type: 'question',
+        content: welcomeMessageData.welcomeMessage,
+        timestamp: new Date()
+      };
+      setMessages([welcomeMessage]);
+    }
+    
     try {
       await realtimeAPI.connect();
       toast({
@@ -278,7 +297,23 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const startTextInterview = () => {
     setMode('text');
     setMessages([]);
-    startInterviewMutation.mutate();
+    
+    // Show welcome message first
+    if (welcomeMessageData?.welcomeMessage) {
+      const welcomeMessage: InterviewMessage = {
+        type: 'question',
+        content: welcomeMessageData.welcomeMessage,
+        timestamp: new Date()
+      };
+      setMessages([welcomeMessage]);
+      
+      // Add a small delay before starting the actual interview
+      setTimeout(() => {
+        startInterviewMutation.mutate();
+      }, 2000);
+    } else {
+      startInterviewMutation.mutate();
+    }
   };
 
   const handleClose = () => {
