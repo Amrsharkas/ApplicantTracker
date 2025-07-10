@@ -108,53 +108,109 @@ export class DatabaseStorage implements IStorage {
     if (!profile) return;
 
     let score = 0;
-    const details = {
-      basicInfo: false,
-      workExperience: false,
-      educationDetails: false,
-      skillsAndSummary: false,
-      resumeUpload: false
-    };
+    const maxScore = 1100; // Total possible points
     
-    // Basic information (20 points)
-    if (profile.age && profile.education && profile.location) {
-      score += 20;
-      details.basicInfo = true;
-    }
-    
-    // Work experience (30 points)
-    if (profile.currentRole && profile.company && profile.yearsOfExperience !== null && profile.yearsOfExperience !== undefined) {
-      score += 30;
-      details.workExperience = true;
-    }
-    
-    // Education details (20 points)
-    if (profile.degree && profile.university) {
-      score += 20;
-      details.educationDetails = true;
-    }
-    
-    // Skills and summary (15 points)
-    if (profile.skillsList?.length || profile.summary) {
-      score += 15;
-      details.skillsAndSummary = true;
-    }
-    
-    // Resume upload (15 points)
+    // Section 1: General Information (200 points - required fields only)
+    let generalScore = 0;
+    if (profile.name) generalScore += 30;
+    if (profile.birthdate) generalScore += 30;
+    if (profile.gender) generalScore += 20;
+    if (profile.nationality) generalScore += 20;
+    if (profile.country) generalScore += 30;
+    if (profile.city) generalScore += 30;
+    if (profile.mobileNumber) generalScore += 20;
+    if (profile.emailAddress) generalScore += 20;
+    score += generalScore;
+
+    // Section 2: Career Interests (150 points)
+    let careerScore = 0;
+    if (profile.careerLevel) careerScore += 25;
+    if (profile.jobTypesOpen?.length) careerScore += 25;
+    if (profile.preferredWorkplace) careerScore += 25;
+    if (profile.desiredJobTitles?.length) careerScore += 25;
+    if (profile.jobCategories?.length) careerScore += 25;
+    if (profile.jobSearchStatus) careerScore += 25;
+    score += careerScore;
+
+    // Section 3: CV Upload (100 points)
     if (profile.resumeContent || profile.resumeUrl) {
-      score += 15;
-      details.resumeUpload = true;
+      score += 100;
     }
 
-    const completionPercentage = Math.min(score, 100);
+    // Section 4: Work Experience (150 points)
+    let workScore = 0;
+    const workExperiences = profile.workExperiences as any[] || [];
+    if (profile.totalYearsExperience !== null && profile.totalYearsExperience !== undefined) workScore += 50;
+    if (workExperiences.length > 0) workScore += 100;
+    score += workScore;
+
+    // Section 5: Skills (100 points)
+    const skills = profile.skills as any[] || [];
+    if (skills.length > 0) {
+      score += 100;
+    }
+
+    // Section 6: Languages (100 points)
+    const languages = profile.languages as any[] || [];
+    if (languages.length > 0) {
+      score += 100;
+    }
+
+    // Section 7: Education (100 points)
+    let educationScore = 0;
+    if (profile.currentEducationLevel) educationScore += 30;
+    const universityDegrees = profile.universityDegrees as any[] || [];
+    if (universityDegrees.length > 0) educationScore += 70;
+    score += educationScore;
+
+    // Section 8: Certifications (50 points - optional)
+    const certifications = profile.certifications as any[] || [];
+    if (certifications.length > 0) {
+      score += 50;
+    }
+
+    // Section 9: Training (50 points - optional)
+    const trainingCourses = profile.trainingCourses as any[] || [];
+    if (trainingCourses.length > 0) {
+      score += 50;
+    }
+
+    // Section 10: Online Presence (50 points - optional but LinkedIn important)
+    let onlineScore = 0;
+    if (profile.linkedinUrl) onlineScore += 30; // LinkedIn is most important
+    if (profile.githubUrl || profile.websiteUrl || profile.facebookUrl || profile.twitterUrl || profile.instagramUrl || profile.youtubeUrl || profile.otherUrl) {
+      onlineScore += 20;
+    }
+    score += onlineScore;
+
+    // Section 11: Achievements (10 points - optional)
+    if (profile.achievements && profile.achievements.trim()) {
+      score += 10;
+    }
+
+    // Calculate completion percentage (based on required fields only)
+    // Required sections total: 200 + 150 + 100 + 150 + 100 + 100 + 100 = 1000 points
+    const requiredScore = Math.min(score, 1000);
+    const completionPercentage = Math.round((requiredScore / 1000) * 100);
     
     console.log(`Profile completion for user ${userId}:`, {
-      score,
+      totalScore: score,
+      requiredScore,
+      maxPossibleScore: maxScore,
       completionPercentage,
-      details,
-      hasSkills: !!profile.skillsList?.length,
-      hasSummary: !!profile.summary,
-      hasResume: !!(profile.resumeContent || profile.resumeUrl)
+      breakdown: {
+        general: generalScore,
+        career: careerScore,
+        cv: profile.resumeContent || profile.resumeUrl ? 100 : 0,
+        work: workScore,
+        skills: skills.length > 0 ? 100 : 0,
+        languages: languages.length > 0 ? 100 : 0,
+        education: educationScore,
+        certifications: certifications.length > 0 ? 50 : 0,
+        training: trainingCourses.length > 0 ? 50 : 0,
+        online: onlineScore,
+        achievements: profile.achievements && profile.achievements.trim() ? 10 : 0
+      }
     });
 
     await db

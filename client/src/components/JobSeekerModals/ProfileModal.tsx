@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -268,7 +269,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   });
 
   // Update form when profile data loads
-  useState(() => {
+  React.useEffect(() => {
     if (profile) {
       form.reset({
         name: profile.name || "",
@@ -367,7 +368,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       const formData = new FormData();
       formData.append("resume", file);
       
-      const response = await fetch("/api/candidate/upload-resume", {
+      const response = await fetch("/api/candidate/resume", {
         method: "POST",
         body: formData,
       });
@@ -1347,6 +1348,237 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                 </Card>
               )}
 
+              {/* Languages Section */}
+              {activeSection === "languages" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Globe className="h-5 w-5" />
+                      Languages
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-semibold">Language Proficiency</h4>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowLanguageModal(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Language
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {languages.map((language, index) => (
+                        <div key={language.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <h5 className="font-semibold">{language.name}</h5>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setLanguages(languages.filter((_, i) => i !== index));
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-center justify-between">
+                              <span>Reading:</span>
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`h-4 w-4 ${
+                                      star <= language.reading ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>Writing:</span>
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`h-4 w-4 ${
+                                      star <= language.writing ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>Listening:</span>
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`h-4 w-4 ${
+                                      star <= language.listening ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>Speaking:</span>
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`h-4 w-4 ${
+                                      star <= language.speaking ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            {language.justification && (
+                              <p className="text-gray-600 mt-2">{language.justification}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {languages.length === 0 && (
+                        <div className="col-span-2 text-center py-8 text-gray-500">
+                          <Globe className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                          <p>No languages added yet</p>
+                          <p className="text-sm">Click "Add Language" to showcase your language skills</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Certifications Section */}
+              {activeSection === "certifications" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Award className="h-5 w-5" />
+                      Certifications
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-semibold">Professional Certifications</h4>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowCertificationModal(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Certification
+                      </Button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {certifications.map((cert, index) => (
+                        <div key={cert.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h5 className="font-semibold">{cert.name}</h5>
+                              <p className="text-sm text-gray-600">{cert.issuingOrganization}</p>
+                              <p className="text-sm text-gray-500">Awarded: {cert.dateAwarded}</p>
+                              {cert.gradeOrScore && <p className="text-sm text-gray-500">Score: {cert.gradeOrScore}</p>}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setCertifications(certifications.filter((_, i) => i !== index));
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {certifications.length === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                          <Award className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                          <p>No certifications added yet</p>
+                          <p className="text-sm">Click "Add Certification" to showcase your credentials</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Training Section */}
+              {activeSection === "training" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5" />
+                      Training & Courses
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-semibold">Training Courses</h4>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowTrainingModal(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Training
+                      </Button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {trainingCourses.map((training, index) => (
+                        <div key={training.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h5 className="font-semibold">{training.topic}</h5>
+                              <p className="text-sm text-gray-600">{training.organization}</p>
+                              <p className="text-sm text-gray-500">Completed: {training.monthYear}</p>
+                              {training.additionalInfo && (
+                                <p className="text-sm text-gray-700 mt-2">{training.additionalInfo}</p>
+                              )}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setTrainingCourses(trainingCourses.filter((_, i) => i !== index));
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {trainingCourses.length === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                          <Calendar className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                          <p>No training courses added yet</p>
+                          <p className="text-sm">Click "Add Training" to showcase your professional development</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <div className="flex justify-end gap-4 pt-6 border-t">
                 <Button type="button" variant="outline" onClick={onClose}>
                   Cancel
@@ -1362,6 +1594,851 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
             </form>
           </Form>
         </div>
+
+        {/* Sub-Modals for Adding Individual Entries */}
+        
+        {/* Work Experience Modal */}
+        <AddWorkExperienceModal
+          isOpen={showWorkModal}
+          onClose={() => setShowWorkModal(false)}
+          onAdd={(experience) => {
+            setWorkExperiences([...workExperiences, { ...experience, id: Date.now().toString() }]);
+            setShowWorkModal(false);
+          }}
+        />
+
+        {/* Skills Modal */}
+        <AddSkillModal
+          isOpen={showSkillModal}
+          onClose={() => setShowSkillModal(false)}
+          onAdd={(skill) => {
+            setSkills([...skills, { ...skill, id: Date.now().toString() }]);
+            setShowSkillModal(false);
+          }}
+        />
+
+        {/* Languages Modal */}
+        <AddLanguageModal
+          isOpen={showLanguageModal}
+          onClose={() => setShowLanguageModal(false)}
+          onAdd={(language) => {
+            setLanguages([...languages, { ...language, id: Date.now().toString() }]);
+            setShowLanguageModal(false);
+          }}
+        />
+
+        {/* University Degree Modal */}
+        <AddUniversityDegreeModal
+          isOpen={showUniversityModal}
+          onClose={() => setShowUniversityModal(false)}
+          onAdd={(degree) => {
+            setUniversityDegrees([...universityDegrees, { ...degree, id: Date.now().toString() }]);
+            setShowUniversityModal(false);
+          }}
+        />
+
+        {/* Certification Modal */}
+        <AddCertificationModal
+          isOpen={showCertificationModal}
+          onClose={() => setShowCertificationModal(false)}
+          onAdd={(certification) => {
+            setCertifications([...certifications, { ...certification, id: Date.now().toString() }]);
+            setShowCertificationModal(false);
+          }}
+        />
+
+        {/* Training Modal */}
+        <AddTrainingModal
+          isOpen={showTrainingModal}
+          onClose={() => setShowTrainingModal(false)}
+          onAdd={(training) => {
+            setTrainingCourses([...trainingCourses, { ...training, id: Date.now().toString() }]);
+            setShowTrainingModal(false);
+          }}
+        />
+        
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Sub-Modal Components
+
+// Add Work Experience Modal
+function AddWorkExperienceModal({ isOpen, onClose, onAdd }: {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (experience: Omit<WorkExperience, 'id'>) => void;
+}) {
+  const form = useForm({
+    defaultValues: {
+      experienceType: "",
+      jobTitle: "",
+      jobCategory: "",
+      company: "",
+      startDate: "",
+      endDate: "",
+      currentlyWorking: false,
+      description: "",
+    }
+  });
+
+  const handleSubmit = (data: any) => {
+    onAdd(data);
+    form.reset();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Add Work Experience</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="experienceType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Experience Type *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="full-time">Full-time</SelectItem>
+                        <SelectItem value="part-time">Part-time</SelectItem>
+                        <SelectItem value="internship">Internship</SelectItem>
+                        <SelectItem value="freelance">Freelance</SelectItem>
+                        <SelectItem value="contract">Contract</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="jobCategory"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Job Category *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Engineering, Marketing" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="jobTitle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Job Title *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Software Engineer" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="company"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Company name" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="startDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Start Date *</FormLabel>
+                    <FormControl>
+                      <Input type="month" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="endDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Date</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="month" 
+                        {...field} 
+                        disabled={form.watch('currentlyWorking')}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="currentlyWorking"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Currently working here</FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description *</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Describe your responsibilities and achievements..."
+                      className="min-h-[100px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit">Add Experience</Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Add Skill Modal
+function AddSkillModal({ isOpen, onClose, onAdd }: {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (skill: Omit<Skill, 'id'>) => void;
+}) {
+  const [proficiency, setProficiency] = useState(1);
+  const [interestLevel, setInterestLevel] = useState(1);
+
+  const form = useForm({
+    defaultValues: {
+      name: "",
+      yearsExperience: 0,
+      justification: "",
+    }
+  });
+
+  const handleSubmit = (data: any) => {
+    onAdd({
+      ...data,
+      proficiency,
+      interestLevel,
+    });
+    form.reset();
+    setProficiency(1);
+    setInterestLevel(1);
+  };
+
+  const renderStarRating = (rating: number, onRatingChange: (rating: number) => void, label: string) => (
+    <div className="space-y-2">
+      <FormLabel>{label} *</FormLabel>
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`h-6 w-6 cursor-pointer ${
+              star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+            }`}
+            onClick={() => onRatingChange(star)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Add Skill</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Skill Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., JavaScript, Project Management" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="yearsExperience"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Years of Experience *</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min="0" 
+                      max="50"
+                      {...field}
+                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {renderStarRating(proficiency, setProficiency, "Proficiency Level")}
+            {renderStarRating(interestLevel, setInterestLevel, "Interest Level")}
+
+            <FormField
+              control={form.control}
+              name="justification"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Justification (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Explain your experience with this skill..."
+                      className="min-h-[80px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit">Add Skill</Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Add Language Modal
+function AddLanguageModal({ isOpen, onClose, onAdd }: {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (language: Omit<Language, 'id'>) => void;
+}) {
+  const [reading, setReading] = useState(1);
+  const [writing, setWriting] = useState(1);
+  const [listening, setListening] = useState(1);
+  const [speaking, setSpeaking] = useState(1);
+
+  const form = useForm({
+    defaultValues: {
+      name: "",
+      justification: "",
+    }
+  });
+
+  const handleSubmit = (data: any) => {
+    onAdd({
+      ...data,
+      reading,
+      writing,
+      listening,
+      speaking,
+    });
+    form.reset();
+    setReading(1);
+    setWriting(1);
+    setListening(1);
+    setSpeaking(1);
+  };
+
+  const renderStarRating = (rating: number, onRatingChange: (rating: number) => void, label: string) => (
+    <div className="space-y-2">
+      <FormLabel>{label} *</FormLabel>
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`h-5 w-5 cursor-pointer ${
+              star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+            }`}
+            onClick={() => onRatingChange(star)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Add Language</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Language *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., English, Arabic, French" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              {renderStarRating(reading, setReading, "Reading")}
+              {renderStarRating(writing, setWriting, "Writing")}
+              {renderStarRating(listening, setListening, "Listening")}
+              {renderStarRating(speaking, setSpeaking, "Speaking")}
+            </div>
+
+            <FormField
+              control={form.control}
+              name="justification"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Justification (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Describe your experience with this language..."
+                      className="min-h-[80px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit">Add Language</Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Add University Degree Modal
+function AddUniversityDegreeModal({ isOpen, onClose, onAdd }: {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (degree: Omit<UniversityDegree, 'id'>) => void;
+}) {
+  const form = useForm({
+    defaultValues: {
+      degreeLevel: "",
+      country: "",
+      university: "",
+      fieldOfStudy: "",
+      startYear: "",
+      endYear: "",
+      grade: "",
+      studiedSubjects: "",
+      additionalInfo: "",
+    }
+  });
+
+  const handleSubmit = (data: any) => {
+    onAdd(data);
+    form.reset();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Add University Degree</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="degreeLevel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Degree Level *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select degree" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="bachelor">Bachelor's</SelectItem>
+                        <SelectItem value="master">Master's</SelectItem>
+                        <SelectItem value="phd">PhD</SelectItem>
+                        <SelectItem value="diploma">Diploma</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="country"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Country *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Egypt" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="university"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>University *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="University name" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="fieldOfStudy"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Field of Study *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Computer Science" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="startYear"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Start Year *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="2018" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="endYear"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Year *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="2022" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="grade"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Grade (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., 3.8 GPA" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="studiedSubjects"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Studied Subjects (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="List key subjects studied..."
+                      className="min-h-[80px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="additionalInfo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Additional Information (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Any additional details about your degree..."
+                      className="min-h-[80px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit">Add Degree</Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Add Certification Modal
+function AddCertificationModal({ isOpen, onClose, onAdd }: {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (certification: Omit<Certification, 'id'>) => void;
+}) {
+  const form = useForm({
+    defaultValues: {
+      name: "",
+      dateAwarded: "",
+      issuingOrganization: "",
+      gradeOrScore: "",
+    }
+  });
+
+  const handleSubmit = (data: any) => {
+    onAdd(data);
+    form.reset();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Add Certification</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Certification Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., AWS Solutions Architect" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="issuingOrganization"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Issuing Organization *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Amazon Web Services" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="dateAwarded"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date Awarded *</FormLabel>
+                    <FormControl>
+                      <Input type="month" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="gradeOrScore"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Grade/Score (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., 95%, Pass" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit">Add Certification</Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Add Training Modal
+function AddTrainingModal({ isOpen, onClose, onAdd }: {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (training: Omit<TrainingCourse, 'id'>) => void;
+}) {
+  const form = useForm({
+    defaultValues: {
+      topic: "",
+      organization: "",
+      monthYear: "",
+      additionalInfo: "",
+    }
+  });
+
+  const handleSubmit = (data: any) => {
+    onAdd(data);
+    form.reset();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Add Training Course</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="topic"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Training Topic *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Leadership Skills" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="organization"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Organization *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Coursera, Udemy" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="monthYear"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Completion Date *</FormLabel>
+                  <FormControl>
+                    <Input type="month" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="additionalInfo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Additional Information (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Any additional details about this training..."
+                      className="min-h-[80px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit">Add Training</Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
