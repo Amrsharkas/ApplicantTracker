@@ -155,6 +155,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       const endpoint = selectedInterviewType 
         ? `/api/interview/start/${selectedInterviewType}`
         : "/api/interview/start";
+      console.log('Making request to endpoint:', endpoint, 'with selectedInterviewType:', selectedInterviewType);
       const response = await apiRequest("POST", endpoint, {});
       return response.json();
     },
@@ -314,6 +315,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   };
 
   const startTextInterview = () => {
+    console.log('Starting text interview for type:', selectedInterviewType);
     setMode('text');
     setMessages([]);
     
@@ -328,9 +330,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       
       // Add a small delay before starting the actual interview
       setTimeout(() => {
+        console.log('Calling startInterviewMutation with selectedInterviewType:', selectedInterviewType);
         startInterviewMutation.mutate();
       }, 2000);
     } else {
+      console.log('No welcome message, calling startInterviewMutation immediately with selectedInterviewType:', selectedInterviewType);
       startInterviewMutation.mutate();
     }
   };
