@@ -38,6 +38,7 @@ export interface IStorage {
   getJobMatches(userId: string): Promise<(JobMatch & { job: Job })[]>;
   createJobMatch(match: InsertJobMatch): Promise<JobMatch>;
   calculateJobMatches(userId: string): Promise<void>;
+  createJobFromAirtable(jobData: any): Promise<Job>;
 
   // Application operations
   getApplications(userId: string): Promise<(Application & { job: Job })[]>;
@@ -46,9 +47,10 @@ export interface IStorage {
 
   // Interview operations
   createInterviewSession(session: InsertInterviewSession): Promise<InterviewSession>;
-  getInterviewSession(userId: string): Promise<InterviewSession | undefined>;
+  getInterviewSession(userId: string, interviewType?: string): Promise<InterviewSession | undefined>;
   updateInterviewSession(id: number, data: Partial<InterviewSession>): Promise<void>;
   getInterviewHistory(userId: string): Promise<InterviewSession[]>;
+  updateInterviewCompletion(userId: string, interviewType: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -191,6 +193,29 @@ export class DatabaseStorage implements IStorage {
     console.log(`Job matching for user ${userId} is handled by Airtable system`);
   }
 
+  async createJobFromAirtable(jobData: any): Promise<Job> {
+    const [job] = await db
+      .insert(jobs)
+      .values({
+        title: jobData.jobTitle,
+        description: jobData.jobDescription,
+        company: jobData.companyName,
+        location: jobData.location || null,
+        salaryRange: jobData.salaryRange || null,
+        employmentType: jobData.employmentType || 'Full-time',
+        experienceLevel: jobData.experienceLevel || 'Mid-level',
+        skills: jobData.skills || [],
+        postedDate: new Date(),
+        requirements: [],
+        benefits: [],
+        remote: false,
+        applicationCount: 0,
+        isActive: true
+      })
+      .returning();
+    return job;
+  }
+
 
 
   // Application operations
@@ -233,12 +258,23 @@ export class DatabaseStorage implements IStorage {
     return session;
   }
 
-  async getInterviewSession(userId: string): Promise<InterviewSession | undefined> {
-    const [session] = await db
+  async getInterviewSession(userId: string, interviewType?: string): Promise<InterviewSession | undefined> {
+    let query = db
       .select()
-      .from(interviewSessions)
-      .where(eq(interviewSessions.userId, userId))
-      .orderBy(desc(interviewSessions.createdAt));
+      .from(interviewSessions);
+    
+    if (interviewType) {
+      query = query.where(and(
+        eq(interviewSessions.userId, userId),
+        eq(interviewSessions.interviewType, interviewType)
+      ));
+    } else {
+      query = query.where(eq(interviewSessions.userId, userId));
+    }
+    
+    const [session] = await query
+      .orderBy(desc(interviewSessions.createdAt))
+      .limit(1);
     return session;
   }
 
@@ -257,6 +293,29 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(interviewSessions.createdAt));
     
     return sessions;
+  }
+
+  async updateInterviewCompletion(userId: string, interviewType: string): Promise<void> {
+    let updateData: any = {};
+    
+    switch (interviewType) {
+      case 'personal':
+        updateData.personalInterviewCompleted = true;
+        break;
+      case 'professional':
+        updateData.professionalInterviewCompleted = true;
+        break;
+      case 'technical':
+        updateData.technicalInterviewCompleted = true;
+        break;
+      default:
+        throw new Error(`Invalid interview type: ${interviewType}`);
+    }
+
+    await db
+      .update(applicantProfiles)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(applicantProfiles.userId, userId));
   }
 }
 

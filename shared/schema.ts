@@ -55,6 +55,9 @@ export const applicantProfiles = pgTable("applicant_profiles", {
   skillsList: text("skills_list").array(),
   aiProfile: jsonb("ai_profile"), // Generated from AI interview
   aiProfileGenerated: boolean("ai_profile_generated").default(false),
+  personalInterviewCompleted: boolean("personal_interview_completed").default(false),
+  professionalInterviewCompleted: boolean("professional_interview_completed").default(false),
+  technicalInterviewCompleted: boolean("technical_interview_completed").default(false),
   completionPercentage: integer("completion_percentage").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -104,6 +107,7 @@ export const applications = pgTable("applications", {
 export const interviewSessions = pgTable("interview_sessions", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id),
+  interviewType: varchar("interview_type").notNull(), // 'personal', 'professional', 'technical'
   sessionData: jsonb("session_data").notNull(), // Q&A pairs, progress
   isCompleted: boolean("is_completed").default(false),
   generatedProfile: jsonb("generated_profile"),

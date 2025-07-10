@@ -24,6 +24,14 @@ interface InterviewMessage {
   timestamp: Date;
 }
 
+interface InterviewType {
+  type: string;
+  title: string;
+  description: string;
+  completed: boolean;
+  questions: number;
+}
+
 interface InterviewSession {
   id: number;
   sessionData: {
@@ -42,7 +50,8 @@ interface InterviewModalProps {
 }
 
 export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
-  const [mode, setMode] = useState<'select' | 'text' | 'voice'>('select');
+  const [mode, setMode] = useState<'types' | 'select' | 'text' | 'voice'>('types');
+  const [selectedInterviewType, setSelectedInterviewType] = useState<string>('');
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -63,10 +72,17 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     retry: false,
   });
 
+  // Fetch interview types
+  const { data: interviewTypesData } = useQuery({
+    queryKey: ["/api/interview/types"],
+    enabled: isOpen,
+    retry: false,
+  });
+
   // Fetch welcome message
   const { data: welcomeMessageData } = useQuery({
     queryKey: ["/api/interview/welcome"],
-    enabled: isOpen && mode !== 'select',
+    enabled: isOpen && mode !== 'select' && mode !== 'types',
     retry: false,
   });
 
@@ -136,7 +152,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
   const startInterviewMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/interview/start", {});
+      const endpoint = selectedInterviewType 
+        ? `/api/interview/start/${selectedInterviewType}`
+        : "/api/interview/start";
+      const response = await apiRequest("POST", endpoint, {});
       return response.json();
     },
     onSuccess: (data) => {
@@ -320,7 +339,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     if (mode === 'voice') {
       realtimeAPI.disconnect();
     }
-    setMode('select');
+    setMode('types');
+    setSelectedInterviewType('');
     setMessages([]);
     setCurrentAnswer("");
     setCurrentSession(null);
@@ -339,12 +359,95 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     }
   }, [existingSession, currentSession]);
 
+  const renderInterviewTypes = () => {
+    const interviewTypes = interviewTypesData?.interviewTypes || [
+      {
+        type: 'personal',
+        title: 'Personal Interview',
+        description: 'Understanding your personal self, background, and history',
+        completed: false,
+        questions: 7
+      },
+      {
+        type: 'professional',
+        title: 'Professional Interview',
+        description: 'Exploring your career background and professional experience',
+        completed: false,
+        questions: 7
+      },
+      {
+        type: 'technical',
+        title: 'Technical Interview',
+        description: 'Dynamic assessment based on your field - problem solving and IQ evaluation',
+        completed: false,
+        questions: 7
+      }
+    ];
+
+    return (
+      <div className="space-y-6">
+        <div className="text-center space-y-3">
+          <h3 className="text-lg font-semibold">Choose Your Interview</h3>
+          <p className="text-sm text-muted-foreground">
+            Complete all 3 interviews to generate your comprehensive AI profile
+          </p>
+        </div>
+        
+        <div className="space-y-4">
+          {interviewTypes.map((interview) => (
+            <Card 
+              key={interview.type}
+              className={`cursor-pointer hover:bg-accent/50 transition-colors ${interview.completed ? 'border-green-300 bg-green-50' : ''}`}
+              onClick={() => {
+                setSelectedInterviewType(interview.type);
+                setMode('select');
+              }}
+            >
+              <CardContent className="flex items-center justify-between p-4">
+                <div className="flex items-center space-x-4">
+                  <div className="flex-shrink-0">
+                    {interview.type === 'personal' && <User className="h-8 w-8 text-blue-600" />}
+                    {interview.type === 'professional' && <Briefcase className="h-8 w-8 text-green-600" />}
+                    {interview.type === 'technical' && <Target className="h-8 w-8 text-purple-600" />}
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-medium flex items-center space-x-2">
+                      <span>{interview.title}</span>
+                      {interview.completed && <CheckCircle className="h-4 w-4 text-green-600" />}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      {interview.description}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {interview.questions} questions
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {interview.completed ? (
+                    <Badge variant="default" className="bg-green-100 text-green-700">
+                      Completed
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">
+                      Start
+                    </Badge>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const renderModeSelection = () => (
     <div className="space-y-6">
       <div className="text-center space-y-3">
         <h3 className="text-lg font-semibold">Choose Your Interview Style</h3>
         <p className="text-sm text-muted-foreground">
-          Select how you'd like to experience your AI interview
+          {selectedInterviewType.charAt(0).toUpperCase() + selectedInterviewType.slice(1)} Interview - Select how you'd like to experience your AI interview
         </p>
       </div>
       
@@ -373,6 +476,12 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           </CardContent>
         </Card>
       </div>
+      
+      <div className="flex justify-start">
+        <Button variant="outline" onClick={() => setMode('types')}>
+          ← Back to Interview Types
+        </Button>
+      </div>
     </div>
   );
 
@@ -381,7 +490,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Text Interview</h3>
         <Badge variant="outline">
-          Question {currentQuestionIndex + 1} of 5
+          Question {currentQuestionIndex + 1} of {currentSession?.sessionData?.questions?.length || 7}
         </Badge>
       </div>
       
@@ -582,7 +691,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               </p>
               <p className="text-sm text-muted-foreground">
                 {realtimeAPI.isConnected 
-                  ? 'Speak naturally - the AI will guide you through 5 focused questions'
+                  ? `Speak naturally - the AI will guide you through 7 ${selectedInterviewType} questions`
                   : 'Setting up your voice interview...'
                 }
               </p>
@@ -735,8 +844,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       )}
 
       <div className="flex justify-between">
-        <Button variant="outline" onClick={() => setMode('select')}>
-          ← Back to Options
+        <Button variant="outline" onClick={() => setMode('types')}>
+          ← Back to Interview Types
         </Button>
         <div className="space-x-2">
           {realtimeAPI.isConnected && (
@@ -783,6 +892,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           <DialogTitle>AI Interview</DialogTitle>
         </DialogHeader>
         
+        {mode === 'types' && renderInterviewTypes()}
         {mode === 'select' && renderModeSelection()}
         {mode === 'text' && renderTextInterview()}
         {mode === 'voice' && renderVoiceInterview()}

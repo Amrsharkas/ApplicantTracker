@@ -202,24 +202,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get available interview types for a user
+  app.get('/api/interview/types', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getApplicantProfile(userId);
+
+      const types = [
+        {
+          type: 'personal',
+          title: 'Personal Interview',
+          description: 'Understanding your background, values, and personal journey',
+          completed: profile?.personalInterviewCompleted || false,
+          questions: 7
+        },
+        {
+          type: 'professional', 
+          title: 'Professional Interview',
+          description: 'Exploring your career journey, achievements, and professional expertise',
+          completed: profile?.professionalInterviewCompleted || false,
+          questions: 7
+        },
+        {
+          type: 'technical',
+          title: 'Technical Interview', 
+          description: 'Assessing your technical abilities and problem-solving skills',
+          completed: profile?.technicalInterviewCompleted || false,
+          questions: 7
+        }
+      ];
+
+      res.json({ types });
+    } catch (error) {
+      console.error("Error fetching interview types:", error);
+      res.status(500).json({ message: "Failed to fetch interview types" });
+    }
+  });
+
+  app.post('/api/interview/start/:type', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const interviewType = req.params.type;
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+
+      // Validate interview type
+      if (!['personal', 'professional', 'technical'].includes(interviewType)) {
+        return res.status(400).json({ message: "Invalid interview type" });
+      }
+
+      // Get resume content from profile
+      const resumeContent = profile?.resumeContent || null;
+
+      // Generate all interview sets first
+      const interviewSets = await aiInterviewService.generateInterviewSets({
+        ...user,
+        ...profile
+      }, resumeContent);
+
+      // Find the specific interview set for this type
+      const currentSet = interviewSets.find(set => set.type === interviewType);
+      if (!currentSet) {
+        throw new Error(`Interview set not found for type: ${interviewType}`);
+      }
+
+      const session = await storage.createInterviewSession({
+        userId,
+        interviewType,
+        sessionData: { 
+          questions: currentSet.questions, 
+          responses: [], 
+          currentQuestionIndex: 0,
+          interviewSet: currentSet
+        },
+        isCompleted: false
+      });
+
+      // Return the first question for text interview
+      const firstQuestion = currentSet.questions[0]?.question || "Let's begin this interview.";
+
+      res.json({ 
+        sessionId: session.id, 
+        interviewSet: currentSet,
+        questions: currentSet.questions,
+        firstQuestion 
+      });
+    } catch (error) {
+      console.error("Error starting interview:", error);
+      res.status(500).json({ message: "Failed to start interview" });
+    }
+  });
+
+  // Legacy endpoint for backward compatibility
   app.post('/api/interview/start', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
-      // Get resume content if available
-      let resumeContent = null;
-      if (profile?.resumeUrl) {
-        try {
-          // If resume exists, we'd fetch it here - for now we'll use null
-          resumeContent = null; // TODO: Implement resume fetching from URL
-        } catch (error) {
-          console.warn("Could not fetch resume content:", error);
-        }
-      }
+      // Get resume content from profile
+      const resumeContent = profile?.resumeContent || null;
 
-      // Use AI Agent 1 to generate personalized interview questions
+      // Use AI Agent 1 to generate personalized interview questions (legacy personal interview)
       const questions = await aiInterviewService.generateInitialQuestions({
         ...user,
         ...profile
@@ -227,6 +311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const session = await storage.createInterviewSession({
         userId,
+        interviewType: 'personal',
         sessionData: { questions, responses: [], currentQuestionIndex: 0 },
         isCompleted: false
       });
@@ -259,69 +344,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
       sessionData.responses = sessionData.responses || [];
       sessionData.responses.push({ question, answer });
 
-      // Check if interview is complete (5 questions answered)
-      const isComplete = sessionData.responses.length >= 5;
+      // Check if interview is complete (7 questions answered for current interview type)
+      const questions = sessionData.questions || [];
+      const isComplete = sessionData.responses.length >= questions.length;
 
       if (isComplete) {
-        // Get user and profile data for comprehensive analysis
-        const user = await storage.getUser(userId);
-        const profile = await storage.getApplicantProfile(userId);
-        
-        // Get resume content if available
-        let resumeContent = null;
-        if (profile?.resumeUrl) {
-          try {
-            // If resume exists, we'd fetch it here - for now we'll use null
-            resumeContent = null; // TODO: Implement resume fetching from URL
-          } catch (error) {
-            console.warn("Could not fetch resume content:", error);
-          }
-        }
+        // Mark this specific interview type as completed
+        const interviewType = session.interviewType || 'personal';
+        await storage.updateInterviewCompletion(userId, interviewType);
 
-        // Use AI Agent 2 to generate comprehensive profile
-        const generatedProfile = await aiInterviewService.generateProfile(
-          { ...user, ...profile },
-          resumeContent,
-          sessionData.responses
-        );
-
-        // Update profile with AI data
-        await storage.upsertApplicantProfile({
-          userId,
-          ...profile,
-          aiProfile: generatedProfile,
-          aiProfileGenerated: true,
-          summary: generatedProfile.summary,
-          skillsList: generatedProfile.skills
-        });
-
+        // Update the interview session as completed
         await storage.updateInterviewSession(session.id, {
           sessionData: { ...sessionData, isComplete: true },
           isCompleted: true,
-          generatedProfile,
           completedAt: new Date()
         });
 
-        // Calculate job matches
-        await storage.calculateJobMatches(userId);
+        // Check if all 3 interviews are completed
+        const updatedProfile = await storage.getApplicantProfile(userId);
+        const allInterviewsCompleted = updatedProfile?.personalInterviewCompleted && 
+                                     updatedProfile?.professionalInterviewCompleted && 
+                                     updatedProfile?.technicalInterviewCompleted;
 
-        // Store profile in Airtable
-        try {
-          const userName = user?.firstName && user?.lastName 
-            ? `${user.firstName} ${user.lastName}` 
-            : user?.email || `User ${userId}`;
+        if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
+          // Get user data for comprehensive analysis
+          const user = await storage.getUser(userId);
           
-          await airtableService.storeUserProfile(userName, generatedProfile, userId, user?.email);
-        } catch (error) {
-          console.error('Failed to store profile in Airtable:', error);
-          // Don't fail the entire request if Airtable fails
-        }
+          // Get all interview sessions for this user
+          const allSessions = await storage.getInterviewHistory(userId);
+          const completedSessions = allSessions.filter(s => s.isCompleted);
+          
+          // Combine all responses from all interview types
+          let allResponses: any[] = [];
+          completedSessions.forEach(s => {
+            const sessionData = s.sessionData as any;
+            if (sessionData.responses) {
+              allResponses = allResponses.concat(sessionData.responses);
+            }
+          });
 
-        res.json({ 
-          isComplete: true, 
-          profile: generatedProfile,
-          message: "Interview completed successfully!" 
-        });
+          // Get resume content from profile
+          const resumeContent = updatedProfile?.resumeContent || null;
+
+          // Use AI Agent 2 to generate comprehensive profile from ALL interviews
+          const generatedProfile = await aiInterviewService.generateProfile(
+            { ...user, ...updatedProfile },
+            resumeContent,
+            allResponses
+          );
+
+          // Update profile with AI data
+          await storage.upsertApplicantProfile({
+            userId,
+            ...updatedProfile,
+            aiProfile: generatedProfile,
+            aiProfileGenerated: true,
+            summary: generatedProfile.summary,
+            skillsList: generatedProfile.skills
+          });
+
+          // Calculate job matches
+          await storage.calculateJobMatches(userId);
+
+          // Store profile in Airtable
+          try {
+            const userName = user?.firstName && user?.lastName 
+              ? `${user.firstName} ${user.lastName}` 
+              : user?.email || `User ${userId}`;
+            
+            await airtableService.storeUserProfile(userName, generatedProfile, userId, user?.email);
+          } catch (error) {
+            console.error('Failed to store profile in Airtable:', error);
+            // Don't fail the entire request if Airtable fails
+          }
+
+          res.json({ 
+            isComplete: true,
+            allInterviewsCompleted: true,
+            profile: generatedProfile,
+            message: `${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed! All interviews finished - your comprehensive profile has been generated.`
+          });
+        } else {
+          res.json({ 
+            isComplete: true,
+            allInterviewsCompleted: false,
+            message: `${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed successfully! ${allInterviewsCompleted ? 'All interviews are now complete.' : 'Continue with the remaining interviews to complete your profile.'}`
+          });
+        }
       } else {
         // Get next question from pre-defined question set (we have exactly 5 questions)
         const currentQuestionIndex = sessionData.responses.length;
