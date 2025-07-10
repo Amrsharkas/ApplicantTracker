@@ -41,6 +41,59 @@ export const users = pgTable("users", {
 export const applicantProfiles = pgTable("applicant_profiles", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id),
+  
+  // General Information
+  name: varchar("name"),
+  birthdate: varchar("birthdate"), // stored as string for flexibility
+  gender: varchar("gender"),
+  nationality: varchar("nationality"),
+  maritalStatus: varchar("marital_status"),
+  dependents: integer("dependents"),
+  militaryStatus: varchar("military_status"),
+  country: varchar("country"),
+  city: varchar("city"),
+  willingToRelocate: boolean("willing_to_relocate").default(false),
+  mobileNumber: varchar("mobile_number"),
+  emailAddress: varchar("email_address"),
+  
+  // Career Interests
+  careerLevel: varchar("career_level"), // Student, Entry Level, Experienced, Manager, Senior Management
+  jobTypesOpen: text("job_types_open").array(), // Full-time, Part-time, etc.
+  preferredWorkplace: varchar("preferred_workplace"), // Onsite, Remote, Hybrid
+  desiredJobTitles: text("desired_job_titles").array(),
+  jobCategories: text("job_categories").array(),
+  minimumSalary: integer("minimum_salary"),
+  hideSalaryFromEmployers: boolean("hide_salary_from_employers").default(false),
+  preferredWorkCountries: text("preferred_work_countries").array(),
+  jobSearchStatus: varchar("job_search_status"),
+  
+  // Work Experience & Skills
+  totalYearsExperience: integer("total_years_experience"),
+  workExperiences: jsonb("work_experiences"), // Array of experience objects
+  skills: jsonb("skills"), // Array of skill objects with experience/proficiency
+  languages: jsonb("languages"), // Array of language objects with ratings
+  
+  // Education & Certifications  
+  currentEducationLevel: varchar("current_education_level"),
+  universityDegrees: jsonb("university_degrees"), // Array of degree objects
+  highSchools: jsonb("high_schools"), // Array of high school objects
+  certifications: jsonb("certifications"), // Array of certificate objects
+  trainingCourses: jsonb("training_courses"), // Array of training objects
+  
+  // Online Presence
+  linkedinUrl: varchar("linkedin_url"),
+  facebookUrl: varchar("facebook_url"), 
+  twitterUrl: varchar("twitter_url"),
+  instagramUrl: varchar("instagram_url"),
+  githubUrl: varchar("github_url"),
+  youtubeUrl: varchar("youtube_url"),
+  websiteUrl: varchar("website_url"),
+  otherUrl: varchar("other_url"),
+  
+  // Achievements
+  achievements: text("achievements"),
+  
+  // Legacy fields (keeping for backward compatibility)
   age: integer("age"),
   education: text("education"),
   university: varchar("university"),
@@ -53,6 +106,7 @@ export const applicantProfiles = pgTable("applicant_profiles", {
   resumeContent: text("resume_content"),
   summary: text("summary"),
   skillsList: text("skills_list").array(),
+  
   aiProfile: jsonb("ai_profile"), // Generated from AI interview
   aiProfileGenerated: boolean("ai_profile_generated").default(false),
   personalInterviewCompleted: boolean("personal_interview_completed").default(false),

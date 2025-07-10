@@ -1,0 +1,182 @@
+Add the following sections and fields to the “Build My Profile” modal within the application. Make all fields user-editable and group them clearly by category.
+
+1. General Information
+Name
+
+Birthdate
+
+Gender
+
+Nationality
+
+Marital Status
+
+Number of Dependents
+
+Military Status
+
+Location:
+
+Country
+
+City
+
+Willing to Relocate? (Yes/No toggle)
+
+Contact Information:
+
+Mobile Number
+
+Email Address
+
+2. Career Interests
+Career Level (Dropdown: Student, Entry Level, Experienced (Non-Manager), Manager, Senior Management (VP, CEO))
+
+Job Types Open To (Multi-select: Full-time, Part-time, Freelance/Project, Internship, Shift-based, Volunteering, Student Activity)
+
+Preferred Workplace Setting (Single-select: Onsite, Remote, Hybrid)
+
+Desired Job Titles (Dropdown, multi-select or searchable)
+
+Job Categories of Interest (Dropdown, multi-select or searchable)
+
+Minimum Acceptable Salary (Numeric field with “Hide from Employers” toggle)
+
+Preferred Work Countries (Dropdown list)
+
+Job Search Status (Radio select):
+
+Actively looking
+
+Open to better opportunities
+
+Interested in specific roles only
+
+Not currently looking
+
+Available for immediate hiring
+
+3. Upload CV
+Add file upload section for CV (.pdf, .docx)
+
+4. Work Experience
+Years of Experience (Dropdown)
+
+Add Work Experience button opens a modal with the following:
+
+Experience Type (Full-time, Part-time, Freelance, Internship, Student Activity)
+
+Job Title
+
+Job Category
+
+Company/Organization Name
+
+Start Date – End Date (or checkbox “Currently working here”)
+
+Description (Multiline input)
+
+5. Skills
+Add Skill button opens modal with:
+
+Skill Name (e.g., "Digital Marketing")
+
+Years of Experience (Dropdown)
+
+Proficiency (1–5 stars)
+
+Interest Level (1–5 stars)
+
+Justification/Comment (optional)
+
+6. Languages
+Add Language modal:
+
+Language Name (e.g., English)
+
+1–5 star ratings for: Reading, Writing, Listening, Speaking
+
+Optional Justification
+
+7. Education
+Current Education Level (Dropdown: High School, Diploma, Vocational, Bachelor’s, Master’s, PhD)
+
+Add University Degree (Modal):
+
+Degree Level
+
+Country
+
+University/Institution Name
+
+Field(s) of Study
+
+Start Year – End Year
+
+Grade/GPA
+
+Studied Subjects (optional)
+
+Additional Info (optional)
+
+Add High School (Modal):
+
+School Name
+
+Country
+
+Certificate Name
+
+Language of Study
+
+Graduation Year
+
+Grade/GPA
+
+Additional Info (optional)
+
+8. Certifications
+Add Certificate modal:
+
+Certificate Name
+
+Date Awarded
+
+Issuing Organization
+
+Grade or Score
+
+
+
+9. Training Courses
+Add Training modal:
+
+Training Topic (e.g., Java)
+
+Organization/Institution Name
+
+Month/Year
+
+Additional Info (optional)
+
+10. Online Presence
+Input fields for URLs:
+
+LinkedIn
+
+Facebook
+
+Twitter
+
+Instagram
+
+GitHub
+
+YouTube
+
+Website
+
+Other
+
+11. Achievements
+Text Area: User writes a paragraph about key achievements
