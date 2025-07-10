@@ -63,7 +63,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create user
       const user = await storage.createUser({
         email,
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         firstName,
         lastName,
         role: 'applicant'
@@ -90,20 +90,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Find user by email
       const user = await storage.getUserByEmail(email);
-      console.log("Found user:", user ? { id: user.id, email: user.email, hasPassword: !!user.password } : "null");
+      console.log("Found user:", user ? { id: user.id, email: user.email, hasPassword: !!user.passwordHash } : "null");
       
       if (!user) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      if (!user.password) {
+      if (!user.passwordHash) {
         console.error("User has no password set");
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
       // Check password
       console.log("Comparing password with hash");
-      const isValidPassword = await bcrypt.compare(password, user.password);
+      const isValidPassword = await bcrypt.compare(password, user.passwordHash);
       console.log("Password valid:", isValidPassword);
       
       if (!isValidPassword) {
