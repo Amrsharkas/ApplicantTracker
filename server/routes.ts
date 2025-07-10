@@ -232,7 +232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       ];
 
-      res.json({ types });
+      res.json({ interviewTypes: types });
     } catch (error) {
       console.error("Error fetching interview types:", error);
       res.status(500).json({ message: "Failed to fetch interview types" });
