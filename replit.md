@@ -126,6 +126,10 @@ Changelog:
 - July 8, 2025. Removed job search functionality - eliminated "View Job Postings" button, JobSearchModal component, and all related API endpoints to focus solely on Airtable-based job matching system
 - July 8, 2025. Added 3D company carousel to homepage landing page with podium effect - center logo prominently displayed, side logos smaller and blurred, slower 5-second transitions, and persuasive messaging about successful company adoption
 - July 9, 2025. Added personalized AI welcome message to interview system - users now receive a warm, personalized greeting from the AI interview system before starting the 5 questions, independent of the structured interview questions
+- July 10, 2025. Updated interview system with completion tracking - each interview type now shows "Completed" status when finished, preventing users from retaking completed interviews
+- July 10, 2025. Fixed interview type routing by adding specific IDs to interview buttons (interview-personal-button, interview-professional-button, interview-technical-button) to ensure correct question generation
+- July 10, 2025. Changed question distribution: 5 personal questions (background/values), 7 professional questions (career experience), 11 technical questions (IQ-focused with logical reasoning, pattern recognition, mathematical thinking)
+- July 10, 2025. Enhanced technical interview with IQ-style questions focusing on cognitive abilities, abstract reasoning, spatial thinking, and analytical skills rather than just problem-solving scenarios
 ```
 
 ## User Preferences

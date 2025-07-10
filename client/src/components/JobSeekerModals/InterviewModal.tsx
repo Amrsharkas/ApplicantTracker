@@ -335,6 +335,15 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     }
   };
 
+  const getQuestionCount = (interviewType: string) => {
+    switch (interviewType) {
+      case 'personal': return 5;
+      case 'professional': return 7;
+      case 'technical': return 11;
+      default: return 7;
+    }
+  };
+
   const handleClose = () => {
     if (mode === 'voice') {
       realtimeAPI.disconnect();
@@ -366,7 +375,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         title: 'Personal Interview',
         description: 'Understanding your personal self, background, and history',
         completed: false,
-        questions: 7
+        questions: 5
       },
       {
         type: 'professional',
@@ -380,7 +389,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         title: 'Technical Interview',
         description: 'Dynamic assessment based on your field - problem solving and IQ evaluation',
         completed: false,
-        questions: 7
+        questions: 11
       }
     ];
 
@@ -397,10 +406,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           {interviewTypes.map((interview) => (
             <Card 
               key={interview.type}
+              id={`interview-${interview.type}-button`}
               className={`cursor-pointer hover:bg-accent/50 transition-colors ${interview.completed ? 'border-green-300 bg-green-50' : ''}`}
               onClick={() => {
                 setSelectedInterviewType(interview.type);
-                setMode('select');
+                setMode('selection');
               }}
             >
               <CardContent className="flex items-center justify-between p-4">
@@ -490,7 +500,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Text Interview</h3>
         <Badge variant="outline">
-          Question {currentQuestionIndex + 1} of {currentSession?.sessionData?.questions?.length || 7}
+          Question {currentQuestionIndex + 1} of {currentSession?.sessionData?.questions?.length || getQuestionCount(selectedInterviewType)}
         </Badge>
       </div>
       
@@ -691,7 +701,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               </p>
               <p className="text-sm text-muted-foreground">
                 {realtimeAPI.isConnected 
-                  ? `Speak naturally - the AI will guide you through 7 ${selectedInterviewType} questions`
+                  ? `Speak naturally - the AI will guide you through ${getQuestionCount(selectedInterviewType)} ${selectedInterviewType} questions`
                   : 'Setting up your voice interview...'
                 }
               </p>

@@ -90,7 +90,7 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
   }
 
   async generatePersonalInterview(userData: any, resumeContent?: string): Promise<InterviewSet> {
-    const prompt = `You are an expert personal interviewer. Create exactly 7 deep, personal interview questions to understand everything about this candidate as a person - their background, motivations, values, personality, and life journey.
+    const prompt = `You are an expert personal interviewer. Create exactly 5 deep, personal interview questions to understand everything about this candidate as a person - their background, motivations, values, personality, and life journey.
 
 CANDIDATE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
@@ -101,20 +101,16 @@ ${userData?.location ? `Location: ${userData.location}` : ''}
 ${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
 
-Create 7 personal questions that explore:
+Create 5 personal questions that explore:
 1. Their background and upbringing
 2. Core values and what drives them
 3. Personal motivations and life philosophy
 4. How they handle challenges and setbacks
-5. What they're passionate about outside work
-6. Their personal growth journey
-7. What truly fulfills them in life
+5. What truly fulfills them in life
 
 Make questions deeply personal and insightful. Return ONLY JSON:
 {
   "questions": [
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
@@ -213,7 +209,7 @@ Make questions specific to their field and experience level. Return ONLY JSON:
     const userRole = userData?.currentRole || 'professional';
     const userField = this.determineUserField(userData, resumeContent);
     
-    const prompt = `You are an expert technical interviewer. Create exactly 7 technical assessment questions tailored specifically for a ${userRole} in the ${userField} field. These questions should assess technical abilities, problem-solving skills, analytical thinking, and domain-specific knowledge.
+    const prompt = `You are an expert technical interviewer. Create exactly 11 technical assessment questions tailored specifically for a ${userRole} in the ${userField} field. Focus heavily on IQ assessment, logical reasoning, pattern recognition, and analytical thinking, with field-specific technical knowledge.
 
 CANDIDATE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
@@ -224,18 +220,26 @@ ${userData?.location ? `Location: ${userData.location}` : ''}
 ${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
 
-For ${userField} professionals, create 7 technical questions that assess:
-1. Core technical knowledge in their domain
-2. Problem-solving methodology and approach
-3. Analytical and critical thinking skills
-4. Domain-specific tools and technologies
-5. Complex scenario-based problem solving
-6. Innovation and creative thinking
-7. Technical leadership or advanced concepts
+For ${userField} professionals, create 11 questions that assess:
+1. Logical reasoning and pattern recognition
+2. Mathematical and quantitative thinking
+3. Abstract problem-solving abilities
+4. Spatial and analytical reasoning
+5. Core technical knowledge in their domain
+6. Critical thinking and decision-making
+7. Cognitive flexibility and adaptability
+8. Memory and information processing
+9. Verbal reasoning and comprehension
+10. Creative problem-solving approaches
+11. Technical leadership and strategic thinking
 
-Make questions appropriate for their experience level and field. Include scenario-based problems, not just theoretical questions. Return ONLY JSON:
+Emphasize IQ-style questions that test intelligence, reasoning ability, and cognitive skills while relating to their field. Include logic puzzles, pattern analysis, mathematical reasoning, and abstract thinking challenges. Return ONLY JSON:
 {
   "questions": [
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},

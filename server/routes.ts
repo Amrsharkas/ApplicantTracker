@@ -214,7 +214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           title: 'Personal Interview',
           description: 'Understanding your background, values, and personal journey',
           completed: profile?.personalInterviewCompleted || false,
-          questions: 7
+          questions: 5
         },
         {
           type: 'professional', 
@@ -228,7 +228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           title: 'Technical Interview', 
           description: 'Assessing your technical abilities and problem-solving skills',
           completed: profile?.technicalInterviewCompleted || false,
-          questions: 7
+          questions: 11
         }
       ];
 
