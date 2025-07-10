@@ -1,8 +1,11 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Brain, Target, Zap, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
 
 // Import company logos
 import moderatorLogo from "@assets/image_1752003560205.png";
@@ -139,9 +142,8 @@ function CompanyCarousel() {
 }
 
 export default function Landing() {
-  const handleLogin = () => {
-    window.location.href = "/api/login";
-  };
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 overflow-hidden">
@@ -167,12 +169,34 @@ export default function Landing() {
               Plato
             </motion.div>
             
-            <Button 
-              onClick={handleLogin}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-xl font-medium"
-            >
-              Sign In
-            </Button>
+            <div className="flex gap-2">
+              <Dialog open={showLogin} onOpenChange={setShowLogin}>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="outline"
+                    className="border-blue-600 text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-xl font-medium"
+                  >
+                    Sign In
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <Login />
+                </DialogContent>
+              </Dialog>
+              
+              <Dialog open={showSignup} onOpenChange={setShowSignup}>
+                <DialogTrigger asChild>
+                  <Button 
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-xl font-medium"
+                  >
+                    Sign Up
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <Signup />
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </motion.header>
 
@@ -219,21 +243,34 @@ export default function Landing() {
                 transition={{ delay: 0.5 }}
                 className="flex flex-col sm:flex-row gap-4"
               >
-                <Button 
-                  onClick={handleLogin}
-                  size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  Get Started
-                </Button>
+                <Dialog open={showSignup} onOpenChange={setShowSignup}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      size="lg"
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      Get Started
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <Signup />
+                  </DialogContent>
+                </Dialog>
                 
-                <Button 
-                  variant="outline" 
-                  size="lg"
-                  className="border-2 border-slate-300 hover:border-blue-500 text-slate-700 hover:text-blue-600 px-8 py-4 rounded-xl font-semibold text-lg"
-                >
-                  Learn More
-                </Button>
+                <Dialog open={showLogin} onOpenChange={setShowLogin}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="lg"
+                      className="border-2 border-slate-300 hover:border-blue-500 text-slate-700 hover:text-blue-600 px-8 py-4 rounded-xl font-semibold text-lg"
+                    >
+                      Sign In
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <Login />
+                  </DialogContent>
+                </Dialog>
               </motion.div>
 
               {/* Feature highlights */}
@@ -349,13 +386,19 @@ export default function Landing() {
             <p className="text-xl text-slate-600 max-w-2xl mx-auto">
               Join thousands of professionals who've discovered their dream careers with AI-powered job matching.
             </p>
-            <Button 
-              onClick={handleLogin}
-              size="lg"
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-12 py-4 rounded-xl font-semibold text-xl shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              Start Your Journey
-            </Button>
+            <Dialog open={showSignup} onOpenChange={setShowSignup}>
+              <DialogTrigger asChild>
+                <Button 
+                  size="lg"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-12 py-4 rounded-xl font-semibold text-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  Start Your Journey
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <Signup />
+              </DialogContent>
+            </Dialog>
           </motion.div>
         </main>
       </div>

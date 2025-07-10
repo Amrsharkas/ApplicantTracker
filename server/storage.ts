@@ -23,60 +23,59 @@ import { eq, desc, and, sql } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
-  // User operations (mandatory for Replit Auth)
-  getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
+  // User operations (updated for email/password auth)
+  getUser(id: number): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(userData: Omit<UpsertUser, 'id'>): Promise<User>;
 
   // Applicant profile operations
-  getApplicantProfile(userId: string): Promise<ApplicantProfile | undefined>;
+  getApplicantProfile(userId: number): Promise<ApplicantProfile | undefined>;
   upsertApplicantProfile(profile: InsertApplicantProfile): Promise<ApplicantProfile>;
-  updateProfileCompletion(userId: string): Promise<void>;
+  updateProfileCompletion(userId: number): Promise<void>;
 
 
 
   // Job matching operations
-  getJobMatches(userId: string): Promise<(JobMatch & { job: Job })[]>;
+  getJobMatches(userId: number): Promise<(JobMatch & { job: Job })[]>;
   createJobMatch(match: InsertJobMatch): Promise<JobMatch>;
-  calculateJobMatches(userId: string): Promise<void>;
+  calculateJobMatches(userId: number): Promise<void>;
   createJobFromAirtable(jobData: any): Promise<Job>;
 
   // Application operations
-  getApplications(userId: string): Promise<(Application & { job: Job })[]>;
+  getApplications(userId: number): Promise<(Application & { job: Job })[]>;
   createApplication(application: InsertApplication): Promise<Application>;
-  getApplication(userId: string, jobId: number): Promise<Application | undefined>;
+  getApplication(userId: number, jobId: number): Promise<Application | undefined>;
 
   // Interview operations
   createInterviewSession(session: InsertInterviewSession): Promise<InterviewSession>;
-  getInterviewSession(userId: string, interviewType?: string): Promise<InterviewSession | undefined>;
+  getInterviewSession(userId: number, interviewType?: string): Promise<InterviewSession | undefined>;
   updateInterviewSession(id: number, data: Partial<InterviewSession>): Promise<void>;
-  getInterviewHistory(userId: string): Promise<InterviewSession[]>;
-  updateInterviewCompletion(userId: string, interviewType: string): Promise<void>;
+  getInterviewHistory(userId: number): Promise<InterviewSession[]>;
+  updateInterviewCompletion(userId: number, interviewType: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
-  // User operations (mandatory for Replit Auth)
-  async getUser(id: string): Promise<User | undefined> {
+  // User operations (updated for email/password auth)
+  async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(userData: Omit<UpsertUser, 'id'>): Promise<User> {
     const [user] = await db
       .insert(users)
       .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
       .returning();
     return user;
   }
 
   // Applicant profile operations
-  async getApplicantProfile(userId: string): Promise<ApplicantProfile | undefined> {
+  async getApplicantProfile(userId: number): Promise<ApplicantProfile | undefined> {
     const [profile] = await db
       .select()
       .from(applicantProfiles)
@@ -103,7 +102,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateProfileCompletion(userId: string): Promise<void> {
+  async updateProfileCompletion(userId: number): Promise<void> {
     const profile = await this.getApplicantProfile(userId);
     if (!profile) return;
 
@@ -211,7 +210,7 @@ export class DatabaseStorage implements IStorage {
 
 
   // Job matching operations
-  async getJobMatches(userId: string): Promise<(JobMatch & { job: Job })[]> {
+  async getJobMatches(userId: number): Promise<(JobMatch & { job: Job })[]> {
     const matches = await db
       .select()
       .from(jobMatches)
@@ -230,7 +229,7 @@ export class DatabaseStorage implements IStorage {
     return match;
   }
 
-  async calculateJobMatches(userId: string): Promise<void> {
+  async calculateJobMatches(userId: number): Promise<void> {
     // Job matching is now handled by Airtable - this method is kept for compatibility
     // but doesn't perform any calculations since jobs come pre-matched from Airtable
     console.log(`Job matching for user ${userId} is handled by Airtable system`);
@@ -262,7 +261,7 @@ export class DatabaseStorage implements IStorage {
 
 
   // Application operations
-  async getApplications(userId: string): Promise<(Application & { job: Job })[]> {
+  async getApplications(userId: number): Promise<(Application & { job: Job })[]> {
     const apps = await db
       .select()
       .from(applications)
@@ -284,7 +283,7 @@ export class DatabaseStorage implements IStorage {
     return application;
   }
 
-  async getApplication(userId: string, jobId: number): Promise<Application | undefined> {
+  async getApplication(userId: number, jobId: number): Promise<Application | undefined> {
     const [app] = await db
       .select()
       .from(applications)
@@ -301,7 +300,7 @@ export class DatabaseStorage implements IStorage {
     return session;
   }
 
-  async getInterviewSession(userId: string, interviewType?: string): Promise<InterviewSession | undefined> {
+  async getInterviewSession(userId: number, interviewType?: string): Promise<InterviewSession | undefined> {
     let query = db
       .select()
       .from(interviewSessions);
@@ -328,7 +327,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(interviewSessions.id, id));
   }
 
-  async getInterviewHistory(userId: string): Promise<InterviewSession[]> {
+  async getInterviewHistory(userId: number): Promise<InterviewSession[]> {
     const sessions = await db
       .select()
       .from(interviewSessions)
@@ -338,7 +337,7 @@ export class DatabaseStorage implements IStorage {
     return sessions;
   }
 
-  async updateInterviewCompletion(userId: string, interviewType: string): Promise<void> {
+  async updateInterviewCompletion(userId: number, interviewType: string): Promise<void> {
     let updateData: any = {};
     
     switch (interviewType) {

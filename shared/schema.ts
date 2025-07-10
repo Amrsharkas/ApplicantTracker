@@ -25,12 +25,13 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table (mandatory for Replit Auth)
+// User storage table
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().notNull(),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
+  id: serial("id").primaryKey(),
+  email: varchar("email").notNull().unique(),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  passwordHash: varchar("password_hash").notNull(),
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").default("applicant"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -40,7 +41,7 @@ export const users = pgTable("users", {
 // Applicant profiles table
 export const applicantProfiles = pgTable("applicant_profiles", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id),
   
   // General Information
   name: varchar("name"),
@@ -139,7 +140,7 @@ export const jobs = pgTable("jobs", {
 // Job matches table
 export const jobMatches = pgTable("job_matches", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id),
   jobId: integer("job_id").notNull().references(() => jobs.id),
   matchScore: real("match_score").notNull(), // 0-100
   matchReasons: text("match_reasons").array(),
@@ -149,7 +150,7 @@ export const jobMatches = pgTable("job_matches", {
 // Applications table
 export const applications = pgTable("applications", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id),
   jobId: integer("job_id").notNull().references(() => jobs.id),
   status: varchar("status").default("applied"), // applied, reviewed, interviewed, rejected, offered
   appliedAt: timestamp("applied_at").defaultNow(),
@@ -160,7 +161,7 @@ export const applications = pgTable("applications", {
 // Interview sessions table
 export const interviewSessions = pgTable("interview_sessions", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id),
   interviewType: varchar("interview_type").notNull(), // 'personal', 'professional', 'technical'
   sessionData: jsonb("session_data").notNull(), // Q&A pairs, progress
   isCompleted: boolean("is_completed").default(false),
@@ -259,3 +260,23 @@ export type InsertApplication = z.infer<typeof insertApplicationSchema>;
 export type Application = typeof applications.$inferSelect;
 export type InsertInterviewSession = z.infer<typeof insertInterviewSessionSchema>;
 export type InterviewSession = typeof interviewSessions.$inferSelect;
+
+// Auth schemas
+export const signupSchema = z.object({
+  email: z.string().email("Please enter a valid email"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Please confirm your password"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+export const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export type SignupData = z.infer<typeof signupSchema>;
+export type LoginData = z.infer<typeof loginSchema>;

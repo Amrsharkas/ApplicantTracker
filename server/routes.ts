@@ -1,28 +1,134 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
 import { aiInterviewService, aiProfileAnalysisAgent } from "./openai";
 import { airtableService } from "./airtable";
 import multer from "multer";
 import { z } from "zod";
-import { insertApplicantProfileSchema, insertApplicationSchema } from "@shared/schema";
+import { insertApplicantProfileSchema, insertApplicationSchema, signupSchema, loginSchema } from "@shared/schema";
+import bcrypt from "bcryptjs";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
+// Middleware to check if user is authenticated
+const requireAuth = (req: any, res: any, next: any) => {
+  if (!req.session?.userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+  // Configure session middleware
+  app.set("trust proxy", 1);
+  const pgStore = connectPg(session);
+  const sessionStore = new pgStore({
+    conString: process.env.DATABASE_URL,
+    createTableIfMissing: false,
+    ttl: 7 * 24 * 60 * 60, // 1 week in seconds
+    tableName: "sessions",
+  });
+
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+    },
+  }));
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.post('/api/auth/signup', async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const { email, password, firstName, lastName } = signupSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      // Create user
+      const user = await storage.createUser({
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        role: 'applicant'
+      });
+
+      // Set session
+      req.session.userId = user.id;
+      
+      res.json({ user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } });
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      if (error.issues) {
+        return res.status(400).json({ message: "Invalid input", errors: error.issues });
+      }
+      res.status(500).json({ message: "Failed to create account" });
+    }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, password } = loginSchema.parse(req.body);
+      
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Check password
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Set session
+      req.session.userId = user.id;
+      
+      res.json({ user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } });
+    } catch (error: any) {
+      console.error("Login error:", error);
+      if (error.issues) {
+        return res.status(400).json({ message: "Invalid input", errors: error.issues });
+      }
+      res.status(500).json({ message: "Failed to login" });
+    }
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Failed to logout" });
+      }
+      res.clearCookie('connect.sid');
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  app.get('/api/auth/user', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
       const user = await storage.getUser(userId);
-      res.json(user);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json({ id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -30,9 +136,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Profile routes
-  app.get('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
+  app.get('/api/candidate/profile', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const profile = await storage.getApplicantProfile(userId);
       res.json(profile || null);
     } catch (error) {
@@ -41,9 +147,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
+  app.post('/api/candidate/profile', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const profileData = insertApplicantProfileSchema.parse({
         ...req.body,
         userId
@@ -60,9 +166,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Resume upload route
-  app.post('/api/candidate/resume', isAuthenticated, upload.single('resume'), async (req: any, res) => {
+  app.post('/api/candidate/resume', requireAuth, upload.single('resume'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -156,7 +262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create ephemeral token for Realtime API
-  app.post("/api/realtime/session", isAuthenticated, async (req, res) => {
+  app.post("/api/realtime/session", requireAuth, async (req, res) => {
     try {
       const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
         method: "POST",
@@ -183,9 +289,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Interview routes
-  app.post('/api/interview/welcome', isAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/welcome', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
@@ -203,9 +309,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get available interview types for a user
-  app.get('/api/interview/types', isAuthenticated, async (req: any, res) => {
+  app.get('/api/interview/types', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const profile = await storage.getApplicantProfile(userId);
 
       const types = [
@@ -239,9 +345,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/start/:type', isAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/start/:type', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const interviewType = req.params.type;
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
@@ -294,9 +400,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Legacy endpoint for backward compatibility
-  app.post('/api/interview/start', isAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/start', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
@@ -330,9 +436,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/respond', isAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/respond', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { sessionId, question, answer } = req.body;
 
       const session = await storage.getInterviewSession(userId);
@@ -459,9 +565,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/complete', isAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/complete', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { sessionId, interviewType } = req.body;
 
       const session = await storage.getInterviewSession(userId);
@@ -558,9 +664,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/complete-voice', isAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/complete-voice', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { conversationHistory, interviewType } = req.body;
 
       if (!conversationHistory || !Array.isArray(conversationHistory)) {
@@ -655,9 +761,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/interview/session', isAuthenticated, async (req: any, res) => {
+  app.get('/api/interview/session', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const session = await storage.getInterviewSession(userId);
       res.json(session);
     } catch (error) {
@@ -666,9 +772,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/interview/history', isAuthenticated, async (req: any, res) => {
+  app.get('/api/interview/history', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const history = await storage.getInterviewHistory(userId);
       const profile = await storage.getApplicantProfile(userId);
       
@@ -693,9 +799,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/voice-submit', isAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/voice-submit', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { responses, conversationHistory } = req.body;
 
       // Get user and profile data
@@ -768,9 +874,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Job matches routes
-  app.get('/api/job-matches', isAuthenticated, async (req: any, res) => {
+  app.get('/api/job-matches', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const matches = await storage.getJobMatches(userId);
       res.json(matches);
     } catch (error) {
@@ -779,9 +885,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/job-matches/refresh', isAuthenticated, async (req: any, res) => {
+  app.post('/api/job-matches/refresh', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       await storage.calculateJobMatches(userId);
       const matches = await storage.getJobMatches(userId);
       res.json(matches);
@@ -792,9 +898,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Application routes
-  app.get('/api/applications', isAuthenticated, async (req: any, res) => {
+  app.get('/api/applications', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const applications = await storage.getApplications(userId);
       res.json(applications);
     } catch (error) {
@@ -803,9 +909,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/applications', isAuthenticated, async (req: any, res) => {
+  app.post('/api/applications', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const applicationData = insertApplicationSchema.parse({
         ...req.body,
         userId
@@ -826,7 +932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Job postings routes
-  app.get('/api/job-postings', isAuthenticated, async (req: any, res) => {
+  app.get('/api/job-postings', requireAuth, async (req: any, res) => {
     try {
       const jobPostings = await airtableService.getAllJobPostings();
       res.json(jobPostings);
