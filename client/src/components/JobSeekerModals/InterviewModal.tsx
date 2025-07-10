@@ -61,6 +61,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const [showProfileDetails, setShowProfileDetails] = useState(false);
   const [isInterviewConcluded, setIsInterviewConcluded] = useState(false);
   const [isProcessingInterview, setIsProcessingInterview] = useState(false);
+  const [isStartingInterview, setIsStartingInterview] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -159,6 +160,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       return response.json();
     },
     onSuccess: (data) => {
+      setIsStartingInterview(false);
+      
       // Create session object from the response data
       const session = {
         id: data.sessionId,
@@ -173,22 +176,36 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       setCurrentSession(session);
       setCurrentQuestionIndex(0);
       
+      // Show welcome message first, then first question
+      const messages = [];
+      
+      if (welcomeMessageData?.welcomeMessage) {
+        messages.push({
+          type: 'question' as const,
+          content: welcomeMessageData.welcomeMessage,
+          timestamp: new Date()
+        });
+      }
+      
       if (data.firstQuestion) {
-        const firstQuestion: InterviewMessage = {
-          type: 'question',
+        messages.push({
+          type: 'question' as const,
           content: data.firstQuestion,
           timestamp: new Date()
-        };
-        // Append first question to existing messages (which might include welcome message)
-        setMessages(prev => [...prev, firstQuestion]);
+        });
       }
+      
+      setMessages(messages);
     },
-    onError: () => {
+    onError: (error) => {
+      setIsStartingInterview(false);
+      console.error('Start interview error:', error);
       toast({
         title: "Error",
-        description: "Failed to start interview",
+        description: "Failed to start interview. Please try again.",
         variant: "destructive",
       });
+      setMode('select');
     },
   });
 
@@ -317,24 +334,33 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   };
 
   const startVoiceInterview = async () => {
+    setIsStartingInterview(true);
     setMode('voice');
     setMessages([]);
     setIsInterviewConcluded(false);
     setConversationHistory([]);
     
-    // Show welcome message first
-    if (welcomeMessageData?.welcomeMessage) {
-      const welcomeMessage: InterviewMessage = {
-        type: 'question',
-        content: welcomeMessageData.welcomeMessage,
-        timestamp: new Date()
-      };
-      setMessages([welcomeMessage]);
-    }
+    // Show loading message
+    const loadingMessage: InterviewMessage = {
+      type: 'question',
+      content: 'Starting your voice interview... Please wait while I prepare your personalized questions.',
+      timestamp: new Date()
+    };
+    setMessages([loadingMessage]);
     
     try {
       // Start an interview session to get the structured questions
       const interviewSession = await startInterviewMutation.mutateAsync();
+      
+      // Update with welcome message
+      if (welcomeMessageData?.welcomeMessage) {
+        const welcomeMessage: InterviewMessage = {
+          type: 'question',
+          content: welcomeMessageData.welcomeMessage,
+          timestamp: new Date()
+        };
+        setMessages([welcomeMessage]);
+      }
       
       await realtimeAPI.connect({
         interviewType: selectedInterviewType,
@@ -342,31 +368,35 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         interviewSet: interviewSession.interviewSet
       });
       
+      setIsStartingInterview(false);
       toast({
         title: "Voice Interview Started",
         description: "You can now speak naturally with the AI interviewer.",
       });
     } catch (error) {
+      setIsStartingInterview(false);
+      console.error('Voice interview error:', error);
       toast({
         title: "Connection Failed",
         description: "Could not start voice interview. Please try text mode.",
         variant: "destructive",
       });
-      setMode('text');
+      setMode('select');
     }
   };
 
   const startTextInterview = () => {
+    setIsStartingInterview(true);
     setMode('text');
     setMessages([]);
     
-    // Show welcome message immediately
-    const welcomeMessage: InterviewMessage = {
+    // Show loading message immediately
+    const loadingMessage: InterviewMessage = {
       type: 'question',
-      content: welcomeMessageData?.welcomeMessage || `Welcome! I'm excited to learn more about you through this ${selectedInterviewType} interview. Let's begin with our first question.`,
+      content: 'Starting your text interview... Please wait while I prepare your personalized questions.',
       timestamp: new Date()
     };
-    setMessages([welcomeMessage]);
+    setMessages([loadingMessage]);
     
     // Start the interview immediately
     startInterviewMutation.mutate();
@@ -499,25 +529,53 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={startVoiceInterview}>
+        <Card 
+          className={`transition-colors ${
+            isStartingInterview 
+              ? 'opacity-50 cursor-not-allowed' 
+              : 'cursor-pointer hover:bg-accent/50'
+          }`} 
+          onClick={isStartingInterview ? undefined : startVoiceInterview}
+        >
           <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
-            <Mic className="h-8 w-8 text-primary" />
+            {isStartingInterview && mode === 'voice' ? (
+              <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Mic className="h-8 w-8 text-primary" />
+            )}
             <div className="text-center">
               <h4 className="font-medium">Voice Interview</h4>
               <p className="text-sm text-muted-foreground">
-                Speak naturally with the AI interviewer
+                {isStartingInterview && mode === 'voice' 
+                  ? 'Starting voice interview...' 
+                  : 'Speak naturally with the AI interviewer'
+                }
               </p>
             </div>
           </CardContent>
         </Card>
         
-        <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={startTextInterview}>
+        <Card 
+          className={`transition-colors ${
+            isStartingInterview 
+              ? 'opacity-50 cursor-not-allowed' 
+              : 'cursor-pointer hover:bg-accent/50'
+          }`} 
+          onClick={isStartingInterview ? undefined : startTextInterview}
+        >
           <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
-            <MessageCircle className="h-8 w-8 text-primary" />
+            {isStartingInterview && mode === 'text' ? (
+              <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <MessageCircle className="h-8 w-8 text-primary" />
+            )}
             <div className="text-center">
               <h4 className="font-medium">Text Interview</h4>
               <p className="text-sm text-muted-foreground">
-                Type your responses at your own pace
+                {isStartingInterview && mode === 'text' 
+                  ? 'Preparing interview questions...' 
+                  : 'Type your responses at your own pace'
+                }
               </p>
             </div>
           </CardContent>
@@ -566,6 +624,21 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             </div>
           </div>
         ))}
+        
+        {/* Loading indicator when processing responses */}
+        {(respondMutation.isPending || startInterviewMutation.isPending) && (
+          <div className="p-3 rounded-lg bg-gray-50 border-l-4 border-gray-400">
+            <div className="flex items-start space-x-2">
+              <div className="h-4 w-4 mt-1 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+              <div className="flex-1">
+                <p className="text-sm text-gray-600">
+                  {startInterviewMutation.isPending ? 'Preparing questions...' : 'Processing your response...'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </div>
 
@@ -746,12 +819,14 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             
             <div className="space-y-2">
               <p className="font-medium">
-                {realtimeAPI.isConnected ? 'AI Interview Active' : 'Connecting...'}
+                {isStartingInterview ? 'Starting Interview...' : realtimeAPI.isConnected ? 'AI Interview Active' : 'Connecting...'}
               </p>
               <p className="text-sm text-muted-foreground">
-                {realtimeAPI.isConnected 
-                  ? `Speak naturally - the AI will guide you through ${getQuestionCount(selectedInterviewType)} ${selectedInterviewType} questions`
-                  : 'Setting up your voice interview...'
+                {isStartingInterview 
+                  ? 'Preparing your personalized questions...'
+                  : realtimeAPI.isConnected 
+                    ? `Speak naturally - the AI will guide you through ${getQuestionCount(selectedInterviewType)} ${selectedInterviewType} questions`
+                    : 'Setting up your voice interview...'
                 }
               </p>
             </div>
