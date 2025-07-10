@@ -108,7 +108,7 @@ export class DatabaseStorage implements IStorage {
     if (!profile) return;
 
     let score = 0;
-    const maxScore = 1100; // Total possible points
+    const maxScore = 1000; // Total required points for 100% completion
     
     // Section 1: General Information (200 points - required fields only)
     let generalScore = 0;
@@ -163,42 +163,27 @@ export class DatabaseStorage implements IStorage {
     if (universityDegrees.length > 0) educationScore += 70;
     score += educationScore;
 
-    // Section 8: Certifications (50 points - optional)
-    const certifications = profile.certifications as any[] || [];
-    if (certifications.length > 0) {
-      score += 50;
-    }
-
-    // Section 9: Training (50 points - optional)
-    const trainingCourses = profile.trainingCourses as any[] || [];
-    if (trainingCourses.length > 0) {
-      score += 50;
-    }
-
-    // Section 10: Online Presence (50 points - optional but LinkedIn important)
-    let onlineScore = 0;
-    if (profile.linkedinUrl) onlineScore += 30; // LinkedIn is most important
-    if (profile.githubUrl || profile.websiteUrl || profile.facebookUrl || profile.twitterUrl || profile.instagramUrl || profile.youtubeUrl || profile.otherUrl) {
-      onlineScore += 20;
-    }
-    score += onlineScore;
-
-    // Section 11: Achievements (10 points - optional)
-    if (profile.achievements && profile.achievements.trim()) {
-      score += 10;
-    }
-
     // Calculate completion percentage (based on required fields only)
     // Required sections total: 200 + 150 + 100 + 150 + 100 + 100 + 100 = 1000 points
+    // Optional sections (certifications, training, online presence, achievements) do NOT count toward completion
     const requiredScore = Math.min(score, 1000);
     const completionPercentage = Math.round((requiredScore / 1000) * 100);
     
+    // Optional sections (for tracking only, not included in completion percentage)
+    const certifications = profile.certifications as any[] || [];
+    const trainingCourses = profile.trainingCourses as any[] || [];
+    let onlineScore = 0;
+    if (profile.linkedinUrl) onlineScore += 30;
+    if (profile.githubUrl || profile.websiteUrl || profile.facebookUrl || profile.twitterUrl || profile.instagramUrl || profile.youtubeUrl || profile.otherUrl) {
+      onlineScore += 20;
+    }
+    const achievementsScore = profile.achievements && profile.achievements.trim() ? 10 : 0;
+    
     console.log(`Profile completion for user ${userId}:`, {
-      totalScore: score,
       requiredScore,
-      maxPossibleScore: maxScore,
+      maxRequiredScore: maxScore,
       completionPercentage,
-      breakdown: {
+      requiredFieldsBreakdown: {
         general: generalScore,
         career: careerScore,
         cv: profile.resumeContent || profile.resumeUrl ? 100 : 0,
@@ -206,10 +191,12 @@ export class DatabaseStorage implements IStorage {
         skills: skills.length > 0 ? 100 : 0,
         languages: languages.length > 0 ? 100 : 0,
         education: educationScore,
-        certifications: certifications.length > 0 ? 50 : 0,
-        training: trainingCourses.length > 0 ? 50 : 0,
-        online: onlineScore,
-        achievements: profile.achievements && profile.achievements.trim() ? 10 : 0
+      },
+      optionalFieldsStatus: {
+        certifications: certifications.length > 0 ? `${certifications.length} added` : 'none',
+        training: trainingCourses.length > 0 ? `${trainingCourses.length} added` : 'none',
+        onlinePresence: onlineScore > 0 ? 'configured' : 'none',
+        achievements: achievementsScore > 0 ? 'added' : 'none'
       }
     });
 
