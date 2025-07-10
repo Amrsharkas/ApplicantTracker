@@ -155,7 +155,6 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       const endpoint = selectedInterviewType 
         ? `/api/interview/start/${selectedInterviewType}`
         : "/api/interview/start";
-      console.log('Making request to endpoint:', endpoint, 'with selectedInterviewType:', selectedInterviewType);
       const response = await apiRequest("POST", endpoint, {});
       return response.json();
     },
@@ -206,6 +205,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       if (data.isComplete) {
         setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
         queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
         toast({
           title: "Interview Complete!",
           description: "Your AI profile has been generated successfully.",
@@ -218,12 +218,44 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         };
         setMessages(prev => [...prev, nextQuestion]);
         setCurrentQuestionIndex(prev => prev + 1);
+        
+        // Check if the question contains "conclude" to show submit button
+        if (data.nextQuestion.toLowerCase().includes('conclude')) {
+          setIsInterviewConcluded(true);
+        }
       }
     },
     onError: () => {
       toast({
         title: "Error",
         description: "Failed to process your response",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const processTextInterviewMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/interview/complete", {
+        sessionId: currentSession?.id,
+        interviewType: selectedInterviewType
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
+      toast({
+        title: "Interview Complete!",
+        description: "Your interview has been submitted and processed successfully.",
+      });
+      setIsInterviewConcluded(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Submission Failed",
+        description: "There was an issue submitting your interview. Please try again.",
         variant: "destructive",
       });
     },
@@ -242,7 +274,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         }));
 
       const response = await apiRequest("POST", "/api/interview/complete-voice", {
-        conversationHistory: responses
+        conversationHistory: responses,
+        interviewType: selectedInterviewType
       });
       return response.json();
     },
@@ -250,6 +283,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       setIsProcessingInterview(false);
       setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
       queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
       toast({
         title: "Interview Complete!",
         description: "Your AI profile has been generated and saved to your database.",
@@ -315,7 +349,6 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   };
 
   const startTextInterview = () => {
-    console.log('Starting text interview for type:', selectedInterviewType);
     setMode('text');
     setMessages([]);
     
@@ -330,11 +363,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       
       // Add a small delay before starting the actual interview
       setTimeout(() => {
-        console.log('Calling startInterviewMutation with selectedInterviewType:', selectedInterviewType);
         startInterviewMutation.mutate();
       }, 2000);
     } else {
-      console.log('No welcome message, calling startInterviewMutation immediately with selectedInterviewType:', selectedInterviewType);
       startInterviewMutation.mutate();
     }
   };
@@ -650,15 +681,27 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             }}
           />
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => setMode('select')}>
-              ← Back to Options
+            <Button variant="outline" onClick={() => setMode('types')}>
+              ← Back to Interview Types
             </Button>
-            <Button 
-              onClick={handleSubmitAnswer}
-              disabled={!currentAnswer.trim() || respondMutation.isPending}
-            >
-              {respondMutation.isPending ? 'Processing...' : 'Submit Answer'}
-            </Button>
+            <div className="flex space-x-2">
+              {isInterviewConcluded ? (
+                <Button 
+                  onClick={() => processTextInterviewMutation.mutate()}
+                  disabled={processTextInterviewMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {processTextInterviewMutation.isPending ? 'Submitting...' : 'Submit Interview'}
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleSubmitAnswer}
+                  disabled={!currentAnswer.trim() || respondMutation.isPending}
+                >
+                  {respondMutation.isPending ? 'Processing...' : 'Submit Answer'}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -459,6 +459,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/interview/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { sessionId, interviewType } = req.body;
+
+      const session = await storage.getInterviewSession(userId);
+      if (!session || session.id !== sessionId) {
+        return res.status(404).json({ message: "Interview session not found" });
+      }
+
+      const sessionData = session.sessionData as any;
+      
+      // Mark this specific interview type as completed
+      await storage.updateInterviewCompletion(userId, interviewType);
+
+      // Update the interview session as completed
+      await storage.updateInterviewSession(session.id, {
+        sessionData: { ...sessionData, isComplete: true },
+        isCompleted: true,
+        completedAt: new Date()
+      });
+
+      // Check if all 3 interviews are completed
+      const updatedProfile = await storage.getApplicantProfile(userId);
+      const allInterviewsCompleted = updatedProfile?.personalInterviewCompleted && 
+                                   updatedProfile?.professionalInterviewCompleted && 
+                                   updatedProfile?.technicalInterviewCompleted;
+
+      if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
+        // Get user data for comprehensive analysis
+        const user = await storage.getUser(userId);
+        
+        // Get all interview sessions for this user
+        const allSessions = await storage.getInterviewHistory(userId);
+        const completedSessions = allSessions.filter(s => s.isCompleted);
+        
+        // Combine all responses from all interview types
+        let allResponses: any[] = [];
+        completedSessions.forEach(s => {
+          const sessionData = s.sessionData as any;
+          if (sessionData.responses) {
+            allResponses = allResponses.concat(sessionData.responses);
+          }
+        });
+
+        // Get resume content from profile
+        const resumeContent = updatedProfile?.resumeContent || null;
+
+        // Use AI Agent 2 to generate comprehensive profile from ALL interviews
+        const generatedProfile = await aiInterviewService.generateProfile(
+          { ...user, ...updatedProfile },
+          resumeContent,
+          allResponses
+        );
+
+        // Update profile with AI data
+        await storage.upsertApplicantProfile({
+          userId,
+          ...updatedProfile,
+          aiProfile: generatedProfile,
+          aiProfileGenerated: true,
+          summary: generatedProfile.summary,
+          skillsList: generatedProfile.skills
+        });
+
+        // Calculate job matches
+        await storage.calculateJobMatches(userId);
+
+        // Store profile in Airtable
+        try {
+          const userName = user?.firstName && user?.lastName 
+            ? `${user.firstName} ${user.lastName}` 
+            : user?.email || `User ${userId}`;
+          
+          await airtableService.storeUserProfile(userName, generatedProfile, userId, user?.email);
+        } catch (error) {
+          console.error('Failed to store profile in Airtable:', error);
+          // Don't fail the entire request if Airtable fails
+        }
+
+        res.json({ 
+          isComplete: true,
+          allInterviewsCompleted: true,
+          profile: generatedProfile,
+          message: `${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed! All interviews finished - your comprehensive profile has been generated.`
+        });
+      } else {
+        res.json({ 
+          isComplete: true,
+          allInterviewsCompleted: false,
+          message: `${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed successfully! ${allInterviewsCompleted ? 'All interviews are now complete.' : 'Continue with the remaining interviews to complete your profile.'}`
+        });
+      }
+    } catch (error) {
+      console.error("Error completing interview:", error);
+      res.status(500).json({ message: "Failed to complete interview" });
+    }
+  });
+
   app.post('/api/interview/complete-voice', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

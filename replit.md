@@ -130,6 +130,7 @@ Changelog:
 - July 10, 2025. Fixed interview type routing by adding specific IDs to interview buttons (interview-personal-button, interview-professional-button, interview-technical-button) to ensure correct question generation
 - July 10, 2025. Changed question distribution: 5 personal questions (background/values), 7 professional questions (career experience), 11 technical questions (IQ-focused with logical reasoning, pattern recognition, mathematical thinking)
 - July 10, 2025. Enhanced technical interview with IQ-style questions focusing on cognitive abilities, abstract reasoning, spatial thinking, and analytical skills rather than just problem-solving scenarios
+- July 10, 2025. Fixed interview completion tracking and navigation issues - interviews now properly show "Completed" status, fixed "back to interview types" navigation, and added submit button for text interviews when "conclude" is detected
 ```
 
 ## User Preferences
