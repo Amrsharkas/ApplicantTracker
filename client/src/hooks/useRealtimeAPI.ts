@@ -7,6 +7,9 @@ interface RealtimeAPIOptions {
   onAudioEnd?: () => void;
   onError?: (error: Error) => void;
   userProfile?: any;
+  interviewType?: string;
+  questions?: any[];
+  interviewSet?: any;
 }
 
 export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
@@ -22,7 +25,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
   
   const { toast } = useToast();
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (interviewParams?: { interviewType?: string; questions?: any[]; interviewSet?: any }) => {
     if (isConnecting || isConnected) return;
     
     setIsConnecting(true);
@@ -111,7 +114,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
         setIsConnecting(false);
         
         // Generate dynamic instructions based on user profile
-        const buildInstructions = (userProfile: any) => {
+        const buildInstructions = (userProfile: any, interviewParams?: { interviewType?: string; questions?: any[]; interviewSet?: any }) => {
           const profileContext = userProfile ? `
 
 CANDIDATE BACKGROUND:
@@ -125,14 +128,23 @@ ${userProfile.resumeUrl ? `NOTE: The candidate has uploaded a resume. Use this b
 
 Use this information to tailor your questions and make them more specific to their background. Reference their experience and current situation when appropriate.` : '';
 
-          return `You are an AI interviewer conducting a focused professional interview. Your goal is to understand the candidate on both a personal and professional level through exactly 5 structured questions.${profileContext}
+          // Get interview type and questions from parameters
+          const interviewType = interviewParams?.interviewType || 'personal';
+          const questions = interviewParams?.questions || [];
+          const interviewSet = interviewParams?.interviewSet;
+          
+          const questionCount = questions.length;
+          const questionList = questions.map((q, index) => `${index + 1}. "${q.question}"`).join('\n');
 
-The 5 questions to ask in order:
-1. "Let's start with you as a person - tell me about your background and what led you to your current career path?"
-2. "What does a typical day or week look like in your current role, and what aspects do you find most fulfilling?"
-3. "When you think about your key strengths and skills, which ones make you stand out in your field?"
-4. "Tell me about a challenge or project you're particularly proud of - what made it meaningful to you?"
-5. "Looking ahead, what kind of role or environment would be your ideal next step, and what drives that vision?"
+          return `You are an AI interviewer conducting a focused ${interviewType} interview. Your goal is to understand the candidate through exactly ${questionCount} structured questions.${profileContext}
+
+${interviewSet ? `
+INTERVIEW TYPE: ${interviewSet.title}
+INTERVIEW DESCRIPTION: ${interviewSet.description}
+` : ''}
+
+The ${questionCount} questions to ask in order:
+${questionList}
 
 Key guidelines:
 - Start with a warm greeting, then proceed through each question in order
@@ -143,7 +155,7 @@ Key guidelines:
 - After each answer, acknowledge what they shared before moving to the next question
 - Speak clearly and at a natural pace
 - ALWAYS respond after the user speaks - never stay silent
-- After question 5, thank them warmly and use the word "conclude" ONLY in your final response to signal the interview is complete. For example: "Thank you so much for sharing all of that with me. This concludes our interview today, and I have everything I need to create your professional profile."
+- After the final question (question ${questionCount}), thank them warmly and use the word "conclude" ONLY in your final response to signal the interview is complete. For example: "Thank you so much for sharing all of that with me. This concludes our ${interviewType} interview today, and I have everything I need."
 - IMPORTANT: Only use the word "conclude" in your very last response when the interview is finished. Never use this word at any other time during the conversation.
 
 This focused approach ensures we understand them comprehensively while respecting their time.`;
@@ -154,7 +166,7 @@ This focused approach ensures we understand them comprehensively while respectin
           type: 'session.update',
           session: {
             modalities: ['text', 'audio'],
-            instructions: buildInstructions(options.userProfile),
+            instructions: buildInstructions(options.userProfile, interviewParams),
             voice: 'verse',
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',

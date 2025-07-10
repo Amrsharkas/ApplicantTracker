@@ -333,7 +333,15 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     }
     
     try {
-      await realtimeAPI.connect();
+      // Start an interview session to get the structured questions
+      const interviewSession = await startInterviewMutation.mutateAsync();
+      
+      await realtimeAPI.connect({
+        interviewType: selectedInterviewType,
+        questions: interviewSession.questions,
+        interviewSet: interviewSession.interviewSet
+      });
+      
       toast({
         title: "Voice Interview Started",
         description: "You can now speak naturally with the AI interviewer.",
@@ -352,22 +360,16 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     setMode('text');
     setMessages([]);
     
-    // Show welcome message first
-    if (welcomeMessageData?.welcomeMessage) {
-      const welcomeMessage: InterviewMessage = {
-        type: 'question',
-        content: welcomeMessageData.welcomeMessage,
-        timestamp: new Date()
-      };
-      setMessages([welcomeMessage]);
-      
-      // Add a small delay before starting the actual interview
-      setTimeout(() => {
-        startInterviewMutation.mutate();
-      }, 2000);
-    } else {
-      startInterviewMutation.mutate();
-    }
+    // Show welcome message immediately
+    const welcomeMessage: InterviewMessage = {
+      type: 'question',
+      content: welcomeMessageData?.welcomeMessage || `Welcome! I'm excited to learn more about you through this ${selectedInterviewType} interview. Let's begin with our first question.`,
+      timestamp: new Date()
+    };
+    setMessages([welcomeMessage]);
+    
+    // Start the interview immediately
+    startInterviewMutation.mutate();
   };
 
   const getQuestionCount = (interviewType: string) => {

@@ -131,6 +131,7 @@ Changelog:
 - July 10, 2025. Changed question distribution: 5 personal questions (background/values), 7 professional questions (career experience), 11 technical questions (IQ-focused with logical reasoning, pattern recognition, mathematical thinking)
 - July 10, 2025. Enhanced technical interview with IQ-style questions focusing on cognitive abilities, abstract reasoning, spatial thinking, and analytical skills rather than just problem-solving scenarios
 - July 10, 2025. Fixed interview completion tracking and navigation issues - interviews now properly show "Completed" status, fixed "back to interview types" navigation, and added submit button for text interviews when "conclude" is detected
+- July 10, 2025. Synchronized voice and text interviews to use identical structured question sets - voice interviews now ask the same personal/professional/technical questions as text interviews, with immediate welcome message display and proper completion tracking
 ```
 
 ## User Preferences

@@ -561,7 +561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/interview/complete-voice', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { conversationHistory } = req.body;
+      const { conversationHistory, interviewType } = req.body;
 
       if (!conversationHistory || !Array.isArray(conversationHistory)) {
         return res.status(400).json({ message: "Invalid conversation history" });
@@ -588,9 +588,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversationHistory
       );
 
+      // Mark this specific interview type as completed
+      if (interviewType) {
+        await storage.updateInterviewCompletion(userId, interviewType);
+      }
+
       // Save the interview session with completion
       const session = await storage.createInterviewSession({
         userId,
+        interviewType: interviewType || 'personal',
         sessionData: { 
           questions: conversationHistory.map(item => ({ question: item.question })),
           responses: conversationHistory,
@@ -600,13 +606,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         generatedProfile
       });
 
-      // Update profile with AI-generated data and mark as complete
-      await storage.upsertApplicantProfile({
-        userId,
-        aiProfile: generatedProfile,
-        aiProfileGenerated: true,
-        summary: generatedProfile.summary
-      });
+      // Check if all 3 interviews are completed
+      const updatedProfile = await storage.getApplicantProfile(userId);
+      const allInterviewsCompleted = updatedProfile?.personalInterviewCompleted && 
+                                   updatedProfile?.professionalInterviewCompleted && 
+                                   updatedProfile?.technicalInterviewCompleted;
+
+      if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
+        // Update profile with AI-generated data and mark as complete
+        await storage.upsertApplicantProfile({
+          userId,
+          ...updatedProfile,
+          aiProfile: generatedProfile,
+          aiProfileGenerated: true,
+          summary: generatedProfile.summary,
+          skillsList: generatedProfile.skills
+        });
+
+        // Calculate job matches
+        await storage.calculateJobMatches(userId);
+      } else {
+        // Just mark the individual interview as complete
+        await storage.upsertApplicantProfile({
+          userId,
+          ...updatedProfile
+        });
+      }
 
       // Store in Airtable
       try {
