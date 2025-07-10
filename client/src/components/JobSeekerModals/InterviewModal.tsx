@@ -867,7 +867,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                 } else {
                   // Just hang up
                   realtimeAPI.disconnect();
-                  setMode('select');
+                  setMode('selection');
                 }
               }}
               disabled={isProcessingInterview || processVoiceInterviewMutation.isPending}
@@ -903,7 +903,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         </DialogHeader>
         
         {mode === 'types' && renderInterviewTypes()}
-        {mode === 'select' && renderModeSelection()}
+        {mode === 'selection' && renderModeSelection()}
         {mode === 'text' && renderTextInterview()}
         {mode === 'voice' && renderVoiceInterview()}
       </DialogContent>
