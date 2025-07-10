@@ -109,29 +109,17 @@ export class DatabaseStorage implements IStorage {
     let score = 0;
     const maxScore = 1000; // Total required points for 100% completion
     
-    // Section 1: General Information (200 points - required fields only)
+    // Section 1: General Information (200 points - simplified)
     let generalScore = 0;
-    if (profile.name) generalScore += 30;
-    if (profile.birthdate) generalScore += 30;
-    if (profile.gender) generalScore += 20;
-    if (profile.nationality) generalScore += 20;
-    if (profile.country) generalScore += 30;
-    if (profile.city) generalScore += 30;
-    if (profile.mobileNumber) generalScore += 20;
-    if (profile.emailAddress) generalScore += 20;
+    if (profile.name) generalScore += 100; // Name is most important
+    if (profile.emailAddress) generalScore += 100; // Email is essential
     score += generalScore;
 
-    // Section 2: Career Interests (300 points)
+    // Section 2: Career Interests (300 points - simplified)
     let careerScore = 0;
-    if (profile.careerLevel) careerScore += 50;
-    if (profile.jobTypesOpen?.length) careerScore += 50;
-    if (profile.preferredWorkplace) careerScore += 50;
-    if (profile.desiredJobTitles?.length) careerScore += 50;
-    if (profile.jobCategories?.length) careerScore += 50;
-    if (profile.jobSearchStatus) careerScore += 50;
-    if (profile.totalYearsExperience !== null && profile.totalYearsExperience !== undefined) careerScore += 0;
-    if (profile.minimumSalary !== null && profile.minimumSalary !== undefined) careerScore += 0;
-    if (profile.currentEducationLevel) careerScore += 0;
+    if (profile.careerLevel) careerScore += 100;
+    if (profile.desiredJobTitles?.length) careerScore += 100;
+    if (profile.jobCategories?.length) careerScore += 100;
     score += careerScore;
 
     // Section 3: CV Upload (100 points)
