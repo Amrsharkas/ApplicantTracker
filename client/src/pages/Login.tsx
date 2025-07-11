@@ -42,8 +42,10 @@ export default function Login() {
         description: "Welcome back! You've been logged in successfully.",
       });
       
-      // Force immediate redirect to dashboard
-      setLocation("/dashboard");
+      // Small delay to allow query invalidation to complete
+      setTimeout(() => {
+        setLocation("/");
+      }, 100);
     },
     onError: (error: Error) => {
       toast({
