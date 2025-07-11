@@ -289,7 +289,8 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         jobCategories: profile.jobCategories,
       });
       
-      form.reset({
+      // Use setValue instead of reset to avoid resetting form state
+      const profileData = {
         name: profile.name || "",
         birthdate: profile.birthdate || "",
         gender: profile.gender || "",
@@ -322,6 +323,11 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         otherUrl: profile.otherUrl || "",
         achievements: profile.achievements || "",
         currentEducationLevel: profile.currentEducationLevel || "",
+      };
+      
+      // Set each field individually to preserve form state
+      Object.entries(profileData).forEach(([key, value]) => {
+        form.setValue(key as keyof ProfileFormData, value, { shouldDirty: false });
       });
       
       // Load complex data structures
@@ -425,6 +431,15 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   useEffect(() => {
     const autoSaveInterval = setInterval(() => {
       const currentData = form.getValues();
+      
+      // Log all form values for debugging
+      console.log("FULL FORM DEBUG:", {
+        allFormData: currentData,
+        formIsValid: form.formState.isValid,
+        formIsDirty: form.formState.isDirty,
+        formErrors: form.formState.errors,
+        watchedValues: form.watch(),
+      });
       
       // Only auto-save if there's meaningful data (not just empty form)
       if (currentData.name || currentData.emailAddress || currentData.careerLevel || 
@@ -811,7 +826,15 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                           <FormItem>
                             <FormLabel>Email Address</FormLabel>
                             <FormControl>
-                              <Input type="email" placeholder="email@example.com" {...field} />
+                              <Input 
+                                type="email" 
+                                placeholder="email@example.com" 
+                                {...field}
+                                onChange={(e) => {
+                                  console.log("Email field changed:", e.target.value);
+                                  field.onChange(e);
+                                }}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -838,7 +861,13 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Career Level</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select 
+                            onValueChange={(value) => {
+                              console.log("Career level changed:", value);
+                              field.onChange(value);
+                            }} 
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select career level" />
