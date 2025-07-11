@@ -145,6 +145,7 @@ Changelog:
 - July 11, 2025. Fixed new user signup flow - automatically creates basic applicant profile during signup so new users see proper getting started dashboard instead of being redirected to landing page
 - July 11, 2025. Updated dashboard logic to show full job matching interface after interview completion regardless of profile percentage (changed from requiring 80% profile + interviews to just requiring completed interviews)
 - July 11, 2025. Enhanced AI interview prompts with critical warnings to only use actual profile information and avoid making assumptions about user background
+- July 11, 2025. Fixed authentication redirect issue - login and signup now properly redirect to dashboard after successful authentication with 500ms delay to allow state updates
 ```
 
 ## User Preferences

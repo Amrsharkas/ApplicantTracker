@@ -44,8 +44,8 @@ export default function Login() {
       
       // Small delay to allow query invalidation to complete
       setTimeout(() => {
-        setLocation("/");
-      }, 100);
+        setLocation("/dashboard");
+      }, 500);
     },
     onError: (error: Error) => {
       toast({
