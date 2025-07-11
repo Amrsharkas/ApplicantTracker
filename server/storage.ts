@@ -106,67 +106,81 @@ export class DatabaseStorage implements IStorage {
     const profile = await this.getApplicantProfile(userId);
     if (!profile) return;
 
-    let score = 0;
-    const maxScore = 1000; // Total required points for 100% completion
+    // New weighted scoring system: General Information = 50%, everything else = 50%
+    const maxScore = 100; // Total required points for 100% completion
     
-    // Section 1: General Information (200 points - required fields only)
+    // Section 1: General Information (50 points - 50% of total score)
     let generalScore = 0;
-    if (profile.name) generalScore += 30;
-    if (profile.birthdate) generalScore += 30;
-    if (profile.gender) generalScore += 20;
-    if (profile.nationality) generalScore += 20;
-    if (profile.country) generalScore += 30;
-    if (profile.city) generalScore += 30;
-    if (profile.mobileNumber) generalScore += 20;
-    if (profile.emailAddress) generalScore += 20;
-    score += generalScore;
+    const generalMaxScore = 50;
+    const generalFields = 8; // Total essential fields
+    let generalFilledFields = 0;
+    
+    if (profile.name) generalFilledFields++;
+    if (profile.birthdate) generalFilledFields++;
+    if (profile.gender) generalFilledFields++;
+    if (profile.nationality) generalFilledFields++;
+    if (profile.country) generalFilledFields++;
+    if (profile.city) generalFilledFields++;
+    if (profile.mobileNumber) generalFilledFields++;
+    if (profile.emailAddress) generalFilledFields++;
+    
+    generalScore = Math.round((generalFilledFields / generalFields) * generalMaxScore);
 
-    // Section 2: Career Interests (150 points)
-    let careerScore = 0;
-    if (profile.careerLevel) careerScore += 25;
-    if (profile.jobTypesOpen?.length) careerScore += 25;
-    if (profile.preferredWorkplace) careerScore += 25;
-    if (profile.desiredJobTitles?.length) careerScore += 25;
-    if (profile.jobCategories?.length) careerScore += 25;
-    if (profile.jobSearchStatus) careerScore += 25;
-    score += careerScore;
+    // All other sections combined (50 points - 50% of total score)
+    let otherScore = 0;
+    const otherMaxScore = 50;
+    let otherSections = 0;
+    let completedOtherSections = 0;
+    
+    // Section 2: Career Interests (counts as 1 section)
+    otherSections++;
+    let careerFields = 0;
+    if (profile.careerLevel) careerFields++;
+    if (profile.jobTypesOpen?.length) careerFields++;
+    if (profile.preferredWorkplace) careerFields++;
+    if (profile.desiredJobTitles?.length) careerFields++;
+    if (profile.jobCategories?.length) careerFields++;
+    if (profile.jobSearchStatus) careerFields++;
+    if (careerFields >= 3) completedOtherSections++; // Need at least 3 career fields
 
-    // Section 3: CV Upload (100 points)
+    // Section 3: CV Upload (counts as 1 section)
+    otherSections++;
     if (profile.resumeContent || profile.resumeUrl) {
-      score += 100;
+      completedOtherSections++;
     }
 
-    // Section 4: Work Experience (150 points)
-    let workScore = 0;
+    // Section 4: Work Experience (counts as 1 section)
+    otherSections++;
     const workExperiences = profile.workExperiences as any[] || [];
-    if (profile.totalYearsExperience !== null && profile.totalYearsExperience !== undefined) workScore += 50;
-    if (workExperiences.length > 0) workScore += 100;
-    score += workScore;
+    if ((profile.totalYearsExperience !== null && profile.totalYearsExperience !== undefined) || workExperiences.length > 0) {
+      completedOtherSections++;
+    }
 
-    // Section 5: Skills (100 points)
+    // Section 5: Skills (counts as 1 section)
+    otherSections++;
     const skills = profile.skills as any[] || [];
     if (skills.length > 0) {
-      score += 100;
+      completedOtherSections++;
     }
 
-    // Section 6: Languages (100 points)
+    // Section 6: Languages (counts as 1 section)
+    otherSections++;
     const languages = profile.languages as any[] || [];
     if (languages.length > 0) {
-      score += 100;
+      completedOtherSections++;
     }
 
-    // Section 7: Education (100 points)
-    let educationScore = 0;
-    if (profile.currentEducationLevel) educationScore += 30;
+    // Section 7: Education (counts as 1 section)
+    otherSections++;
     const universityDegrees = profile.universityDegrees as any[] || [];
-    if (universityDegrees.length > 0) educationScore += 70;
-    score += educationScore;
+    if (profile.currentEducationLevel || universityDegrees.length > 0) {
+      completedOtherSections++;
+    }
 
-    // Calculate completion percentage (based on required fields only)
-    // Required sections total: 200 + 150 + 100 + 150 + 100 + 100 + 100 = 1000 points
-    // Optional sections (certifications, training, online presence, achievements) do NOT count toward completion
-    const requiredScore = Math.min(score, 1000);
-    const completionPercentage = Math.round((requiredScore / 1000) * 100);
+    otherScore = Math.round((completedOtherSections / otherSections) * otherMaxScore);
+
+    // Calculate final completion percentage
+    const completionPercentage = Math.min(generalScore + otherScore, 100);
     
     // Optional sections (for tracking only, not included in completion percentage)
     const certifications = profile.certifications as any[] || [];

@@ -140,6 +140,7 @@ Changelog:
 - July 10, 2025. Enhanced AI interview system with comprehensive profile data integration - interviews now use all 11 sections of Build My Profile data (personal details, work experience, skills, education, languages, certifications, etc.) to generate highly personalized, specific questions that reference actual user background and goals
 - July 10, 2025. Improved field detection algorithm to analyze career interests, job preferences, skills, education, and work experience for more accurate technical interview customization across expanded fields including Civil Engineering, Mechanical Engineering, Healthcare, Education, and Legal
 - July 10, 2025. Updated AI Profile Analysis Agent to utilize comprehensive user context from Build My Profile modal for more accurate and detailed professional profile generation
+- July 10, 2025. Restructured profile completion calculation: General Information section now counts for 50% of total score, all other sections combined count for 50%, and users only need 65% completion to unlock interviews instead of 100%
 ```
 
 ## User Preferences
