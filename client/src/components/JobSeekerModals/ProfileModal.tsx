@@ -434,17 +434,17 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   };
 
   const sections = [
-    { id: "general", label: "General Information", icon: User },
-    { id: "career", label: "Career Interests", icon: Target },
-    { id: "cv", label: "Upload CV", icon: FileText },
-    { id: "experience", label: "Work Experience", icon: Briefcase },
-    { id: "skills", label: "Skills", icon: Star },
-    { id: "languages", label: "Languages", icon: Globe },
-    { id: "education", label: "Education", icon: GraduationCap },
-    { id: "certifications", label: "Certifications", icon: Award },
-    { id: "training", label: "Training", icon: Calendar },
-    { id: "online", label: "Online Presence", icon: Globe },
-    { id: "achievements", label: "Achievements", icon: Award },
+    { id: "general", label: "General Information", icon: User, required: true },
+    { id: "career", label: "Career Interests", icon: Target, required: false },
+    { id: "cv", label: "Upload CV", icon: FileText, required: false },
+    { id: "experience", label: "Work Experience", icon: Briefcase, required: false },
+    { id: "skills", label: "Skills", icon: Star, required: false },
+    { id: "languages", label: "Languages", icon: Globe, required: false },
+    { id: "education", label: "Education", icon: GraduationCap, required: false },
+    { id: "certifications", label: "Certifications", icon: Award, required: false },
+    { id: "training", label: "Training", icon: Calendar, required: false },
+    { id: "online", label: "Online Presence", icon: Globe, required: false },
+    { id: "achievements", label: "Achievements", icon: Award, required: false },
   ];
 
   if (!isOpen) return null;
@@ -458,6 +458,13 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
               <User className="h-5 w-5" />
               Build My Profile
             </DialogTitle>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+              <div className="text-xs font-medium text-blue-800 mb-1">Profile Completion</div>
+              <div className="text-xs text-blue-700 leading-relaxed">
+                <div className="mb-1">🔓 <strong>General Information</strong> - Required to unlock AI interview</div>
+                <div>✨ <strong>All other sections</strong> - Optional but improve your job application quality</div>
+              </div>
+            </div>
           </DialogHeader>
           
           <nav className="space-y-2">
@@ -467,14 +474,19 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                 <button
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors ${
+                  className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors ${
                     activeSection === section.id
                       ? "bg-blue-100 text-blue-700 font-medium"
                       : "text-gray-600 hover:bg-gray-100"
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
-                  {section.label}
+                  <div className="flex items-center gap-3">
+                    <Icon className="h-4 w-4" />
+                    {section.label}
+                  </div>
+                  {section.required && (
+                    <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded">Required</span>
+                  )}
                 </button>
               );
             })}

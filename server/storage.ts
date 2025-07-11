@@ -106,10 +106,13 @@ export class DatabaseStorage implements IStorage {
     const profile = await this.getApplicantProfile(userId);
     if (!profile) return;
 
-    let score = 0;
-    const maxScore = 1000; // Total required points for 100% completion
+    // NEW SYSTEM: Only General Information is required for 10% threshold
+    // All other sections are optional but improve application quality
     
-    // Section 1: General Information (200 points - required fields only)
+    let requiredScore = 0;
+    const maxRequiredScore = 200; // Only General Information required for interview unlock
+    
+    // Section 1: General Information (200 points - REQUIRED for interview unlock at 10%)
     let generalScore = 0;
     if (profile.name) generalScore += 30;
     if (profile.birthdate) generalScore += 30;
@@ -119,9 +122,13 @@ export class DatabaseStorage implements IStorage {
     if (profile.city) generalScore += 30;
     if (profile.mobileNumber) generalScore += 20;
     if (profile.emailAddress) generalScore += 20;
-    score += generalScore;
+    requiredScore += generalScore;
 
-    // Section 2: Career Interests (150 points)
+    // OPTIONAL SECTIONS - These improve application quality but aren't required for interview unlock
+    let optionalScore = 0;
+    const maxOptionalScore = 800; // All other sections are optional
+
+    // Section 2: Career Interests (150 points - OPTIONAL)
     let careerScore = 0;
     if (profile.careerLevel) careerScore += 25;
     if (profile.jobTypesOpen?.length) careerScore += 25;
@@ -129,46 +136,52 @@ export class DatabaseStorage implements IStorage {
     if (profile.desiredJobTitles?.length) careerScore += 25;
     if (profile.jobCategories?.length) careerScore += 25;
     if (profile.jobSearchStatus) careerScore += 25;
-    score += careerScore;
+    optionalScore += careerScore;
 
-    // Section 3: CV Upload (100 points)
+    // Section 3: CV Upload (100 points - OPTIONAL)
+    let cvScore = 0;
     if (profile.resumeContent || profile.resumeUrl) {
-      score += 100;
+      cvScore = 100;
     }
+    optionalScore += cvScore;
 
-    // Section 4: Work Experience (150 points)
+    // Section 4: Work Experience (150 points - OPTIONAL)
     let workScore = 0;
     const workExperiences = profile.workExperiences as any[] || [];
     if (profile.totalYearsExperience !== null && profile.totalYearsExperience !== undefined) workScore += 50;
     if (workExperiences.length > 0) workScore += 100;
-    score += workScore;
+    optionalScore += workScore;
 
-    // Section 5: Skills (100 points)
+    // Section 5: Skills (100 points - OPTIONAL)
+    let skillsScore = 0;
     const skills = profile.skills as any[] || [];
     if (skills.length > 0) {
-      score += 100;
+      skillsScore = 100;
     }
+    optionalScore += skillsScore;
 
-    // Section 6: Languages (100 points)
+    // Section 6: Languages (100 points - OPTIONAL)
+    let languagesScore = 0;
     const languages = profile.languages as any[] || [];
     if (languages.length > 0) {
-      score += 100;
+      languagesScore = 100;
     }
+    optionalScore += languagesScore;
 
-    // Section 7: Education (100 points)
+    // Section 7: Education (100 points - OPTIONAL)
     let educationScore = 0;
     if (profile.currentEducationLevel) educationScore += 30;
     const universityDegrees = profile.universityDegrees as any[] || [];
     if (universityDegrees.length > 0) educationScore += 70;
-    score += educationScore;
+    optionalScore += educationScore;
 
-    // Calculate completion percentage (based on required fields only)
-    // Required sections total: 200 + 150 + 100 + 150 + 100 + 100 + 100 = 1000 points
-    // Optional sections (certifications, training, online presence, achievements) do NOT count toward completion
-    const requiredScore = Math.min(score, 1000);
-    const completionPercentage = Math.round((requiredScore / 1000) * 100);
+    // Calculate completion percentage
+    // 10% minimum from required fields, up to 100% with optional sections
+    const totalScore = requiredScore + optionalScore;
+    const maxTotalScore = maxRequiredScore + maxOptionalScore; // 1000 total
+    const completionPercentage = Math.round((totalScore / maxTotalScore) * 100);
     
-    // Optional sections (for tracking only, not included in completion percentage)
+    // Bonus sections (not included in main calculation but tracked for reference)
     const certifications = profile.certifications as any[] || [];
     const trainingCourses = profile.trainingCourses as any[] || [];
     let onlineScore = 0;
@@ -178,20 +191,31 @@ export class DatabaseStorage implements IStorage {
     }
     const achievementsScore = profile.achievements && profile.achievements.trim() ? 10 : 0;
     
+    // Check if user has minimum 10% (20 points) from required General Information section
+    const canUnlockInterview = requiredScore >= 20; // 10% of 200 points
+    
     console.log(`Profile completion for user ${userId}:`, {
-      requiredScore,
-      maxRequiredScore: maxScore,
+      totalScore,
+      maxTotalScore,
       completionPercentage,
-      requiredFieldsBreakdown: {
+      canUnlockInterview,
+      requiredSection: {
         general: generalScore,
-        career: careerScore,
-        cv: profile.resumeContent || profile.resumeUrl ? 100 : 0,
-        work: workScore,
-        skills: skills.length > 0 ? 100 : 0,
-        languages: languages.length > 0 ? 100 : 0,
-        education: educationScore,
+        maxGeneral: maxRequiredScore,
+        percentageFromRequired: Math.round((requiredScore / maxRequiredScore) * 100)
       },
-      optionalFieldsStatus: {
+      optionalSections: {
+        career: careerScore,
+        cv: cvScore,
+        work: workScore,
+        skills: skillsScore,
+        languages: languagesScore,
+        education: educationScore,
+        totalOptional: optionalScore,
+        maxOptional: maxOptionalScore,
+        percentageFromOptional: Math.round((optionalScore / maxOptionalScore) * 100)
+      },
+      bonusSections: {
         certifications: certifications.length > 0 ? `${certifications.length} added` : 'none',
         training: trainingCourses.length > 0 ? `${trainingCourses.length} added` : 'none',
         onlinePresence: onlineScore > 0 ? 'configured' : 'none',
