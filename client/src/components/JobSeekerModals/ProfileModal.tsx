@@ -621,7 +621,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Gender</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select gender" />
@@ -659,7 +659,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Marital Status</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select status" />
@@ -705,7 +705,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Military Status</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select status" />
@@ -838,7 +838,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Career Level</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select career level" />
@@ -866,7 +866,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                           <FormControl>
                             <RadioGroup
                               onValueChange={field.onChange}
-                              defaultValue={field.value}
+                              value={field.value}
                               className="flex flex-col space-y-2"
                             >
                               <div className="flex items-center space-x-2">
@@ -940,7 +940,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                           <FormControl>
                             <RadioGroup
                               onValueChange={field.onChange}
-                              defaultValue={field.value}
+                              value={field.value}
                               className="flex flex-col space-y-2"
                             >
                               <div className="flex items-center space-x-2">
@@ -1033,7 +1033,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Total Years of Experience</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(parseInt(value))} defaultValue={field.value?.toString()}>
+                          <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select years" />
@@ -1368,7 +1368,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Current Education Level</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select education level" />
@@ -1792,7 +1792,7 @@ function AddWorkExperienceModal({ isOpen, onClose, onAdd }: {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Experience Type *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select type" />
@@ -2196,7 +2196,7 @@ function AddUniversityDegreeModal({ isOpen, onClose, onAdd }: {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Degree Level *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select degree" />
