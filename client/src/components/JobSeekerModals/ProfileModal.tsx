@@ -191,6 +191,13 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const [showCertificationModal, setShowCertificationModal] = useState(false);
   const [showTrainingModal, setShowTrainingModal] = useState(false);
   
+  // Reset form initialization when modal closes
+  React.useEffect(() => {
+    if (!isOpen) {
+      setFormInitialized(false);
+    }
+  }, [isOpen]);
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -268,9 +275,20 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     },
   });
 
-  // Update form when profile data loads
+  // Track if form has been initialized to prevent overwriting user input
+  const [formInitialized, setFormInitialized] = React.useState(false);
+
+  // Update form when profile data loads (only once)
   React.useEffect(() => {
-    if (profile) {
+    if (profile && !formInitialized) {
+      console.log("Initializing form with profile data:", {
+        name: profile.name,
+        emailAddress: profile.emailAddress,
+        careerLevel: profile.careerLevel,
+        desiredJobTitles: profile.desiredJobTitles,
+        jobCategories: profile.jobCategories,
+      });
+      
       form.reset({
         name: profile.name || "",
         birthdate: profile.birthdate || "",
@@ -314,8 +332,10 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       setHighSchools(profile.highSchools || []);
       setCertifications(profile.certifications || []);
       setTrainingCourses(profile.trainingCourses || []);
+      
+      setFormInitialized(true);
     }
-  }, [profile, form]);
+  }, [profile, formInitialized, form]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
@@ -375,8 +395,8 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       await apiRequest("POST", "/api/candidate/profile", profileData);
     },
     onSuccess: () => {
-      // Silent success - just refresh the data
-      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+      // Silent success - DO NOT refresh profile data during auto-save to prevent form reset
+      // Only refresh job matches which doesn't interfere with form state
       queryClient.invalidateQueries({ queryKey: ["/api/job-matches"] });
       console.log("Auto-save completed successfully");
     },
