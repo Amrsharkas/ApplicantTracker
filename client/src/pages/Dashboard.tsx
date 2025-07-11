@@ -102,7 +102,15 @@ export default function Dashboard() {
                 </span>
               </div>
               <button
-                onClick={() => window.location.href = '/api/logout'}
+                onClick={async () => {
+                  try {
+                    await fetch('/api/logout');
+                    window.location.href = '/';
+                  } catch (error) {
+                    console.error('Logout error:', error);
+                    window.location.href = '/';
+                  }
+                }}
                 className="text-sm text-gray-600 hover:text-gray-800"
               >
                 Sign Out
