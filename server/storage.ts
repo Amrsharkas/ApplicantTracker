@@ -109,26 +109,17 @@ export class DatabaseStorage implements IStorage {
     let score = 0;
     const maxScore = 1000; // Total required points for 100% completion
     
-    // Section 1: General Information (200 points - required fields only)
+    // Section 1: General Information (200 points - simplified)
     let generalScore = 0;
-    if (profile.name) generalScore += 30;
-    if (profile.birthdate) generalScore += 30;
-    if (profile.gender) generalScore += 20;
-    if (profile.nationality) generalScore += 20;
-    if (profile.country) generalScore += 30;
-    if (profile.city) generalScore += 30;
-    if (profile.mobileNumber) generalScore += 20;
-    if (profile.emailAddress) generalScore += 20;
+    if (profile.name) generalScore += 100; // Name is most important
+    if (profile.emailAddress) generalScore += 100; // Email is essential
     score += generalScore;
 
-    // Section 2: Career Interests (150 points)
+    // Section 2: Career Interests (300 points - simplified)
     let careerScore = 0;
-    if (profile.careerLevel) careerScore += 25;
-    if (profile.jobTypesOpen?.length) careerScore += 25;
-    if (profile.preferredWorkplace) careerScore += 25;
-    if (profile.desiredJobTitles?.length) careerScore += 25;
-    if (profile.jobCategories?.length) careerScore += 25;
-    if (profile.jobSearchStatus) careerScore += 25;
+    if (profile.careerLevel) careerScore += 100;
+    if (profile.desiredJobTitles?.length) careerScore += 100;
+    if (profile.jobCategories?.length) careerScore += 100;
     score += careerScore;
 
     // Section 3: CV Upload (100 points)
@@ -136,10 +127,9 @@ export class DatabaseStorage implements IStorage {
       score += 100;
     }
 
-    // Section 4: Work Experience (150 points)
+    // Section 4: Work Experience (100 points)
     let workScore = 0;
     const workExperiences = profile.workExperiences as any[] || [];
-    if (profile.totalYearsExperience !== null && profile.totalYearsExperience !== undefined) workScore += 50;
     if (workExperiences.length > 0) workScore += 100;
     score += workScore;
 
@@ -157,13 +147,12 @@ export class DatabaseStorage implements IStorage {
 
     // Section 7: Education (100 points)
     let educationScore = 0;
-    if (profile.currentEducationLevel) educationScore += 30;
     const universityDegrees = profile.universityDegrees as any[] || [];
-    if (universityDegrees.length > 0) educationScore += 70;
+    if (universityDegrees.length > 0) educationScore += 100;
     score += educationScore;
 
     // Calculate completion percentage (based on required fields only)
-    // Required sections total: 200 + 150 + 100 + 150 + 100 + 100 + 100 = 1000 points
+    // Required sections total: 200 + 300 + 100 + 100 + 100 + 100 + 100 = 1000 points
     // Optional sections (certifications, training, online presence, achievements) do NOT count toward completion
     const requiredScore = Math.min(score, 1000);
     const completionPercentage = Math.round((requiredScore / 1000) * 100);
@@ -179,6 +168,7 @@ export class DatabaseStorage implements IStorage {
     const achievementsScore = profile.achievements && profile.achievements.trim() ? 10 : 0;
     
     console.log(`Profile completion for user ${userId}:`, {
+      actualScore: score,
       requiredScore,
       maxRequiredScore: maxScore,
       completionPercentage,
@@ -191,6 +181,7 @@ export class DatabaseStorage implements IStorage {
         languages: languages.length > 0 ? 100 : 0,
         education: educationScore,
       },
+      totalBreakdown: generalScore + careerScore + (profile.resumeContent || profile.resumeUrl ? 100 : 0) + workScore + (skills.length > 0 ? 100 : 0) + (languages.length > 0 ? 100 : 0) + educationScore,
       optionalFieldsStatus: {
         certifications: certifications.length > 0 ? `${certifications.length} added` : 'none',
         training: trainingCourses.length > 0 ? `${trainingCourses.length} added` : 'none',
@@ -239,9 +230,9 @@ export class DatabaseStorage implements IStorage {
     const [job] = await db
       .insert(jobs)
       .values({
-        title: jobData.jobTitle,
-        description: jobData.jobDescription,
-        company: jobData.companyName,
+        title: jobData.title || jobData.jobTitle,
+        description: jobData.description || jobData.jobDescription,
+        company: jobData.company || jobData.companyName,
         location: jobData.location || null,
         salaryRange: jobData.salaryRange || null,
         employmentType: jobData.employmentType || 'Full-time',
