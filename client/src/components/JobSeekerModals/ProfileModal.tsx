@@ -475,6 +475,19 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           languages: languages.length,
           universityDegrees: universityDegrees.length,
         });
+        
+        console.log("Complete auto-save data being sent:", {
+          formData: Object.keys(currentData),
+          additionalData: {
+            workExperiences: workExperiences.length > 0 ? `${workExperiences.length} experiences` : 'none',
+            skills: skills.length > 0 ? `${skills.length} skills` : 'none',
+            languages: languages.length > 0 ? `${languages.length} languages` : 'none',
+            universityDegrees: universityDegrees.length > 0 ? `${universityDegrees.length} degrees` : 'none',
+            highSchools: highSchools.length > 0 ? `${highSchools.length} schools` : 'none',
+            certifications: certifications.length > 0 ? `${certifications.length} certs` : 'none',
+            trainingCourses: trainingCourses.length > 0 ? `${trainingCourses.length} courses` : 'none',
+          }
+        });
         autoSaveProfileMutation.mutate(currentData);
       }
     }, 10000); // Save every 10 seconds
