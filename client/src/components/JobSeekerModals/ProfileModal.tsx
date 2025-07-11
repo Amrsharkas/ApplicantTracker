@@ -359,9 +359,78 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     },
   });
 
+  // Silent auto-save mutation (no toast notifications)
+  const autoSaveProfileMutation = useMutation({
+    mutationFn: async (data: ProfileFormData) => {
+      const profileData = {
+        ...data,
+        workExperiences,
+        skills,
+        languages,
+        universityDegrees,
+        highSchools,
+        certifications,
+        trainingCourses,
+      };
+      await apiRequest("POST", "/api/candidate/profile", profileData);
+    },
+    onSuccess: () => {
+      // Silent success - just refresh the data
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-matches"] });
+      console.log("Auto-save completed successfully");
+    },
+    onError: (error) => {
+      // Only show error if it's unauthorized (user needs to login)
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Session Expired",
+          description: "Please log in again to continue.",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+      }
+      console.error("Auto-save failed:", error);
+      // Silently ignore other errors for auto-save
+    },
+  });
+
   const handleSubmit = (data: ProfileFormData) => {
     updateProfileMutation.mutate(data);
   };
+
+  // Auto-save functionality - save every 10 seconds
+  useEffect(() => {
+    const autoSaveInterval = setInterval(() => {
+      const currentData = form.getValues();
+      
+      // Only auto-save if there's meaningful data (not just empty form)
+      if (currentData.name || currentData.emailAddress || currentData.careerLevel || 
+          (currentData.desiredJobTitles && currentData.desiredJobTitles.length > 0) ||
+          (currentData.jobCategories && currentData.jobCategories.length > 0) ||
+          workExperiences.length > 0 || skills.length > 0 || languages.length > 0 ||
+          universityDegrees.length > 0) {
+        
+        console.log("Auto-saving profile data...");
+        console.log("Current form data:", {
+          name: currentData.name,
+          emailAddress: currentData.emailAddress,
+          careerLevel: currentData.careerLevel,
+          desiredJobTitles: currentData.desiredJobTitles,
+          jobCategories: currentData.jobCategories,
+          workExperiences: workExperiences.length,
+          skills: skills.length,
+          languages: languages.length,
+          universityDegrees: universityDegrees.length,
+        });
+        autoSaveProfileMutation.mutate(currentData);
+      }
+    }, 10000); // Save every 10 seconds
+
+    return () => clearInterval(autoSaveInterval);
+  }, [form, workExperiences, skills, languages, universityDegrees, highSchools, certifications, trainingCourses, autoSaveProfileMutation]);
 
   const uploadResumeMutation = useMutation({
     mutationFn: async (file: File) => {
