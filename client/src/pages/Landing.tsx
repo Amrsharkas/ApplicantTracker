@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Brain, Target, Zap, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 
 // Import company logos
 import moderatorLogo from "@assets/image_1752003560205.png";
@@ -139,9 +140,7 @@ function CompanyCarousel() {
 }
 
 export default function Landing() {
-  const handleLogin = () => {
-    window.location.href = "/api/login";
-  };
+  const [, setLocation] = useLocation();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 overflow-hidden">
@@ -167,12 +166,22 @@ export default function Landing() {
               Plato
             </motion.div>
             
-            <Button 
-              onClick={handleLogin}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-xl font-medium"
-            >
-              Sign In
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setLocation('/login')}
+                variant="outline"
+                className="border-blue-600 text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-xl font-medium"
+              >
+                Sign In
+              </Button>
+              
+              <Button 
+                onClick={() => setLocation('/signup')}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-xl font-medium"
+              >
+                Sign Up
+              </Button>
+            </div>
           </div>
         </motion.header>
 
@@ -220,7 +229,7 @@ export default function Landing() {
                 className="flex flex-col sm:flex-row gap-4"
               >
                 <Button 
-                  onClick={handleLogin}
+                  onClick={() => setLocation('/signup')}
                   size="lg"
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
                 >
@@ -228,11 +237,12 @@ export default function Landing() {
                 </Button>
                 
                 <Button 
+                  onClick={() => setLocation('/login')}
                   variant="outline" 
                   size="lg"
                   className="border-2 border-slate-300 hover:border-blue-500 text-slate-700 hover:text-blue-600 px-8 py-4 rounded-xl font-semibold text-lg"
                 >
-                  Learn More
+                  Sign In
                 </Button>
               </motion.div>
 
@@ -350,7 +360,7 @@ export default function Landing() {
               Join thousands of professionals who've discovered their dream careers with AI-powered job matching.
             </p>
             <Button 
-              onClick={handleLogin}
+              onClick={() => setLocation('/signup')}
               size="lg"
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-12 py-4 rounded-xl font-semibold text-xl shadow-lg hover:shadow-xl transition-all duration-300"
             >
