@@ -227,7 +227,8 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   });
 
   const form = useForm<ProfileFormData>({
-    resolver: zodResolver(profileFormSchema),
+    resolver: zodResolver(profileFormSchema), // Re-enable validation
+    mode: "onChange", // Enable form validation on change
     defaultValues: {
       // General Information
       name: "",
@@ -329,6 +330,13 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       Object.entries(profileData).forEach(([key, value]) => {
         form.setValue(key as keyof ProfileFormData, value, { shouldDirty: false });
       });
+      
+      // Remove test code
+      // setTimeout(() => {
+      //   console.log("Testing form binding - setting email to test@example.com");
+      //   form.setValue("emailAddress", "test@example.com", { shouldDirty: true });
+      //   console.log("After setting email, form values:", form.getValues());
+      // }, 1000);
       
       // Load complex data structures
       setWorkExperiences(profile.workExperiences || []);
@@ -439,7 +447,14 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         formIsDirty: form.formState.isDirty,
         formErrors: form.formState.errors,
         watchedValues: form.watch(),
+        formTouchedFields: form.formState.touchedFields,
+        formSubmitCount: form.formState.submitCount,
       });
+      
+      // Log specific field errors if any
+      if (Object.keys(form.formState.errors).length > 0) {
+        console.log("FORM VALIDATION ERRORS:", form.formState.errors);
+      }
       
       // Only auto-save if there's meaningful data (not just empty form)
       if (currentData.name || currentData.emailAddress || currentData.careerLevel || 
