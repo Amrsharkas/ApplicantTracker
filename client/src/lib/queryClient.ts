@@ -43,6 +43,10 @@ export const getQueryFn: <T>(options: {
       return null;
     }
 
+    if (res.status === 404 && queryKey[0] === "/api/auth/user") {
+      return null;
+    }
+
     await throwIfResNotOk(res);
     return await res.json();
   };

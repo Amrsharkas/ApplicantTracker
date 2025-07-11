@@ -46,10 +46,10 @@ export default function Signup() {
         description: "Welcome to Plato! Your account has been created successfully.",
       });
       
-      // Small delay to allow query invalidation to complete
+      // Longer delay to ensure query refetch completes
       setTimeout(() => {
         setLocation("/");
-      }, 100);
+      }, 500);
     },
     onError: (error: Error) => {
       toast({
