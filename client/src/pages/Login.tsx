@@ -36,15 +36,14 @@ export default function Login() {
     onSuccess: async () => {
       // Invalidate auth query to refetch user data and wait for it
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
       
       toast({
         title: "Success",
         description: "Welcome back! You've been logged in successfully.",
       });
       
-      // Redirect to dashboard
-      setLocation("/dashboard");
+      // Force a page refresh to ensure authentication state is properly loaded
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast({
