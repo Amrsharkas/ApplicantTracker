@@ -35,16 +35,30 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+    const url = queryKey[0] as string;
+    console.log('QueryClient - Making request to:', url);
+    console.log('QueryClient - Document.cookie:', document.cookie);
+    
+    const res = await fetch(url, {
       credentials: "include",
     });
 
+    console.log('QueryClient - Response status:', res.status);
+
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+      console.log('QueryClient - 401 received, returning null');
+      return null;
+    }
+
+    if (res.status === 404 && url.includes('/api/auth/user')) {
+      console.log('QueryClient - User not found (404), treating as unauthenticated');
       return null;
     }
 
     await throwIfResNotOk(res);
-    return await res.json();
+    const data = await res.json();
+    console.log('QueryClient - Response data:', data);
+    return data;
   };
 
 export const queryClient = new QueryClient({
