@@ -142,6 +142,9 @@ Changelog:
 - July 10, 2025. Updated AI Profile Analysis Agent to utilize comprehensive user context from Build My Profile modal for more accurate and detailed professional profile generation
 - July 10, 2025. Fixed critical database schema issues with auto-incrementing IDs and resolved signup functionality - new accounts now create properly with correct foreign key relationships
 - July 10, 2025. Verified profile completion calculation is working correctly - shows accurate percentage based on mandatory fields only (General Info, Career Interests, CV Upload, Work Experience, Skills, Languages, Education total 1000 points)
+- July 11, 2025. Fixed new user signup flow - automatically creates basic applicant profile during signup so new users see proper getting started dashboard instead of being redirected to landing page
+- July 11, 2025. Updated dashboard logic to show full job matching interface after interview completion regardless of profile percentage (changed from requiring 80% profile + interviews to just requiring completed interviews)
+- July 11, 2025. Enhanced AI interview prompts with critical warnings to only use actual profile information and avoid making assumptions about user background
 ```
 
 ## User Preferences

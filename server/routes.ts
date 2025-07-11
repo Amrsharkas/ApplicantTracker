@@ -69,6 +69,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: 'applicant'
       });
 
+      // Create basic applicant profile for new user
+      try {
+        await storage.upsertApplicantProfile({
+          userId: user.id,
+          name: `${firstName} ${lastName}`.trim(),
+          emailAddress: email
+        });
+        console.log("Successfully created profile for new user:", user.id);
+      } catch (profileError) {
+        console.error("Failed to create profile for new user:", profileError);
+        // Don't fail the signup if profile creation fails
+      }
+
       // Set session
       req.session.userId = user.id;
       
