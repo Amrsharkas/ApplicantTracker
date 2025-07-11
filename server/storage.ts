@@ -84,20 +84,38 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertApplicantProfile(profileData: InsertApplicantProfile): Promise<ApplicantProfile> {
+    console.log(`Upserting profile for user ${profileData.userId}`);
+    console.log(`Profile data keys:`, Object.keys(profileData));
+    console.log(`Profile data values:`, {
+      name: profileData.name,
+      emailAddress: profileData.emailAddress,
+      careerLevel: profileData.careerLevel,
+      desiredJobTitles: profileData.desiredJobTitles,
+      jobCategories: profileData.jobCategories,
+      workExperiences: profileData.workExperiences,
+      skills: profileData.skills,
+      languages: profileData.languages,
+      universityDegrees: profileData.universityDegrees,
+    });
+    
     const existing = await this.getApplicantProfile(profileData.userId);
     
     if (existing) {
+      console.log(`Updating existing profile ${existing.id}`);
       const [profile] = await db
         .update(applicantProfiles)
         .set({ ...profileData, updatedAt: new Date() })
         .where(eq(applicantProfiles.userId, profileData.userId))
         .returning();
+      console.log(`Updated profile successfully`);
       return profile;
     } else {
+      console.log(`Creating new profile`);
       const [profile] = await db
         .insert(applicantProfiles)
         .values(profileData)
         .returning();
+      console.log(`Created profile successfully with ID ${profile.id}`);
       return profile;
     }
   }
@@ -182,6 +200,19 @@ export class DatabaseStorage implements IStorage {
         education: educationScore,
       },
       totalBreakdown: generalScore + careerScore + (profile.resumeContent || profile.resumeUrl ? 100 : 0) + workScore + (skills.length > 0 ? 100 : 0) + (languages.length > 0 ? 100 : 0) + educationScore,
+      profileDataCheck: {
+        name: profile.name || 'EMPTY',
+        emailAddress: profile.emailAddress || 'EMPTY',
+        careerLevel: profile.careerLevel || 'EMPTY',
+        desiredJobTitles: profile.desiredJobTitles ? `${profile.desiredJobTitles.length} items` : 'EMPTY',
+        jobCategories: profile.jobCategories ? `${profile.jobCategories.length} items` : 'EMPTY',
+        resumeContent: profile.resumeContent ? `${profile.resumeContent.length} chars` : 'EMPTY',
+        resumeUrl: profile.resumeUrl || 'EMPTY',
+        workExperiences: workExperiences.length > 0 ? `${workExperiences.length} items` : 'EMPTY',
+        skills: skills.length > 0 ? `${skills.length} items` : 'EMPTY',
+        languages: languages.length > 0 ? `${languages.length} items` : 'EMPTY',
+        universityDegrees: universityDegrees.length > 0 ? `${universityDegrees.length} items` : 'EMPTY',
+      },
       optionalFieldsStatus: {
         certifications: certifications.length > 0 ? `${certifications.length} added` : 'none',
         training: trainingCourses.length > 0 ? `${trainingCourses.length} added` : 'none',
