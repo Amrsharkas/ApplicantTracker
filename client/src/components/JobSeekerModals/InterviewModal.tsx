@@ -156,7 +156,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       const endpoint = selectedInterviewType 
         ? `/api/interview/start/${selectedInterviewType}`
         : "/api/interview/start";
-      const response = await apiRequest("POST", endpoint, {});
+      const response = await apiRequest(endpoint, {
+        method: "POST",
+        body: JSON.stringify({})
+      });
       return response.json();
     },
     onSuccess: (data) => {
@@ -224,10 +227,13 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
   const respondMutation = useMutation({
     mutationFn: async (answer: string) => {
-      const response = await apiRequest("POST", "/api/interview/respond", {
-        sessionId: currentSession?.id,
-        answer,
-        questionIndex: currentQuestionIndex
+      const response = await apiRequest("/api/interview/respond", {
+        method: "POST",
+        body: JSON.stringify({
+          sessionId: currentSession?.id,
+          answer,
+          questionIndex: currentQuestionIndex
+        })
       });
       return response.json();
     },
@@ -266,9 +272,12 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
   const processTextInterviewMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/interview/complete", {
-        sessionId: currentSession?.id,
-        interviewType: selectedInterviewType
+      const response = await apiRequest("/api/interview/complete", {
+        method: "POST",
+        body: JSON.stringify({
+          sessionId: currentSession?.id,
+          interviewType: selectedInterviewType
+        })
       });
       return response.json();
     },
