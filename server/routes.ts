@@ -373,16 +373,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get resume content from profile
       const resumeContent = profile?.resumeContent || null;
 
-      // Generate all interview sets first
-      const interviewSets = await aiInterviewService.generateInterviewSets({
-        ...user,
-        ...profile
-      }, resumeContent);
-
-      // Find the specific interview set for this type
-      const currentSet = interviewSets.find(set => set.type === interviewType);
-      if (!currentSet) {
-        throw new Error(`Interview set not found for type: ${interviewType}`);
+      // Generate specific interview set for this type only (much faster)
+      let currentSet;
+      const userData = { ...user, ...profile };
+      
+      if (interviewType === 'personal') {
+        currentSet = await aiInterviewService.generatePersonalInterview(userData, resumeContent);
+      } else if (interviewType === 'professional') {
+        currentSet = await aiInterviewService.generateProfessionalInterview(userData, resumeContent);
+      } else if (interviewType === 'technical') {
+        currentSet = await aiInterviewService.generateTechnicalInterview(userData, resumeContent);
+      } else {
+        throw new Error(`Invalid interview type: ${interviewType}`);
       }
 
       const session = await storage.createInterviewSession({

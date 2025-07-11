@@ -329,7 +329,10 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         certifications,
         trainingCourses,
       };
-      await apiRequest("POST", "/api/candidate/profile", profileData);
+      await apiRequest("/api/candidate/profile", {
+        method: "POST",
+        body: JSON.stringify(profileData)
+      });
     },
     onSuccess: () => {
       toast({
