@@ -84,20 +84,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertApplicantProfile(profileData: InsertApplicantProfile): Promise<ApplicantProfile> {
+    console.log('Starting upsertApplicantProfile for userId:', profileData.userId);
     const existing = await this.getApplicantProfile(profileData.userId);
     
     if (existing) {
+      console.log('Updating existing profile with ID:', existing.id);
+      console.log('Update data sample:', {
+        name: profileData.name,
+        birthdate: profileData.birthdate,
+        country: profileData.country,
+        city: profileData.city,
+        workExperiences: profileData.workExperiences ? 'has data' : 'no data',
+        skills: profileData.skills ? 'has data' : 'no data'
+      });
+      
       const [profile] = await db
         .update(applicantProfiles)
         .set({ ...profileData, updatedAt: new Date() })
         .where(eq(applicantProfiles.userId, profileData.userId))
         .returning();
+      
+      console.log('Profile updated successfully, returned profile ID:', profile.id);
       return profile;
     } else {
+      console.log('Creating new profile for userId:', profileData.userId);
       const [profile] = await db
         .insert(applicantProfiles)
         .values(profileData)
         .returning();
+      
+      console.log('New profile created with ID:', profile.id);
       return profile;
     }
   }

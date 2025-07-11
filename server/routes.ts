@@ -163,18 +163,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/candidate/profile', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;
+      console.log('Profile update request received for userId:', userId);
+      console.log('Request body keys:', Object.keys(req.body));
+      console.log('Request body sample:', {
+        name: req.body.name,
+        birthdate: req.body.birthdate,
+        country: req.body.country,
+        city: req.body.city,
+        workExperiences: req.body.workExperiences?.length || 0,
+        skills: req.body.skills?.length || 0
+      });
+      
       const profileData = insertApplicantProfileSchema.parse({
         ...req.body,
         userId
       });
 
+      console.log('Parsed profile data sample:', {
+        name: profileData.name,
+        birthdate: profileData.birthdate,
+        country: profileData.country,
+        city: profileData.city,
+        workExperiences: Array.isArray(profileData.workExperiences) ? profileData.workExperiences.length : 'not array',
+        skills: Array.isArray(profileData.skills) ? profileData.skills.length : 'not array'
+      });
+
       const profile = await storage.upsertApplicantProfile(profileData);
       await storage.updateProfileCompletion(userId);
       
+      console.log('Profile updated successfully, returning profile with ID:', profile.id);
       res.json(profile);
     } catch (error) {
       console.error("Error updating profile:", error);
-      res.status(500).json({ message: "Failed to update profile" });
+      if (error.name === 'ZodError') {
+        console.error("Validation errors:", error.errors);
+        res.status(400).json({ message: "Validation failed", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update profile" });
+      }
     }
   });
 
