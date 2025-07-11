@@ -63,7 +63,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create user
       const user = await storage.createUser({
         email,
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         firstName,
         lastName,
         role: 'applicant'
@@ -93,7 +93,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check password
-      const isValidPassword = await bcrypt.compare(password, user.password);
+      const isValidPassword = await bcrypt.compare(password, user.passwordHash);
       if (!isValidPassword) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
