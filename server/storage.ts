@@ -109,55 +109,50 @@ export class DatabaseStorage implements IStorage {
     let score = 0;
     const maxScore = 1000; // Total required points for 100% completion
     
-    // Section 1: General Information (200 points - simplified)
+    // === REQUIRED FIELDS ONLY ===
+    
+    // Section 1: General Information (400 points - ALL fields required)
     let generalScore = 0;
-    if (profile.name) generalScore += 100; // Name is most important
-    if (profile.emailAddress) generalScore += 100; // Email is essential
+    if (profile.name) generalScore += 50;
+    if (profile.birthdate) generalScore += 50;
+    if (profile.gender) generalScore += 50;
+    if (profile.nationality) generalScore += 50;
+    if (profile.maritalStatus) generalScore += 50;
+    if (profile.country) generalScore += 50;
+    if (profile.city) generalScore += 50;
+    if (profile.mobileNumber) generalScore += 50;
+    if (profile.emailAddress) generalScore += 50;
     score += generalScore;
 
-    // Section 2: Career Interests (300 points - simplified)
+    // Section 2: Career Interests (500 points - ALL except salary)
     let careerScore = 0;
     if (profile.careerLevel) careerScore += 100;
+    if (profile.jobTypesOpen?.length) careerScore += 100;
+    if (profile.preferredWorkplace) careerScore += 100;
     if (profile.desiredJobTitles?.length) careerScore += 100;
     if (profile.jobCategories?.length) careerScore += 100;
+    // Salary fields are NOT required (minimumSalary, hideSalaryFromEmployers)
     score += careerScore;
 
-    // Section 3: CV Upload (100 points)
+    // Section 3: CV Upload (100 points - Required)
     if (profile.resumeContent || profile.resumeUrl) {
       score += 100;
     }
 
-    // Section 4: Work Experience (100 points)
-    let workScore = 0;
-    const workExperiences = profile.workExperiences as any[] || [];
-    if (workExperiences.length > 0) workScore += 100;
-    score += workScore;
-
-    // Section 5: Skills (100 points)
-    const skills = profile.skills as any[] || [];
-    if (skills.length > 0) {
-      score += 100;
-    }
-
-    // Section 6: Languages (100 points)
-    const languages = profile.languages as any[] || [];
-    if (languages.length > 0) {
-      score += 100;
-    }
-
-    // Section 7: Education (100 points)
-    let educationScore = 0;
-    const universityDegrees = profile.universityDegrees as any[] || [];
-    if (universityDegrees.length > 0) educationScore += 100;
-    score += educationScore;
+    // === ALL OTHER SECTIONS ARE OPTIONAL ===
+    // Work Experience, Skills, Languages, Education are now optional
+    // They don't count toward completion percentage but users should know more is better
 
     // Calculate completion percentage (based on required fields only)
-    // Required sections total: 200 + 300 + 100 + 100 + 100 + 100 + 100 = 1000 points
-    // Optional sections (certifications, training, online presence, achievements) do NOT count toward completion
+    // Required sections total: 400 + 500 + 100 = 1000 points
     const requiredScore = Math.min(score, 1000);
     const completionPercentage = Math.round((requiredScore / 1000) * 100);
     
-    // Optional sections (for tracking only, not included in completion percentage)
+    // Track optional sections for user feedback (but don't count toward completion)
+    const workExperiences = profile.workExperiences as any[] || [];
+    const skills = profile.skills as any[] || [];
+    const languages = profile.languages as any[] || [];
+    const universityDegrees = profile.universityDegrees as any[] || [];
     const certifications = profile.certifications as any[] || [];
     const trainingCourses = profile.trainingCourses as any[] || [];
     let onlineScore = 0;
@@ -166,7 +161,7 @@ export class DatabaseStorage implements IStorage {
       onlineScore += 20;
     }
     const achievementsScore = profile.achievements && profile.achievements.trim() ? 10 : 0;
-    
+
     console.log(`Profile completion for user ${userId}:`, {
       actualScore: score,
       requiredScore,
@@ -176,13 +171,13 @@ export class DatabaseStorage implements IStorage {
         general: generalScore,
         career: careerScore,
         cv: profile.resumeContent || profile.resumeUrl ? 100 : 0,
-        work: workScore,
-        skills: skills.length > 0 ? 100 : 0,
-        languages: languages.length > 0 ? 100 : 0,
-        education: educationScore,
       },
-      totalBreakdown: generalScore + careerScore + (profile.resumeContent || profile.resumeUrl ? 100 : 0) + workScore + (skills.length > 0 ? 100 : 0) + (languages.length > 0 ? 100 : 0) + educationScore,
+      totalRequiredBreakdown: generalScore + careerScore + (profile.resumeContent || profile.resumeUrl ? 100 : 0),
       optionalFieldsStatus: {
+        workExperience: workExperiences.length > 0 ? `${workExperiences.length} added` : 'none',
+        skills: skills.length > 0 ? `${skills.length} added` : 'none',
+        languages: languages.length > 0 ? `${languages.length} added` : 'none',
+        education: universityDegrees.length > 0 ? `${universityDegrees.length} added` : 'none',
         certifications: certifications.length > 0 ? `${certifications.length} added` : 'none',
         training: trainingCourses.length > 0 ? `${trainingCourses.length} added` : 'none',
         onlinePresence: onlineScore > 0 ? 'configured' : 'none',

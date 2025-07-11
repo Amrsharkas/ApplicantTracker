@@ -492,7 +492,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                     <CardTitle className="flex items-center gap-2">
                       <User className="h-5 w-5" />
                       General Information
+                      <Badge variant="destructive" className="ml-2">Required</Badge>
                     </CardTitle>
+                    <p className="text-sm text-gray-600">All fields in this section are required for profile completion.</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
@@ -740,7 +742,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                     <CardTitle className="flex items-center gap-2">
                       <Target className="h-5 w-5" />
                       Career Interests
+                      <Badge variant="destructive" className="ml-2">Required</Badge>
                     </CardTitle>
+                    <p className="text-sm text-gray-600">Most fields in this section are required (salary preferences are optional).</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <FormField
@@ -891,7 +895,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                     <CardTitle className="flex items-center gap-2">
                       <FileText className="h-5 w-5" />
                       Upload CV
+                      <Badge variant="destructive" className="ml-2">Required</Badge>
                     </CardTitle>
+                    <p className="text-sm text-gray-600">Upload your CV or resume to complete your profile.</p>
                   </CardHeader>
                   <CardContent>
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -935,7 +941,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                     <CardTitle className="flex items-center gap-2">
                       <Briefcase className="h-5 w-5" />
                       Work Experience
+                      <Badge variant="secondary" className="ml-2">Optional</Badge>
                     </CardTitle>
+                    <p className="text-sm text-gray-600">Adding work experience improves your job matches and applications.</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <FormField
@@ -1024,7 +1032,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                     <CardTitle className="flex items-center gap-2">
                       <Star className="h-5 w-5" />
                       Skills
+                      <Badge variant="secondary" className="ml-2">Optional</Badge>
                     </CardTitle>
+                    <p className="text-sm text-gray-600">Adding skills helps employers find you for relevant positions.</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex justify-between items-center">
@@ -1112,7 +1122,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                     <CardTitle className="flex items-center gap-2">
                       <Globe className="h-5 w-5" />
                       Online Presence
+                      <Badge variant="secondary" className="ml-2">Optional</Badge>
                     </CardTitle>
+                    <p className="text-sm text-gray-600">Your online profiles help employers learn more about your professional background.</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1239,7 +1251,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                     <CardTitle className="flex items-center gap-2">
                       <Award className="h-5 w-5" />
                       Achievements
+                      <Badge variant="secondary" className="ml-2">Optional</Badge>
                     </CardTitle>
+                    <p className="text-sm text-gray-600">Highlight your accomplishments to make a stronger impression on employers.</p>
                   </CardHeader>
                   <CardContent>
                     <FormField
@@ -1270,7 +1284,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                     <CardTitle className="flex items-center gap-2">
                       <GraduationCap className="h-5 w-5" />
                       Education
+                      <Badge variant="secondary" className="ml-2">Optional</Badge>
                     </CardTitle>
+                    <p className="text-sm text-gray-600">Education background helps match you with appropriate level positions.</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <FormField
@@ -1355,7 +1371,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                     <CardTitle className="flex items-center gap-2">
                       <Globe className="h-5 w-5" />
                       Languages
+                      <Badge variant="secondary" className="ml-2">Optional</Badge>
                     </CardTitle>
+                    <p className="text-sm text-gray-600">Language skills can open up international opportunities.</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex justify-between items-center">
@@ -1466,7 +1484,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                     <CardTitle className="flex items-center gap-2">
                       <Award className="h-5 w-5" />
                       Certifications
+                      <Badge variant="secondary" className="ml-2">Optional</Badge>
                     </CardTitle>
+                    <p className="text-sm text-gray-600">Professional certifications can set you apart from other candidates.</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex justify-between items-center">
@@ -1525,7 +1545,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                     <CardTitle className="flex items-center gap-2">
                       <Calendar className="h-5 w-5" />
                       Training & Courses
+                      <Badge variant="secondary" className="ml-2">Optional</Badge>
                     </CardTitle>
+                    <p className="text-sm text-gray-600">Professional development courses can demonstrate your commitment to learning.</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex justify-between items-center">
