@@ -27,17 +27,15 @@ export default function Login() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginData) => {
-      return await apiRequest("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("POST", "/api/auth/login", data);
     },
     onSuccess: () => {
       toast({
         title: "Success",
         description: "Welcome back! You've been logged in successfully.",
       });
-      setLocation("/");
+      // Refresh the page to ensure proper authentication state
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast({

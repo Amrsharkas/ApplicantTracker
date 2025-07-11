@@ -31,17 +31,15 @@ export default function Signup() {
 
   const signupMutation = useMutation({
     mutationFn: async (data: SignupData) => {
-      return await apiRequest("/api/auth/signup", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("POST", "/api/auth/signup", data);
     },
     onSuccess: () => {
       toast({
-        title: "Account Created",
+        title: "Account Created", 
         description: "Welcome to Plato! Your account has been created successfully.",
       });
-      setLocation("/");
+      // Refresh the page to ensure proper authentication state
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast({
