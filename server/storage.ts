@@ -106,11 +106,11 @@ export class DatabaseStorage implements IStorage {
     const profile = await this.getApplicantProfile(userId);
     if (!profile) return;
 
-    let score = 0;
-    const maxScore = 1000; // Total required points for 100% completion
+    // NEW WEIGHTED CALCULATION: 50% for General Information, 50% for all other sections combined
     
-    // Section 1: General Information (200 points - required fields only)
+    // Section 1: General Information (50% weight - maximum 200 points for full section)
     let generalScore = 0;
+    const maxGeneralScore = 200;
     if (profile.name) generalScore += 30;
     if (profile.birthdate) generalScore += 30;
     if (profile.gender) generalScore += 20;
@@ -119,8 +119,14 @@ export class DatabaseStorage implements IStorage {
     if (profile.city) generalScore += 30;
     if (profile.mobileNumber) generalScore += 20;
     if (profile.emailAddress) generalScore += 20;
-    score += generalScore;
+    
+    // Calculate 50% weight for general section
+    const generalWeight = Math.min(generalScore, maxGeneralScore) / maxGeneralScore * 50;
 
+    // Remaining sections (50% weight combined - maximum 600 points for all sections)
+    let otherSectionsScore = 0;
+    const maxOtherSectionsScore = 600;
+    
     // Section 2: Career Interests (150 points)
     let careerScore = 0;
     if (profile.careerLevel) careerScore += 25;
@@ -129,11 +135,11 @@ export class DatabaseStorage implements IStorage {
     if (profile.desiredJobTitles?.length) careerScore += 25;
     if (profile.jobCategories?.length) careerScore += 25;
     if (profile.jobSearchStatus) careerScore += 25;
-    score += careerScore;
+    otherSectionsScore += careerScore;
 
     // Section 3: CV Upload (100 points)
     if (profile.resumeContent || profile.resumeUrl) {
-      score += 100;
+      otherSectionsScore += 100;
     }
 
     // Section 4: Work Experience (150 points)
@@ -141,18 +147,18 @@ export class DatabaseStorage implements IStorage {
     const workExperiences = profile.workExperiences as any[] || [];
     if (profile.totalYearsExperience !== null && profile.totalYearsExperience !== undefined) workScore += 50;
     if (workExperiences.length > 0) workScore += 100;
-    score += workScore;
+    otherSectionsScore += workScore;
 
     // Section 5: Skills (100 points)
     const skills = profile.skills as any[] || [];
     if (skills.length > 0) {
-      score += 100;
+      otherSectionsScore += 100;
     }
 
     // Section 6: Languages (100 points)
     const languages = profile.languages as any[] || [];
     if (languages.length > 0) {
-      score += 100;
+      otherSectionsScore += 100;
     }
 
     // Section 7: Education (100 points)
@@ -160,13 +166,13 @@ export class DatabaseStorage implements IStorage {
     if (profile.currentEducationLevel) educationScore += 30;
     const universityDegrees = profile.universityDegrees as any[] || [];
     if (universityDegrees.length > 0) educationScore += 70;
-    score += educationScore;
+    otherSectionsScore += educationScore;
 
-    // Calculate completion percentage (based on required fields only)
-    // Required sections total: 200 + 150 + 100 + 150 + 100 + 100 + 100 = 1000 points
-    // Optional sections (certifications, training, online presence, achievements) do NOT count toward completion
-    const requiredScore = Math.min(score, 1000);
-    const completionPercentage = Math.round((requiredScore / 1000) * 100);
+    // Calculate 50% weight for other sections combined
+    const otherSectionsWeight = Math.min(otherSectionsScore, maxOtherSectionsScore) / maxOtherSectionsScore * 50;
+    
+    // Final completion percentage (50% + 50%)
+    const completionPercentage = Math.round(generalWeight + otherSectionsWeight);
     
     // Optional sections (for tracking only, not included in completion percentage)
     const certifications = profile.certifications as any[] || [];
@@ -178,11 +184,21 @@ export class DatabaseStorage implements IStorage {
     }
     const achievementsScore = profile.achievements && profile.achievements.trim() ? 10 : 0;
     
-    console.log(`Profile completion for user ${userId}:`, {
-      requiredScore,
-      maxRequiredScore: maxScore,
+    console.log(`Profile completion for user ${userId} (NEW WEIGHTED SYSTEM):`, {
       completionPercentage,
-      requiredFieldsBreakdown: {
+      generalSection: {
+        score: generalScore,
+        maxScore: maxGeneralScore,
+        weight: generalWeight,
+        percentage: `${Math.round(generalWeight)}%`
+      },
+      otherSections: {
+        score: otherSectionsScore,
+        maxScore: maxOtherSectionsScore,
+        weight: otherSectionsWeight,
+        percentage: `${Math.round(otherSectionsWeight)}%`
+      },
+      sectionBreakdown: {
         general: generalScore,
         career: careerScore,
         cv: profile.resumeContent || profile.resumeUrl ? 100 : 0,
