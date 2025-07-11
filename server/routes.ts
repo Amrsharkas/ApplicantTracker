@@ -63,7 +63,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create user
       const user = await storage.createUser({
         email,
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         firstName,
         lastName,
         role: 'applicant'
@@ -92,8 +92,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
+      // Check if user has a password (for users created before email/password auth)
+      if (!user.passwordHash) {
+        return res.status(401).json({ message: "Account created before password authentication. Please contact support." });
+      }
+
       // Check password
-      const isValidPassword = await bcrypt.compare(password, user.password);
+      const isValidPassword = await bcrypt.compare(password, user.passwordHash);
       if (!isValidPassword) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
