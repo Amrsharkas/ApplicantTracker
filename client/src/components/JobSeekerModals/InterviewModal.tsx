@@ -200,9 +200,22 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     onError: (error) => {
       setIsStartingInterview(false);
       console.error('Start interview error:', error);
+      
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Authentication Required",
+          description: "You need to be logged in to start an interview. Redirecting to login...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 1500);
+        return;
+      }
+      
       toast({
-        title: "Error",
-        description: "Failed to start interview. Please try again.",
+        title: "Error Starting Interview",
+        description: error.message || "Failed to start interview. Please try again.",
         variant: "destructive",
       });
       setMode('select');
