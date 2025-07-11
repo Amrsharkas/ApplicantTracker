@@ -123,7 +123,7 @@ export default function Dashboard() {
         {/* Getting Started Section or Hiring Stats */}
         <div className="mb-8">
           {/* Show hiring statistics for completed users */}
-          {hasCompletedProfile && hasCompletedInterview ? (
+          {hasCompletedInterview ? (
             <div className="space-y-6">
               <div className="text-center">
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">Ready to Find Your Perfect Role!</h2>
@@ -279,8 +279,8 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Job Features - Only show if both steps are complete */}
-        {hasCompletedProfile && hasCompletedInterview && (
+        {/* Job Features - Only show if interview is complete */}
+        {hasCompletedInterview && (
           <div className="space-y-6">
             <div className="border-t border-gray-200 pt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Job Dashboard</h3>
@@ -374,7 +374,7 @@ export default function Dashboard() {
         )}
 
         {/* Instruction Message for Uncompleted Steps */}
-        {(!hasCompletedProfile || !hasCompletedInterview) && (
+        {!hasCompletedInterview && (
           <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
             <div className="flex items-start space-x-3">
               <MessageCircle className="h-6 w-6 text-blue-600 mt-0.5" />
