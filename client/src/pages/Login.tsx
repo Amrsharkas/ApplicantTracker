@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
@@ -16,7 +16,6 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const form = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
@@ -34,18 +33,11 @@ export default function Login() {
       });
     },
     onSuccess: () => {
-      // Invalidate auth query to refetch user data
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      
       toast({
         title: "Success",
         description: "Welcome back! You've been logged in successfully.",
       });
-      
-      // Small delay to allow query invalidation to complete
-      setTimeout(() => {
-        setLocation("/");
-      }, 100);
+      setLocation("/");
     },
     onError: (error: Error) => {
       toast({

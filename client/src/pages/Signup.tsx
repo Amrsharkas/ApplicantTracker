@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
@@ -17,7 +17,6 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const form = useForm<SignupData>({
     resolver: zodResolver(signupSchema),
@@ -38,18 +37,11 @@ export default function Signup() {
       });
     },
     onSuccess: () => {
-      // Invalidate auth query to refetch user data
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      
       toast({
         title: "Account Created",
         description: "Welcome to Plato! Your account has been created successfully.",
       });
-      
-      // Small delay to allow query invalidation to complete
-      setTimeout(() => {
-        setLocation("/");
-      }, 100);
+      setLocation("/");
     },
     onError: (error: Error) => {
       toast({

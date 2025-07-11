@@ -63,7 +63,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create user
       const user = await storage.createUser({
         email,
-        passwordHash: hashedPassword,
+        password: hashedPassword,
         firstName,
         lastName,
         role: 'applicant'
@@ -84,35 +84,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/auth/login', async (req, res) => {
     try {
-      console.log("Login attempt with body:", req.body);
       const { email, password } = loginSchema.parse(req.body);
-      console.log("Parsed email:", email);
       
       // Find user by email
       const user = await storage.getUserByEmail(email);
-      console.log("Found user:", user ? { id: user.id, email: user.email, hasPassword: !!user.passwordHash } : "null");
-      
       if (!user) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      if (!user.passwordHash) {
-        console.error("User has no password set");
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
       // Check password
-      console.log("Comparing password with hash");
-      const isValidPassword = await bcrypt.compare(password, user.passwordHash);
-      console.log("Password valid:", isValidPassword);
-      
+      const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
       // Set session
       req.session.userId = user.id;
-      console.log("Session set with userId:", user.id);
       
       res.json({ user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } });
     } catch (error: any) {
@@ -163,28 +150,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/candidate/profile', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;
-      console.log("Profile update request for userId:", userId);
-      console.log("Request body:", JSON.stringify(req.body, null, 2));
-      
       const profileData = insertApplicantProfileSchema.parse({
         ...req.body,
         userId
       });
-      
-      console.log("Parsed profile data:", JSON.stringify(profileData, null, 2));
 
       const profile = await storage.upsertApplicantProfile(profileData);
-      console.log("Profile updated successfully:", profile.id);
-      
       await storage.updateProfileCompletion(userId);
       
       res.json(profile);
     } catch (error) {
       console.error("Error updating profile:", error);
-      if (error.issues) {
-        console.error("Validation errors:", error.issues);
-        return res.status(400).json({ message: "Invalid data", errors: error.issues });
-      }
       res.status(500).json({ message: "Failed to update profile" });
     }
   });

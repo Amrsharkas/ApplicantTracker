@@ -191,13 +191,6 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const [showCertificationModal, setShowCertificationModal] = useState(false);
   const [showTrainingModal, setShowTrainingModal] = useState(false);
   
-  // Reset form initialization when modal closes
-  React.useEffect(() => {
-    if (!isOpen) {
-      setFormInitialized(false);
-    }
-  }, [isOpen]);
-  
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -227,8 +220,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   });
 
   const form = useForm<ProfileFormData>({
-    resolver: zodResolver(profileFormSchema), // Re-enable validation
-    mode: "onChange", // Enable form validation on change
+    resolver: zodResolver(profileFormSchema),
     defaultValues: {
       // General Information
       name: "",
@@ -276,22 +268,10 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     },
   });
 
-  // Track if form has been initialized to prevent overwriting user input
-  const [formInitialized, setFormInitialized] = React.useState(false);
-
-  // Update form when profile data loads (only once)
+  // Update form when profile data loads
   React.useEffect(() => {
-    if (profile && !formInitialized) {
-      console.log("Initializing form with profile data:", {
-        name: profile.name,
-        emailAddress: profile.emailAddress,
-        careerLevel: profile.careerLevel,
-        desiredJobTitles: profile.desiredJobTitles,
-        jobCategories: profile.jobCategories,
-      });
-      
-      // Use setValue instead of reset to avoid resetting form state
-      const profileData = {
+    if (profile) {
+      form.reset({
         name: profile.name || "",
         birthdate: profile.birthdate || "",
         gender: profile.gender || "",
@@ -324,19 +304,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         otherUrl: profile.otherUrl || "",
         achievements: profile.achievements || "",
         currentEducationLevel: profile.currentEducationLevel || "",
-      };
-      
-      // Set each field individually to preserve form state
-      Object.entries(profileData).forEach(([key, value]) => {
-        form.setValue(key as keyof ProfileFormData, value, { shouldDirty: false });
       });
-      
-      // Remove test code
-      // setTimeout(() => {
-      //   console.log("Testing form binding - setting email to test@example.com");
-      //   form.setValue("emailAddress", "test@example.com", { shouldDirty: true });
-      //   console.log("After setting email, form values:", form.getValues());
-      // }, 1000);
       
       // Load complex data structures
       setWorkExperiences(profile.workExperiences || []);
@@ -346,10 +314,8 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       setHighSchools(profile.highSchools || []);
       setCertifications(profile.certifications || []);
       setTrainingCourses(profile.trainingCourses || []);
-      
-      setFormInitialized(true);
     }
-  }, [profile, formInitialized, form]);
+  }, [profile, form]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
@@ -393,107 +359,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     },
   });
 
-  // Silent auto-save mutation (no toast notifications)
-  const autoSaveProfileMutation = useMutation({
-    mutationFn: async (data: ProfileFormData) => {
-      const profileData = {
-        ...data,
-        workExperiences,
-        skills,
-        languages,
-        universityDegrees,
-        highSchools,
-        certifications,
-        trainingCourses,
-      };
-      await apiRequest("POST", "/api/candidate/profile", profileData);
-    },
-    onSuccess: () => {
-      // Silent success - DO NOT refresh profile data during auto-save to prevent form reset
-      // Only refresh job matches which doesn't interfere with form state
-      queryClient.invalidateQueries({ queryKey: ["/api/job-matches"] });
-      console.log("Auto-save completed successfully");
-    },
-    onError: (error) => {
-      // Only show error if it's unauthorized (user needs to login)
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Session Expired",
-          description: "Please log in again to continue.",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-      }
-      console.error("Auto-save failed:", error);
-      // Silently ignore other errors for auto-save
-    },
-  });
-
   const handleSubmit = (data: ProfileFormData) => {
     updateProfileMutation.mutate(data);
   };
-
-  // Auto-save functionality - save every 10 seconds
-  useEffect(() => {
-    const autoSaveInterval = setInterval(() => {
-      const currentData = form.getValues();
-      
-      // Log all form values for debugging
-      console.log("FULL FORM DEBUG:", {
-        allFormData: currentData,
-        formIsValid: form.formState.isValid,
-        formIsDirty: form.formState.isDirty,
-        formErrors: form.formState.errors,
-        watchedValues: form.watch(),
-        formTouchedFields: form.formState.touchedFields,
-        formSubmitCount: form.formState.submitCount,
-      });
-      
-      // Log specific field errors if any
-      if (Object.keys(form.formState.errors).length > 0) {
-        console.log("FORM VALIDATION ERRORS:", form.formState.errors);
-      }
-      
-      // Only auto-save if there's meaningful data (not just empty form)
-      if (currentData.name || currentData.emailAddress || currentData.careerLevel || 
-          (currentData.desiredJobTitles && currentData.desiredJobTitles.length > 0) ||
-          (currentData.jobCategories && currentData.jobCategories.length > 0) ||
-          workExperiences.length > 0 || skills.length > 0 || languages.length > 0 ||
-          universityDegrees.length > 0) {
-        
-        console.log("Auto-saving profile data...");
-        console.log("Current form data:", {
-          name: currentData.name,
-          emailAddress: currentData.emailAddress,
-          careerLevel: currentData.careerLevel,
-          desiredJobTitles: currentData.desiredJobTitles,
-          jobCategories: currentData.jobCategories,
-          workExperiences: workExperiences.length,
-          skills: skills.length,
-          languages: languages.length,
-          universityDegrees: universityDegrees.length,
-        });
-        
-        console.log("Complete auto-save data being sent:", {
-          formData: Object.keys(currentData),
-          additionalData: {
-            workExperiences: workExperiences.length > 0 ? `${workExperiences.length} experiences` : 'none',
-            skills: skills.length > 0 ? `${skills.length} skills` : 'none',
-            languages: languages.length > 0 ? `${languages.length} languages` : 'none',
-            universityDegrees: universityDegrees.length > 0 ? `${universityDegrees.length} degrees` : 'none',
-            highSchools: highSchools.length > 0 ? `${highSchools.length} schools` : 'none',
-            certifications: certifications.length > 0 ? `${certifications.length} certs` : 'none',
-            trainingCourses: trainingCourses.length > 0 ? `${trainingCourses.length} courses` : 'none',
-          }
-        });
-        autoSaveProfileMutation.mutate(currentData);
-      }
-    }, 10000); // Save every 10 seconds
-
-    return () => clearInterval(autoSaveInterval);
-  }, [form, workExperiences, skills, languages, universityDegrees, highSchools, certifications, trainingCourses, autoSaveProfileMutation]);
 
   const uploadResumeMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -664,7 +532,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Gender</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select gender" />
@@ -702,7 +570,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Marital Status</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select status" />
@@ -748,7 +616,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Military Status</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select status" />
@@ -854,15 +722,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                           <FormItem>
                             <FormLabel>Email Address</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="email" 
-                                placeholder="email@example.com" 
-                                {...field}
-                                onChange={(e) => {
-                                  console.log("Email field changed:", e.target.value);
-                                  field.onChange(e);
-                                }}
-                              />
+                              <Input type="email" placeholder="email@example.com" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -889,13 +749,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Career Level</FormLabel>
-                          <Select 
-                            onValueChange={(value) => {
-                              console.log("Career level changed:", value);
-                              field.onChange(value);
-                            }} 
-                            value={field.value}
-                          >
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select career level" />
@@ -923,7 +777,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                           <FormControl>
                             <RadioGroup
                               onValueChange={field.onChange}
-                              value={field.value}
+                              defaultValue={field.value}
                               className="flex flex-col space-y-2"
                             >
                               <div className="flex items-center space-x-2">
@@ -997,7 +851,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                           <FormControl>
                             <RadioGroup
                               onValueChange={field.onChange}
-                              value={field.value}
+                              defaultValue={field.value}
                               className="flex flex-col space-y-2"
                             >
                               <div className="flex items-center space-x-2">
@@ -1090,7 +944,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Total Years of Experience</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                          <Select onValueChange={(value) => field.onChange(parseInt(value))} defaultValue={field.value?.toString()}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select years" />
@@ -1425,7 +1279,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Current Education Level</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select education level" />
@@ -1849,7 +1703,7 @@ function AddWorkExperienceModal({ isOpen, onClose, onAdd }: {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Experience Type *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select type" />
@@ -2253,7 +2107,7 @@ function AddUniversityDegreeModal({ isOpen, onClose, onAdd }: {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Degree Level *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select degree" />
