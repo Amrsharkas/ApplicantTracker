@@ -73,7 +73,7 @@ export default function Dashboard() {
   };
 
   const profileProgress = profile?.completionPercentage || 0;
-  const hasCompletedProfile = profileProgress >= 65;
+  const hasCompletedProfile = profileProgress >= 80;
   const hasCompletedInterview = profile?.aiProfileGenerated;
 
   return (
@@ -238,7 +238,7 @@ export default function Dashboard() {
                         <h3 className="text-lg font-semibold text-gray-900">Take AI Interview</h3>
                         <p className="text-gray-600">
                           {!hasCompletedProfile 
-                            ? 'Complete at least 65% of your profile to unlock the AI interview.' 
+                            ? 'Complete your profile first to unlock the AI interview.' 
                             : hasCompletedInterview 
                               ? 'Excellent! Your AI interview is complete.' 
                               : 'Chat with our AI to create your comprehensive professional profile.'
