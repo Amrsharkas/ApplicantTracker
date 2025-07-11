@@ -102,17 +102,7 @@ export default function Dashboard() {
                 </span>
               </div>
               <button
-                onClick={async () => {
-                  try {
-                    await fetch('/api/auth/logout', { method: 'POST' });
-                    // Clear auth cache and redirect to home
-                    window.location.href = '/';
-                  } catch (error) {
-                    console.error('Logout error:', error);
-                    // Force redirect even if logout fails
-                    window.location.href = '/';
-                  }
-                }}
+                onClick={() => window.location.href = '/api/logout'}
                 className="text-sm text-gray-600 hover:text-gray-800"
               >
                 Sign Out

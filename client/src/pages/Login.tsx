@@ -42,10 +42,10 @@ export default function Login() {
         description: "Welcome back! You've been logged in successfully.",
       });
       
-      // Longer delay to ensure query refetch completes
+      // Small delay to allow query invalidation to complete
       setTimeout(() => {
         setLocation("/");
-      }, 500);
+      }, 100);
     },
     onError: (error: Error) => {
       toast({
