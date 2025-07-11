@@ -38,18 +38,18 @@ export default function Signup() {
       });
     },
     onSuccess: () => {
+      // Invalidate auth query to refetch user data
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      
       toast({
         title: "Account Created",
         description: "Welcome to Plato! Your account has been created successfully.",
       });
       
-      // Invalidate auth query to refetch user data
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      
-      // Longer delay to ensure query refetch completes
+      // Small delay to allow query invalidation to complete
       setTimeout(() => {
         setLocation("/");
-      }, 500);
+      }, 100);
     },
     onError: (error: Error) => {
       toast({

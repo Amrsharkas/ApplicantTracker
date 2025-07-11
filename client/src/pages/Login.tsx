@@ -34,18 +34,18 @@ export default function Login() {
       });
     },
     onSuccess: () => {
+      // Invalidate auth query to refetch user data
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      
       toast({
         title: "Success",
         description: "Welcome back! You've been logged in successfully.",
       });
       
-      // Invalidate auth query to refetch user data
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      
-      // Longer delay to ensure query refetch completes
+      // Small delay to allow query invalidation to complete
       setTimeout(() => {
         setLocation("/");
-      }, 500);
+      }, 100);
     },
     onError: (error: Error) => {
       toast({

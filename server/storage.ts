@@ -239,9 +239,9 @@ export class DatabaseStorage implements IStorage {
     const [job] = await db
       .insert(jobs)
       .values({
-        title: jobData.title || jobData.jobTitle,
-        description: jobData.description || jobData.jobDescription,
-        company: jobData.company || jobData.companyName,
+        title: jobData.jobTitle,
+        description: jobData.jobDescription,
+        company: jobData.companyName,
         location: jobData.location || null,
         salaryRange: jobData.salaryRange || null,
         employmentType: jobData.employmentType || 'Full-time',
