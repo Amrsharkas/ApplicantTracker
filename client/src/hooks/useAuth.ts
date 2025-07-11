@@ -6,11 +6,6 @@ export function useAuth() {
     retry: false,
   });
 
-  console.log('useAuth - User data:', user);
-  console.log('useAuth - Is loading:', isLoading);
-  console.log('useAuth - Error:', error);
-  console.log('useAuth - Is authenticated:', !!user);
-
   return {
     user,
     isLoading,
