@@ -94,6 +94,8 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
     
     const prompt = `You are an expert personal interviewer. Create exactly 5 deep, personal interview questions to understand everything about this candidate as a person - their background, motivations, values, personality, and life journey.
 
+CRITICAL: Only use information that is actually provided in the candidate's profile. DO NOT make assumptions about their background, education, or work experience. If information is missing, ask general questions instead.
+
 USE THIS SPECIFIC CANDIDATE INFORMATION TO CREATE PERSONALIZED QUESTIONS:
 ${userContext}
 
@@ -145,6 +147,8 @@ Make questions deeply personal and insightful. Return ONLY JSON:
     const userContext = this.buildDetailedUserContext(userData, resumeContent);
     
     const prompt = `You are an expert professional interviewer. Create exactly 7 comprehensive professional interview questions to deeply understand this candidate's career journey, work experience, achievements, and professional skills.
+
+CRITICAL: Only use information that is actually provided in the candidate's profile. DO NOT make assumptions about their background, education, or work experience. If information is missing, ask general questions instead.
 
 USE THIS SPECIFIC CANDIDATE INFORMATION TO CREATE PERSONALIZED QUESTIONS:
 ${userContext}
@@ -203,6 +207,8 @@ Make questions specific to their field and experience level. Return ONLY JSON:
     const userContext = this.buildDetailedUserContext(userData, resumeContent);
     
     const prompt = `You are an expert technical interviewer. Create exactly 11 technical assessment questions tailored specifically for a ${userRole} in the ${userField} field. Focus heavily on IQ assessment, logical reasoning, pattern recognition, and analytical thinking, with field-specific technical knowledge.
+
+CRITICAL: Only use information that is actually provided in the candidate's profile. DO NOT make assumptions about their background, education, or work experience. If information is missing, ask general questions instead.
 
 USE THIS SPECIFIC CANDIDATE INFORMATION TO CREATE PERSONALIZED QUESTIONS:
 ${userContext}

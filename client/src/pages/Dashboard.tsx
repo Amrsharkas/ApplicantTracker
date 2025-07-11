@@ -75,7 +75,12 @@ export default function Dashboard() {
   const profileProgress = profile?.completionPercentage || 0;
   const hasCompletedProfile = profileProgress >= 80; // For showing completed status
   const canAccessInterviews = profileProgress >= 10; // Low threshold for interview access
-  const hasCompletedInterview = profile?.aiProfileGenerated;
+  
+  // Check if all interviews are completed
+  const hasCompletedInterview = profile?.aiProfileGenerated || 
+    (profile?.personalInterviewCompleted && 
+     profile?.professionalInterviewCompleted && 
+     profile?.technicalInterviewCompleted);
 
   return (
     <div className="min-h-screen bg-gray-50">
