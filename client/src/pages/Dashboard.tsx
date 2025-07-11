@@ -73,7 +73,8 @@ export default function Dashboard() {
   };
 
   const profileProgress = profile?.completionPercentage || 0;
-  const hasCompletedProfile = profileProgress >= 80;
+  const hasCompletedProfile = profileProgress >= 80; // For showing completed status
+  const canAccessInterviews = profileProgress >= 10; // Low threshold for interview access
   const hasCompletedInterview = profile?.aiProfileGenerated;
 
   return (
@@ -217,7 +218,7 @@ export default function Dashboard() {
 
                 {/* Step 2: AI Interview */}
                 <div className={`bg-white rounded-lg p-6 border-2 transition-all ${
-                  !hasCompletedProfile 
+                  !canAccessInterviews 
                     ? 'border-gray-200 opacity-60' 
                     : hasCompletedInterview 
                       ? 'border-green-200 bg-green-50' 
@@ -226,7 +227,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
-                        !hasCompletedProfile 
+                        !canAccessInterviews 
                           ? 'bg-gray-400' 
                           : hasCompletedInterview 
                             ? 'bg-green-600' 
@@ -237,20 +238,27 @@ export default function Dashboard() {
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">Take AI Interview</h3>
                         <p className="text-gray-600">
-                          {!hasCompletedProfile 
-                            ? 'Complete your profile first to unlock the AI interview.' 
+                          {!canAccessInterviews 
+                            ? 'Add at least 10% profile information to unlock the AI interview.' 
                             : hasCompletedInterview 
                               ? 'Excellent! Your AI interview is complete.' 
                               : 'Chat with our AI to create your comprehensive professional profile.'
                           }
                         </p>
+                        {canAccessInterviews && !hasCompletedInterview && profileProgress < 80 && (
+                          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-sm text-blue-800">
+                              💡 <strong>Tip:</strong> Complete more of your profile before the interview for better, more personalized questions and stronger job applications!
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <button
                       onClick={() => openModal('interview')}
-                      disabled={!hasCompletedProfile}
+                      disabled={!canAccessInterviews}
                       className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                        !hasCompletedProfile 
+                        !canAccessInterviews 
                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                           : hasCompletedInterview 
                             ? 'bg-green-600 text-white hover:bg-green-700' 
