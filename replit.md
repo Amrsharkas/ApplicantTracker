@@ -147,6 +147,7 @@ Changelog:
 - July 11, 2025. Enhanced AI interview prompts with critical warnings to only use actual profile information and avoid making assumptions about user background
 - July 11, 2025. Fixed authentication redirect issue - login and signup now properly redirect to dashboard after successful authentication with 500ms delay to allow state updates
 - July 12, 2025. Changed dashboard URL from `/dashboard` to `/portal` - all authenticated users now land on the portal page at `/portal` after login/signup
+- July 12, 2025. Reverted login/signup redirects back to `/dashboard` - users now go to `/dashboard` after authentication while keeping `/portal` as an alternative route
 ```
 
 ## User Preferences

@@ -44,7 +44,7 @@ export default function Login() {
       
       // Small delay to allow query invalidation to complete
       setTimeout(() => {
-        setLocation("/portal");
+        setLocation("/dashboard");
       }, 500);
     },
     onError: (error: Error) => {

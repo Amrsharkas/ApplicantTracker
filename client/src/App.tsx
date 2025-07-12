@@ -24,6 +24,7 @@ function Router() {
       ) : (
         <>
           <Route path="/" component={Dashboard} />
+          <Route path="/dashboard" component={Dashboard} />
           <Route path="/portal" component={Dashboard} />
         </>
       )}
