@@ -1,4 +1,5 @@
-import { Switch, Route } from "wouter";
+import React from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -10,22 +11,33 @@ import Signup from "@/pages/Signup";
 import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/not-found";
 
+function RedirectToDashboard() {
+  const [, setLocation] = useLocation();
+  
+  React.useEffect(() => {
+    setLocation('/dashboard');
+  }, [setLocation]);
+  
+  return null;
+}
+
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
   return (
     <Switch>
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
+      
       {isLoading || !isAuthenticated ? (
         <>
           <Route path="/" component={Landing} />
-          <Route path="/login" component={Login} />
-          <Route path="/signup" component={Signup} />
         </>
       ) : (
         <>
-          <Route path="/" component={Dashboard} />
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/portal" component={Dashboard} />
+          <Route path="/" component={RedirectToDashboard} />
         </>
       )}
       <Route component={NotFound} />
