@@ -48,7 +48,7 @@ export default function Signup() {
       
       // Small delay to allow query invalidation to complete
       setTimeout(() => {
-        setLocation("/dashboard");
+        setLocation("/portal");
       }, 500);
     },
     onError: (error: Error) => {

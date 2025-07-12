@@ -146,6 +146,7 @@ Changelog:
 - July 11, 2025. Updated dashboard logic to show full job matching interface after interview completion regardless of profile percentage (changed from requiring 80% profile + interviews to just requiring completed interviews)
 - July 11, 2025. Enhanced AI interview prompts with critical warnings to only use actual profile information and avoid making assumptions about user background
 - July 11, 2025. Fixed authentication redirect issue - login and signup now properly redirect to dashboard after successful authentication with 500ms delay to allow state updates
+- July 12, 2025. Changed dashboard URL from `/dashboard` to `/portal` - all authenticated users now land on the portal page at `/portal` after login/signup
 ```
 
 ## User Preferences
