@@ -29,17 +29,34 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       
-      {isLoading || !isAuthenticated ? (
-        <>
-          <Route path="/" component={Landing} />
-        </>
-      ) : (
+      {isLoading ? (
+        <Route>
+          {() => <div className="flex items-center justify-center min-h-screen">Loading...</div>}
+        </Route>
+      ) : isAuthenticated ? (
         <>
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/portal" component={Dashboard} />
           <Route path="/" component={RedirectToDashboard} />
         </>
+      ) : (
+        <>
+          <Route path="/dashboard">
+            {() => { 
+              window.location.href = '/login'; 
+              return <div>Redirecting to login...</div>; 
+            }}
+          </Route>
+          <Route path="/portal">
+            {() => { 
+              window.location.href = '/login'; 
+              return <div>Redirecting to login...</div>; 
+            }}
+          </Route>
+          <Route path="/" component={Landing} />
+        </>
       )}
+      
       <Route component={NotFound} />
     </Switch>
   );
