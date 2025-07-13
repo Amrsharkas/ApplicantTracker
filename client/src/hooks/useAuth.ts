@@ -1,14 +1,25 @@
 import { useState, useEffect } from "react";
-import { onAuthStateChange, FirebaseUser } from "@/lib/firebase";
+import { onAuthStateChange, FirebaseUser, handleRedirectResult } from "@/lib/firebase";
 import { useQuery } from "@tanstack/react-query";
 
 export function useAuth() {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isFirebaseLoading, setIsFirebaseLoading] = useState(true);
 
-  // Listen to Firebase auth state changes
+  // Listen to Firebase auth state changes and handle redirects
   useEffect(() => {
+    // Handle redirect result on app load
+    handleRedirectResult().then((result) => {
+      if (result) {
+        console.log("Redirect sign-in successful:", result.user.email);
+      }
+    }).catch((error) => {
+      console.error("Redirect sign-in error:", error);
+    });
+
+    // Listen for auth state changes
     const unsubscribe = onAuthStateChange((user) => {
+      console.log("Firebase auth state changed:", user?.email || "signed out");
       setFirebaseUser(user);
       setIsFirebaseLoading(false);
     });

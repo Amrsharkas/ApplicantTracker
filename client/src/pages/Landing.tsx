@@ -145,24 +145,16 @@ export default function Landing() {
   
   const handleLogin = async () => {
     try {
-      console.log("Attempting Google sign-in...");
-      const result = await signInWithGoogle();
-      console.log("Sign-in successful:", result.user.email);
-      // Firebase auth state change will automatically redirect to dashboard
+      console.log("Attempting Google sign-in with redirect...");
+      await signInWithGoogle();
+      // User will be redirected to Google, then back to the app
+      // The auth state change will be handled by useAuth hook
     } catch (error: any) {
       console.error("Authentication error:", error);
       console.error("Error code:", error.code);
       console.error("Error message:", error.message);
       
-      let errorMessage = "There was an error signing in. Please try again.";
-      
-      if (error.code === 'auth/unauthorized-domain') {
-        errorMessage = "This domain is not authorized for sign-in. Please contact support.";
-      } else if (error.code === 'auth/popup-blocked') {
-        errorMessage = "Pop-up was blocked. Please allow pop-ups and try again.";
-      } else if (error.code === 'auth/popup-closed-by-user') {
-        errorMessage = "Sign-in was cancelled. Please try again.";
-      }
+      let errorMessage = "There was an error starting sign-in. Please try again.";
       
       toast({
         title: "Sign in failed",

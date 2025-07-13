@@ -2,6 +2,8 @@ import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   signOut, 
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -32,7 +34,11 @@ provider.addScope('profile');
 
 // Auth functions
 export const signInWithGoogle = () => {
-  return signInWithPopup(auth, provider);
+  return signInWithRedirect(auth, provider);
+};
+
+export const handleRedirectResult = () => {
+  return getRedirectResult(auth);
 };
 
 export const logout = () => {
