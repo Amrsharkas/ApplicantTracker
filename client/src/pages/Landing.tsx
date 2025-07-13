@@ -145,13 +145,28 @@ export default function Landing() {
   
   const handleLogin = async () => {
     try {
-      await signInWithGoogle();
+      console.log("Attempting Google sign-in...");
+      const result = await signInWithGoogle();
+      console.log("Sign-in successful:", result.user.email);
       // Firebase auth state change will automatically redirect to dashboard
-    } catch (error) {
+    } catch (error: any) {
       console.error("Authentication error:", error);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      
+      let errorMessage = "There was an error signing in. Please try again.";
+      
+      if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = "This domain is not authorized for sign-in. Please contact support.";
+      } else if (error.code === 'auth/popup-blocked') {
+        errorMessage = "Pop-up was blocked. Please allow pop-ups and try again.";
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        errorMessage = "Sign-in was cancelled. Please try again.";
+      }
+      
       toast({
         title: "Sign in failed",
-        description: "There was an error signing in. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
