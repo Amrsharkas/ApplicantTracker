@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Brain, Target, Zap, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
+import { LoginForm } from "@/components/auth/LoginForm";
+import { useAuth } from "@/hooks/useAuth";
 
 // Import company logos
 import moderatorLogo from "@assets/image_1752003560205.png";
@@ -139,9 +141,13 @@ function CompanyCarousel() {
 }
 
 export default function Landing() {
-  const handleLogin = () => {
-    window.location.href = "/api/login";
-  };
+  const { isAuthenticated } = useAuth();
+  
+  // Redirect to dashboard if already authenticated
+  if (isAuthenticated) {
+    window.location.href = "/";
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 overflow-hidden">
@@ -167,12 +173,9 @@ export default function Landing() {
               Plato
             </motion.div>
             
-            <Button 
-              onClick={handleLogin}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-xl font-medium"
-            >
-              Sign In
-            </Button>
+            <div className="text-sm text-slate-600">
+              Welcome to Plato
+            </div>
           </div>
         </motion.header>
 
@@ -217,23 +220,9 @@ export default function Landing() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="flex flex-col sm:flex-row gap-4"
+                className="w-full max-w-md"
               >
-                <Button 
-                  onClick={handleLogin}
-                  size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  Get Started
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="lg"
-                  className="border-2 border-slate-300 hover:border-blue-500 text-slate-700 hover:text-blue-600 px-8 py-4 rounded-xl font-semibold text-lg"
-                >
-                  Learn More
-                </Button>
+                <LoginForm onSuccess={() => window.location.href = "/"} />
               </motion.div>
 
               {/* Feature highlights */}
@@ -349,13 +338,9 @@ export default function Landing() {
             <p className="text-xl text-slate-600 max-w-2xl mx-auto">
               Join thousands of professionals who've discovered their dream careers with AI-powered job matching.
             </p>
-            <Button 
-              onClick={handleLogin}
-              size="lg"
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-12 py-4 rounded-xl font-semibold text-xl shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              Start Your Journey
-            </Button>
+            <p className="text-lg text-slate-700 font-medium">
+              Sign in above to get started with your personalized job search.
+            </p>
           </motion.div>
         </main>
       </div>
