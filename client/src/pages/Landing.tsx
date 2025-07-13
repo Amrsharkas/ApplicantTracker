@@ -3,8 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Brain, Target, Zap, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { signInWithGoogle } from "@/lib/firebase";
-import { useToast } from "@/hooks/use-toast";
 
 // Import company logos
 import moderatorLogo from "@assets/image_1752003560205.png";
@@ -141,27 +139,8 @@ function CompanyCarousel() {
 }
 
 export default function Landing() {
-  const { toast } = useToast();
-  
-  const handleLogin = async () => {
-    try {
-      console.log("Attempting Google sign-in with redirect...");
-      await signInWithGoogle();
-      // User will be redirected to Google, then back to the app
-      // The auth state change will be handled by useAuth hook
-    } catch (error: any) {
-      console.error("Authentication error:", error);
-      console.error("Error code:", error.code);
-      console.error("Error message:", error.message);
-      
-      let errorMessage = "There was an error starting sign-in. Please try again.";
-      
-      toast({
-        title: "Sign in failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    }
+  const handleLogin = () => {
+    window.location.href = "/api/login";
   };
 
   return (
