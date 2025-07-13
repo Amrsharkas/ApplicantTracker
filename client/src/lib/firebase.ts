@@ -9,16 +9,21 @@ import {
 } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.app`,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: "AIzaSyAQxw4NLTDlKzmR2SGRIPZ1qWniXnXYumY",
+  authDomain: "plato-244d4.firebaseapp.com",
+  projectId: "plato-244d4",
+  storageBucket: "plato-244d4.firebasestorage.app",
+  appId: "1:1006325037584:web:0326976b8bb8ed4df6b49f",
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+// Ensure we only initialize once
+if (import.meta.hot) {
+  import.meta.hot.accept();
+}
 
 // Google Auth Provider
 const provider = new GoogleAuthProvider();
