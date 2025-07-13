@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Brain, Target, Zap, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
+import { signInWithGoogle } from "@/lib/firebase";
+import { useToast } from "@/hooks/use-toast";
 
 // Import company logos
 import moderatorLogo from "@assets/image_1752003560205.png";
@@ -139,8 +141,20 @@ function CompanyCarousel() {
 }
 
 export default function Landing() {
-  const handleLogin = () => {
-    window.location.href = "/api/login";
+  const { toast } = useToast();
+  
+  const handleLogin = async () => {
+    try {
+      await signInWithGoogle();
+      // Firebase auth state change will automatically redirect to dashboard
+    } catch (error) {
+      console.error("Authentication error:", error);
+      toast({
+        title: "Sign in failed",
+        description: "There was an error signing in. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
