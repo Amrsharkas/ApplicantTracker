@@ -3,8 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Brain, Target, Zap, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { LoginForm } from "@/components/auth/LoginForm";
-import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 
 // Import company logos
 import moderatorLogo from "@assets/image_1752003560205.png";
@@ -141,13 +140,7 @@ function CompanyCarousel() {
 }
 
 export default function Landing() {
-  const { isAuthenticated } = useAuth();
-  
-  // Redirect to dashboard if already authenticated
-  if (isAuthenticated) {
-    window.location.href = "/";
-    return null;
-  }
+  const [, setLocation] = useLocation();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 overflow-hidden">
@@ -222,7 +215,13 @@ export default function Landing() {
                 transition={{ delay: 0.5 }}
                 className="w-full max-w-md"
               >
-                <LoginForm onSuccess={() => window.location.href = "/"} />
+                <Button 
+                  onClick={() => setLocation("/auth")}
+                  size="lg"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  Get Started - Sign In
+                </Button>
               </motion.div>
 
               {/* Feature highlights */}

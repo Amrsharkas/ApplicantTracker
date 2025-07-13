@@ -2,12 +2,12 @@ import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBa8vNdWd8b-q_KGS_5bGz4KnQJvZ6J5Yc", // Using a development API key
-  authDomain: "plato-job-platform-default-rtdb.firebaseapp.com",
-  projectId: "plato-job-platform-default-rtdb",
-  storageBucket: "plato-job-platform-default-rtdb.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:a1b2c3d4e5f6789012345678"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
@@ -15,21 +15,13 @@ export const auth = getAuth(app);
 
 // Authentication functions
 export const signInUser = async (email: string, password: string) => {
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return { user: userCredential.user, error: null };
-  } catch (error: any) {
-    return { user: null, error: error.message };
-  }
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  return userCredential.user;
 };
 
 export const signUpUser = async (email: string, password: string) => {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    return { user: userCredential.user, error: null };
-  } catch (error: any) {
-    return { user: null, error: error.message };
-  }
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  return userCredential.user;
 };
 
 export const signOutUser = async () => {
