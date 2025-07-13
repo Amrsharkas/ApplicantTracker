@@ -39,9 +39,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    name: 'plato.sid', // Custom session name
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Allow cookies over HTTP in development
+      sameSite: 'lax', // Allow cross-site requests
       maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     },
   }));
@@ -85,7 +87,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Set session
       req.session.userId = user.id;
       
-      res.json({ user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } });
+      // Save session explicitly
+      req.session.save((err: any) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Failed to create session" });
+        }
+        console.log("Session saved successfully for user:", user.id);
+        res.json({ user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } });
+      });
     } catch (error: any) {
       console.error("Signup error:", error);
       if (error.issues) {
@@ -127,7 +137,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.userId = user.id;
       console.log("Session set with userId:", user.id);
       
-      res.json({ user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } });
+      // Save session explicitly
+      req.session.save((err: any) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Failed to create session" });
+        }
+        console.log("Session saved successfully for user:", user.id);
+        res.json({ user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } });
+      });
     } catch (error: any) {
       console.error("Login error:", error);
       if (error.issues) {
@@ -142,7 +160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (err) {
         return res.status(500).json({ message: "Failed to logout" });
       }
-      res.clearCookie('connect.sid');
+      res.clearCookie('plato.sid'); // Use the custom session name
       res.json({ message: "Logged out successfully" });
     });
   });

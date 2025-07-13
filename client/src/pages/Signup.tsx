@@ -37,7 +37,7 @@ export default function Signup() {
         body: JSON.stringify(data),
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       // Invalidate auth query to refetch user data
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       
@@ -46,10 +46,9 @@ export default function Signup() {
         description: "Welcome to Plato! Your account has been created successfully.",
       });
       
-      // Small delay to allow query invalidation to complete
-      setTimeout(() => {
-        setLocation("/dashboard");
-      }, 500);
+      // Wait for auth state to update before redirecting
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLocation("/dashboard");
     },
     onError: (error: Error) => {
       toast({
