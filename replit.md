@@ -133,22 +133,6 @@ Changelog:
 - July 10, 2025. Fixed interview completion tracking and navigation issues - interviews now properly show "Completed" status, fixed "back to interview types" navigation, and added submit button for text interviews when "conclude" is detected
 - July 10, 2025. Synchronized voice and text interviews to use identical structured question sets - voice interviews now ask the same personal/professional/technical questions as text interviews, with immediate welcome message display and proper completion tracking
 - July 10, 2025. Fixed unified interview architecture - the 3 interview types (personal/professional/technical) now properly display as components of one interview process that generates a single comprehensive profile, with improved messaging and unified profile display in interview history
-- July 10, 2025. Created comprehensive "Build My Profile" modal with 11 detailed sections - General Information, Career Interests, CV Upload, Work Experience, Skills, Languages, Education, Certifications, Training, Online Presence, and Achievements
-- July 10, 2025. Added 25+ new database columns for comprehensive profile data including personal details, career preferences, work history with JSON storage, skills with proficiency ratings, language abilities, education tracking, certifications, and social media links
-- July 10, 2025. Implemented sophisticated profile completion calculation system requiring 100% completion of mandatory fields across all sections (1000 points total) with optional sections for certifications, training, and achievements providing bonus points
-- July 10, 2025. Added functional sub-modals for adding work experiences, skills with star ratings, languages with 4-skill proficiency tracking, university degrees, certifications, and training courses with full CRUD operations
-- July 10, 2025. Enhanced AI interview system with comprehensive profile data integration - interviews now use all 11 sections of Build My Profile data (personal details, work experience, skills, education, languages, certifications, etc.) to generate highly personalized, specific questions that reference actual user background and goals
-- July 10, 2025. Improved field detection algorithm to analyze career interests, job preferences, skills, education, and work experience for more accurate technical interview customization across expanded fields including Civil Engineering, Mechanical Engineering, Healthcare, Education, and Legal
-- July 10, 2025. Updated AI Profile Analysis Agent to utilize comprehensive user context from Build My Profile modal for more accurate and detailed professional profile generation
-- July 10, 2025. Fixed critical database schema issues with auto-incrementing IDs and resolved signup functionality - new accounts now create properly with correct foreign key relationships
-- July 10, 2025. Verified profile completion calculation is working correctly - shows accurate percentage based on mandatory fields only (General Info, Career Interests, CV Upload, Work Experience, Skills, Languages, Education total 1000 points)
-- July 11, 2025. Fixed new user signup flow - automatically creates basic applicant profile during signup so new users see proper getting started dashboard instead of being redirected to landing page
-- July 11, 2025. Updated dashboard logic to show full job matching interface after interview completion regardless of profile percentage (changed from requiring 80% profile + interviews to just requiring completed interviews)
-- July 11, 2025. Enhanced AI interview prompts with critical warnings to only use actual profile information and avoid making assumptions about user background
-- July 11, 2025. Fixed authentication redirect issue - login and signup now properly redirect to dashboard after successful authentication with 500ms delay to allow state updates
-- July 12, 2025. Changed dashboard URL from `/dashboard` to `/portal` - all authenticated users now land on the portal page at `/portal` after login/signup
-- July 12, 2025. Reverted login/signup redirects back to `/dashboard` - users now go to `/dashboard` after authentication while keeping `/portal` as an alternative route
-- July 12, 2025. Restructured routing - moved authenticated dashboard from `/` to `/dashboard` only, with authenticated users automatically redirected from root to dashboard
 ```
 
 ## User Preferences

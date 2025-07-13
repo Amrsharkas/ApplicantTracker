@@ -156,10 +156,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       const endpoint = selectedInterviewType 
         ? `/api/interview/start/${selectedInterviewType}`
         : "/api/interview/start";
-      const response = await apiRequest(endpoint, {
-        method: "POST",
-        body: JSON.stringify({})
-      });
+      const response = await apiRequest("POST", endpoint, {});
       return response.json();
     },
     onSuccess: (data) => {
@@ -203,22 +200,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     onError: (error) => {
       setIsStartingInterview(false);
       console.error('Start interview error:', error);
-      
-      if (isUnauthorizedError(error as Error)) {
-        toast({
-          title: "Authentication Required",
-          description: "You need to be logged in to start an interview. Redirecting to login...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 1500);
-        return;
-      }
-      
       toast({
-        title: "Error Starting Interview",
-        description: error.message || "Failed to start interview. Please try again.",
+        title: "Error",
+        description: "Failed to start interview. Please try again.",
         variant: "destructive",
       });
       setMode('select');
@@ -227,13 +211,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
   const respondMutation = useMutation({
     mutationFn: async (answer: string) => {
-      const response = await apiRequest("/api/interview/respond", {
-        method: "POST",
-        body: JSON.stringify({
-          sessionId: currentSession?.id,
-          answer,
-          questionIndex: currentQuestionIndex
-        })
+      const response = await apiRequest("POST", "/api/interview/respond", {
+        sessionId: currentSession?.id,
+        answer,
+        questionIndex: currentQuestionIndex
       });
       return response.json();
     },
@@ -272,12 +253,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
   const processTextInterviewMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("/api/interview/complete", {
-        method: "POST",
-        body: JSON.stringify({
-          sessionId: currentSession?.id,
-          interviewType: selectedInterviewType
-        })
+      const response = await apiRequest("POST", "/api/interview/complete", {
+        sessionId: currentSession?.id,
+        interviewType: selectedInterviewType
       });
       return response.json();
     },

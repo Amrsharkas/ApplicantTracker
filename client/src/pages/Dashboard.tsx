@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 import { 
   User, 
   Target, 
@@ -25,29 +24,6 @@ export default function Dashboard() {
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest('/api/auth/logout', {
-        method: 'POST',
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Logged out",
-        description: "You have been logged out successfully.",
-      });
-      window.location.href = '/';
-    },
-    onError: (error: Error) => {
-      console.error("Logout error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to logout. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
 
   const { data: profile } = useQuery({
     queryKey: ["/api/candidate/profile"],
@@ -61,7 +37,7 @@ export default function Dashboard() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/login";
+          window.location.href = "/api/login";
         }, 500);
         return;
       }
@@ -97,14 +73,8 @@ export default function Dashboard() {
   };
 
   const profileProgress = profile?.completionPercentage || 0;
-  const hasCompletedProfile = profileProgress >= 80; // For showing completed status
-  const canAccessInterviews = profileProgress >= 10; // Low threshold for interview access
-  
-  // Check if all interviews are completed
-  const hasCompletedInterview = profile?.aiProfileGenerated || 
-    (profile?.personalInterviewCompleted && 
-     profile?.professionalInterviewCompleted && 
-     profile?.technicalInterviewCompleted);
+  const hasCompletedProfile = profileProgress >= 80;
+  const hasCompletedInterview = profile?.aiProfileGenerated;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -132,11 +102,10 @@ export default function Dashboard() {
                 </span>
               </div>
               <button
-                onClick={() => logoutMutation.mutate()}
-                disabled={logoutMutation.isPending}
-                className="text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                onClick={() => window.location.href = '/api/logout'}
+                className="text-sm text-gray-600 hover:text-gray-800"
               >
-                {logoutMutation.isPending ? "Signing Out..." : "Sign Out"}
+                Sign Out
               </button>
             </div>
           </div>
@@ -148,7 +117,7 @@ export default function Dashboard() {
         {/* Getting Started Section or Hiring Stats */}
         <div className="mb-8">
           {/* Show hiring statistics for completed users */}
-          {hasCompletedInterview ? (
+          {hasCompletedProfile && hasCompletedInterview ? (
             <div className="space-y-6">
               <div className="text-center">
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">Ready to Find Your Perfect Role!</h2>
@@ -248,7 +217,7 @@ export default function Dashboard() {
 
                 {/* Step 2: AI Interview */}
                 <div className={`bg-white rounded-lg p-6 border-2 transition-all ${
-                  !canAccessInterviews 
+                  !hasCompletedProfile 
                     ? 'border-gray-200 opacity-60' 
                     : hasCompletedInterview 
                       ? 'border-green-200 bg-green-50' 
@@ -257,7 +226,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
-                        !canAccessInterviews 
+                        !hasCompletedProfile 
                           ? 'bg-gray-400' 
                           : hasCompletedInterview 
                             ? 'bg-green-600' 
@@ -268,27 +237,20 @@ export default function Dashboard() {
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">Take AI Interview</h3>
                         <p className="text-gray-600">
-                          {!canAccessInterviews 
-                            ? 'Add at least 10% profile information to unlock the AI interview.' 
+                          {!hasCompletedProfile 
+                            ? 'Complete your profile first to unlock the AI interview.' 
                             : hasCompletedInterview 
                               ? 'Excellent! Your AI interview is complete.' 
                               : 'Chat with our AI to create your comprehensive professional profile.'
                           }
                         </p>
-                        {canAccessInterviews && !hasCompletedInterview && profileProgress < 80 && (
-                          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <p className="text-sm text-blue-800">
-                              💡 <strong>Tip:</strong> Complete more of your profile before the interview for better, more personalized questions and stronger job applications!
-                            </p>
-                          </div>
-                        )}
                       </div>
                     </div>
                     <button
                       onClick={() => openModal('interview')}
-                      disabled={!canAccessInterviews}
+                      disabled={!hasCompletedProfile}
                       className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                        !canAccessInterviews 
+                        !hasCompletedProfile 
                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                           : hasCompletedInterview 
                             ? 'bg-green-600 text-white hover:bg-green-700' 
@@ -304,8 +266,8 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Job Features - Only show if interview is complete */}
-        {hasCompletedInterview && (
+        {/* Job Features - Only show if both steps are complete */}
+        {hasCompletedProfile && hasCompletedInterview && (
           <div className="space-y-6">
             <div className="border-t border-gray-200 pt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Job Dashboard</h3>
@@ -399,7 +361,7 @@ export default function Dashboard() {
         )}
 
         {/* Instruction Message for Uncompleted Steps */}
-        {!hasCompletedInterview && (
+        {(!hasCompletedProfile || !hasCompletedInterview) && (
           <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
             <div className="flex items-start space-x-3">
               <MessageCircle className="h-6 w-6 text-blue-600 mt-0.5" />

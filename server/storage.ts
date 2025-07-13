@@ -6,7 +6,7 @@ import {
   applications,
   interviewSessions,
   type User,
-  type InsertUser,
+  type UpsertUser,
   type InsertApplicantProfile,
   type ApplicantProfile,
   type InsertJob,
@@ -23,59 +23,60 @@ import { eq, desc, and, sql } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
-  // User operations (updated for email/password auth)
-  getUser(id: number): Promise<User | undefined>;
-  getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(userData: Omit<InsertUser, 'id'>): Promise<User>;
+  // User operations (mandatory for Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
 
   // Applicant profile operations
-  getApplicantProfile(userId: number): Promise<ApplicantProfile | undefined>;
+  getApplicantProfile(userId: string): Promise<ApplicantProfile | undefined>;
   upsertApplicantProfile(profile: InsertApplicantProfile): Promise<ApplicantProfile>;
-  updateProfileCompletion(userId: number): Promise<void>;
+  updateProfileCompletion(userId: string): Promise<void>;
 
 
 
   // Job matching operations
-  getJobMatches(userId: number): Promise<(JobMatch & { job: Job })[]>;
+  getJobMatches(userId: string): Promise<(JobMatch & { job: Job })[]>;
   createJobMatch(match: InsertJobMatch): Promise<JobMatch>;
-  calculateJobMatches(userId: number): Promise<void>;
+  calculateJobMatches(userId: string): Promise<void>;
   createJobFromAirtable(jobData: any): Promise<Job>;
 
   // Application operations
-  getApplications(userId: number): Promise<(Application & { job: Job })[]>;
+  getApplications(userId: string): Promise<(Application & { job: Job })[]>;
   createApplication(application: InsertApplication): Promise<Application>;
-  getApplication(userId: number, jobId: number): Promise<Application | undefined>;
+  getApplication(userId: string, jobId: number): Promise<Application | undefined>;
 
   // Interview operations
   createInterviewSession(session: InsertInterviewSession): Promise<InterviewSession>;
-  getInterviewSession(userId: number, interviewType?: string): Promise<InterviewSession | undefined>;
+  getInterviewSession(userId: string, interviewType?: string): Promise<InterviewSession | undefined>;
   updateInterviewSession(id: number, data: Partial<InterviewSession>): Promise<void>;
-  getInterviewHistory(userId: number): Promise<InterviewSession[]>;
-  updateInterviewCompletion(userId: number, interviewType: string): Promise<void>;
+  getInterviewHistory(userId: string): Promise<InterviewSession[]>;
+  updateInterviewCompletion(userId: string, interviewType: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
-  // User operations (updated for email/password auth)
-  async getUser(id: number): Promise<User | undefined> {
+  // User operations (mandatory for Replit Auth)
+  async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
-  }
-
-  async createUser(userData: Omit<InsertUser, 'id'>): Promise<User> {
+  async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
       .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
       .returning();
     return user;
   }
 
   // Applicant profile operations
-  async getApplicantProfile(userId: number): Promise<ApplicantProfile | undefined> {
+  async getApplicantProfile(userId: string): Promise<ApplicantProfile | undefined> {
     const [profile] = await db
       .select()
       .from(applicantProfiles)
@@ -102,87 +103,58 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateProfileCompletion(userId: number): Promise<void> {
+  async updateProfileCompletion(userId: string): Promise<void> {
     const profile = await this.getApplicantProfile(userId);
     if (!profile) return;
 
     let score = 0;
-    const maxScore = 1000; // Total required points for 100% completion
+    const details = {
+      basicInfo: false,
+      workExperience: false,
+      educationDetails: false,
+      skillsAndSummary: false,
+      resumeUpload: false
+    };
     
-    // === REQUIRED FIELDS ONLY ===
+    // Basic information (20 points)
+    if (profile.age && profile.education && profile.location) {
+      score += 20;
+      details.basicInfo = true;
+    }
     
-    // Section 1: General Information (400 points - ALL fields required)
-    let generalScore = 0;
-    if (profile.name) generalScore += 50;
-    if (profile.birthdate) generalScore += 50;
-    if (profile.gender) generalScore += 50;
-    if (profile.nationality) generalScore += 50;
-    if (profile.maritalStatus) generalScore += 50;
-    if (profile.country) generalScore += 50;
-    if (profile.city) generalScore += 50;
-    if (profile.mobileNumber) generalScore += 50;
-    if (profile.emailAddress) generalScore += 50;
-    score += generalScore;
-
-    // Section 2: Career Interests (500 points - ALL except salary)
-    let careerScore = 0;
-    if (profile.careerLevel) careerScore += 100;
-    if (profile.jobTypesOpen?.length) careerScore += 100;
-    if (profile.preferredWorkplace) careerScore += 100;
-    if (profile.desiredJobTitles?.length) careerScore += 100;
-    if (profile.jobCategories?.length) careerScore += 100;
-    // Salary fields are NOT required (minimumSalary, hideSalaryFromEmployers)
-    score += careerScore;
-
-    // Section 3: CV Upload (100 points - Required)
+    // Work experience (30 points)
+    if (profile.currentRole && profile.company && profile.yearsOfExperience !== null && profile.yearsOfExperience !== undefined) {
+      score += 30;
+      details.workExperience = true;
+    }
+    
+    // Education details (20 points)
+    if (profile.degree && profile.university) {
+      score += 20;
+      details.educationDetails = true;
+    }
+    
+    // Skills and summary (15 points)
+    if (profile.skillsList?.length || profile.summary) {
+      score += 15;
+      details.skillsAndSummary = true;
+    }
+    
+    // Resume upload (15 points)
     if (profile.resumeContent || profile.resumeUrl) {
-      score += 100;
+      score += 15;
+      details.resumeUpload = true;
     }
 
-    // === ALL OTHER SECTIONS ARE OPTIONAL ===
-    // Work Experience, Skills, Languages, Education are now optional
-    // They don't count toward completion percentage but users should know more is better
-
-    // Calculate completion percentage (based on required fields only)
-    // Required sections total: 400 + 500 + 100 = 1000 points
-    const requiredScore = Math.min(score, 1000);
-    const completionPercentage = Math.round((requiredScore / 1000) * 100);
+    const completionPercentage = Math.min(score, 100);
     
-    // Track optional sections for user feedback (but don't count toward completion)
-    const workExperiences = profile.workExperiences as any[] || [];
-    const skills = profile.skills as any[] || [];
-    const languages = profile.languages as any[] || [];
-    const universityDegrees = profile.universityDegrees as any[] || [];
-    const certifications = profile.certifications as any[] || [];
-    const trainingCourses = profile.trainingCourses as any[] || [];
-    let onlineScore = 0;
-    if (profile.linkedinUrl) onlineScore += 30;
-    if (profile.githubUrl || profile.websiteUrl || profile.facebookUrl || profile.twitterUrl || profile.instagramUrl || profile.youtubeUrl || profile.otherUrl) {
-      onlineScore += 20;
-    }
-    const achievementsScore = profile.achievements && profile.achievements.trim() ? 10 : 0;
-
     console.log(`Profile completion for user ${userId}:`, {
-      actualScore: score,
-      requiredScore,
-      maxRequiredScore: maxScore,
+      score,
       completionPercentage,
-      requiredFieldsBreakdown: {
-        general: generalScore,
-        career: careerScore,
-        cv: profile.resumeContent || profile.resumeUrl ? 100 : 0,
-      },
-      totalRequiredBreakdown: generalScore + careerScore + (profile.resumeContent || profile.resumeUrl ? 100 : 0),
-      optionalFieldsStatus: {
-        workExperience: workExperiences.length > 0 ? `${workExperiences.length} added` : 'none',
-        skills: skills.length > 0 ? `${skills.length} added` : 'none',
-        languages: languages.length > 0 ? `${languages.length} added` : 'none',
-        education: universityDegrees.length > 0 ? `${universityDegrees.length} added` : 'none',
-        certifications: certifications.length > 0 ? `${certifications.length} added` : 'none',
-        training: trainingCourses.length > 0 ? `${trainingCourses.length} added` : 'none',
-        onlinePresence: onlineScore > 0 ? 'configured' : 'none',
-        achievements: achievementsScore > 0 ? 'added' : 'none'
-      }
+      details,
+      hasSkills: !!profile.skillsList?.length,
+      hasSummary: !!profile.summary,
+      hasResume: !!(profile.resumeContent || profile.resumeUrl)
     });
 
     await db
@@ -196,7 +168,7 @@ export class DatabaseStorage implements IStorage {
 
 
   // Job matching operations
-  async getJobMatches(userId: number): Promise<(JobMatch & { job: Job })[]> {
+  async getJobMatches(userId: string): Promise<(JobMatch & { job: Job })[]> {
     const matches = await db
       .select()
       .from(jobMatches)
@@ -215,7 +187,7 @@ export class DatabaseStorage implements IStorage {
     return match;
   }
 
-  async calculateJobMatches(userId: number): Promise<void> {
+  async calculateJobMatches(userId: string): Promise<void> {
     // Job matching is now handled by Airtable - this method is kept for compatibility
     // but doesn't perform any calculations since jobs come pre-matched from Airtable
     console.log(`Job matching for user ${userId} is handled by Airtable system`);
@@ -225,9 +197,9 @@ export class DatabaseStorage implements IStorage {
     const [job] = await db
       .insert(jobs)
       .values({
-        title: jobData.title || jobData.jobTitle,
-        description: jobData.description || jobData.jobDescription,
-        company: jobData.company || jobData.companyName,
+        title: jobData.jobTitle,
+        description: jobData.jobDescription,
+        company: jobData.companyName,
         location: jobData.location || null,
         salaryRange: jobData.salaryRange || null,
         employmentType: jobData.employmentType || 'Full-time',
@@ -247,7 +219,7 @@ export class DatabaseStorage implements IStorage {
 
 
   // Application operations
-  async getApplications(userId: number): Promise<(Application & { job: Job })[]> {
+  async getApplications(userId: string): Promise<(Application & { job: Job })[]> {
     const apps = await db
       .select()
       .from(applications)
@@ -269,7 +241,7 @@ export class DatabaseStorage implements IStorage {
     return application;
   }
 
-  async getApplication(userId: number, jobId: number): Promise<Application | undefined> {
+  async getApplication(userId: string, jobId: number): Promise<Application | undefined> {
     const [app] = await db
       .select()
       .from(applications)
@@ -286,7 +258,7 @@ export class DatabaseStorage implements IStorage {
     return session;
   }
 
-  async getInterviewSession(userId: number, interviewType?: string): Promise<InterviewSession | undefined> {
+  async getInterviewSession(userId: string, interviewType?: string): Promise<InterviewSession | undefined> {
     let query = db
       .select()
       .from(interviewSessions);
@@ -313,7 +285,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(interviewSessions.id, id));
   }
 
-  async getInterviewHistory(userId: number): Promise<InterviewSession[]> {
+  async getInterviewHistory(userId: string): Promise<InterviewSession[]> {
     const sessions = await db
       .select()
       .from(interviewSessions)
@@ -323,7 +295,7 @@ export class DatabaseStorage implements IStorage {
     return sessions;
   }
 
-  async updateInterviewCompletion(userId: number, interviewType: string): Promise<void> {
+  async updateInterviewCompletion(userId: string, interviewType: string): Promise<void> {
     let updateData: any = {};
     
     switch (interviewType) {
