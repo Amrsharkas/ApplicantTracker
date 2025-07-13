@@ -1,19 +1,10 @@
-import { useState, useEffect } from "react";
-import { User } from "firebase/auth";
-import { onAuthChange } from "@/lib/firebase";
+import { useQuery } from "@tanstack/react-query";
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthChange((firebaseUser) => {
-      setUser(firebaseUser);
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+  const { data: user, isLoading } = useQuery({
+    queryKey: ["/api/auth/user"],
+    retry: false,
+  });
 
   return {
     user,

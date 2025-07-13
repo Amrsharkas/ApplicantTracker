@@ -9,7 +9,6 @@ import {
   integer,
   boolean,
   real,
-  date,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -42,47 +41,6 @@ export const users = pgTable("users", {
 export const applicantProfiles = pgTable("applicant_profiles", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id),
-  
-  // General Information
-  fullName: varchar("full_name"),
-  birthdate: date("birthdate"),
-  gender: varchar("gender"), // male, female, other, prefer not to say
-  nationality: varchar("nationality"),
-  maritalStatus: varchar("marital_status"), // single, married, divorced, widowed
-  numberOfDependents: integer("number_of_dependents").default(0),
-  militaryStatus: varchar("military_status"), // completed, exempted, postponed, not_applicable
-  
-  // Location
-  country: varchar("country"),
-  city: varchar("city"),
-  willingToRelocate: boolean("willing_to_relocate").default(false),
-  
-  // Contact Information
-  mobileNumber: varchar("mobile_number"),
-  email: varchar("email"),
-  
-  // Career Information
-  careerLevel: varchar("career_level"), // student, entry_level, experienced_non_manager, manager, senior_management
-  jobTypesOpen: text("job_types_open").array(), // fulltime, part_time, freelance, internship, shift_based, volunteering, student_activity
-  preferredWorkplace: varchar("preferred_workplace"), // onsite, remote, hybrid
-  desiredJobTitles: text("desired_job_titles").array(),
-  interestedJobCategories: text("interested_job_categories").array(),
-  minimumSalary: integer("minimum_salary"),
-  hideSalaryFromCompanies: boolean("hide_salary_from_companies").default(false),
-  preferredWorkCountries: text("preferred_work_countries").array(),
-  jobSearchStatus: varchar("job_search_status"), // actively_looking, open_to_opportunities, specific_opportunities_only, not_looking
-  availableForImmediateHiring: boolean("available_for_immediate_hiring").default(false),
-  
-  // Experience
-  yearsOfExperience: integer("years_of_experience").default(0),
-  workExperiences: jsonb("work_experiences"), // Array of experience objects
-  languages: jsonb("languages"), // Array of language objects with proficiency levels
-  
-  // Education
-  currentEducationLevel: varchar("current_education_level"), // high_school, vocational, diploma, bachelors, masters, phd
-  educationDetails: jsonb("education_details"), // Array of education objects
-  
-  // Legacy fields (keeping for backward compatibility)
   age: integer("age"),
   education: text("education"),
   university: varchar("university"),
@@ -90,12 +48,11 @@ export const applicantProfiles = pgTable("applicant_profiles", {
   location: varchar("location"),
   currentRole: varchar("current_role"),
   company: varchar("company"),
+  yearsOfExperience: integer("years_of_experience"),
   resumeUrl: varchar("resume_url"),
   resumeContent: text("resume_content"),
   summary: text("summary"),
   skillsList: text("skills_list").array(),
-  
-  // AI Profile Data
   aiProfile: jsonb("ai_profile"), // Generated from AI interview
   aiProfileGenerated: boolean("ai_profile_generated").default(false),
   personalInterviewCompleted: boolean("personal_interview_completed").default(false),

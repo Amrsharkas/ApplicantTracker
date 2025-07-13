@@ -77,17 +77,11 @@ export class DatabaseStorage implements IStorage {
 
   // Applicant profile operations
   async getApplicantProfile(userId: string): Promise<ApplicantProfile | undefined> {
-    try {
-      const [profile] = await db
-        .select()
-        .from(applicantProfiles)
-        .where(eq(applicantProfiles.userId, userId));
-      return profile;
-    } catch (error) {
-      console.log("Profile fetch error (likely schema mismatch):", error.message);
-      // Return undefined for now to avoid blocking authentication
-      return undefined;
-    }
+    const [profile] = await db
+      .select()
+      .from(applicantProfiles)
+      .where(eq(applicantProfiles.userId, userId));
+    return profile;
   }
 
   async upsertApplicantProfile(profileData: InsertApplicantProfile): Promise<ApplicantProfile> {

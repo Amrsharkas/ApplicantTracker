@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupFirebaseAuth, isFirebaseAuthenticated } from "./firebaseAuth";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { aiInterviewService, aiProfileAnalysisAgent } from "./openai";
 import { airtableService } from "./airtable";
 import multer from "multer";
@@ -14,26 +14,14 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Firebase Auth setup
-  setupFirebaseAuth();
+  // Auth middleware
+  await setupAuth(app);
 
   // Auth routes
-  app.get('/api/auth/user', isFirebaseAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
-      let user = await storage.getUser(userId);
-      
-      // Create user if doesn't exist
-      if (!user) {
-        user = await storage.upsertUser({
-          id: userId,
-          email: req.user.email,
-          firstName: null,
-          lastName: null,
-          profileImageUrl: null,
-        });
-      }
-      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -42,9 +30,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Profile routes
-  app.get('/api/candidate/profile', isFirebaseAuthenticated, async (req: any, res) => {
+  app.get('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const profile = await storage.getApplicantProfile(userId);
       res.json(profile || null);
     } catch (error) {
@@ -53,9 +41,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/candidate/profile', isFirebaseAuthenticated, async (req: any, res) => {
+  app.post('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const profileData = insertApplicantProfileSchema.parse({
         ...req.body,
         userId
@@ -72,9 +60,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Resume upload route
-  app.post('/api/candidate/resume', isFirebaseAuthenticated, upload.single('resume'), async (req: any, res) => {
+  app.post('/api/candidate/resume', isAuthenticated, upload.single('resume'), async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -168,7 +156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create ephemeral token for Realtime API
-  app.post("/api/realtime/session", isFirebaseAuthenticated, async (req, res) => {
+  app.post("/api/realtime/session", isAuthenticated, async (req, res) => {
     try {
       const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
         method: "POST",
@@ -195,9 +183,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Interview routes
-  app.post('/api/interview/welcome', isFirebaseAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/welcome', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
@@ -215,9 +203,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get available interview types for a user
-  app.get('/api/interview/types', isFirebaseAuthenticated, async (req: any, res) => {
+  app.get('/api/interview/types', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const profile = await storage.getApplicantProfile(userId);
 
       const types = [
@@ -251,9 +239,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/start/:type', isFirebaseAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/start/:type', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const interviewType = req.params.type;
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
@@ -306,9 +294,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Legacy endpoint for backward compatibility
-  app.post('/api/interview/start', isFirebaseAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/start', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
@@ -342,9 +330,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/respond', isFirebaseAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/respond', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const { sessionId, question, answer } = req.body;
 
       const session = await storage.getInterviewSession(userId);
@@ -471,9 +459,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/complete', isFirebaseAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/complete', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const { sessionId, interviewType } = req.body;
 
       const session = await storage.getInterviewSession(userId);
@@ -570,9 +558,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/complete-voice', isFirebaseAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/complete-voice', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const { conversationHistory, interviewType } = req.body;
 
       if (!conversationHistory || !Array.isArray(conversationHistory)) {
@@ -667,9 +655,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/interview/session', isFirebaseAuthenticated, async (req: any, res) => {
+  app.get('/api/interview/session', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const session = await storage.getInterviewSession(userId);
       res.json(session);
     } catch (error) {
@@ -678,9 +666,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/interview/history', isFirebaseAuthenticated, async (req: any, res) => {
+  app.get('/api/interview/history', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const history = await storage.getInterviewHistory(userId);
       const profile = await storage.getApplicantProfile(userId);
       
@@ -705,9 +693,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/voice-submit', isFirebaseAuthenticated, async (req: any, res) => {
+  app.post('/api/interview/voice-submit', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const { responses, conversationHistory } = req.body;
 
       // Get user and profile data
@@ -780,9 +768,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Job matches routes
-  app.get('/api/job-matches', isFirebaseAuthenticated, async (req: any, res) => {
+  app.get('/api/job-matches', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const matches = await storage.getJobMatches(userId);
       res.json(matches);
     } catch (error) {
@@ -791,9 +779,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/job-matches/refresh', isFirebaseAuthenticated, async (req: any, res) => {
+  app.post('/api/job-matches/refresh', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       await storage.calculateJobMatches(userId);
       const matches = await storage.getJobMatches(userId);
       res.json(matches);
@@ -804,9 +792,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Application routes
-  app.get('/api/applications', isFirebaseAuthenticated, async (req: any, res) => {
+  app.get('/api/applications', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const applications = await storage.getApplications(userId);
       res.json(applications);
     } catch (error) {
@@ -815,9 +803,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/applications', isFirebaseAuthenticated, async (req: any, res) => {
+  app.post('/api/applications', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.uid;
+      const userId = req.user.claims.sub;
       const applicationData = insertApplicationSchema.parse({
         ...req.body,
         userId
@@ -838,7 +826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Job postings routes
-  app.get('/api/job-postings', isFirebaseAuthenticated, async (req: any, res) => {
+  app.get('/api/job-postings', isAuthenticated, async (req: any, res) => {
     try {
       const jobPostings = await airtableService.getAllJobPostings();
       res.json(jobPostings);

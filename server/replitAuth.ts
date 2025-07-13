@@ -9,7 +9,7 @@ import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
 if (!process.env.REPLIT_DOMAINS) {
-  console.warn("Environment variable REPLIT_DOMAINS not provided, using default localhost for development");
+  throw new Error("Environment variable REPLIT_DOMAINS not provided");
 }
 
 const getOidcConfig = memoize(
@@ -38,7 +38,7 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false, // Set to false for localhost development
+      secure: true,
       maxAge: sessionTtl,
     },
   });
@@ -84,39 +84,32 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  const domains = process.env.REPLIT_DOMAINS ? 
-    process.env.REPLIT_DOMAINS.split(",") : 
-    ["localhost:5000"]; // Default for development
-    
-  for (const domain of domains) {
-    const protocol = domain.includes("localhost") ? "http" : "https";
+  for (const domain of process.env
+    .REPLIT_DOMAINS!.split(",")) {
     const strategy = new Strategy(
       {
         name: `replitauth:${domain}`,
         config,
         scope: "openid email profile offline_access",
-        callbackURL: `${protocol}://${domain}/api/callback`,
+        callbackURL: `https://${domain}/api/callback`,
       },
       verify,
     );
     passport.use(strategy);
-    console.log(`✓ Registered authentication strategy: replitauth:${domain}`);
   }
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    const host = req.hostname === "localhost" ? "localhost:5000" : req.hostname;
-    passport.authenticate(`replitauth:${host}`, {
+    passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    const host = req.hostname === "localhost" ? "localhost:5000" : req.hostname;
-    passport.authenticate(`replitauth:${host}`, {
+    passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
     })(req, res, next);
