@@ -18,45 +18,48 @@ function RedirectToDashboard() {
     setLocation('/dashboard');
   }, [setLocation]);
   
-  return null;
+  return <div>Redirecting to dashboard...</div>;
+}
+
+function RedirectToHome() {
+  const [, setLocation] = useLocation();
+  
+  React.useEffect(() => {
+    setLocation('/');
+  }, [setLocation]);
+  
+  return <div>Redirecting to home...</div>;
 }
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
+  // Show loading while checking authentication
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
   return (
     <Switch>
-      <Route path="/login" component={Login} />
-      <Route path="/signup" component={Signup} />
+      {/* Public routes accessible to all */}
+      <Route path="/login">
+        {() => isAuthenticated ? <RedirectToDashboard /> : <Login />}
+      </Route>
+      <Route path="/signup">
+        {() => isAuthenticated ? <RedirectToDashboard /> : <Signup />}
+      </Route>
       
-      {isLoading ? (
-        <Route>
-          {() => <div className="flex items-center justify-center min-h-screen">Loading...</div>}
-        </Route>
-      ) : isAuthenticated ? (
-        <>
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/portal" component={Dashboard} />
-          <Route path="/" component={RedirectToDashboard} />
-        </>
-      ) : (
-        <>
-          <Route path="/dashboard">
-            {() => { 
-              window.location.href = '/login'; 
-              return <div>Redirecting to login...</div>; 
-            }}
-          </Route>
-          <Route path="/portal">
-            {() => { 
-              window.location.href = '/login'; 
-              return <div>Redirecting to login...</div>; 
-            }}
-          </Route>
-          <Route path="/" component={Landing} />
-        </>
-      )}
+      {/* Protected routes - require authentication */}
+      <Route path="/dashboard">
+        {() => isAuthenticated ? <Dashboard /> : <RedirectToHome />}
+      </Route>
       
+      {/* Root route */}
+      <Route path="/">
+        {() => isAuthenticated ? <RedirectToDashboard /> : <Landing />}
+      </Route>
+      
+      {/* 404 fallback */}
       <Route component={NotFound} />
     </Switch>
   );

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   User, 
   Target, 
@@ -24,6 +25,29 @@ export default function Dashboard() {
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('/api/auth/logout', {
+        method: 'POST',
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully.",
+      });
+      window.location.href = '/';
+    },
+    onError: (error: Error) => {
+      console.error("Logout error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to logout. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const { data: profile } = useQuery({
     queryKey: ["/api/candidate/profile"],
@@ -37,7 +61,7 @@ export default function Dashboard() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -108,10 +132,11 @@ export default function Dashboard() {
                 </span>
               </div>
               <button
-                onClick={() => window.location.href = '/api/logout'}
-                className="text-sm text-gray-600 hover:text-gray-800"
+                onClick={() => logoutMutation.mutate()}
+                disabled={logoutMutation.isPending}
+                className="text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
               >
-                Sign Out
+                {logoutMutation.isPending ? "Signing Out..." : "Sign Out"}
               </button>
             </div>
           </div>

@@ -6,7 +6,7 @@ import {
   applications,
   interviewSessions,
   type User,
-  type UpsertUser,
+  type InsertUser,
   type InsertApplicantProfile,
   type ApplicantProfile,
   type InsertJob,
@@ -26,7 +26,7 @@ export interface IStorage {
   // User operations (updated for email/password auth)
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(userData: Omit<UpsertUser, 'id'>): Promise<User>;
+  createUser(userData: Omit<InsertUser, 'id'>): Promise<User>;
 
   // Applicant profile operations
   getApplicantProfile(userId: number): Promise<ApplicantProfile | undefined>;
@@ -66,7 +66,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(userData: Omit<UpsertUser, 'id'>): Promise<User> {
+  async createUser(userData: Omit<InsertUser, 'id'>): Promise<User> {
     const [user] = await db
       .insert(users)
       .values(userData)

@@ -14,7 +14,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
-// Session storage table (mandatory for Replit Auth)
+// Session storage table for email/password authentication
 export const sessions = pgTable(
   "sessions",
   {
@@ -31,8 +31,7 @@ export const users = pgTable("users", {
   email: varchar("email").notNull().unique(),
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
-  passwordHash: varchar("password_hash"),
-  profileImageUrl: varchar("profile_image_url"),
+  passwordHash: varchar("password_hash").notNull(),
   role: varchar("role").default("applicant"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -248,7 +247,7 @@ export const insertInterviewSessionSchema = createInsertSchema(interviewSessions
 });
 
 // Types
-export type UpsertUser = typeof users.$inferInsert;
+export type InsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type InsertApplicantProfile = z.infer<typeof insertApplicantProfileSchema>;
 export type ApplicantProfile = typeof applicantProfiles.$inferSelect;

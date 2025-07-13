@@ -35,20 +35,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    secret: process.env.SESSION_SECRET || 'fallback-secret-for-dev',
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
-    name: 'plato.sid', // Custom session name
+    name: 'plato.sid',
     cookie: {
       httpOnly: true,
-      secure: false, // Allow cookies over HTTP in development
-      sameSite: 'lax', // Allow cross-site requests
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     },
   }));
 
-  // Auth routes
+  // Authentication routes
   app.post('/api/auth/signup', async (req, res) => {
     try {
       const { email, password, firstName, lastName } = signupSchema.parse(req.body);
@@ -94,7 +94,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ message: "Failed to create session" });
         }
         console.log("Session saved successfully for user:", user.id);
-        res.json({ user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } });
+        res.json({ 
+          success: true, 
+          user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } 
+        });
       });
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -107,27 +110,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/auth/login', async (req, res) => {
     try {
-      console.log("Login attempt with body:", req.body);
       const { email, password } = loginSchema.parse(req.body);
-      console.log("Parsed email:", email);
       
       // Find user by email
       const user = await storage.getUserByEmail(email);
-      console.log("Found user:", user ? { id: user.id, email: user.email, hasPassword: !!user.passwordHash } : "null");
       
-      if (!user) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      if (!user.passwordHash) {
-        console.error("User has no password set");
+      if (!user || !user.passwordHash) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
       // Check password
-      console.log("Comparing password with hash");
       const isValidPassword = await bcrypt.compare(password, user.passwordHash);
-      console.log("Password valid:", isValidPassword);
       
       if (!isValidPassword) {
         return res.status(401).json({ message: "Invalid credentials" });
@@ -135,7 +128,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Set session
       req.session.userId = user.id;
-      console.log("Session set with userId:", user.id);
       
       // Save session explicitly
       req.session.save((err: any) => {
@@ -143,8 +135,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error("Session save error:", err);
           return res.status(500).json({ message: "Failed to create session" });
         }
-        console.log("Session saved successfully for user:", user.id);
-        res.json({ user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } });
+        res.json({ 
+          success: true, 
+          user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } 
+        });
       });
     } catch (error: any) {
       console.error("Login error:", error);
@@ -160,8 +154,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (err) {
         return res.status(500).json({ message: "Failed to logout" });
       }
-      res.clearCookie('plato.sid'); // Use the custom session name
-      res.json({ message: "Logged out successfully" });
+      res.clearCookie('plato.sid');
+      res.json({ success: true, message: "Logged out successfully" });
     });
   });
 
@@ -172,7 +166,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      res.json({ id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName });
+      res.json({ 
+        id: user.id, 
+        email: user.email, 
+        firstName: user.firstName, 
+        lastName: user.lastName,
+        role: user.role 
+      });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
