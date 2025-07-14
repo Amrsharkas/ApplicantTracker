@@ -78,8 +78,8 @@ export default function Dashboard() {
   const hasCompletedProfile = profileProgress >= 80;
   const hasCompletedInterview = profile?.aiProfileGenerated;
   
-  // Show full dashboard when interview is completed OR profile is 80%+ complete
-  const showFullDashboard = hasCompletedInterview || hasCompletedProfile;
+  // Show full dashboard only when BOTH profile is complete AND AI interview is done
+  const showFullDashboard = hasCompletedProfile && hasCompletedInterview;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -174,7 +174,7 @@ export default function Dashboard() {
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Plato!</h2>
               <p className="text-gray-600 mb-6">
-                Get started by completing these two simple steps to unlock personalized job matching:
+                Complete both steps below to unlock personalized job matching and access your full dashboard:
               </p>
               
               <div className="space-y-4">
@@ -373,11 +373,11 @@ export default function Dashboard() {
               <div>
                 <h3 className="text-lg font-semibold text-blue-900 mb-2">Get Started with Plato</h3>
                 <p className="text-blue-800 mb-3">
-                  Complete both steps above to unlock personalized job matching and start your journey to finding the perfect role.
+                  Complete both steps above to unlock your personalized job dashboard with matches, applications, and career insights.
                 </p>
                 <div className="text-sm text-blue-700">
-                  <strong>Step 1:</strong> Fill out your profile with your skills, experience, and career preferences.<br/>
-                  <strong>Step 2:</strong> Take our AI interview to create a comprehensive professional profile.
+                  <strong>Step 1:</strong> Fill out your profile with your skills, experience, and career preferences (80%+ completion required).<br/>
+                  <strong>Step 2:</strong> Complete all 3 AI interview components to generate your comprehensive professional analysis.
                 </div>
               </div>
             </div>
