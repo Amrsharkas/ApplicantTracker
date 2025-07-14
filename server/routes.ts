@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupJWTAuth, authenticateToken } from "./auth-jwt";
+import { isAuthenticated } from "./replitAuth";
 import { aiInterviewService, aiProfileAnalysisAgent } from "./openai";
 import { airtableService } from "./airtable";
 import multer from "multer";
@@ -14,13 +14,8 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // JWT Auth setup
-  setupJWTAuth(app);
-
-  // Note: Auth routes are now handled in setupJWTAuth
-
   // Profile routes
-  app.get('/api/candidate/profile', authenticateToken, async (req: any, res) => {
+  app.get('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const profile = await storage.getApplicantProfile(userId);
