@@ -15,6 +15,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 
 import { MatchesModal } from "@/components/JobSeekerModals/MatchesModal";
 import { ComprehensiveProfileModal } from "@/components/JobSeekerModals/ComprehensiveProfileModal";
+import { UserProfileModal } from "@/components/JobSeekerModals/UserProfileModal";
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
 import { InterviewModal } from "@/components/JobSeekerModals/InterviewModal";
 import { InterviewHistoryModal } from "@/components/JobSeekerModals/InterviewHistoryModal";
@@ -98,14 +99,18 @@ export default function Dashboard() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
+              <button
+                onClick={() => openModal('userProfile')}
+                className="flex items-center space-x-2 hover:bg-gray-50 rounded-lg p-2 transition-colors"
+                title="Edit user profile"
+              >
                 <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center">
                   <User className="h-4 w-4 text-white" />
                 </div>
                 <span className="text-sm font-medium text-gray-900">
                   {user?.firstName || 'Job Seeker'}
                 </span>
-              </div>
+              </button>
               <button
                 onClick={() => window.location.href = '/api/logout'}
                 className="text-sm text-gray-600 hover:text-gray-800"
@@ -386,6 +391,10 @@ export default function Dashboard() {
       </main>
 
       {/* Modals */}
+      <UserProfileModal 
+        isOpen={activeModal === 'userProfile'} 
+        onClose={closeModal} 
+      />
       <ComprehensiveProfileModal 
         isOpen={activeModal === 'profile'} 
         onClose={closeModal} 

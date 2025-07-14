@@ -29,6 +29,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const updateData = z.object({
+        firstName: z.string().min(1).optional(),
+        lastName: z.string().min(1).optional(),
+        email: z.string().email().optional(),
+        displayName: z.string().optional(),
+      }).parse(req.body);
+
+      const updatedUser = await storage.updateUser(userId, updateData);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
   // Profile routes
   app.get('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
     try {
@@ -41,7 +59,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
+  app.put('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const profileData = insertApplicantProfileSchema.parse({
