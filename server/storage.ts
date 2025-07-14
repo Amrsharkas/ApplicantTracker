@@ -109,57 +109,80 @@ export class DatabaseStorage implements IStorage {
 
     let score = 0;
     const details = {
-      basicInfo: false,
-      workExperience: false,
-      educationDetails: false,
-      skillsAndSummary: false,
+      essentialInfo: false,
+      generalInfo: false,
+      careerInterests: false,
+      experience: false,
+      education: false,
+      onlinePresence: false,
+      achievements: false,
       resumeUpload: false
     };
-    
-    // Basic information (20 points)
-    if (profile.age && profile.education && profile.location) {
-      score += 20;
-      details.basicInfo = true;
-    }
-    
-    // Work experience (30 points)
-    if (profile.currentRole && profile.company && profile.yearsOfExperience !== null && profile.yearsOfExperience !== undefined) {
+
+    // Essential Information (required for dashboard unlock) - 30 points
+    // Name, email, phone, location basics
+    if (profile.name || profile.email || profile.phone || profile.location || profile.age) {
       score += 30;
-      details.workExperience = true;
+      details.essentialInfo = true;
     }
-    
-    // Education details (20 points)
-    if (profile.degree && profile.university) {
-      score += 20;
-      details.educationDetails = true;
+
+    // General Information - 10 points
+    if (profile.birthdate || profile.gender || profile.nationality || profile.maritalStatus) {
+      score += 10;
+      details.generalInfo = true;
     }
-    
-    // Skills and summary (15 points)
-    if (profile.skillsList?.length || profile.summary) {
+
+    // Career Interests - 15 points
+    if (profile.careerLevel || profile.jobTypes || profile.workplaceSettings || profile.jobSearchStatus) {
       score += 15;
-      details.skillsAndSummary = true;
+      details.careerInterests = true;
     }
-    
-    // Resume upload (15 points)
-    if (profile.resumeContent || profile.resumeUrl) {
+
+    // Experience - 15 points
+    if (profile.totalYearsOfExperience || profile.workExperiences || profile.languages || 
+        profile.currentRole || profile.company || profile.yearsOfExperience) {
       score += 15;
+      details.experience = true;
+    }
+
+    // Education - 10 points
+    if (profile.currentEducationLevel || profile.degrees || profile.highSchools || profile.certifications || 
+        profile.education || profile.university || profile.degree) {
+      score += 10;
+      details.education = true;
+    }
+
+    // Online Presence - 5 points
+    if (profile.linkedinUrl || profile.facebookUrl || profile.githubUrl || profile.websiteUrl) {
+      score += 5;
+      details.onlinePresence = true;
+    }
+
+    // Achievements - 5 points
+    if (profile.achievements) {
+      score += 5;
+      details.achievements = true;
+    }
+
+    // Resume upload - 10 points
+    if (profile.resumeUrl || profile.resumeContent) {
+      score += 10;
       details.resumeUpload = true;
     }
 
-    // AI Interview completion automatically adds remaining points to reach 100%
+    // If AI interview is completed, set to 100%
     if (profile.aiProfileGenerated) {
       score = 100;
     }
 
     const completionPercentage = Math.min(score, 100);
-    
+
     console.log(`Profile completion for user ${userId}:`, {
       score,
       completionPercentage,
       details,
-      hasSkills: !!profile.skillsList?.length,
-      hasSummary: !!profile.summary,
-      hasResume: !!(profile.resumeContent || profile.resumeUrl)
+      hasEssentialInfo: details.essentialInfo,
+      hasAIProfile: !!profile.aiProfileGenerated
     });
 
     await db

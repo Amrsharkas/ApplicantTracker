@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 import { MatchesModal } from "@/components/JobSeekerModals/MatchesModal";
-import { ProfileModal } from "@/components/JobSeekerModals/ProfileModal";
+import { ComprehensiveProfileModal } from "@/components/JobSeekerModals/ComprehensiveProfileModal";
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
 import { InterviewModal } from "@/components/JobSeekerModals/InterviewModal";
 import { InterviewHistoryModal } from "@/components/JobSeekerModals/InterviewHistoryModal";
@@ -75,11 +75,11 @@ export default function Dashboard() {
   };
 
   const profileProgress = profile?.completionPercentage || 0;
-  const hasCompletedProfile = profileProgress >= 80;
+  const hasEssentialInfo = !!(profile?.name || profile?.email || profile?.phone || profile?.location || profile?.age);
   const hasCompletedInterview = profile?.aiProfileGenerated;
   
-  // Show full dashboard only when BOTH profile is complete AND AI interview is done
-  const showFullDashboard = hasCompletedProfile && hasCompletedInterview;
+  // Show full dashboard only when BOTH essential info is complete AND AI interview is done
+  const showFullDashboard = hasEssentialInfo && hasCompletedInterview;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -180,23 +180,23 @@ export default function Dashboard() {
               <div className="space-y-4">
                 {/* Step 1: Complete Profile */}
                 <div className={`bg-white rounded-lg p-6 border-2 transition-all ${
-                  hasCompletedProfile 
+                  hasEssentialInfo 
                     ? 'border-green-200 bg-green-50' 
                     : 'border-blue-200 shadow-md'
                 }`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
-                        hasCompletedProfile ? 'bg-green-600' : 'bg-blue-600'
+                        hasEssentialInfo ? 'bg-green-600' : 'bg-blue-600'
                       }`}>
-                        {hasCompletedProfile ? '✓' : '1'}
+                        {hasEssentialInfo ? '✓' : '1'}
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">Complete Your Profile</h3>
                         <p className="text-gray-600">
-                          {hasCompletedProfile 
-                            ? 'Great! Your profile is complete.' 
-                            : 'Add your personal information, skills, and experience to get started.'
+                          {hasEssentialInfo 
+                            ? 'Great! Your essential information is complete.' 
+                            : 'Add your essential information to unlock the AI interview.'
                           }
                         </p>
                       </div>
@@ -209,12 +209,12 @@ export default function Dashboard() {
                       <button
                         onClick={() => openModal('profile')}
                         className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                          hasCompletedProfile 
+                          hasEssentialInfo 
                             ? 'bg-green-600 text-white hover:bg-green-700' 
                             : 'bg-blue-600 text-white hover:bg-blue-700'
                         }`}
                       >
-                        {hasCompletedProfile ? 'Edit Profile' : 'Complete Profile'}
+                        {hasEssentialInfo ? 'Edit Profile' : 'Complete Profile'}
                       </button>
                     </div>
                   </div>
@@ -222,7 +222,7 @@ export default function Dashboard() {
 
                 {/* Step 2: AI Interview */}
                 <div className={`bg-white rounded-lg p-6 border-2 transition-all ${
-                  !hasCompletedProfile 
+                  !hasEssentialInfo 
                     ? 'border-gray-200 opacity-60' 
                     : hasCompletedInterview 
                       ? 'border-green-200 bg-green-50' 
@@ -231,7 +231,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
-                        !hasCompletedProfile 
+                        !hasEssentialInfo 
                           ? 'bg-gray-400' 
                           : hasCompletedInterview 
                             ? 'bg-green-600' 
@@ -242,8 +242,8 @@ export default function Dashboard() {
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">Take AI Interview</h3>
                         <p className="text-gray-600">
-                          {!hasCompletedProfile 
-                            ? 'Complete your profile first to unlock the AI interview.' 
+                          {!hasEssentialInfo 
+                            ? 'Complete your essential information first to unlock the AI interview.' 
                             : hasCompletedInterview 
                               ? 'Excellent! Your AI interview is complete.' 
                               : 'Chat with our AI to create your comprehensive professional profile.'
@@ -253,9 +253,9 @@ export default function Dashboard() {
                     </div>
                     <button
                       onClick={() => openModal('interview')}
-                      disabled={!hasCompletedProfile}
+                      disabled={!hasEssentialInfo}
                       className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                        !hasCompletedProfile 
+                        !hasEssentialInfo 
                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                           : hasCompletedInterview 
                             ? 'bg-green-600 text-white hover:bg-green-700' 
@@ -376,7 +376,7 @@ export default function Dashboard() {
                   Complete both steps above to unlock your personalized job dashboard with matches, applications, and career insights.
                 </p>
                 <div className="text-sm text-blue-700">
-                  <strong>Step 1:</strong> Fill out your profile with your skills, experience, and career preferences (80%+ completion required).<br/>
+                  <strong>Step 1:</strong> Fill out your essential profile information (name, email, phone, location, or age) to unlock the AI interview.<br/>
                   <strong>Step 2:</strong> Complete all 3 AI interview components to generate your comprehensive professional analysis.
                 </div>
               </div>
@@ -386,7 +386,7 @@ export default function Dashboard() {
       </main>
 
       {/* Modals */}
-      <ProfileModal 
+      <ComprehensiveProfileModal 
         isOpen={activeModal === 'profile'} 
         onClose={closeModal} 
       />

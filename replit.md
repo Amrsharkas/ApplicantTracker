@@ -134,6 +134,7 @@ Changelog:
 - July 10, 2025. Synchronized voice and text interviews to use identical structured question sets - voice interviews now ask the same personal/professional/technical questions as text interviews, with immediate welcome message display and proper completion tracking
 - July 10, 2025. Fixed unified interview architecture - the 3 interview types (personal/professional/technical) now properly display as components of one interview process that generates a single comprehensive profile, with improved messaging and unified profile display in interview history
 - July 14, 2025. Implemented seamless interview flow - after completing personal/professional interviews, users automatically progress to the next interview type instead of seeing individual completion messages. Only the final technical interview completion shows the comprehensive profile generation message and full dashboard access
+- July 14, 2025. Implemented comprehensive profile system - expanded database schema to include extensive optional fields across 7 categories: Essential Info, General Info, Location, Career Interests, Experience, Education, and Online Presence. Updated completion logic to require only essential info (name/email/phone/location/age) plus completed interviews to unlock dashboard. Profile completion percentage now calculated from all fields but essential info completion unlocks core functionality
 ```
 
 ## User Preferences
