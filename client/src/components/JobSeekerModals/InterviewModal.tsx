@@ -223,10 +223,36 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
         queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
         queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
-        toast({
-          title: "Interview Complete!",
-          description: "Your AI profile has been generated successfully.",
-        });
+        
+        if (data.allInterviewsCompleted) {
+          // Final completion - show profile generation success
+          toast({
+            title: "All Interviews Complete!",
+            description: "Your comprehensive AI profile has been generated successfully.",
+          });
+          
+          // Reset to interview types view to show all completed
+          setMode('types');
+          setSelectedInterviewType(null);
+        } else if (data.nextInterviewType) {
+          // Continue to next interview type automatically
+          toast({
+            title: "Interview Section Complete",
+            description: `Moving to ${data.nextInterviewType} interview...`,
+          });
+          
+          // Automatically start next interview
+          setTimeout(() => {
+            setSelectedInterviewType(data.nextInterviewType);
+            setMode('selection');
+          }, 1500);
+        } else {
+          // Individual interview complete with no next type
+          toast({
+            title: "Interview Complete!",
+            description: "Your AI profile has been generated successfully.",
+          });
+        }
       } else if (data.nextQuestion) {
         const nextQuestion: InterviewMessage = {
           type: 'question',
@@ -263,10 +289,37 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
       queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
-      toast({
-        title: "Interview Complete!",
-        description: "Your interview has been submitted and processed successfully.",
-      });
+      
+      if (data.allInterviewsCompleted) {
+        // Final completion - show profile generation success
+        toast({
+          title: "All Interviews Complete!",
+          description: "Your comprehensive AI profile has been generated successfully.",
+        });
+        
+        // Reset to interview types view to show all completed
+        setMode('types');
+        setSelectedInterviewType(null);
+      } else if (data.nextInterviewType) {
+        // Continue to next interview type automatically
+        toast({
+          title: "Interview Section Complete",
+          description: `Moving to ${data.nextInterviewType} interview...`,
+        });
+        
+        // Automatically start next interview
+        setTimeout(() => {
+          setSelectedInterviewType(data.nextInterviewType);
+          setMode('selection');
+        }, 1500);
+      } else {
+        // Individual interview complete with no next type
+        toast({
+          title: "Interview Complete!",
+          description: "Your interview has been submitted and processed successfully.",
+        });
+      }
+      
       setIsInterviewConcluded(false);
     },
     onError: (error) => {
@@ -301,13 +354,40 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
       queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
-      toast({
-        title: "Interview Complete!",
-        description: "Your AI profile has been generated and saved to your database.",
-      });
+      
       realtimeAPI.disconnect();
       setIsInterviewConcluded(false);
-      onClose();
+      
+      if (data.allInterviewsCompleted) {
+        // Final completion - show profile generation success and close modal
+        toast({
+          title: "All Interviews Complete!",
+          description: "Your comprehensive AI profile has been generated successfully.",
+        });
+        onClose();
+      } else if (data.nextInterviewType) {
+        // Continue to next interview type automatically
+        toast({
+          title: "Interview Section Complete",
+          description: `Moving to ${data.nextInterviewType} interview...`,
+        });
+        
+        // Automatically start next interview
+        setTimeout(() => {
+          setSelectedInterviewType(data.nextInterviewType);
+          setMode('selection');
+        }, 1500);
+      } else {
+        // Individual interview complete with no next type
+        toast({
+          title: "Interview Complete!",
+          description: "Your voice interview has been processed successfully.",
+        });
+        
+        // Reset to interview types view
+        setMode('types');
+        setSelectedInterviewType(null);
+      }
     },
     onError: (error) => {
       setIsProcessingInterview(false);

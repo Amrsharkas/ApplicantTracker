@@ -425,10 +425,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: `${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed! All interviews finished - your comprehensive profile has been generated.`
           });
         } else {
+          // Individual interview complete - determine next interview type
+          let nextInterviewType = null;
+          if (interviewType === 'personal' && !updatedProfile?.professionalInterviewCompleted) {
+            nextInterviewType = 'professional';
+          } else if ((interviewType === 'personal' || interviewType === 'professional') && !updatedProfile?.technicalInterviewCompleted) {
+            nextInterviewType = 'technical';
+          }
+          
           res.json({ 
             isComplete: true,
             allInterviewsCompleted: false,
-            message: `${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed successfully! ${allInterviewsCompleted ? 'All interviews are now complete.' : 'Continue with the remaining interviews to complete your profile.'}`
+            nextInterviewType,
+            message: `${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed successfully!`
           });
         }
       } else {
@@ -647,11 +656,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Failed to store profile in Airtable:', error);
       }
 
-      res.json({ 
-        isComplete: true, 
-        profile: generatedProfile,
-        message: "Voice interview completed successfully!" 
-      });
+      // Check if all interviews are completed after this one
+      if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
+        res.json({ 
+          isComplete: true,
+          allInterviewsCompleted: true,
+          profile: generatedProfile,
+          message: "Voice interview completed! All interviews finished - your comprehensive profile has been generated."
+        });
+      } else {
+        // Individual interview complete - determine next interview type
+        let nextInterviewType = null;
+        if (interviewType === 'personal' && !updatedProfile?.professionalInterviewCompleted) {
+          nextInterviewType = 'professional';
+        } else if ((interviewType === 'personal' || interviewType === 'professional') && !updatedProfile?.technicalInterviewCompleted) {
+          nextInterviewType = 'technical';
+        }
+        
+        res.json({ 
+          isComplete: true,
+          allInterviewsCompleted: false,
+          nextInterviewType,
+          profile: generatedProfile,
+          message: "Voice interview completed successfully!"
+        });
+      }
     } catch (error) {
       console.error("Error completing voice interview:", error);
       res.status(500).json({ message: "Failed to complete voice interview" });
