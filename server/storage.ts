@@ -146,6 +146,11 @@ export class DatabaseStorage implements IStorage {
       details.resumeUpload = true;
     }
 
+    // AI Interview completion automatically adds remaining points to reach 100%
+    if (profile.aiProfileGenerated) {
+      score = 100;
+    }
+
     const completionPercentage = Math.min(score, 100);
     
     console.log(`Profile completion for user ${userId}:`, {

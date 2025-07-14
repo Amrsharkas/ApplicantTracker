@@ -623,6 +623,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           skillsList: generatedProfile.skills
         });
 
+        // Update profile completion percentage
+        await storage.updateProfileCompletion(userId);
+
         // Calculate job matches
         await storage.calculateJobMatches(userId);
       } else {
@@ -740,6 +743,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiProfile,
         aiProfileGenerated: true
       });
+
+      // Update profile completion percentage
+      await storage.updateProfileCompletion(userId);
 
       // Store in Airtable
       try {

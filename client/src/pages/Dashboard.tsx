@@ -25,7 +25,7 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
-  const { data: profile } = useQuery({
+  const { data: profile, refetch: refetchProfile } = useQuery({
     queryKey: ["/api/candidate/profile"],
     retry: false,
     refetchOnWindowFocus: false,
@@ -70,11 +70,16 @@ export default function Dashboard() {
 
   const closeModal = () => {
     setActiveModal(null);
+    // Refresh profile data when closing modals to ensure dashboard is up-to-date
+    refetchProfile();
   };
 
   const profileProgress = profile?.completionPercentage || 0;
   const hasCompletedProfile = profileProgress >= 80;
   const hasCompletedInterview = profile?.aiProfileGenerated;
+  
+  // Show full dashboard when interview is completed OR profile is 80%+ complete
+  const showFullDashboard = hasCompletedInterview || hasCompletedProfile;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -117,7 +122,7 @@ export default function Dashboard() {
         {/* Getting Started Section or Hiring Stats */}
         <div className="mb-8">
           {/* Show hiring statistics for completed users */}
-          {hasCompletedProfile && hasCompletedInterview ? (
+          {showFullDashboard ? (
             <div className="space-y-6">
               <div className="text-center">
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">Ready to Find Your Perfect Role!</h2>
@@ -266,8 +271,8 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Job Features - Only show if both steps are complete */}
-        {hasCompletedProfile && hasCompletedInterview && (
+        {/* Job Features - Only show if interview is complete or profile is 80%+ */}
+        {showFullDashboard && (
           <div className="space-y-6">
             <div className="border-t border-gray-200 pt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Job Dashboard</h3>
@@ -361,7 +366,7 @@ export default function Dashboard() {
         )}
 
         {/* Instruction Message for Uncompleted Steps */}
-        {(!hasCompletedProfile || !hasCompletedInterview) && (
+        {!showFullDashboard && (
           <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
             <div className="flex items-start space-x-3">
               <MessageCircle className="h-6 w-6 text-blue-600 mt-0.5" />
