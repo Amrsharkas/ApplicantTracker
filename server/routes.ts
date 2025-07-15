@@ -927,10 +927,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Job Application Analysis Route
   app.post('/api/job-application/analyze', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user?.claims?.sub;
       const { jobId, jobTitle, jobDescription, companyName, requirements, employmentType } = req.body;
 
-      console.log('📊 Job Analysis Request:', { userId, jobTitle, companyName });
+      console.log('📊 Job Analysis Request:', { userId, jobTitle, companyName, hasUser: !!req.user, hasClaims: !!req.user?.claims });
 
       // Get user profile and interview data
       const user = await storage.getUser(userId);
