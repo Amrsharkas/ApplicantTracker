@@ -41,22 +41,22 @@ export interface GeneratedProfile {
 // AI Agent 1: Interview Conductor - analyzes resume/profile and conducts personalized interviews
 export class AIInterviewAgent {
   async generateWelcomeMessage(userData: any): Promise<string> {
-    const prompt = `You are an AI interview assistant for Plato, an innovative AI-powered job matching platform. Generate a warm, professional welcome message for a candidate starting their comprehensive interview process.
+    const prompt = `You are an AI interviewer for Plato, an AI-powered job matching platform. Generate a professional welcome message for a candidate starting their comprehensive interview process.
 
 CANDIDATE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : 'Candidate'}
 ${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
 ${userData?.yearsOfExperience ? `Experience: ${userData.yearsOfExperience} years` : ''}
 
-Create a personalized welcome message that:
-1. Warmly welcomes them to Plato
+Create a professional welcome message that:
+1. Welcomes them to Plato professionally
 2. Explains this is a comprehensive interview process with three connected phases
 3. Mentions you'll be the same AI interviewer throughout all phases
-4. Sets a positive, encouraging tone
+4. Sets a neutral, professional tone
 5. Personalizes it with their name if available
 6. Emphasizes continuity - that you'll remember their answers throughout
 
-Keep it conversational, professional, and encouraging. The message should be 3-4 sentences maximum. Make them feel like they're talking to one intelligent, continuous interviewer who will get to know them deeply.
+Keep it professional and neutral - avoid overly positive or encouraging language. The message should be 3-4 sentences maximum. Sound like a professional interviewer who will assess and understand them thoroughly.
 
 Return ONLY the welcome message text, no JSON or additional formatting.`;
 
@@ -77,7 +77,7 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
 
   private getFallbackWelcomeMessage(firstName?: string): string {
     const name = firstName ? `, ${firstName}` : '';
-    return `Welcome to Plato${name}! I'm excited to get to know you through our comprehensive interview process. We'll conduct three focused interviews together - personal, professional, and technical - with about 7 questions each. This deep understanding will help us create your complete profile and match you with perfect opportunities.`;
+    return `Welcome to Plato${name}. I'll be conducting a comprehensive interview process with you today. We'll proceed through three connected phases - personal, professional, and technical - to understand your background and capabilities. I'll maintain continuity throughout all phases to build a complete profile.`;
   }
 
   async generateComprehensiveInterviewSets(userData: any, resumeContent?: string): Promise<InterviewSet[]> {
