@@ -190,72 +190,167 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
     },
   });
 
-  // Smart filtering with partial matches
-  const filteredJobs = jobPostings.filter((job: JobPosting) => {
-    // Search query filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchesSearch = (
-        job.jobTitle.toLowerCase().includes(query) ||
-        job.companyName.toLowerCase().includes(query) ||
-        job.jobDescription.toLowerCase().includes(query) ||
-        job.location?.toLowerCase().includes(query) ||
-        job.skills?.some(skill => skill.toLowerCase().includes(query))
-      );
-      if (!matchesSearch) return false;
-    }
+  // Calculate active filters count
+  const activeFiltersCount = Object.values(filters).filter(value => 
+    Array.isArray(value) ? value.length > 0 : value !== ""
+  ).length;
 
-    // Smart workplace filter with partial matching
-    if (filters.workplace.length > 0) {
-      const jobWorkplace = job.employmentType?.toLowerCase() || "";
-      const hasWorkplaceMatch = filters.workplace.some(w => {
-        const filterValue = w.toLowerCase();
-        return (
-          jobWorkplace.includes(filterValue) ||
-          (filterValue === "on-site" && (jobWorkplace.includes("full time") || jobWorkplace.includes("office"))) ||
-          (filterValue === "remote" && jobWorkplace.includes("remote")) ||
-          (filterValue === "hybrid" && (jobWorkplace.includes("hybrid") || jobWorkplace.includes("flexible")))
+  // Intelligent filtering with OR logic and fallback support
+  const getFilteredJobs = () => {
+    // Primary filtering with exact matches
+    const primaryFiltered = jobPostings.filter((job: JobPosting) => {
+      // Search query filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = (
+          job.jobTitle.toLowerCase().includes(query) ||
+          job.companyName.toLowerCase().includes(query) ||
+          job.jobDescription.toLowerCase().includes(query) ||
+          job.location?.toLowerCase().includes(query) ||
+          job.skills?.some(skill => skill.toLowerCase().includes(query))
         );
+        if (!matchesSearch) return false;
+      }
+
+      // Smart workplace filter with OR logic
+      if (filters.workplace.length > 0) {
+        const jobWorkplace = job.employmentType?.toLowerCase() || "";
+        const hasWorkplaceMatch = filters.workplace.some(w => {
+          const filterValue = w.toLowerCase();
+          return (
+            jobWorkplace.includes(filterValue) ||
+            (filterValue === "on-site" && (jobWorkplace.includes("full time") || jobWorkplace.includes("office"))) ||
+            (filterValue === "remote" && jobWorkplace.includes("remote")) ||
+            (filterValue === "hybrid" && (jobWorkplace.includes("hybrid") || jobWorkplace.includes("flexible")))
+          );
+        });
+        if (!hasWorkplaceMatch) return false;
+      }
+
+      // Smart location filters with partial matching
+      if (filters.country && job.location) {
+        const locationLower = job.location.toLowerCase();
+        const countryLower = filters.country.toLowerCase();
+        if (!locationLower.includes(countryLower)) return false;
+      }
+
+      if (filters.city && job.location) {
+        const locationLower = job.location.toLowerCase();
+        const cityLower = filters.city.toLowerCase();
+        if (!locationLower.includes(cityLower)) return false;
+      }
+
+      // Smart career level filter
+      if (filters.careerLevel && job.experienceLevel) {
+        const experienceLower = job.experienceLevel.toLowerCase();
+        const levelLower = filters.careerLevel.toLowerCase();
+        if (!experienceLower.includes(levelLower)) return false;
+      }
+
+      // Smart job category filter
+      if (filters.jobCategory) {
+        const jobCategory = job.jobTitle.toLowerCase();
+        const categoryLower = filters.jobCategory.toLowerCase();
+        if (!jobCategory.includes(categoryLower)) return false;
+      }
+
+      // Smart job type filter
+      if (filters.jobType && job.employmentType) {
+        const typeLower = job.employmentType.toLowerCase();
+        const filterTypeLower = filters.jobType.toLowerCase();
+        if (!typeLower.includes(filterTypeLower)) return false;
+      }
+
+      return true;
+    });
+
+    // If we have enough results, return them
+    if (primaryFiltered.length >= 3) {
+      return { jobs: primaryFiltered, isRelated: false };
+    }
+
+    // If filters are active but results are too few, try relaxed filtering
+    if (activeFiltersCount > 0) {
+      const relaxedFiltered = jobPostings.filter((job: JobPosting) => {
+        // Keep search query strict
+        if (searchQuery) {
+          const query = searchQuery.toLowerCase();
+          const matchesSearch = (
+            job.jobTitle.toLowerCase().includes(query) ||
+            job.companyName.toLowerCase().includes(query) ||
+            job.jobDescription.toLowerCase().includes(query) ||
+            job.location?.toLowerCase().includes(query) ||
+            job.skills?.some(skill => skill.toLowerCase().includes(query))
+          );
+          if (!matchesSearch) return false;
+        }
+
+        // Relaxed matching - any filter match counts
+        let hasAnyMatch = false;
+
+        // Workplace relaxed matching
+        if (filters.workplace.length > 0) {
+          const jobWorkplace = job.employmentType?.toLowerCase() || "";
+          const hasWorkplaceMatch = filters.workplace.some(w => {
+            const filterValue = w.toLowerCase();
+            return (
+              jobWorkplace.includes(filterValue) ||
+              (filterValue === "on-site" && jobWorkplace.includes("full")) ||
+              (filterValue === "remote" && jobWorkplace.includes("remote")) ||
+              (filterValue === "hybrid" && jobWorkplace.includes("hybrid"))
+            );
+          });
+          if (hasWorkplaceMatch) hasAnyMatch = true;
+        }
+
+        // Country relaxed matching
+        if (filters.country && job.location) {
+          const locationLower = job.location.toLowerCase();
+          const countryLower = filters.country.toLowerCase();
+          if (locationLower.includes(countryLower)) hasAnyMatch = true;
+        }
+
+        // Career level relaxed matching
+        if (filters.careerLevel && job.experienceLevel) {
+          const experienceLower = job.experienceLevel.toLowerCase();
+          const levelLower = filters.careerLevel.toLowerCase();
+          if (experienceLower.includes(levelLower)) hasAnyMatch = true;
+        }
+
+        // Job category relaxed matching
+        if (filters.jobCategory) {
+          const jobCategory = job.jobTitle.toLowerCase();
+          const categoryLower = filters.jobCategory.toLowerCase();
+          if (jobCategory.includes(categoryLower)) hasAnyMatch = true;
+        }
+
+        // If no filters are active, include all jobs
+        if (activeFiltersCount === 0) hasAnyMatch = true;
+
+        return hasAnyMatch;
       });
-      if (!hasWorkplaceMatch) return false;
+
+      // Sort by match score to show best matches first
+      const sortedJobs = relaxedFiltered.sort((a, b) => {
+        const scoreA = calculateAIMatchScore(a);
+        const scoreB = calculateAIMatchScore(b);
+        return scoreB - scoreA;
+      });
+
+      return { jobs: sortedJobs, isRelated: true };
     }
 
-    // Smart location filters with partial matching
-    if (filters.country && job.location) {
-      const locationLower = job.location.toLowerCase();
-      const countryLower = filters.country.toLowerCase();
-      if (!locationLower.includes(countryLower)) return false;
-    }
+    // No filters active - return all jobs sorted by match score
+    const allJobsSorted = jobPostings.sort((a, b) => {
+      const scoreA = calculateAIMatchScore(a);
+      const scoreB = calculateAIMatchScore(b);
+      return scoreB - scoreA;
+    });
 
-    if (filters.city && job.location) {
-      const locationLower = job.location.toLowerCase();
-      const cityLower = filters.city.toLowerCase();
-      if (!locationLower.includes(cityLower)) return false;
-    }
+    return { jobs: allJobsSorted, isRelated: false };
+  };
 
-    // Smart career level filter
-    if (filters.careerLevel && job.experienceLevel) {
-      const experienceLower = job.experienceLevel.toLowerCase();
-      const levelLower = filters.careerLevel.toLowerCase();
-      if (!experienceLower.includes(levelLower)) return false;
-    }
-
-    // Smart job category filter
-    if (filters.jobCategory) {
-      const jobCategory = job.jobTitle.toLowerCase();
-      const categoryLower = filters.jobCategory.toLowerCase();
-      if (!jobCategory.includes(categoryLower)) return false;
-    }
-
-    // Smart job type filter
-    if (filters.jobType && job.employmentType) {
-      const typeLower = job.employmentType.toLowerCase();
-      const filterTypeLower = filters.jobType.toLowerCase();
-      if (!typeLower.includes(filterTypeLower)) return false;
-    }
-
-    return true;
-  });
+  const { jobs: filteredJobs, isRelated: showingRelatedJobs } = getFilteredJobs();
 
   // AI Match Score calculation (simplified)
   const calculateAIMatchScore = (job: JobPosting): number => {
@@ -342,10 +437,6 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
     setSearchQuery("");
   };
 
-  const activeFiltersCount = Object.values(filters).filter(value => 
-    Array.isArray(value) ? value.length > 0 : value !== ""
-  ).length;
-
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString();
@@ -380,7 +471,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
     }
   };
 
-  const showRelatedNotice = filteredJobs.length > 0 && filteredJobs.length < jobPostings.length && activeFiltersCount > 0;
+  const showRelatedNotice = showingRelatedJobs && activeFiltersCount > 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
