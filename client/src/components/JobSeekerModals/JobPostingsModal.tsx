@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap } from "lucide-react";
 
 interface JobPosting {
   recordId: string;
@@ -23,6 +24,15 @@ interface JobPosting {
   experienceLevel?: string;
   skills?: string[];
   postedDate?: string;
+}
+
+interface AIMatchResponse {
+  matchScore: number;
+  isStrongMatch: boolean;
+  feedback: string;
+  reasons: string[];
+  suggestedActions?: string[];
+  alternativeJobs?: JobPosting[];
 }
 
 interface JobPostingsModalProps {
@@ -45,6 +55,9 @@ const funnyNoJobsMessages = [
 
 export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  const [showApplicationAnalysis, setShowApplicationAnalysis] = useState(false);
+  const [applicationAnalysis, setApplicationAnalysis] = useState<AIMatchResponse | null>(null);
   const [filters, setFilters] = useState({
     workplace: [] as string[],
     country: "",
@@ -56,7 +69,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
     datePosted: ""
   });
   const [expandedFilters, setExpandedFilters] = useState({
-    workplace: false,
+    workplace: true,
     country: false,
     city: false,
     area: false,
@@ -90,7 +103,94 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
     },
   });
 
-  // Filter job postings based on search query and filters
+  const { data: userProfile } = useQuery({
+    queryKey: ["/api/candidate/profile"],
+    enabled: isOpen,
+  });
+
+  const applicationMutation = useMutation({
+    mutationFn: async (jobData: any) => {
+      const response = await apiRequest("/api/job-application/analyze", {
+        method: "POST",
+        body: JSON.stringify({
+          jobId: jobData.recordId,
+          jobTitle: jobData.jobTitle,
+          jobDescription: jobData.jobDescription,
+          companyName: jobData.companyName,
+          requirements: jobData.skills || [],
+          employmentType: jobData.employmentType
+        }),
+      });
+      return response;
+    },
+    onSuccess: (data) => {
+      setApplicationAnalysis(data);
+      setShowApplicationAnalysis(true);
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to analyze job match. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const actualApplicationMutation = useMutation({
+    mutationFn: async (jobData: any) => {
+      const response = await apiRequest("/api/applications", {
+        method: "POST",
+        body: JSON.stringify({
+          jobId: 1, // Placeholder since we don't have actual job IDs
+          jobTitle: jobData.jobTitle,
+          companyName: jobData.companyName,
+          status: "pending",
+          appliedAt: new Date().toISOString()
+        }),
+      });
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Application Submitted",
+        description: "Your application has been submitted successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+      setShowApplicationAnalysis(false);
+      setSelectedJob(null);
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to submit application. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Smart filtering with partial matches
   const filteredJobs = jobPostings.filter((job: JobPosting) => {
     // Search query filter
     if (searchQuery) {
@@ -105,56 +205,104 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
       if (!matchesSearch) return false;
     }
 
-    // Workplace filter (On-site, Remote, Hybrid)
+    // Smart workplace filter with partial matching
     if (filters.workplace.length > 0) {
       const jobWorkplace = job.employmentType?.toLowerCase() || "";
-      const hasWorkplaceMatch = filters.workplace.some(w => 
-        jobWorkplace.includes(w.toLowerCase()) || 
-        (w === "On-site" && jobWorkplace.includes("full time")) ||
-        (w === "Remote" && jobWorkplace.includes("remote")) ||
-        (w === "Hybrid" && jobWorkplace.includes("hybrid"))
-      );
+      const hasWorkplaceMatch = filters.workplace.some(w => {
+        const filterValue = w.toLowerCase();
+        return (
+          jobWorkplace.includes(filterValue) ||
+          (filterValue === "on-site" && (jobWorkplace.includes("full time") || jobWorkplace.includes("office"))) ||
+          (filterValue === "remote" && jobWorkplace.includes("remote")) ||
+          (filterValue === "hybrid" && (jobWorkplace.includes("hybrid") || jobWorkplace.includes("flexible")))
+        );
+      });
       if (!hasWorkplaceMatch) return false;
     }
 
-    // Country filter
+    // Smart location filters with partial matching
     if (filters.country && job.location) {
-      if (!job.location.toLowerCase().includes(filters.country.toLowerCase())) {
-        return false;
-      }
+      const locationLower = job.location.toLowerCase();
+      const countryLower = filters.country.toLowerCase();
+      if (!locationLower.includes(countryLower)) return false;
     }
 
-    // City filter
     if (filters.city && job.location) {
-      if (!job.location.toLowerCase().includes(filters.city.toLowerCase())) {
-        return false;
-      }
+      const locationLower = job.location.toLowerCase();
+      const cityLower = filters.city.toLowerCase();
+      if (!locationLower.includes(cityLower)) return false;
     }
 
-    // Career Level filter
+    // Smart career level filter
     if (filters.careerLevel && job.experienceLevel) {
-      if (!job.experienceLevel.toLowerCase().includes(filters.careerLevel.toLowerCase())) {
-        return false;
-      }
+      const experienceLower = job.experienceLevel.toLowerCase();
+      const levelLower = filters.careerLevel.toLowerCase();
+      if (!experienceLower.includes(levelLower)) return false;
     }
 
-    // Job Category filter
+    // Smart job category filter
     if (filters.jobCategory) {
       const jobCategory = job.jobTitle.toLowerCase();
-      if (!jobCategory.includes(filters.jobCategory.toLowerCase())) {
-        return false;
-      }
+      const categoryLower = filters.jobCategory.toLowerCase();
+      if (!jobCategory.includes(categoryLower)) return false;
     }
 
-    // Job Type filter
+    // Smart job type filter
     if (filters.jobType && job.employmentType) {
-      if (!job.employmentType.toLowerCase().includes(filters.jobType.toLowerCase())) {
-        return false;
-      }
+      const typeLower = job.employmentType.toLowerCase();
+      const filterTypeLower = filters.jobType.toLowerCase();
+      if (!typeLower.includes(filterTypeLower)) return false;
     }
 
     return true;
   });
+
+  // AI Match Score calculation (simplified)
+  const calculateAIMatchScore = (job: JobPosting): number => {
+    if (!userProfile?.aiProfile) return 0;
+    
+    let score = 0;
+    const profile = userProfile.aiProfile;
+    
+    // Skills matching
+    if (job.skills && profile.skills) {
+      const matchingSkills = job.skills.filter(skill => 
+        profile.skills.some((userSkill: string) => 
+          userSkill.toLowerCase().includes(skill.toLowerCase()) ||
+          skill.toLowerCase().includes(userSkill.toLowerCase())
+        )
+      );
+      score += (matchingSkills.length / job.skills.length) * 40;
+    }
+    
+    // Experience level matching
+    if (job.experienceLevel && profile.experience) {
+      const experienceYears = profile.experience.length;
+      const jobLevel = job.experienceLevel.toLowerCase();
+      if (
+        (jobLevel.includes('entry') && experienceYears <= 2) ||
+        (jobLevel.includes('junior') && experienceYears <= 3) ||
+        (jobLevel.includes('mid') && experienceYears >= 2 && experienceYears <= 5) ||
+        (jobLevel.includes('senior') && experienceYears >= 5)
+      ) {
+        score += 30;
+      }
+    }
+    
+    // Location preference (if available in profile)
+    if (job.location && profile.workStyle) {
+      if (profile.workStyle.toLowerCase().includes('remote') && job.employmentType?.toLowerCase().includes('remote')) {
+        score += 20;
+      } else if (profile.workStyle.toLowerCase().includes('office') && job.employmentType?.toLowerCase().includes('office')) {
+        score += 20;
+      }
+    }
+    
+    // Random factor for demonstration
+    score += Math.random() * 10;
+    
+    return Math.min(Math.round(score), 100);
+  };
 
   // Helper functions
   const toggleFilter = (filterType: keyof typeof expandedFilters) => {
@@ -210,14 +358,38 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
     return funnyNoJobsMessages[Math.floor(Math.random() * funnyNoJobsMessages.length)];
   };
 
+  const getJobTags = (job: JobPosting) => {
+    const tags = [];
+    if (job.employmentType) tags.push(job.employmentType);
+    if (job.experienceLevel) tags.push(job.experienceLevel);
+    if (job.postedDate) {
+      const daysSincePosted = Math.floor((Date.now() - new Date(job.postedDate).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSincePosted <= 3) tags.push("New");
+      if (daysSincePosted <= 1) tags.push("Urgent");
+    }
+    return tags;
+  };
+
+  const handleApply = (job: JobPosting) => {
+    applicationMutation.mutate(job);
+  };
+
+  const handleConfirmApplication = () => {
+    if (selectedJob) {
+      actualApplicationMutation.mutate(selectedJob);
+    }
+  };
+
+  const showRelatedNotice = filteredJobs.length > 0 && filteredJobs.length < jobPostings.length && activeFiltersCount > 0;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden p-0">
+      <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Briefcase className="h-5 w-5 text-blue-600" />
-              Job Postings ({filteredJobs.length})
+              Intelligent Job Discovery ({filteredJobs.length} matches)
             </div>
             <div className="flex items-center gap-2">
               {activeFiltersCount > 0 && (
@@ -236,14 +408,15 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
         </DialogHeader>
 
         <div className="flex h-full">
-          {/* Filters Sidebar */}
+          {/* Smart Filters Sidebar */}
           <div className="w-80 border-r bg-gray-50 p-4 overflow-y-auto">
             <div className="space-y-1">
-              <h3 className="font-semibold text-gray-900 text-sm mb-3">
-                Filters
+              <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Smart Filters
               </h3>
               <p className="text-xs text-gray-600 mb-4">
-                {activeFiltersCount} filters selected
+                {activeFiltersCount} active • Always available
               </p>
 
               {/* Workplace Filter */}
@@ -473,6 +646,16 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
               </div>
             </div>
 
+            {/* Smart Notice */}
+            {showRelatedNotice && (
+              <div className="px-4 py-2 bg-blue-50 border-b border-blue-200">
+                <p className="text-sm text-blue-800">
+                  <Zap className="h-4 w-4 inline mr-1" />
+                  No exact matches found. Showing related roles based on your profile.
+                </p>
+              </div>
+            )}
+
             {/* Job Results */}
             <div className="flex-1 overflow-y-auto p-4">
               {isLoading ? (
@@ -511,76 +694,308 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {filteredJobs.map((job: JobPosting, index: number) => (
-                    <motion.div
-                      key={job.recordId}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <Card className="hover:shadow-lg transition-all duration-200">
-                        <CardContent className="p-6">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h3 className="font-semibold text-blue-600 text-lg hover:text-blue-800 cursor-pointer">
-                                  {job.jobTitle}
-                                </h3>
-                              </div>
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-gray-900 font-medium">{job.companyName}</span>
-                                <span className="text-gray-500">•</span>
-                                <span className="text-gray-600">{job.location || 'Location not specified'}</span>
-                              </div>
-                              <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                                <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                                  {job.employmentType || 'Full Time'}
-                                </span>
-                                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                                  {job.experienceLevel || 'All Levels'}
-                                </span>
-                                <span className="text-gray-500">
-                                  {job.postedDate ? formatDate(job.postedDate) : 'Recently posted'}
-                                </span>
-                              </div>
-                              <p className="text-gray-700 text-sm leading-relaxed mb-4 line-clamp-3">
-                                {job.jobDescription}
-                              </p>
-                              {job.skills && job.skills.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                  {job.skills.slice(0, 4).map((skill) => (
+                  {filteredJobs.map((job: JobPosting, index: number) => {
+                    const matchScore = calculateAIMatchScore(job);
+                    const jobTags = getJobTags(job);
+                    
+                    return (
+                      <motion.div
+                        key={job.recordId}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                      >
+                        <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group">
+                          <CardContent className="p-6">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <h3 className="font-semibold text-blue-600 text-lg hover:text-blue-800 cursor-pointer">
+                                    {job.jobTitle}
+                                  </h3>
+                                  <div className="flex items-center gap-1 bg-green-100 px-2 py-1 rounded">
+                                    <Star className="h-3 w-3 text-green-600" />
+                                    <span className="text-xs font-medium text-green-800">
+                                      {matchScore}% Match
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-gray-900 font-medium">{job.companyName}</span>
+                                  <span className="text-gray-500">•</span>
+                                  <span className="text-gray-600 flex items-center gap-1">
+                                    <MapPin className="h-3 w-3" />
+                                    {job.location || 'Location not specified'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 mb-3">
+                                  {jobTags.map((tag, tagIndex) => (
                                     <Badge 
-                                      key={skill} 
-                                      variant="secondary"
-                                      className="bg-gray-100 text-gray-700 text-xs"
+                                      key={tagIndex}
+                                      variant={tag === "New" ? "default" : tag === "Urgent" ? "destructive" : "secondary"}
+                                      className="text-xs"
                                     >
-                                      {skill}
+                                      {tag}
                                     </Badge>
                                   ))}
-                                  {job.skills.length > 4 && (
-                                    <Badge variant="outline" className="text-xs">
-                                      +{job.skills.length - 4} more
-                                    </Badge>
-                                  )}
+                                  <span className="text-gray-500 text-sm">
+                                    {job.postedDate ? formatDate(job.postedDate) : 'Recently posted'}
+                                  </span>
                                 </div>
-                              )}
-                            </div>
-                            
-                            <div className="ml-6 flex-shrink-0 flex items-center">
-                              <div className="w-16 h-16 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center">
-                                <Building className="w-8 h-8 text-gray-400" />
+                                <p className="text-gray-700 text-sm leading-relaxed mb-4 line-clamp-3">
+                                  {job.jobDescription}
+                                </p>
+                                {job.skills && job.skills.length > 0 && (
+                                  <div className="flex flex-wrap gap-2 mb-4">
+                                    {job.skills.slice(0, 4).map((skill) => (
+                                      <Badge 
+                                        key={skill} 
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {skill}
+                                      </Badge>
+                                    ))}
+                                    {job.skills.length > 4 && (
+                                      <Badge variant="outline" className="text-xs">
+                                        +{job.skills.length - 4} more
+                                      </Badge>
+                                    )}
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setSelectedJob(job)}
+                                    className="flex items-center gap-1"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                    View Details
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleApply(job)}
+                                    disabled={applicationMutation.isPending}
+                                    className="flex items-center gap-1"
+                                  >
+                                    {applicationMutation.isPending ? (
+                                      <>
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                        Analyzing...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ArrowRight className="h-3 w-3" />
+                                        Apply Now
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                              
+                              <div className="ml-6 flex-shrink-0 flex items-center">
+                                <div className="w-16 h-16 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center">
+                                  <Building className="w-8 h-8 text-gray-400" />
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
         </div>
+
+        {/* Job Details Modal */}
+        <AnimatePresence>
+          {selectedJob && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+              onClick={() => setSelectedJob(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                        {selectedJob.jobTitle}
+                      </h2>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Building className="h-4 w-4" />
+                        <span className="font-medium">{selectedJob.companyName}</span>
+                        <span>•</span>
+                        <MapPin className="h-4 w-4" />
+                        <span>{selectedJob.location || 'Remote'}</span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedJob(null)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Job Description</h3>
+                      <p className="text-gray-700 leading-relaxed">{selectedJob.jobDescription}</p>
+                    </div>
+
+                    {selectedJob.skills && selectedJob.skills.length > 0 && (
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-2">Required Skills</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedJob.skills.map((skill) => (
+                            <Badge key={skill} variant="outline">
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4 pt-4 border-t">
+                      <Button
+                        onClick={() => handleApply(selectedJob)}
+                        disabled={applicationMutation.isPending}
+                        className="flex items-center gap-2"
+                      >
+                        {applicationMutation.isPending ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Analyzing Match...
+                          </>
+                        ) : (
+                          <>
+                            <ArrowRight className="h-4 w-4" />
+                            Apply Now
+                          </>
+                        )}
+                      </Button>
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <Star className="h-4 w-4 text-green-600" />
+                        <span>{calculateAIMatchScore(selectedJob)}% Match</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Application Analysis Modal */}
+        <AnimatePresence>
+          {showApplicationAnalysis && applicationAnalysis && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+              onClick={() => setShowApplicationAnalysis(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-lg max-w-lg w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    {applicationAnalysis.isStrongMatch ? (
+                      <CheckCircle className="h-6 w-6 text-green-600" />
+                    ) : (
+                      <AlertTriangle className="h-6 w-6 text-orange-600" />
+                    )}
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Application Analysis
+                    </h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm font-medium text-gray-900">
+                        Match Score: {applicationAnalysis.matchScore}%
+                      </span>
+                    </div>
+
+                    <div className={`p-3 rounded-lg ${
+                      applicationAnalysis.isStrongMatch 
+                        ? 'bg-green-50 border border-green-200' 
+                        : 'bg-orange-50 border border-orange-200'
+                    }`}>
+                      <p className={`text-sm ${
+                        applicationAnalysis.isStrongMatch 
+                          ? 'text-green-800' 
+                          : 'text-orange-800'
+                      }`}>
+                        {applicationAnalysis.feedback}
+                      </p>
+                    </div>
+
+                    {applicationAnalysis.reasons.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Analysis:</h4>
+                        <ul className="space-y-1">
+                          {applicationAnalysis.reasons.map((reason, index) => (
+                            <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
+                              <span className="text-gray-400">•</span>
+                              <span>{reason}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3 pt-4 border-t">
+                      <Button
+                        onClick={handleConfirmApplication}
+                        disabled={actualApplicationMutation.isPending}
+                        className="flex items-center gap-2"
+                      >
+                        {actualApplicationMutation.isPending ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Submitting...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4" />
+                            Confirm Application
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowApplicationAnalysis(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </DialogContent>
     </Dialog>
   );

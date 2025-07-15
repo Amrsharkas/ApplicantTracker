@@ -1,0 +1,118 @@
+Create a super smart, context-aware, and deeply personalized job discovery experience for the user. The page must behave like a real-time, intelligent career assistant — not just a static job board.
+
+🧩 SYSTEM BEHAVIOR REQUIREMENTS
+1. 🔍 SMART FILTER SYSTEM
+✅ Filters must:
+Include the following options:
+
+Workplace: On-site, Hybrid, Remote
+
+Country, City, Area
+
+Career Level
+
+Job Category
+
+Job Type
+
+Date Posted
+
+Be visible and user-selectable in a left sidebar
+
+Remain available at all times — never disappear even if no perfect matches are found
+
+Support partial matches — allow the user to explore closely related jobs, not just exact matches
+
+🧠 Intelligent Behavior:
+If a selected filter has few or no matches:
+
+Show related or nearby matches
+
+Provide a small notice:
+
+“No exact matches found. Showing related roles based on your profile.”
+
+2. 📄 JOB CARDS DISPLAY
+Each job appears as a card on the right panel with:
+
+Job Title
+
+Company Name and Logo
+
+Location and Workplace Type
+
+AI Match Score (0–100%)
+
+Key Tags: [Full-time], [Urgent], [Internship], etc.
+
+"View Details" or “View Job” button
+
+3. 👁️‍🗨️ OPENING A JOB (EXPANDED VIEW)
+When a user clicks a job card:
+
+Expand or open a dedicated section/modal showing:
+
+Full job description
+
+Requirements
+
+Responsibilities
+
+Company description
+
+“Apply” button (clearly visible)
+
+4. ✅ APPLYING TO A JOB (SMART EVALUATION)
+When the user presses “Apply”:
+
+🔄 Match Analysis:
+Run an instant analysis comparing the job's requirements to:
+
+The user's profile data
+
+Their answers from all three interviews
+
+🧠 Response must include:
+If the user is a strong match:
+
+“✅ You’re a great fit for this role. Your skills and experiences align with the job requirements.”
+
+If the user does not match well:
+
+“⚠️ Based on your profile and interview data, you may not be the strongest fit for this role.”
+
+❓Always provide reasons:
+“Here’s why:”
+
+Your technical experience doesn’t match the listed stack (e.g., React, Node.js)
+
+The company requires 3+ years of experience, and your profile shows 1
+
+You indicated in the interview that you prefer remote roles, and this job is on-site
+
+5. 🎯 OPTIONAL: SUGGEST NEXT STEP
+If the user doesn’t match well:
+
+Offer nearby matches or similar jobs automatically
+
+Say:
+
+“You might still want to consider these alternatives...”
+
+6. 💬 TONE & CLARITY
+Never overly optimistic
+
+Be direct, helpful, and professionally neutral
+
+Keep feedback short but concrete and tied to their data
+
+7. 📱 UI & UX Considerations
+Search bar at top of job panel
+
+Sticky sidebar with filters
+
+Hover states on cards
+
+Smooth transitions when opening job details
+
+Apply confirmation modal or sidebar
