@@ -371,39 +371,137 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(interviewSessions.createdAt);
 
-    // Build context object with previous interview insights
+    // Build comprehensive context with full conversation history
     const context = {
       previousInterviews: completedInterviews.map(session => ({
         type: session.interviewType,
         sessionData: session.sessionData,
-        completedAt: session.completedAt
+        completedAt: session.completedAt,
+        // Extract the full conversation for context
+        conversation: this.extractConversationHistory(session.sessionData)
       })),
-      insights: this.extractInterviewInsights(completedInterviews, currentInterviewType)
+      insights: this.extractDetailedInterviewInsights(completedInterviews, currentInterviewType),
+      conversationStyle: this.extractConversationStyle(completedInterviews),
+      keyThemes: this.extractKeyThemes(completedInterviews),
+      previousQuestions: this.extractAllPreviousQuestions(completedInterviews)
     };
 
     return context;
   }
 
-  private extractInterviewInsights(completedInterviews: any[], currentType: string): string {
+  private extractConversationHistory(sessionData: any): string {
+    if (!sessionData || !sessionData.responses) return '';
+    
+    const responses = sessionData.responses || [];
+    const questions = sessionData.questions || [];
+    
+    let conversation = '';
+    for (let i = 0; i < Math.min(responses.length, questions.length); i++) {
+      conversation += `Q: ${questions[i]?.question || 'Question not available'}\n`;
+      conversation += `A: ${responses[i]?.answer || 'No response'}\n\n`;
+    }
+    
+    return conversation;
+  }
+
+  private extractDetailedInterviewInsights(completedInterviews: any[], currentType: string): string {
     if (!completedInterviews.length) return '';
 
-    let insights = '';
+    let insights = 'PREVIOUS INTERVIEW CONTEXT:\n\n';
     
-    // Extract key insights from previous interviews
     completedInterviews.forEach(session => {
-      if (session.interviewType === 'personal' && currentType !== 'personal') {
-        insights += `From their background interview, you learned about their personal values, motivations, and life philosophy. `;
-      }
-      if (session.interviewType === 'professional' && currentType === 'technical') {
-        insights += `From their professional interview, you understand their career journey, expertise areas, and professional strengths. `;
+      const conversation = this.extractConversationHistory(session.sessionData);
+      if (conversation) {
+        insights += `${session.interviewType.toUpperCase()} INTERVIEW RESPONSES:\n${conversation}\n`;
       }
     });
 
-    if (insights) {
-      insights += 'Build on this knowledge to ask more contextual, intelligent questions that show you remember and understand them.';
+    // Add specific guidance based on interview progression
+    if (currentType === 'professional' && completedInterviews.some(s => s.interviewType === 'personal')) {
+      insights += '\nREMEMBER: You already know this candidate personally. Reference their background, values, and motivations naturally in your professional questions. Do not repeat personal topics.\n';
+    }
+    
+    if (currentType === 'technical' && completedInterviews.length > 0) {
+      insights += '\nREMEMBER: You have a complete understanding of this candidate from previous interviews. Use this knowledge to ask technical questions that align with their experience level and demonstrated capabilities. Show continuity in your understanding.\n';
     }
 
     return insights;
+  }
+
+  private extractConversationStyle(completedInterviews: any[]): string {
+    if (!completedInterviews.length) return '';
+    
+    // Extract style indicators from first interview
+    const firstInterview = completedInterviews[0];
+    if (!firstInterview?.sessionData?.responses) return '';
+    
+    const responses = firstInterview.sessionData.responses || [];
+    const sampleResponse = responses[0]?.answer || '';
+    
+    // Analyze tone and style
+    let style = 'CONVERSATION STYLE: ';
+    if (sampleResponse.length > 100) {
+      style += 'Detailed and thoughtful responses. ';
+    } else {
+      style += 'Concise and direct responses. ';
+    }
+    
+    if (sampleResponse.includes('I believe') || sampleResponse.includes('I think')) {
+      style += 'Reflective and introspective. ';
+    }
+    
+    if (sampleResponse.includes('!') || sampleResponse.includes('excited')) {
+      style += 'Enthusiastic and energetic. ';
+    }
+    
+    style += 'Maintain this exact tone and style throughout all interviews.';
+    
+    return style;
+  }
+
+  private extractKeyThemes(completedInterviews: any[]): string[] {
+    const themes: string[] = [];
+    
+    completedInterviews.forEach(session => {
+      if (session.sessionData?.responses) {
+        const responses = session.sessionData.responses || [];
+        responses.forEach((response: any) => {
+          const answer = response.answer || '';
+          // Extract key themes from responses
+          if (answer.includes('team') || answer.includes('collaboration')) {
+            themes.push('teamwork');
+          }
+          if (answer.includes('leadership') || answer.includes('lead')) {
+            themes.push('leadership');
+          }
+          if (answer.includes('innovation') || answer.includes('creative')) {
+            themes.push('innovation');
+          }
+          if (answer.includes('challenge') || answer.includes('problem')) {
+            themes.push('problem-solving');
+          }
+        });
+      }
+    });
+    
+    return [...new Set(themes)]; // Remove duplicates
+  }
+
+  private extractAllPreviousQuestions(completedInterviews: any[]): string[] {
+    const questions: string[] = [];
+    
+    completedInterviews.forEach(session => {
+      if (session.sessionData?.questions) {
+        const sessionQuestions = session.sessionData.questions || [];
+        sessionQuestions.forEach((q: any) => {
+          if (q.question) {
+            questions.push(q.question);
+          }
+        });
+      }
+    });
+    
+    return questions;
   }
 }
 

@@ -91,7 +91,7 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
   }
 
   async generatePersonalInterview(userData: any, resumeContent?: string): Promise<InterviewSet> {
-    const prompt = `You are a thoughtful, continuous AI interviewer conducting the first phase of a comprehensive interview process. This is the BACKGROUND phase where you'll establish rapport and understand the candidate's foundational story. You will continue with this same candidate through two more phases (Professional and Technical), so maintain a consistent, warm, and intelligent tone throughout.
+    const prompt = `You are beginning a comprehensive interview process as a continuous AI interviewer. This is the BACKGROUND phase - the foundation that will inform all subsequent conversations. You will maintain the EXACT same conversational tone and style throughout all three interview phases.
 
 CANDIDATE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
@@ -102,14 +102,20 @@ ${userData?.location ? `Location: ${userData.location}` : ''}
 ${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
 
-Create 5 background questions that establish the foundation for your ongoing conversation. These questions should:
-1. Help you understand their core background and upbringing
-2. Reveal their values, motivations, and what drives them
-3. Understand their personal philosophy and approach to life
-4. Explore how they handle challenges and growth
-5. Discover what truly fulfills and energizes them
+CRITICAL INSTRUCTIONS:
+1. Establish your conversational tone and style now - you will maintain this EXACT same approach throughout all future interviews
+2. Ask questions that encourage detailed, revealing responses that will provide rich context for future questions
+3. Remember: their answers will be used to create intelligent, contextual questions in Professional and Technical phases
+4. Focus on getting foundational insights that will inform your understanding of their career decisions and technical capabilities
 
-Remember: You'll use these answers to inform smarter, more personalized questions in the Professional and Technical phases. Ask questions that give you rich context about who they are as a person.
+Create 5 background questions that establish deep foundational understanding:
+1. Their background, upbringing, and formative experiences that shaped their worldview
+2. Core values, beliefs, and personal philosophy that drives their decisions
+3. Personal interests, hobbies, and passions that reveal their personality and approach to life
+4. How they approach challenges, learning, and personal growth
+5. Personal goals and life aspirations that will connect to their professional journey
+
+IMPORTANT: These questions will inform ALL subsequent interview questions. Ask questions that encourage rich, detailed responses that reveal personality, values, and approach to life.
 
 Return ONLY JSON:
 {
@@ -149,7 +155,12 @@ Return ONLY JSON:
   }
 
   async generateProfessionalInterview(userData: any, resumeContent?: string, previousInterviewData?: any): Promise<InterviewSet> {
-    const prompt = `You are the same AI interviewer continuing your conversation with this candidate. You've already conducted the Background interview and learned about their personal values, motivations, and life philosophy. Now you're moving into the PROFESSIONAL phase to understand their career journey and expertise.
+    const contextInsights = previousInterviewData?.insights || '';
+    const conversationStyle = previousInterviewData?.conversationStyle || '';
+    const keyThemes = previousInterviewData?.keyThemes || [];
+    const previousQuestions = previousInterviewData?.previousQuestions || [];
+    
+    const prompt = `You are continuing as the same AI interviewer. You have full memory of your previous conversation with this candidate.
 
 CANDIDATE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
@@ -160,18 +171,31 @@ ${userData?.location ? `Location: ${userData.location}` : ''}
 ${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
 
-${previousInterviewData ? `PREVIOUS INTERVIEW INSIGHTS: You've already learned about their background, values, and personal motivations. Use this context to ask more intelligent, connected questions about their professional journey.` : ''}
+${contextInsights}
 
-Create 7 professional questions that:
-1. Build naturally on what you learned about them personally
-2. Explore their career trajectory and key professional transitions
-3. Understand their most significant achievements and contributions
-4. Assess their leadership style and collaborative approach
-5. Identify their core professional strengths and expertise
-6. Explore their career aspirations and professional goals
-7. Understand what they're seeking in their next professional opportunity
+${conversationStyle}
 
-IMPORTANT: Do NOT repeat information or themes from the background interview. Instead, reference and build upon their personal insights to ask deeper, more contextual professional questions. Show that you remember and understand them as a person.
+KEY THEMES FROM PREVIOUS INTERVIEWS: ${keyThemes.join(', ')}
+
+QUESTIONS ALREADY ASKED (DO NOT REPEAT):
+${previousQuestions.map(q => `- ${q}`).join('\n')}
+
+CRITICAL INSTRUCTIONS:
+1. You are the SAME interviewer continuing the conversation - no reintroductions
+2. Reference specific details from their previous answers naturally
+3. DO NOT repeat any previously asked questions or themes
+4. Maintain the exact same tone and conversation style established earlier
+5. Build intelligently on what you already know about them
+6. Show full memory of previous discussions
+
+Create 7 professional questions that demonstrate continuity and memory:
+1. Reference their personal background in context of professional decisions
+2. Build on themes they mentioned in background interview
+3. Ask about career transitions using their personal motivations as context
+4. Explore achievements that align with their stated values
+5. Assess leadership style based on their personality insights
+6. Connect their career goals to their personal aspirations
+7. Understand professional preferences through their personal lens
 
 Return ONLY JSON:
 {
@@ -215,8 +239,12 @@ Return ONLY JSON:
   async generateTechnicalInterview(userData: any, resumeContent?: string, previousInterviewData?: any): Promise<InterviewSet> {
     const userRole = userData?.currentRole || 'professional';
     const userField = this.determineUserField(userData, resumeContent);
+    const contextInsights = previousInterviewData?.insights || '';
+    const conversationStyle = previousInterviewData?.conversationStyle || '';
+    const keyThemes = previousInterviewData?.keyThemes || [];
+    const previousQuestions = previousInterviewData?.previousQuestions || [];
     
-    const prompt = `You are the same AI interviewer completing the final phase of your comprehensive evaluation. You've already conducted Background and Professional interviews, gaining deep insights into this candidate's personal values, motivations, and career journey. Now you're conducting the TECHNICAL phase to assess their cognitive abilities and technical competence.
+    const prompt = `You are completing the final interview phase as the same AI interviewer. You have comprehensive knowledge of this candidate from your previous conversations.
 
 CANDIDATE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
@@ -227,22 +255,35 @@ ${userData?.location ? `Location: ${userData.location}` : ''}
 ${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
 
-${previousInterviewData ? `PREVIOUS INTERVIEW INSIGHTS: You've learned about their background, values, professional journey, and career expertise. Use this understanding to tailor technical questions that align with their experience level and demonstrated capabilities.` : ''}
+${contextInsights}
 
-Create 11 technical questions for a ${userRole} in ${userField} that:
-1. Build on insights from previous interviews (show you remember their background and expertise)
-2. Assess logical reasoning and pattern recognition abilities
-3. Evaluate mathematical and analytical thinking skills
-4. Test abstract problem-solving abilities
-5. Explore spatial and analytical reasoning
-6. Assess core technical knowledge in their domain
-7. Evaluate critical thinking and decision-making
-8. Test cognitive flexibility and adaptability
-9. Assess memory and information processing
-10. Evaluate verbal reasoning and comprehension
-11. Test creative problem-solving approaches and technical leadership
+${conversationStyle}
 
-IMPORTANT: Ask questions that demonstrate you understand their background and professional experience from previous interviews. Reference their field expertise naturally. Include IQ-style questions that test intelligence, reasoning ability, and cognitive skills while relating to their specific experience level.
+KEY THEMES FROM ALL PREVIOUS INTERVIEWS: ${keyThemes.join(', ')}
+
+QUESTIONS ALREADY ASKED (DO NOT REPEAT):
+${previousQuestions.map(q => `- ${q}`).join('\n')}
+
+CRITICAL INSTRUCTIONS:
+1. You are the SAME interviewer who has conducted the full previous conversations
+2. Reference specific details from their background and professional answers
+3. DO NOT repeat any previously asked questions or themes
+4. Maintain the exact same tone and conversation style from the beginning
+5. Show complete memory of all previous discussions
+6. Build technical questions that connect to their personal and professional insights
+
+Create 11 technical questions for a ${userRole} in ${userField} that demonstrate full continuity:
+1. Reference their career journey when assessing technical decision-making
+2. Connect their problem-solving approach to their stated values
+3. Use their professional achievements as context for technical scenarios
+4. Assess cognitive abilities through their domain expertise
+5. Test reasoning skills that align with their experience level
+6. Evaluate analytical thinking based on their career progression
+7. Explore technical leadership using their management insights
+8. Assess adaptability through their career transition stories
+9. Test memory and processing in their professional context
+10. Evaluate communication of technical concepts to their stated audience
+11. Challenge creative problem-solving using their innovation examples
 
 Return ONLY JSON:
 {
