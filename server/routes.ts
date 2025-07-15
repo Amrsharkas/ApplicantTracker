@@ -925,10 +925,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Job Application Analysis Route
-  app.post('/api/job-application/analyze', async (req: any, res) => {
+  app.post('/api/job-application/analyze', isAuthenticated, async (req: any, res) => {
     try {
-      // Temporary: Get user ID from session or use hardcoded for testing
-      let userId = req.user?.claims?.sub || "19545039"; // Use your actual user ID for testing
+      let userId = req.user?.claims?.sub;
       const { jobId, jobTitle, jobDescription, companyName, requirements, employmentType } = req.body;
 
       console.log('📊 Job Analysis Request:', { userId, jobTitle, companyName });
@@ -958,15 +957,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      // Use AI to analyze job match
+      // Use AI to analyze comprehensive job match
       const analysisPrompt = `
-You are a career counselor analyzing job fit. Be direct and professional.
+You are a professional career counselor conducting a comprehensive job fit analysis. Analyze the job against the user's complete profile and all three interview responses.
 
-USER PROFILE:
+USER COMPLETE PROFILE:
 - Name: ${user?.firstName} ${user?.lastName}
 - Email: ${user?.email}
-- AI Profile: ${JSON.stringify(profile.aiProfile)}
-- Interview Responses: ${JSON.stringify(allInterviewResponses)}
+- Profile Data: ${JSON.stringify(profile)}
+- AI Generated Profile: ${JSON.stringify(profile.aiProfile)}
+- Complete Interview History: ${JSON.stringify(allInterviewResponses)}
 
 JOB DETAILS:
 - Title: ${jobTitle}
@@ -975,33 +975,50 @@ JOB DETAILS:
 - Requirements: ${JSON.stringify(requirements)}
 - Employment Type: ${employmentType}
 
-Analyze this job match and provide:
-1. Match score (0-100)
-2. Whether it's a strong match (true/false)
-3. Direct feedback (1-2 sentences)
-4. Specific reasons (3-5 bullet points)
+ANALYSIS REQUIREMENTS:
+1. Extract key requirements from the job description (skills, experience level, responsibilities, location, etc.)
+2. Cross-reference with user's profile data and ALL three interview responses
+3. Determine if user meets core requirements based on their entire background
+4. If NOT a good match (score < 70), explain specific gaps and suggest alternatives
 
-Be honest and professional. If it's not a good match, explain why clearly.
+EVALUATION CRITERIA:
+- Technical skills alignment (from interview responses)
+- Experience level match (junior vs senior roles)
+- Location compatibility
+- Soft skills and work style fit
+- Career goals alignment
+- Educational background if relevant
 
 Response format (JSON):
 {
-  "matchScore": number,
+  "matchScore": number (0-100),
   "isStrongMatch": boolean,
-  "feedback": "string",
-  "reasons": ["reason1", "reason2", "reason3"]
-}`;
+  "feedback": "Direct, professional feedback about fit",
+  "reasons": ["Specific reason 1", "Specific reason 2", "Specific reason 3"],
+  "suggestedActions": ["Action 1", "Action 2"] or null,
+  "alternativeJobs": [
+    {
+      "suggestedRole": "Better fitting role title",
+      "reason": "Why this role fits better",
+      "matchScore": number
+    }
+  ] or null
+}
 
-      console.log('🤖 Sending request to OpenAI for job analysis...');
+Be honest and constructive. If match score is below 70, provide specific gaps and alternative role suggestions.`;
+
+      console.log('🤖 Sending comprehensive job analysis request to OpenAI...');
       const response = await aiInterviewAgent.openai.chat.completions.create({
         model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         messages: [
-          { role: "system", content: "You are a professional career counselor. Analyze job matches honestly and provide concrete feedback." },
+          { role: "system", content: "You are a professional career counselor who analyzes job matches comprehensively using all available user data. Be direct, honest, and constructive." },
           { role: "user", content: analysisPrompt }
         ],
         response_format: { type: "json_object" },
+        temperature: 0.3,
       });
 
-      console.log('✅ OpenAI response received');
+      console.log('✅ OpenAI comprehensive analysis response received');
       const analysis = JSON.parse(response.choices[0].message.content || '{}');
       
       // Ensure proper format

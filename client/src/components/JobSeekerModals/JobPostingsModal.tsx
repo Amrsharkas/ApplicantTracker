@@ -56,7 +56,11 @@ interface AIMatchResponse {
   feedback: string;
   reasons: string[];
   suggestedActions?: string[];
-  alternativeJobs?: JobPosting[];
+  alternativeJobs?: {
+    suggestedRole: string;
+    reason: string;
+    matchScore: number;
+  }[];
 }
 
 interface JobPostingsModalProps {
@@ -1217,9 +1221,11 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                       : 'bg-orange-50 border border-orange-200'
                   }`}>
                     <h4 className={`font-medium mb-2 ${
-                      applicationAnalysis.isStrongMatch ? 'text-green-800' : 'text-orange-800'
+                      applicationAnalysis.matchScore >= 70 ? 'text-green-800' : 'text-red-800'
                     }`}>
-                      {applicationAnalysis.isStrongMatch ? 'Strong Match!' : 'Potential Concerns'}
+                      {applicationAnalysis.matchScore >= 70 
+                        ? '✅ You match this job well' 
+                        : '❌ You don\'t match this job well'}
                     </h4>
                     <p className={`text-sm leading-relaxed ${
                       applicationAnalysis.isStrongMatch 
@@ -1247,31 +1253,90 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                     </div>
                   )}
 
+                  {/* Suggested Actions */}
+                  {applicationAnalysis.suggestedActions && applicationAnalysis.suggestedActions.length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="font-medium text-gray-900 mb-3">Suggested Actions:</h4>
+                      <div className="space-y-2">
+                        {applicationAnalysis.suggestedActions.map((action, index) => (
+                          <div key={index} className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <Zap className="h-4 w-4 text-blue-600 mt-1" />
+                            <p className="text-sm text-blue-800 leading-relaxed">{action}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Alternative Job Recommendations */}
+                  {applicationAnalysis.alternativeJobs && applicationAnalysis.alternativeJobs.length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="font-medium text-gray-900 mb-3">Better Job Matches For You:</h4>
+                      <div className="space-y-3">
+                        {applicationAnalysis.alternativeJobs.map((altJob, index) => (
+                          <div key={index} className="p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <h5 className="font-medium text-green-900">{altJob.suggestedRole}</h5>
+                              <Badge variant="secondary" className="bg-green-200 text-green-800">
+                                {altJob.matchScore}% Match
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-green-800 leading-relaxed">{altJob.reason}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Action Buttons */}
                   <div className="flex items-center gap-3 pt-4 border-t">
-                    <Button
-                      onClick={handleConfirmApplication}
-                      disabled={actualApplicationMutation.isPending}
-                      className="flex items-center gap-2 flex-1"
-                    >
-                      {actualApplicationMutation.isPending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          Submitting Application...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="h-4 w-4" />
-                          {applicationAnalysis.isStrongMatch ? 'Submit Application' : 'Apply Anyway'}
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowApplicationAnalysis(false)}
-                    >
-                      Review More
-                    </Button>
+                    {applicationAnalysis.isStrongMatch ? (
+                      <Button
+                        onClick={handleConfirmApplication}
+                        disabled={actualApplicationMutation.isPending}
+                        className="flex items-center gap-2 flex-1"
+                      >
+                        {actualApplicationMutation.isPending ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Submitting Application...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4" />
+                            Submit Application
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={handleConfirmApplication}
+                          disabled={actualApplicationMutation.isPending}
+                          className="flex items-center gap-2"
+                        >
+                          {actualApplicationMutation.isPending ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                              Applying...
+                            </>
+                          ) : (
+                            <>
+                              <AlertTriangle className="h-4 w-4" />
+                              Apply Anyway
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          onClick={() => setShowApplicationAnalysis(false)}
+                          className="flex items-center gap-2 flex-1"
+                        >
+                          <Search className="h-4 w-4" />
+                          Find Better Matches
+                        </Button>
+                      </>
+                    )}
                   </div>
 
                   {/* Disclaimer */}
