@@ -79,12 +79,61 @@ export class AirtableService {
     let formatted = '';
     
     // Header with name if available
-    formatted += '# 📋 **PROFESSIONAL PROFILE**\n\n';
+    formatted += '# 📋 **COMPREHENSIVE CANDIDATE PROFILE**\n\n';
     
-    // Summary Section
-    if (profile.summary) {
-      formatted += '## 🎯 **EXECUTIVE SUMMARY**\n';
-      formatted += `${profile.summary}\n\n`;
+    // Snapshot Overview
+    if (profile.comprehensiveProfile?.snapshotOverview || profile.summary) {
+      formatted += '## 📊 **CANDIDATE SNAPSHOT**\n';
+      formatted += `${profile.comprehensiveProfile?.snapshotOverview || profile.summary}\n\n`;
+    }
+    
+    // Verified Skills (only skills backed by interview evidence)
+    if (profile.comprehensiveProfile?.verifiedSkills?.length > 0) {
+      formatted += '## ✅ **VERIFIED SKILLS**\n';
+      formatted += '_Skills validated through interview responses and examples_\n\n';
+      const skillsPerRow = 3;
+      for (let i = 0; i < profile.comprehensiveProfile.verifiedSkills.length; i += skillsPerRow) {
+        const skillsRow = profile.comprehensiveProfile.verifiedSkills.slice(i, i + skillsPerRow);
+        formatted += skillsRow.map((skill: string) => `• **${skill}**`).join(' | ') + '\n';
+      }
+      formatted += '\n';
+    }
+    
+    // Interview Highlights with Direct Quotes
+    if (profile.comprehensiveProfile?.interviewHighlights) {
+      formatted += '## 💬 **INTERVIEW HIGHLIGHTS**\n';
+      formatted += '_Direct insights from candidate responses_\n\n';
+      
+      const highlights = profile.comprehensiveProfile.interviewHighlights;
+      if (highlights.technicalKnowledge) {
+        formatted += '### 🔧 Technical Knowledge\n';
+        formatted += `${highlights.technicalKnowledge}\n\n`;
+      }
+      
+      if (highlights.problemSolving) {
+        formatted += '### 🧩 Problem Solving\n';
+        formatted += `${highlights.problemSolving}\n\n`;
+      }
+      
+      if (highlights.teamwork) {
+        formatted += '### 🤝 Teamwork & Collaboration\n';
+        formatted += `${highlights.teamwork}\n\n`;
+      }
+      
+      if (highlights.workPreferences) {
+        formatted += '### 🎯 Work Preferences\n';
+        formatted += `${highlights.workPreferences}\n\n`;
+      }
+    }
+    
+    // Flags and Concerns (Critical Information)
+    if (profile.comprehensiveProfile?.flagsAndConcerns?.length > 0) {
+      formatted += '## ⚠️ **ASSESSMENT NOTES**\n';
+      formatted += '_Areas requiring attention or clarification_\n\n';
+      profile.comprehensiveProfile.flagsAndConcerns.forEach((concern: string) => {
+        formatted += `• ${concern}\n`;
+      });
+      formatted += '\n';
     }
     
     // Experience Section
@@ -98,30 +147,26 @@ export class AirtableService {
       });
     }
     
-    // Skills Section
-    if (profile.skills && profile.skills.length > 0) {
-      formatted += '## 🛠️ **CORE SKILLS & COMPETENCIES**\n';
+    // Work Preferences
+    if (profile.comprehensiveProfile?.workPreferences) {
+      formatted += '## 🏢 **WORK PREFERENCES**\n';
+      const prefs = profile.comprehensiveProfile.workPreferences;
+      formatted += `**Environment:** ${prefs.environment}\n`;
+      formatted += `**Team Dynamics:** ${prefs.teamDynamics}\n`;
+      formatted += `**Relocation:** ${prefs.relocation}\n`;
+      formatted += `**Work Style:** ${prefs.workStyle}\n\n`;
+    }
+    
+    // Legacy Skills (fallback)
+    if (profile.skills && profile.skills.length > 0 && !profile.comprehensiveProfile?.verifiedSkills?.length) {
+      formatted += '## 🛠️ **REPORTED SKILLS**\n';
+      formatted += '_Self-reported skills (not yet verified through interviews)_\n\n';
       const skillsPerRow = 3;
       for (let i = 0; i < profile.skills.length; i += skillsPerRow) {
         const skillsRow = profile.skills.slice(i, i + skillsPerRow);
         formatted += skillsRow.map((skill: string) => `• **${skill}**`).join(' | ') + '\n';
       }
       formatted += '\n';
-    }
-    
-    // Strengths Section
-    if (profile.strengths && profile.strengths.length > 0) {
-      formatted += '## 💪 **KEY STRENGTHS**\n';
-      profile.strengths.forEach((strength: string) => {
-        formatted += `✓ **${strength}**\n`;
-      });
-      formatted += '\n';
-    }
-    
-    // Work Style Section
-    if (profile.workStyle) {
-      formatted += '## 🎨 **WORK STYLE & APPROACH**\n';
-      formatted += `${profile.workStyle}\n\n`;
     }
     
     // Career Goals Section

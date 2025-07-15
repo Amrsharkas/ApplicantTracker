@@ -576,13 +576,21 @@ export class AIProfileAnalysisAgent {
       `Q: ${qa.question}\nA: ${qa.answer}`
     ).join('\n\n');
 
-    const prompt = `You are an expert AI career analyst specializing in comprehensive candidate assessment. Your job is to analyze ALL available data about a candidate and create a detailed professional profile.
+    const prompt = `You are a brutally honest, data-driven career analyst. Your job is to create a comprehensive professional profile by cross-referencing ALL available data sources. This profile will be shown to employers and must represent the most accurate possible reflection of the candidate's capabilities, personality, and fit.
+
+CRITICAL ANALYSIS REQUIREMENTS:
+1. Cross-reference all data sources for consistency and truth
+2. Include direct quotes from interviews when relevant
+3. Highlight discrepancies between claimed abilities and demonstrated knowledge
+4. Only acknowledge strengths that are verified through interview responses
+5. Be neutral, factual, and professional - no emotional language or flattery
 
 CANDIDATE PROFILE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
 ${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
 ${userData?.yearsOfExperience ? `Experience: ${userData.yearsOfExperience} years` : ''}
 ${userData?.education ? `Education: ${userData.education}${userData.university ? ` from ${userData.university}` : ''}` : ''}
+${userData?.skills ? `Self-Reported Skills: ${Array.isArray(userData.skills) ? userData.skills.join(', ') : userData.skills}` : ''}
 ${userData?.location ? `Location: ${userData.location}` : ''}
 ${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
 
@@ -592,31 +600,42 @@ ${resumeContent}
 ` : ''}INTERVIEW RESPONSES:
 ${conversationHistory}
 
-Based on this comprehensive data (profile, resume, and interview responses), create a detailed professional analysis. Consider:
-- What their resume reveals about their career trajectory
-- How their profile data shows their current situation
-- What their interview responses reveal about their personality, work style, and goals
-- Patterns across all data sources that show their true professional identity
+ANALYSIS INSTRUCTIONS:
+- Compare self-reported skills with interview demonstrations
+- Look for contradictions between resume claims and interview responses
+- Identify vague or unconvincing answers that suggest knowledge gaps
+- Note specific examples and concrete details that support claimed abilities
+- Flag any areas where the candidate struggled to provide examples or details
 
-Generate a comprehensive profile in JSON format:
+Generate a comprehensive employer-ready profile in JSON format:
 {
-  "summary": "A 2-3 sentence professional summary that captures who they are",
-  "skills": ["skill1", "skill2", "skill3", ...] (8-12 specific technical and soft skills),
-  "personality": "A detailed paragraph describing their personality, communication style, and work approach",
+  "snapshotOverview": "Brief summary of career level, fields of expertise, and communication style",
+  "verifiedSkills": ["skill1", "skill2", ...] (only skills backed by interview evidence),
+  "interviewHighlights": {
+    "technicalKnowledge": "Direct quotes or summaries showing their technical understanding",
+    "problemSolving": "Examples of how they approach challenges",
+    "teamwork": "Evidence of collaborative abilities",
+    "workPreferences": "Stated preferences about work environment and style"
+  },
+  "flagsAndConcerns": ["concern1", "concern2", ...] (any mismatches, shallow answers, or gaps),
+  "workPreferences": {
+    "environment": "Remote/on-site preference",
+    "teamDynamics": "Solo vs team preference",
+    "relocation": "Willingness to relocate",
+    "workStyle": "Preferred approach to tasks and collaboration"
+  },
   "experience": [
     {
       "role": "Position Title",
       "company": "Company Name", 
       "duration": "Time period",
-      "description": "Key responsibilities and achievements"
+      "description": "Key responsibilities and achievements verified through interview"
     }
-  ] (extract from resume and interview),
-  "strengths": ["strength1", "strength2", ...] (5-8 key professional strengths),
-  "careerGoals": "A paragraph about their career aspirations and desired growth",
-  "workStyle": "A paragraph describing how they prefer to work, collaborate, and approach tasks"
+  ],
+  "summary": "Complete professional assessment based on all data sources"
 }
 
-Be specific and insightful. This analysis will be used for job matching and career guidance.`;
+Be blunt and professional. Focus on truth over encouragement.`;
 
     try {
       const response = await openai.chat.completions.create({
@@ -638,14 +657,38 @@ Be specific and insightful. This analysis will be used for job matching and care
 
       const profile = JSON.parse(response.choices[0].message.content || '{}');
       
-      return {
-        summary: profile.summary || "Professional candidate with demonstrated experience.",
-        skills: profile.skills || [],
-        personality: profile.personality || "Dedicated professional with strong work ethic.",
+      // Store the full comprehensive profile for employers
+      const comprehensiveProfile = {
+        snapshotOverview: profile.snapshotOverview || "Professional candidate with demonstrated experience.",
+        verifiedSkills: profile.verifiedSkills || [],
+        interviewHighlights: profile.interviewHighlights || {
+          technicalKnowledge: "Technical background not fully assessed",
+          problemSolving: "Problem-solving approach not detailed",
+          teamwork: "Team collaboration experience not specified",
+          workPreferences: "Work preferences not clearly defined"
+        },
+        flagsAndConcerns: profile.flagsAndConcerns || [],
+        workPreferences: profile.workPreferences || {
+          environment: "Not specified",
+          teamDynamics: "Not specified",
+          relocation: "Not specified",
+          workStyle: "Not specified"
+        },
         experience: profile.experience || [],
-        strengths: profile.strengths || [],
-        careerGoals: profile.careerGoals || "Seeking opportunities for professional growth.",
-        workStyle: profile.workStyle || "Collaborative and results-oriented approach to work."
+        summary: profile.summary || profile.snapshotOverview || "Professional candidate with demonstrated experience."
+      };
+
+      // Return legacy format for backward compatibility
+      return {
+        summary: comprehensiveProfile.summary,
+        skills: comprehensiveProfile.verifiedSkills,
+        personality: comprehensiveProfile.interviewHighlights.teamwork,
+        experience: comprehensiveProfile.experience,
+        strengths: comprehensiveProfile.verifiedSkills,
+        careerGoals: comprehensiveProfile.workPreferences.workStyle,
+        workStyle: comprehensiveProfile.workPreferences.environment,
+        // Add the comprehensive profile for employers
+        comprehensiveProfile
       };
     } catch (error) {
       console.error("Error generating comprehensive profile:", error);
