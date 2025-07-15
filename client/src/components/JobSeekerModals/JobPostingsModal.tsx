@@ -13,6 +13,30 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap } from "lucide-react";
 
+// Country-City data structure
+const COUNTRIES_CITIES = {
+  "United States": ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "San Diego", "Dallas", "San Jose", "Austin", "Jacksonville", "Fort Worth", "Columbus", "Charlotte", "San Francisco", "Indianapolis", "Seattle", "Denver", "Boston", "Detroit", "Nashville", "Memphis", "Portland", "Oklahoma City", "Las Vegas", "Louisville", "Baltimore", "Milwaukee", "Albuquerque", "Tucson", "Fresno", "Sacramento", "Mesa", "Kansas City", "Atlanta", "Long Beach", "Colorado Springs", "Raleigh", "Miami", "Virginia Beach", "Omaha", "Oakland", "Minneapolis", "Tulsa", "Arlington", "Tampa", "New Orleans"],
+  "Canada": ["Toronto", "Montreal", "Vancouver", "Calgary", "Ottawa", "Edmonton", "Quebec City", "Winnipeg", "Hamilton", "Kitchener", "London", "Victoria", "Halifax", "Oshawa", "Windsor", "Saskatoon", "Regina", "Sherbrooke", "Kelowna", "Barrie", "Abbotsford", "Kingston", "Sudbury", "Saguenay", "Trois-Rivières", "Guelph", "Cambridge", "Whitby", "Brantford", "Thunder Bay"],
+  "United Kingdom": ["London", "Birmingham", "Manchester", "Glasgow", "Liverpool", "Leeds", "Sheffield", "Edinburgh", "Bristol", "Cardiff", "Belfast", "Newcastle", "Nottingham", "Plymouth", "Stoke-on-Trent", "Wolverhampton", "Derby", "Swansea", "Southampton", "Salford", "Aberdeen", "Westminster", "Portsmouth", "York", "Peterborough", "Dundee", "Lancaster", "Oxford", "Newport", "Preston"],
+  "Germany": ["Berlin", "Hamburg", "Munich", "Cologne", "Frankfurt", "Stuttgart", "Düsseldorf", "Dortmund", "Essen", "Leipzig", "Bremen", "Dresden", "Hanover", "Nuremberg", "Duisburg", "Bochum", "Wuppertal", "Bielefeld", "Bonn", "Münster", "Karlsruhe", "Mannheim", "Augsburg", "Wiesbaden", "Gelsenkirchen", "Mönchengladbach", "Braunschweig", "Chemnitz", "Kiel", "Aachen"],
+  "France": ["Paris", "Marseille", "Lyon", "Toulouse", "Nice", "Nantes", "Strasbourg", "Montpellier", "Bordeaux", "Lille", "Rennes", "Reims", "Le Havre", "Saint-Étienne", "Toulon", "Grenoble", "Dijon", "Angers", "Nîmes", "Villeurbanne", "Saint-Denis", "Le Mans", "Aix-en-Provence", "Clermont-Ferrand", "Brest", "Limoges", "Tours", "Amiens", "Perpignan", "Metz"],
+  "Italy": ["Rome", "Milan", "Naples", "Turin", "Palermo", "Genoa", "Bologna", "Florence", "Bari", "Catania", "Venice", "Verona", "Messina", "Padua", "Trieste", "Taranto", "Brescia", "Prato", "Parma", "Modena", "Reggio Calabria", "Reggio Emilia", "Perugia", "Livorno", "Ravenna", "Cagliari", "Foggia", "Rimini", "Salerno", "Ferrara"],
+  "Spain": ["Madrid", "Barcelona", "Valencia", "Seville", "Zaragoza", "Málaga", "Murcia", "Palma", "Las Palmas", "Bilbao", "Alicante", "Córdoba", "Valladolid", "Vigo", "Gijón", "Hospitalet", "A Coruña", "Vitoria-Gasteiz", "Granada", "Elche", "Oviedo", "Badalona", "Cartagena", "Terrassa", "Jerez", "Sabadell", "Móstoles", "Santa Cruz", "Pamplona", "Almería"],
+  "Netherlands": ["Amsterdam", "Rotterdam", "The Hague", "Utrecht", "Eindhoven", "Tilburg", "Groningen", "Almere", "Breda", "Nijmegen", "Enschede", "Haarlem", "Arnhem", "Zaanstad", "Amersfoort", "Apeldoorn", "s-Hertogenbosch", "Hoofddorp", "Maastricht", "Leiden", "Dordrecht", "Zoetermeer", "Zwolle", "Deventer", "Delft", "Alkmaar", "Leeuwarden", "Venlo", "Hilversum", "Heerlen"],
+  "Australia": ["Sydney", "Melbourne", "Brisbane", "Perth", "Adelaide", "Gold Coast", "Newcastle", "Canberra", "Sunshine Coast", "Wollongong", "Hobart", "Geelong", "Townsville", "Cairns", "Darwin", "Toowoomba", "Ballarat", "Bendigo", "Albury", "Launceston", "Mackay", "Rockhampton", "Bunbury", "Bundaberg", "Coffs Harbour", "Wagga Wagga", "Hervey Bay", "Mildura", "Shepparton", "Port Macquarie"],
+  "Japan": ["Tokyo", "Yokohama", "Osaka", "Nagoya", "Sapporo", "Fukuoka", "Kobe", "Kawasaki", "Kyoto", "Saitama", "Hiroshima", "Sendai", "Kitakyushu", "Chiba", "Sakai", "Niigata", "Hamamatsu", "Okayama", "Sagamihara", "Kumamoto", "Shizuoka", "Kagoshima", "Matsuyama", "Utsunomiya", "Matsudo", "Kawaguchi", "Kanazawa", "Oita", "Nara", "Toyama"],
+  "South Korea": ["Seoul", "Busan", "Incheon", "Daegu", "Daejeon", "Gwangju", "Ulsan", "Suwon", "Changwon", "Seongnam", "Goyang", "Yongin", "Bucheon", "Cheongju", "Ansan", "Jeonju", "Anyang", "Cheonan", "Pohang", "Uijeongbu", "Siheung", "Hwaseong", "Gimhae", "Paju", "Iksan", "Pyeongtaek", "Gunsan", "Yangju", "Suncheon", "Chuncheon"],
+  "India": ["Mumbai", "Delhi", "Bengaluru", "Hyderabad", "Chennai", "Kolkata", "Pune", "Ahmedabad", "Jaipur", "Surat", "Lucknow", "Kanpur", "Nagpur", "Patna", "Indore", "Thane", "Bhopal", "Visakhapatnam", "Pimpri-Chinchwad", "Vadodara", "Ghaziabad", "Ludhiana", "Agra", "Nashik", "Faridabad", "Meerut", "Rajkot", "Kalyan-Dombivali", "Vasai-Virar", "Varanasi"],
+  "China": ["Shanghai", "Beijing", "Chongqing", "Tianjin", "Guangzhou", "Shenzhen", "Wuhan", "Dongguan", "Chengdu", "Nanjing", "Foshan", "Shenyang", "Hangzhou", "Xi'an", "Harbin", "Suzhou", "Qingdao", "Dalian", "Zhengzhou", "Shantou", "Jinan", "Changchun", "Kunming", "Changsha", "Taiyuan", "Xiamen", "Hefei", "Shijiazhuang", "Urumqi", "Zibo"],
+  "Brazil": ["São Paulo", "Rio de Janeiro", "Brasília", "Salvador", "Fortaleza", "Belo Horizonte", "Manaus", "Curitiba", "Recife", "Goiânia", "Belém", "Porto Alegre", "Guarulhos", "Campinas", "Nova Iguaçu", "Maceió", "São Luís", "Duque de Caxias", "Natal", "Teresina", "São Bernardo do Campo", "Campo Grande", "Osasco", "Jaboatão dos Guararapes", "Santo André", "João Pessoa", "Ribeirão Preto", "Uberlândia", "Sorocaba", "Contagem"],
+  "Mexico": ["Mexico City", "Guadalajara", "Monterrey", "Puebla", "Tijuana", "León", "Juárez", "Zapopan", "Nezahualcóyotl", "Chihuahua", "Naucalpan", "Mérida", "Álvaro Obregón", "San Luis Potosí", "Aguascalientes", "Hermosillo", "Saltillo", "Mexicali", "Culiacán", "Guadalupe", "Acapulco", "Tlalnepantla", "Cancún", "Querétaro", "Chimalhuacán", "Torreón", "Morelia", "Reynosa", "Tlaquepaque", "Playa del Carmen"],
+  "Egypt": ["Cairo", "Alexandria", "Giza", "Shubra El Kheima", "Port Said", "Suez", "Luxor", "Mansoura", "El Mahalla El Kubra", "Tanta", "Asyut", "Ismailia", "Fayyum", "Zagazig", "Aswan", "Damietta", "Damanhur", "Minya", "Beni Suef", "Qena", "Sohag", "Hurghada", "6th of October City", "Shibin El Kom", "Banha", "Kafr El Sheikh", "Arish", "Mallawi", "Bilbays", "Mit Ghamr"],
+  "Turkey": ["Istanbul", "Ankara", "Izmir", "Bursa", "Antalya", "Adana", "Konya", "Gaziantep", "Mersin", "Diyarbakır", "Kayseri", "Eskişehir", "Urfa", "Malatya", "Erzurum", "Van", "Batman", "Elazığ", "Iğdır", "Zonguldak", "Kırıkkale", "Düzce", "Tokat", "Isparta", "Çorum", "Afyon", "Kütahya", "Uşak", "Rize", "Edirne"],
+  "Russia": ["Moscow", "Saint Petersburg", "Novosibirsk", "Yekaterinburg", "Nizhny Novgorod", "Kazan", "Chelyabinsk", "Omsk", "Samara", "Rostov-on-Don", "Ufa", "Krasnoyarsk", "Perm", "Voronezh", "Volgograd", "Krasnodar", "Saratov", "Tyumen", "Tolyatti", "Izhevsk", "Barnaul", "Ulyanovsk", "Irkutsk", "Vladivostok", "Yaroslavl", "Habarovsk", "Makhachkala", "Tomsk", "Orenburg", "Kemerovo"],
+  "Argentina": ["Buenos Aires", "Córdoba", "Rosario", "Mendoza", "San Miguel de Tucumán", "La Plata", "Mar del Plata", "Salta", "Santa Fe", "San Juan", "Resistencia", "Santiago del Estero", "Corrientes", "Avellaneda", "Bahía Blanca", "Neuquén", "Formosa", "San Luis", "Posadas", "Quilmes", "Comodoro Rivadavia", "Concordia", "San Nicolás", "San Rafael", "Paraná", "Tandil", "La Rioja", "Río Cuarto", "San Salvador de Jujuy", "Junín"],
+  "Poland": ["Warsaw", "Kraków", "Łódź", "Wrocław", "Poznań", "Gdańsk", "Szczecin", "Bydgoszcz", "Lublin", "Katowice", "Białystok", "Gdynia", "Częstochowa", "Radom", "Sosnowiec", "Toruń", "Kielce", "Gliwice", "Zabrze", "Bytom", "Bielsko-Biała", "Olsztyn", "Rzeszów", "Ruda Śląska", "Rybnik", "Tychy", "Gorzów Wielkopolski", "Dąbrowa Górnicza", "Płock", "Elbląg"]
+};
+
 interface JobPosting {
   recordId: string;
   jobTitle: string;
@@ -558,19 +582,20 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                 </button>
                 {expandedFilters.country && (
                   <div className="mt-2 pl-2">
-                    <Select value={filters.country} onValueChange={(value) => updateFilter('country', value)}>
+                    <Select value={filters.country} onValueChange={(value) => {
+                      updateFilter('country', value);
+                      // Clear city when country changes
+                      updateFilter('city', '');
+                    }}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select country" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="egypt">Egypt</SelectItem>
-                        <SelectItem value="usa">United States</SelectItem>
-                        <SelectItem value="uk">United Kingdom</SelectItem>
-                        <SelectItem value="canada">Canada</SelectItem>
-                        <SelectItem value="germany">Germany</SelectItem>
-                        <SelectItem value="france">France</SelectItem>
-                        <SelectItem value="uae">UAE</SelectItem>
-                        <SelectItem value="saudi">Saudi Arabia</SelectItem>
+                        {Object.keys(COUNTRIES_CITIES).map((country) => (
+                          <SelectItem key={country} value={country}>
+                            {country}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -588,19 +613,22 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                 </button>
                 {expandedFilters.city && (
                   <div className="mt-2 pl-2">
-                    <Select value={filters.city} onValueChange={(value) => updateFilter('city', value)}>
+                    <Select 
+                      value={filters.city} 
+                      onValueChange={(value) => updateFilter('city', value)}
+                      disabled={!filters.country}
+                    >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select city" />
+                        <SelectValue placeholder={
+                          filters.country ? "Select city" : "Select country first"
+                        } />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="cairo">Cairo</SelectItem>
-                        <SelectItem value="giza">Giza</SelectItem>
-                        <SelectItem value="alexandria">Alexandria</SelectItem>
-                        <SelectItem value="new-york">New York</SelectItem>
-                        <SelectItem value="london">London</SelectItem>
-                        <SelectItem value="toronto">Toronto</SelectItem>
-                        <SelectItem value="berlin">Berlin</SelectItem>
-                        <SelectItem value="dubai">Dubai</SelectItem>
+                        {filters.country && COUNTRIES_CITIES[filters.country as keyof typeof COUNTRIES_CITIES]?.map((city) => (
+                          <SelectItem key={city} value={city}>
+                            {city}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
