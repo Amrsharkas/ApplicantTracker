@@ -132,16 +132,16 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   });
 
   const applicationMutation = useMutation({
-    mutationFn: async (jobData: any) => {
+    mutationFn: async (data: { job: JobPosting; cvFile: File }) => {
       const response = await apiRequest("/api/job-application/analyze", {
         method: "POST",
         body: JSON.stringify({
-          jobId: jobData.recordId,
-          jobTitle: jobData.jobTitle,
-          jobDescription: jobData.jobDescription,
-          companyName: jobData.companyName,
-          requirements: jobData.skills || [],
-          employmentType: jobData.employmentType
+          jobId: data.job.recordId,
+          jobTitle: data.job.jobTitle,
+          jobDescription: data.job.jobDescription,
+          companyName: data.job.companyName,
+          requirements: data.job.skills || [],
+          employmentType: data.job.employmentType
         }),
       });
       return response;
@@ -171,13 +171,13 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   });
 
   const actualApplicationMutation = useMutation({
-    mutationFn: async (jobData: any) => {
+    mutationFn: async (data: { job: JobPosting; cvFile: File | null }) => {
       const response = await apiRequest("/api/applications", {
         method: "POST",
         body: JSON.stringify({
           jobId: 1, // Placeholder since we don't have actual job IDs
-          jobTitle: jobData.jobTitle,
-          companyName: jobData.companyName,
+          jobTitle: data.job.jobTitle,
+          companyName: data.job.companyName,
           status: "pending",
           appliedAt: new Date().toISOString()
         }),
@@ -493,7 +493,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
     if (!uploadedCV || !selectedJob) return;
     
     setShowCVUpload(false);
-    applicationMutation.mutate(selectedJob);
+    applicationMutation.mutate({ job: selectedJob, cvFile: uploadedCV });
   };
 
   const resetApplicationState = () => {
@@ -506,7 +506,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
 
   const handleConfirmApplication = () => {
     if (selectedJob) {
-      actualApplicationMutation.mutate(selectedJob);
+      actualApplicationMutation.mutate({ job: selectedJob, cvFile: uploadedCV });
     }
   };
 

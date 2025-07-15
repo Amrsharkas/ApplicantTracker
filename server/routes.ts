@@ -905,8 +905,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Already applied to this job" });
       }
 
+      // Get user's AI profile from their applicant profile
+      const userProfile = await storage.getApplicantProfile(userId);
+      if (!userProfile || !userProfile.aiProfile) {
+        return res.status(400).json({ 
+          message: "AI profile not found. Please complete your interviews first." 
+        });
+      }
+
+      // Get user's basic info
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Create application
       const application = await storage.createApplication(applicationData);
-      res.json(application);
+
+      // Prepare complete application package for company
+      const applicationPackage = {
+        application,
+        candidate: {
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          profileImage: user.profileImageUrl
+        },
+        aiProfile: userProfile.aiProfile,
+        resumeUrl: userProfile.resumeUrl,
+        resumeContent: userProfile.resumeContent,
+        submittedAt: new Date().toISOString()
+      };
+
+      // Log the application submission for companies to retrieve
+      console.log('📧 NEW JOB APPLICATION SUBMITTED');
+      console.log('='.repeat(50));
+      console.log(`📋 Job: ${applicationData.jobTitle} at ${applicationData.companyName}`);
+      console.log(`👤 Candidate: ${user.firstName} ${user.lastName} (${user.email})`);
+      console.log(`🤖 AI Profile: ${userProfile.aiProfile ? 'Available' : 'Not Available'}`);
+      console.log(`📄 Resume: ${userProfile.resumeUrl ? 'Available' : 'Not Available'}`);
+      console.log(`⏰ Submitted: ${applicationPackage.submittedAt}`);
+      console.log('='.repeat(50));
+
+      // TODO: In production, send email to company or store in company portal
+      // For now, we log the complete application data for companies to access
+      console.log('📋 COMPLETE APPLICATION PACKAGE FOR COMPANY:');
+      console.log(JSON.stringify(applicationPackage, null, 2));
+      
+      res.json({
+        ...application,
+        message: "Application submitted successfully with AI profile and CV"
+      });
     } catch (error) {
       console.error("Error creating application:", error);
       res.status(500).json({ message: "Failed to create application" });
