@@ -61,10 +61,7 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
 
   const updateUserMutation = useMutation({
     mutationFn: async (data: UserProfileFormData) => {
-      return await apiRequest("/api/auth/user", {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("PUT", "/api/auth/user", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });

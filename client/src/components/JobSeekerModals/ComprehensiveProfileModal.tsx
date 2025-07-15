@@ -267,10 +267,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
-      return await apiRequest("/api/candidate/profile", {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("PUT", "/api/candidate/profile", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
