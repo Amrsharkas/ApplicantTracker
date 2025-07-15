@@ -132,14 +132,31 @@ CRITICAL INSTRUCTIONS:
 5. Establish your conversational tone to match their profile style
 6. Remember: this is the foundation for Professional and Technical interviews
 
-Create 5 background questions that demonstrate you've analyzed their profile:
-1. Reference their educational background or career path in context
-2. Build on their stated career goals or work style
-3. Connect their current role to their personal values
-4. Explore motivations behind their career choices
-5. Understand what drives them beyond what's already stated
+QUESTION QUALITY STANDARDS:
+- Ask human, high-quality questions - avoid templates and clichés
+- Be sharp, contextual, and judgment-based
+- Prioritize clarity, depth, and specificity
+- Make every question purposeful and custom to this person
+- Focus on gaps, clarity, and reflection
+- Push for concrete examples, logic, outcomes, and learning
 
-IMPORTANT: Every question must show you've reviewed their profile. Never ask blindly.
+Create 5 background questions that demonstrate you've analyzed their profile:
+1. Reference their educational background or career path in context - ask about specific decisions or transitions
+2. Build on their stated career goals or work style - explore the reasoning behind their choices
+3. Connect their current role to their personal values - dig into what drives their professional decisions
+4. Explore motivations behind their career choices - ask about specific resistance or challenges they faced
+5. Understand what drives them beyond what's already stated - focus on judgment calls and learning
+
+RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
+- Respond professionally - never overly positive or flattering
+- Use real interviewer language - neutral, grounded, professionally curious
+- Never provide emotional reactions or value judgments
+- Don't evaluate how "good" an answer was - ask the next smart question
+- Maintain a calm, consistent tone - focused, observant, and neutral
+- Examples of good responses: "Thank you. Could you clarify how you prioritized tasks in that situation?" or "Got it. What was the biggest trade-off you had to make?"
+- Avoid: "That's amazing!" "Fantastic answer!" "Wow, that really shows how great you are!"
+
+IMPORTANT: Every question must show you've reviewed their profile. Never ask blindly. Focus on WHY they made specific choices, not just WHAT they did.
 
 Return ONLY JSON:
 {
@@ -225,14 +242,31 @@ CRITICAL INSTRUCTIONS:
 6. Maintain the exact same tone and conversation style
 7. Show you remember everything - profile + previous answers
 
+QUESTION QUALITY STANDARDS:
+- Ask human, high-quality questions - avoid templates and clichés like "Tell me about a time..."
+- Be sharp, contextual, and judgment-based
+- Ask deeper, not broader - dig into what's already been shared
+- Focus on gaps, clarity, and reflection - push for concrete examples, logic, outcomes, and learning
+- Be strategic and natural - sequence questions with logical flow
+- Use context smartly - reference past answers naturally without mentioning interview structure
+
 Create 7 professional questions that demonstrate full knowledge:
-1. Reference their career progression from profile in context of their personal values
-2. Build on their stated career goals using insights from background interview
-3. Connect their current role to what they shared about motivations
-4. Explore leadership based on their profile achievements AND personal philosophy
-5. Ask about career transitions using their educational background as context
-6. Connect their target role to their personal aspirations discussed earlier
-7. Understand their professional preferences through their stated work style
+1. Reference their career progression from profile - ask about specific resistance or challenges they faced during transitions
+2. Build on their stated career goals - explore the reasoning and trade-offs behind their choices
+3. Connect their current role to their motivations - dig into specific judgment calls they've made
+4. Explore leadership based on achievements AND personal philosophy - ask about concrete situations where they had to make difficult decisions
+5. Ask about career transitions using educational background - focus on WHY they made specific choices
+6. Connect their target role to personal aspirations - explore what specific obstacles they anticipate
+7. Understand their professional preferences - ask about times when their work style was challenged
+
+RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
+- Respond professionally - never overly positive or flattering
+- Use real interviewer language - neutral, grounded, professionally curious
+- Never provide emotional reactions or value judgments
+- Don't evaluate how "good" an answer was - ask the next smart question
+- Maintain a calm, consistent tone - focused, observant, and neutral
+- Examples of good responses: "Thank you. Could you clarify how you prioritized tasks in that situation?" or "Got it. What was the biggest trade-off you had to make?"
+- Avoid: "That's amazing!" "Fantastic answer!" "Wow, that really shows how great you are!"
 
 Return ONLY JSON:
 {
@@ -320,18 +354,35 @@ CRITICAL INSTRUCTIONS:
 6. Maintain the exact same tone and conversation style from the beginning
 7. Show complete memory of profile + all previous discussions
 
+QUESTION QUALITY STANDARDS:
+- Ask human, high-quality questions - avoid templates and clichés
+- Be sharp, contextual, and judgment-based
+- Ask deeper, not broader - dig into what's already been shared
+- Focus on gaps, clarity, and reflection - push for concrete examples, logic, outcomes, and learning
+- Be strategic and natural - sequence questions with logical flow
+- Use context smartly - reference past answers naturally without mentioning interview structure
+
 Create 11 technical questions for a ${userRole} in ${userField} that demonstrate total continuity:
-1. Reference their ${userData?.education || 'educational background'} when assessing technical foundation
-2. Connect their ${userData?.skills?.join(' and ') || 'technical skills'} to problem-solving scenarios
-3. Use their ${userData?.achievements || 'professional achievements'} as context for technical leadership
-4. Build on their stated ${userData?.careerGoals || 'career goals'} with technical scenarios
-5. Test cognitive abilities through their ${userData?.yearsOfExperience || 'stated experience'} level
-6. Evaluate analytical thinking using their ${userData?.workStyle || 'work approach'} insights
-7. Assess technical communication based on their background responses
-8. Test adaptability through their career transition insights from earlier interviews
-9. Evaluate memory and processing in their ${userData?.currentRole || 'professional'} context
-10. Challenge creative problem-solving using their innovation examples from previous answers
-11. Assess technical leadership using their management insights from all previous discussions
+1. Reference their ${userData?.education || 'educational background'} - ask about specific technical decisions or trade-offs they had to make
+2. Connect their ${userData?.skills?.join(' and ') || 'technical skills'} - explore reasoning behind their technical approach choices
+3. Use their ${userData?.achievements || 'professional achievements'} - dig into specific resistance or obstacles they overcame
+4. Build on their stated ${userData?.careerGoals || 'career goals'} - ask about technical challenges they anticipate
+5. Test cognitive abilities through specific scenarios related to their ${userData?.yearsOfExperience || 'stated experience'} level
+6. Evaluate analytical thinking using concrete examples from their ${userData?.workStyle || 'work approach'} 
+7. Assess technical communication - ask them to explain complex concepts they've mentioned
+8. Test adaptability through specific technical challenges they've faced during career transitions
+9. Evaluate memory and processing using scenarios from their ${userData?.currentRole || 'professional'} context
+10. Challenge creative problem-solving with specific technical obstacles they've encountered
+11. Assess technical leadership using concrete examples from their management experiences discussed earlier
+
+RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
+- Respond professionally - never overly positive or flattering
+- Use real interviewer language - neutral, grounded, professionally curious
+- Never provide emotional reactions or value judgments
+- Don't evaluate how "good" an answer was - ask the next smart question
+- Maintain a calm, consistent tone - focused, observant, and neutral
+- Examples of good responses: "Thank you. Could you clarify how you prioritized tasks in that situation?" or "Got it. What was the biggest trade-off you had to make?"
+- Avoid: "That's amazing!" "Fantastic answer!" "Wow, that really shows how great you are!"
 
 Return ONLY JSON:
 {
