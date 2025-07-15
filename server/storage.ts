@@ -367,7 +367,7 @@ export class DatabaseStorage implements IStorage {
       .from(interviewSessions)
       .where(and(
         eq(interviewSessions.userId, userId),
-        eq(interviewSessions.completed, true)
+        eq(interviewSessions.isCompleted, true)
       ))
       .orderBy(interviewSessions.createdAt);
 
@@ -375,8 +375,7 @@ export class DatabaseStorage implements IStorage {
     const context = {
       previousInterviews: completedInterviews.map(session => ({
         type: session.interviewType,
-        questions: session.questions,
-        responses: session.responses,
+        sessionData: session.sessionData,
         completedAt: session.completedAt
       })),
       insights: this.extractInterviewInsights(completedInterviews, currentInterviewType)
