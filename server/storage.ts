@@ -52,6 +52,7 @@ export interface IStorage {
   updateInterviewSession(id: number, data: Partial<InterviewSession>): Promise<void>;
   getInterviewHistory(userId: string): Promise<InterviewSession[]>;
   updateInterviewCompletion(userId: string, interviewType: string): Promise<void>;
+  getInterviewContext(userId: string, currentInterviewType: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -357,6 +358,53 @@ export class DatabaseStorage implements IStorage {
       .update(applicantProfiles)
       .set({ ...updateData, updatedAt: new Date() })
       .where(eq(applicantProfiles.userId, userId));
+  }
+
+  async getInterviewContext(userId: string, currentInterviewType: string): Promise<any> {
+    // Get all completed interviews for this user to provide context
+    const completedInterviews = await db
+      .select()
+      .from(interviewSessions)
+      .where(and(
+        eq(interviewSessions.userId, userId),
+        eq(interviewSessions.completed, true)
+      ))
+      .orderBy(interviewSessions.createdAt);
+
+    // Build context object with previous interview insights
+    const context = {
+      previousInterviews: completedInterviews.map(session => ({
+        type: session.interviewType,
+        questions: session.questions,
+        responses: session.responses,
+        completedAt: session.completedAt
+      })),
+      insights: this.extractInterviewInsights(completedInterviews, currentInterviewType)
+    };
+
+    return context;
+  }
+
+  private extractInterviewInsights(completedInterviews: any[], currentType: string): string {
+    if (!completedInterviews.length) return '';
+
+    let insights = '';
+    
+    // Extract key insights from previous interviews
+    completedInterviews.forEach(session => {
+      if (session.interviewType === 'personal' && currentType !== 'personal') {
+        insights += `From their background interview, you learned about their personal values, motivations, and life philosophy. `;
+      }
+      if (session.interviewType === 'professional' && currentType === 'technical') {
+        insights += `From their professional interview, you understand their career journey, expertise areas, and professional strengths. `;
+      }
+    });
+
+    if (insights) {
+      insights += 'Build on this knowledge to ask more contextual, intelligent questions that show you remember and understand them.';
+    }
+
+    return insights;
   }
 }
 

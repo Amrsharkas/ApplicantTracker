@@ -41,7 +41,7 @@ export interface GeneratedProfile {
 // AI Agent 1: Interview Conductor - analyzes resume/profile and conducts personalized interviews
 export class AIInterviewAgent {
   async generateWelcomeMessage(userData: any): Promise<string> {
-    const prompt = `You are an AI interview assistant for Plato, an innovative AI-powered job matching platform. Generate a warm, professional welcome message for a candidate starting their interview.
+    const prompt = `You are an AI interview assistant for Plato, an innovative AI-powered job matching platform. Generate a warm, professional welcome message for a candidate starting their comprehensive interview process.
 
 CANDIDATE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : 'Candidate'}
@@ -50,12 +50,13 @@ ${userData?.yearsOfExperience ? `Experience: ${userData.yearsOfExperience} years
 
 Create a personalized welcome message that:
 1. Warmly welcomes them to Plato
-2. Briefly explains what the interview will accomplish
-3. Sets a positive, encouraging tone
-4. Mentions it will be about 5 questions
+2. Explains this is a comprehensive interview process with three connected phases
+3. Mentions you'll be the same AI interviewer throughout all phases
+4. Sets a positive, encouraging tone
 5. Personalizes it with their name if available
+6. Emphasizes continuity - that you'll remember their answers throughout
 
-Keep it conversational, professional, and encouraging. This should feel like a real person welcoming them. The message should be 2-3 sentences maximum.
+Keep it conversational, professional, and encouraging. The message should be 3-4 sentences maximum. Make them feel like they're talking to one intelligent, continuous interviewer who will get to know them deeply.
 
 Return ONLY the welcome message text, no JSON or additional formatting.`;
 
@@ -90,7 +91,7 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
   }
 
   async generatePersonalInterview(userData: any, resumeContent?: string): Promise<InterviewSet> {
-    const prompt = `You are an expert personal interviewer. Create exactly 5 deep, personal interview questions to understand everything about this candidate as a person - their background, motivations, values, personality, and life journey.
+    const prompt = `You are a thoughtful, continuous AI interviewer conducting the first phase of a comprehensive interview process. This is the BACKGROUND phase where you'll establish rapport and understand the candidate's foundational story. You will continue with this same candidate through two more phases (Professional and Technical), so maintain a consistent, warm, and intelligent tone throughout.
 
 CANDIDATE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
@@ -101,14 +102,16 @@ ${userData?.location ? `Location: ${userData.location}` : ''}
 ${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
 
-Create 5 personal questions that explore:
-1. Their background and upbringing
-2. Core values and what drives them
-3. Personal motivations and life philosophy
-4. How they handle challenges and setbacks
-5. What truly fulfills them in life
+Create 5 background questions that establish the foundation for your ongoing conversation. These questions should:
+1. Help you understand their core background and upbringing
+2. Reveal their values, motivations, and what drives them
+3. Understand their personal philosophy and approach to life
+4. Explore how they handle challenges and growth
+5. Discover what truly fulfills and energizes them
 
-Make questions deeply personal and insightful. Return ONLY JSON:
+Remember: You'll use these answers to inform smarter, more personalized questions in the Professional and Technical phases. Ask questions that give you rich context about who they are as a person.
+
+Return ONLY JSON:
 {
   "questions": [
     {"question": "...", "context": "..."},
@@ -145,8 +148,8 @@ Make questions deeply personal and insightful. Return ONLY JSON:
     }
   }
 
-  async generateProfessionalInterview(userData: any, resumeContent?: string): Promise<InterviewSet> {
-    const prompt = `You are an expert professional interviewer. Create exactly 7 comprehensive professional interview questions to deeply understand this candidate's career journey, work experience, achievements, and professional skills.
+  async generateProfessionalInterview(userData: any, resumeContent?: string, previousInterviewData?: any): Promise<InterviewSet> {
+    const prompt = `You are the same AI interviewer continuing your conversation with this candidate. You've already conducted the Background interview and learned about their personal values, motivations, and life philosophy. Now you're moving into the PROFESSIONAL phase to understand their career journey and expertise.
 
 CANDIDATE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
@@ -157,16 +160,20 @@ ${userData?.location ? `Location: ${userData.location}` : ''}
 ${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
 
-Create 7 professional questions that explore:
-1. Their career trajectory and key transitions
-2. Most significant professional achievements
-3. Leadership and teamwork experiences
-4. How they handle professional challenges
-5. Their professional strengths and expertise
-6. Career goals and aspirations
-7. What they're looking for in their next role
+${previousInterviewData ? `PREVIOUS INTERVIEW INSIGHTS: You've already learned about their background, values, and personal motivations. Use this context to ask more intelligent, connected questions about their professional journey.` : ''}
 
-Make questions specific to their field and experience level. Return ONLY JSON:
+Create 7 professional questions that:
+1. Build naturally on what you learned about them personally
+2. Explore their career trajectory and key professional transitions
+3. Understand their most significant achievements and contributions
+4. Assess their leadership style and collaborative approach
+5. Identify their core professional strengths and expertise
+6. Explore their career aspirations and professional goals
+7. Understand what they're seeking in their next professional opportunity
+
+IMPORTANT: Do NOT repeat information or themes from the background interview. Instead, reference and build upon their personal insights to ask deeper, more contextual professional questions. Show that you remember and understand them as a person.
+
+Return ONLY JSON:
 {
   "questions": [
     {"question": "...", "context": "..."},
@@ -205,11 +212,11 @@ Make questions specific to their field and experience level. Return ONLY JSON:
     }
   }
 
-  async generateTechnicalInterview(userData: any, resumeContent?: string): Promise<InterviewSet> {
+  async generateTechnicalInterview(userData: any, resumeContent?: string, previousInterviewData?: any): Promise<InterviewSet> {
     const userRole = userData?.currentRole || 'professional';
     const userField = this.determineUserField(userData, resumeContent);
     
-    const prompt = `You are an expert technical interviewer. Create exactly 11 technical assessment questions tailored specifically for a ${userRole} in the ${userField} field. Focus heavily on IQ assessment, logical reasoning, pattern recognition, and analytical thinking, with field-specific technical knowledge.
+    const prompt = `You are the same AI interviewer completing the final phase of your comprehensive evaluation. You've already conducted Background and Professional interviews, gaining deep insights into this candidate's personal values, motivations, and career journey. Now you're conducting the TECHNICAL phase to assess their cognitive abilities and technical competence.
 
 CANDIDATE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
@@ -220,20 +227,24 @@ ${userData?.location ? `Location: ${userData.location}` : ''}
 ${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
 
-For ${userField} professionals, create 11 questions that assess:
-1. Logical reasoning and pattern recognition
-2. Mathematical and quantitative thinking
-3. Abstract problem-solving abilities
-4. Spatial and analytical reasoning
-5. Core technical knowledge in their domain
-6. Critical thinking and decision-making
-7. Cognitive flexibility and adaptability
-8. Memory and information processing
-9. Verbal reasoning and comprehension
-10. Creative problem-solving approaches
-11. Technical leadership and strategic thinking
+${previousInterviewData ? `PREVIOUS INTERVIEW INSIGHTS: You've learned about their background, values, professional journey, and career expertise. Use this understanding to tailor technical questions that align with their experience level and demonstrated capabilities.` : ''}
 
-Emphasize IQ-style questions that test intelligence, reasoning ability, and cognitive skills while relating to their field. Include logic puzzles, pattern analysis, mathematical reasoning, and abstract thinking challenges. Return ONLY JSON:
+Create 11 technical questions for a ${userRole} in ${userField} that:
+1. Build on insights from previous interviews (show you remember their background and expertise)
+2. Assess logical reasoning and pattern recognition abilities
+3. Evaluate mathematical and analytical thinking skills
+4. Test abstract problem-solving abilities
+5. Explore spatial and analytical reasoning
+6. Assess core technical knowledge in their domain
+7. Evaluate critical thinking and decision-making
+8. Test cognitive flexibility and adaptability
+9. Assess memory and information processing
+10. Evaluate verbal reasoning and comprehension
+11. Test creative problem-solving approaches and technical leadership
+
+IMPORTANT: Ask questions that demonstrate you understand their background and professional experience from previous interviews. Reference their field expertise naturally. Include IQ-style questions that test intelligence, reasoning ability, and cognitive skills while relating to their specific experience level.
+
+Return ONLY JSON:
 {
   "questions": [
     {"question": "...", "context": "..."},
