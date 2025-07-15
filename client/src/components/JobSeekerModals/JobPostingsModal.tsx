@@ -79,6 +79,8 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [showApplicationAnalysis, setShowApplicationAnalysis] = useState(false);
   const [applicationAnalysis, setApplicationAnalysis] = useState<AIMatchResponse | null>(null);
+  const [showCVUpload, setShowCVUpload] = useState(false);
+  const [uploadedCV, setUploadedCV] = useState<File | null>(null);
   const [filters, setFilters] = useState({
     workplace: [] as string[],
     country: "",
@@ -483,7 +485,23 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   };
 
   const handleApply = (job: JobPosting) => {
-    applicationMutation.mutate(job);
+    setSelectedJob(job);
+    setShowCVUpload(true);
+  };
+
+  const handleCVUploadAndAnalyze = () => {
+    if (!uploadedCV || !selectedJob) return;
+    
+    setShowCVUpload(false);
+    applicationMutation.mutate(selectedJob);
+  };
+
+  const resetApplicationState = () => {
+    setSelectedJob(null);
+    setShowApplicationAnalysis(false);
+    setApplicationAnalysis(null);
+    setShowCVUpload(false);
+    setUploadedCV(null);
   };
 
   const handleConfirmApplication = () => {
@@ -494,8 +512,13 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
 
   const showRelatedNotice = showingRelatedJobs && activeFiltersCount > 0;
 
+  const handleClose = () => {
+    resetApplicationState();
+    onClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <DialogTitle className="flex items-center justify-between">
@@ -1265,6 +1288,119 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                         </Button>
                       </>
                     )}
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* CV Upload Modal */}
+        <AnimatePresence>
+          {showCVUpload && selectedJob && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+              onClick={() => setShowCVUpload(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-lg max-w-md w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-6">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full">
+                        <Briefcase className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold text-gray-900">Upload Your CV</h3>
+                        <p className="text-sm text-gray-600">Required to apply for this position</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowCVUpload(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Job Info */}
+                  <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Briefcase className="h-4 w-4 text-gray-600" />
+                      <h4 className="font-medium text-gray-900">{selectedJob.jobTitle}</h4>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Building className="h-3 w-3" />
+                      <span>{selectedJob.companyName}</span>
+                    </div>
+                  </div>
+
+                  {/* CV Upload Area */}
+                  <div className="mb-6">
+                    <label htmlFor="cv-upload" className="block text-sm font-medium text-gray-700 mb-2">
+                      Upload CV/Resume (PDF, DOC, DOCX)
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                      <input
+                        id="cv-upload"
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) => setUploadedCV(e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="cv-upload"
+                        className="cursor-pointer flex flex-col items-center gap-2"
+                      >
+                        {uploadedCV ? (
+                          <>
+                            <CheckCircle className="h-8 w-8 text-green-500" />
+                            <p className="text-sm text-green-600 font-medium">{uploadedCV.name}</p>
+                            <p className="text-xs text-gray-500">Click to change file</p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full">
+                              <ArrowRight className="h-6 w-6 text-gray-400" />
+                            </div>
+                            <p className="text-sm text-gray-600">Click to upload your CV</p>
+                            <p className="text-xs text-gray-500">PDF, DOC, or DOCX files only</p>
+                          </>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowCVUpload(false);
+                        resetApplicationState();
+                      }}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleCVUploadAndAnalyze}
+                      disabled={!uploadedCV}
+                      className="flex items-center gap-2 flex-1"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Continue to Analysis
+                    </Button>
                   </div>
                 </div>
               </motion.div>
