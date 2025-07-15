@@ -705,7 +705,11 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.05 }}
                       >
-                        <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group">
+                        <Card className={`hover:shadow-lg transition-all duration-200 cursor-pointer group ${
+                          matchScore >= 80 ? 'border-green-200 bg-green-50/30' :
+                          matchScore >= 60 ? 'border-yellow-200 bg-yellow-50/30' :
+                          'border-gray-200'
+                        }`}>
                           <CardContent className="p-6">
                             <div className="flex justify-between items-start">
                               <div className="flex-1">
@@ -713,12 +717,24 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                                   <h3 className="font-semibold text-blue-600 text-lg hover:text-blue-800 cursor-pointer">
                                     {job.jobTitle}
                                   </h3>
-                                  <div className="flex items-center gap-1 bg-green-100 px-2 py-1 rounded">
-                                    <Star className="h-3 w-3 text-green-600" />
-                                    <span className="text-xs font-medium text-green-800">
+                                  <div className={`flex items-center gap-1 px-2 py-1 rounded ${
+                                    matchScore >= 80 ? 'bg-green-100 text-green-800' :
+                                    matchScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    <Star className="h-3 w-3" />
+                                    <span className="text-xs font-medium">
                                       {matchScore}% Match
                                     </span>
                                   </div>
+                                  {matchScore >= 80 && (
+                                    <div className="flex items-center gap-1 bg-blue-100 px-2 py-1 rounded">
+                                      <Zap className="h-3 w-3 text-blue-600" />
+                                      <span className="text-xs font-medium text-blue-800">
+                                        Recommended
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-2 mb-2">
                                   <span className="text-gray-900 font-medium">{job.companyName}</span>
@@ -811,58 +827,99 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
           </div>
         </div>
 
-        {/* Job Details Modal */}
+        {/* Enhanced Job Details Panel */}
         <AnimatePresence>
           {selectedJob && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-              onClick={() => setSelectedJob(null)}
+              className="absolute inset-0 bg-black bg-opacity-30 flex z-40"
             >
+              <div className="flex-1" onClick={() => setSelectedJob(null)} />
+              
               <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="w-2/3 max-w-3xl bg-white shadow-2xl flex flex-col"
               >
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                        {selectedJob.jobTitle}
-                      </h2>
+                {/* Sticky Header */}
+                <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+                  <div className="flex justify-between items-center p-6">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h2 className="text-2xl font-bold text-gray-900">
+                          {selectedJob.jobTitle}
+                        </h2>
+                        <div className="flex items-center gap-1 bg-green-100 px-2 py-1 rounded">
+                          <Star className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">
+                            {calculateAIMatchScore(selectedJob)}% Match
+                          </span>
+                        </div>
+                      </div>
                       <div className="flex items-center gap-2 text-gray-600">
                         <Building className="h-4 w-4" />
                         <span className="font-medium">{selectedJob.companyName}</span>
                         <span>•</span>
                         <MapPin className="h-4 w-4" />
                         <span>{selectedJob.location || 'Remote'}</span>
+                        <span>•</span>
+                        <Clock className="h-4 w-4" />
+                        <span>{selectedJob.postedDate ? formatDate(selectedJob.postedDate) : 'Recently posted'}</span>
                       </div>
                     </div>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setSelectedJob(null)}
+                      className="ml-4"
                     >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
+                </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">Job Description</h3>
-                      <p className="text-gray-700 leading-relaxed">{selectedJob.jobDescription}</p>
+                {/* Scrollable Content Area */}
+                <div className="flex-1 overflow-y-auto">
+                  <div className="p-6 space-y-6">
+                    {/* Job Overview */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-gray-900 mb-2">Employment Type</h4>
+                        <p className="text-gray-700">{selectedJob.employmentType || 'Full-time'}</p>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-gray-900 mb-2">Experience Level</h4>
+                        <p className="text-gray-700">{selectedJob.experienceLevel || 'Not specified'}</p>
+                      </div>
+                      {selectedJob.salaryRange && (
+                        <div className="bg-gray-50 p-4 rounded-lg col-span-2">
+                          <h4 className="font-semibold text-gray-900 mb-2">Salary Range</h4>
+                          <p className="text-gray-700">{selectedJob.salaryRange}</p>
+                        </div>
+                      )}
                     </div>
 
+                    {/* Job Description */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Description</h3>
+                      <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
+                        {selectedJob.jobDescription.split('\n').map((paragraph, index) => (
+                          <p key={index} className="mb-3">{paragraph}</p>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Skills & Requirements */}
                     {selectedJob.skills && selectedJob.skills.length > 0 && (
                       <div>
-                        <h3 className="font-semibold text-gray-900 mb-2">Required Skills</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Required Skills</h3>
                         <div className="flex flex-wrap gap-2">
                           {selectedJob.skills.map((skill) => (
-                            <Badge key={skill} variant="outline">
+                            <Badge key={skill} variant="outline" className="text-sm">
                               {skill}
                             </Badge>
                           ))}
@@ -870,11 +927,68 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-4 pt-4 border-t">
+                    {/* Company Information */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">About {selectedJob.companyName}</h3>
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <p className="text-gray-700">
+                          Join {selectedJob.companyName} and be part of a dynamic team that values innovation, 
+                          growth, and excellence. We're looking for talented individuals who are passionate 
+                          about making a difference in their field.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Application Tips */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Application Tips</h3>
+                      <div className="bg-yellow-50 p-4 rounded-lg">
+                        <ul className="space-y-2 text-sm text-gray-700">
+                          <li className="flex items-start gap-2">
+                            <span className="text-yellow-600">•</span>
+                            <span>Review your profile completeness before applying</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-yellow-600">•</span>
+                            <span>Ensure your skills align with the job requirements</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-yellow-600">•</span>
+                            <span>Our AI will analyze your fit and provide personalized feedback</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    {/* Spacer for sticky button */}
+                    <div className="h-20"></div>
+                  </div>
+                </div>
+
+                {/* Always-Visible Apply Button */}
+                <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <Star className="h-4 w-4 text-green-600" />
+                        <span className="font-medium">{calculateAIMatchScore(selectedJob)}% Match</span>
+                      </div>
+                      <div className="h-4 w-px bg-gray-300"></div>
+                      <div className="text-sm text-gray-600">
+                        {selectedJob.location || 'Remote'}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => setSelectedJob(null)}
+                      >
+                        Close
+                      </Button>
                       <Button
                         onClick={() => handleApply(selectedJob)}
                         disabled={applicationMutation.isPending}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 px-6"
                       >
                         {applicationMutation.isPending ? (
                           <>
@@ -888,10 +1002,6 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                           </>
                         )}
                       </Button>
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
-                        <Star className="h-4 w-4 text-green-600" />
-                        <span>{calculateAIMatchScore(selectedJob)}% Match</span>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -900,7 +1010,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
           )}
         </AnimatePresence>
 
-        {/* Application Analysis Modal */}
+        {/* Enhanced Application Analysis Modal */}
         <AnimatePresence>
           {showApplicationAnalysis && applicationAnalysis && (
             <motion.div
@@ -914,82 +1024,143 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-white rounded-lg max-w-lg w-full"
+                className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    {applicationAnalysis.isStrongMatch ? (
-                      <CheckCircle className="h-6 w-6 text-green-600" />
-                    ) : (
-                      <AlertTriangle className="h-6 w-6 text-orange-600" />
-                    )}
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Application Analysis
-                    </h3>
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      {applicationAnalysis.isStrongMatch ? (
+                        <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full">
+                          <CheckCircle className="h-6 w-6 text-green-600" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-full">
+                          <AlertTriangle className="h-6 w-6 text-orange-600" />
+                        </div>
+                      )}
+                      <div>
+                        <h3 className="text-xl font-semibold text-gray-900">
+                          Smart Application Analysis
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          AI-powered match evaluation based on your profile and interviews
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowApplicationAnalysis(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm font-medium text-gray-900">
-                        Match Score: {applicationAnalysis.matchScore}%
-                      </span>
+                  {/* Job Info */}
+                  <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Briefcase className="h-4 w-4 text-gray-600" />
+                      <h4 className="font-medium text-gray-900">{selectedJob?.jobTitle}</h4>
                     </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Building className="h-3 w-3" />
+                      <span>{selectedJob?.companyName}</span>
+                      <span>•</span>
+                      <MapPin className="h-3 w-3" />
+                      <span>{selectedJob?.location || 'Remote'}</span>
+                    </div>
+                  </div>
 
-                    <div className={`p-3 rounded-lg ${
-                      applicationAnalysis.isStrongMatch 
-                        ? 'bg-green-50 border border-green-200' 
-                        : 'bg-orange-50 border border-orange-200'
+                  {/* Match Score */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-900">Match Score</span>
+                      <span className="text-sm font-semibold text-gray-900">{applicationAnalysis.matchScore}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div 
+                        className={`h-3 rounded-full transition-all duration-500 ${
+                          applicationAnalysis.matchScore >= 80 ? 'bg-green-500' :
+                          applicationAnalysis.matchScore >= 60 ? 'bg-yellow-500' :
+                          'bg-red-500'
+                        }`}
+                        style={{ width: `${applicationAnalysis.matchScore}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Feedback */}
+                  <div className={`p-4 rounded-lg mb-6 ${
+                    applicationAnalysis.isStrongMatch 
+                      ? 'bg-green-50 border border-green-200' 
+                      : 'bg-orange-50 border border-orange-200'
+                  }`}>
+                    <h4 className={`font-medium mb-2 ${
+                      applicationAnalysis.isStrongMatch ? 'text-green-800' : 'text-orange-800'
                     }`}>
-                      <p className={`text-sm ${
-                        applicationAnalysis.isStrongMatch 
-                          ? 'text-green-800' 
-                          : 'text-orange-800'
-                      }`}>
-                        {applicationAnalysis.feedback}
-                      </p>
-                    </div>
+                      {applicationAnalysis.isStrongMatch ? 'Strong Match!' : 'Potential Concerns'}
+                    </h4>
+                    <p className={`text-sm leading-relaxed ${
+                      applicationAnalysis.isStrongMatch 
+                        ? 'text-green-800' 
+                        : 'text-orange-800'
+                    }`}>
+                      {applicationAnalysis.feedback}
+                    </p>
+                  </div>
 
-                    {applicationAnalysis.reasons.length > 0 && (
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-2">Analysis:</h4>
-                        <ul className="space-y-1">
-                          {applicationAnalysis.reasons.map((reason, index) => (
-                            <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                              <span className="text-gray-400">•</span>
-                              <span>{reason}</span>
-                            </li>
-                          ))}
-                        </ul>
+                  {/* Detailed Analysis */}
+                  {applicationAnalysis.reasons.length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="font-medium text-gray-900 mb-3">Detailed Analysis:</h4>
+                      <div className="space-y-2">
+                        {applicationAnalysis.reasons.map((reason, index) => (
+                          <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className={`w-2 h-2 rounded-full mt-2 ${
+                              applicationAnalysis.isStrongMatch ? 'bg-green-500' : 'bg-orange-500'
+                            }`} />
+                            <p className="text-sm text-gray-700 leading-relaxed">{reason}</p>
+                          </div>
+                        ))}
                       </div>
-                    )}
-
-                    <div className="flex items-center gap-3 pt-4 border-t">
-                      <Button
-                        onClick={handleConfirmApplication}
-                        disabled={actualApplicationMutation.isPending}
-                        className="flex items-center gap-2"
-                      >
-                        {actualApplicationMutation.isPending ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Submitting...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="h-4 w-4" />
-                            Confirm Application
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowApplicationAnalysis(false)}
-                      >
-                        Cancel
-                      </Button>
                     </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-3 pt-4 border-t">
+                    <Button
+                      onClick={handleConfirmApplication}
+                      disabled={actualApplicationMutation.isPending}
+                      className="flex items-center gap-2 flex-1"
+                    >
+                      {actualApplicationMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Submitting Application...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4" />
+                          {applicationAnalysis.isStrongMatch ? 'Submit Application' : 'Apply Anyway'}
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowApplicationAnalysis(false)}
+                    >
+                      Review More
+                    </Button>
+                  </div>
+
+                  {/* Disclaimer */}
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-xs text-blue-800">
+                      <strong>Note:</strong> This analysis is based on your profile and interview responses. 
+                      Final hiring decisions are made by employers and may consider additional factors.
+                    </p>
                   </div>
                 </div>
               </motion.div>

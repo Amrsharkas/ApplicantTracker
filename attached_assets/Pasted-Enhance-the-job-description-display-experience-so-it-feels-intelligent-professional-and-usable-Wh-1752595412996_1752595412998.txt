@@ -1,0 +1,56 @@
+Enhance the job description display experience so it feels intelligent, professional, and usable. When a user clicks a job posting, the details should be presented in a smooth, user-friendly panel that doesn’t break the layout or hide important functions.
+
+✅ Key Instructions
+Scrollable Job Details Panel
+
+When a user clicks a job to view its full description, the content should appear in a dedicated panel or overlay.
+
+That panel must allow the user to scroll within it if the content is too long.
+
+Scrolling should be smooth and limited to the job description section — it should not affect the rest of the page layout.
+
+Maintain Full Functionality of the Main Page
+
+The filters on the left and the list of job cards should remain fully functional when the job details panel is open.
+
+Nothing outside the job description view should freeze or become unclickable unless this is being viewed on mobile in full screen.
+
+Keep Job Title Visible While Scrolling
+
+The job title (and optionally the company name or location) should stay visible at the top of the job details view as the user scrolls down.
+
+This makes the reading experience easier and more contextual, especially for longer descriptions.
+
+Always-Visible Apply Button
+
+The "Apply" button should always be visible at the bottom of the job description view, no matter how much the user scrolls.
+
+It should not require the user to reach the end of the content to apply.
+
+This improves usability and increases the chance of application.
+
+Smart Matching Feedback on Apply
+
+When the user clicks “Apply,” analyze their profile and all three completed interviews (background, professional, technical).
+
+If they’re a strong match, provide confirmation and encourage applying.
+
+If they are not a match, tell them clearly why they’re not a good fit, referencing missing skills, lack of experience, or mismatches with the job description.
+
+The response should feel insightful, personalized, and professional — not generic.
+
+Don’t Hide Filter Options on Slight Mismatches
+
+The filtering system should not automatically hide job options unless the mismatch is critical.
+
+Show as many jobs as possible that could be relevant, even if not perfect, and let users explore freely with guidance, not restrictions.
+
+🧠 Experience Design Tips (Optional)
+Let users close the job description panel smoothly and return to their filtered results.
+
+Add visual cues or subtle highlights when a job is a strong match.
+
+Use consistent spacing and clean design so the content is easy to read.
+
+Don’t let panels feel oversized, cramped, or unbalanced. Keep the flow clean.
+
