@@ -91,31 +91,55 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
   }
 
   async generatePersonalInterview(userData: any, resumeContent?: string): Promise<InterviewSet> {
-    const prompt = `You are beginning a comprehensive interview process as a continuous AI interviewer. This is the BACKGROUND phase - the foundation that will inform all subsequent conversations. You will maintain the EXACT same conversational tone and style throughout all three interview phases.
+    const prompt = `You are a continuous AI interviewer conducting the Background phase of a comprehensive interview process. 
 
-CANDIDATE DATA:
+CRITICAL: You must first analyze the candidate's profile in full detail before asking any questions. You already know about this candidate and must reference their profile naturally in your questions.
+
+CANDIDATE PROFILE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
-${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
-${userData?.yearsOfExperience ? `Experience: ${userData.yearsOfExperience} years` : ''}
-${userData?.education ? `Education: ${userData.education}${userData.university ? ` from ${userData.university}` : ''}` : ''}
+${userData?.email ? `Email: ${userData.email}` : ''}
+${userData?.phone ? `Phone: ${userData.phone}` : ''}
 ${userData?.location ? `Location: ${userData.location}` : ''}
+${userData?.age ? `Age: ${userData.age}` : ''}
+${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
+${userData?.yearsOfExperience ? `Years of Experience: ${userData.yearsOfExperience}` : ''}
+${userData?.education ? `Education: ${userData.education}${userData.university ? ` from ${userData.university}` : ''}` : ''}
+${userData?.skills ? `Skills: ${userData.skills.join(', ')}` : ''}
 ${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
+${userData?.linkedinUrl ? `LinkedIn: ${userData.linkedinUrl}` : ''}
+${userData?.githubUrl ? `GitHub: ${userData.githubUrl}` : ''}
+${userData?.portfolioUrl ? `Portfolio: ${userData.portfolioUrl}` : ''}
+${userData?.careerGoals ? `Career Goals: ${userData.careerGoals}` : ''}
+${userData?.targetRole ? `Target Role: ${userData.targetRole}` : ''}
+${userData?.targetCompany ? `Target Company: ${userData.targetCompany}` : ''}
+${userData?.targetSalary ? `Target Salary: ${userData.targetSalary}` : ''}
+${userData?.workStyle ? `Work Style: ${userData.workStyle}` : ''}
+${userData?.previousRole ? `Previous Role: ${userData.previousRole}` : ''}
+${userData?.previousCompany ? `Previous Company: ${userData.previousCompany}` : ''}
+${userData?.achievements ? `Achievements: ${userData.achievements}` : ''}
+${userData?.certifications ? `Certifications: ${userData.certifications}` : ''}
+${userData?.languages ? `Languages: ${userData.languages.join(', ')}` : ''}
+${userData?.availability ? `Availability: ${userData.availability}` : ''}
+${userData?.remotePreference ? `Remote Preference: ${userData.remotePreference}` : ''}
+${userData?.salaryExpectation ? `Salary Expectation: ${userData.salaryExpectation}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
 
 CRITICAL INSTRUCTIONS:
-1. Establish your conversational tone and style now - you will maintain this EXACT same approach throughout all future interviews
-2. Ask questions that encourage detailed, revealing responses that will provide rich context for future questions
-3. Remember: their answers will be used to create intelligent, contextual questions in Professional and Technical phases
-4. Focus on getting foundational insights that will inform your understanding of their career decisions and technical capabilities
+1. You must analyze this profile fully before generating questions
+2. Your questions must reference what you already know about them - use phrases like "I see from your profile that..." or "Based on your ${userData?.currentRole || 'background'}..."
+3. DO NOT ask for information already provided in the profile
+4. Ask questions that build on their existing profile data
+5. Establish your conversational tone to match their profile style
+6. Remember: this is the foundation for Professional and Technical interviews
 
-Create 5 background questions that establish deep foundational understanding:
-1. Their background, upbringing, and formative experiences that shaped their worldview
-2. Core values, beliefs, and personal philosophy that drives their decisions
-3. Personal interests, hobbies, and passions that reveal their personality and approach to life
-4. How they approach challenges, learning, and personal growth
-5. Personal goals and life aspirations that will connect to their professional journey
+Create 5 background questions that demonstrate you've analyzed their profile:
+1. Reference their educational background or career path in context
+2. Build on their stated career goals or work style
+3. Connect their current role to their personal values
+4. Explore motivations behind their career choices
+5. Understand what drives them beyond what's already stated
 
-IMPORTANT: These questions will inform ALL subsequent interview questions. Ask questions that encourage rich, detailed responses that reveal personality, values, and approach to life.
+IMPORTANT: Every question must show you've reviewed their profile. Never ask blindly.
 
 Return ONLY JSON:
 {
@@ -160,15 +184,27 @@ Return ONLY JSON:
     const keyThemes = previousInterviewData?.keyThemes || [];
     const previousQuestions = previousInterviewData?.previousQuestions || [];
     
-    const prompt = `You are continuing as the same AI interviewer. You have full memory of your previous conversation with this candidate.
+    const prompt = `You are continuing as the same AI interviewer. You have full knowledge of this candidate's profile AND their previous interview answers.
 
-CANDIDATE DATA:
+COMPLETE CANDIDATE PROFILE:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
-${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
-${userData?.yearsOfExperience ? `Experience: ${userData.yearsOfExperience} years` : ''}
-${userData?.education ? `Education: ${userData.education}${userData.university ? ` from ${userData.university}` : ''}` : ''}
+${userData?.email ? `Email: ${userData.email}` : ''}
+${userData?.phone ? `Phone: ${userData.phone}` : ''}
 ${userData?.location ? `Location: ${userData.location}` : ''}
+${userData?.age ? `Age: ${userData.age}` : ''}
+${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
+${userData?.yearsOfExperience ? `Years of Experience: ${userData.yearsOfExperience}` : ''}
+${userData?.education ? `Education: ${userData.education}${userData.university ? ` from ${userData.university}` : ''}` : ''}
+${userData?.skills ? `Skills: ${userData.skills.join(', ')}` : ''}
 ${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
+${userData?.careerGoals ? `Career Goals: ${userData.careerGoals}` : ''}
+${userData?.targetRole ? `Target Role: ${userData.targetRole}` : ''}
+${userData?.targetCompany ? `Target Company: ${userData.targetCompany}` : ''}
+${userData?.workStyle ? `Work Style: ${userData.workStyle}` : ''}
+${userData?.previousRole ? `Previous Role: ${userData.previousRole}` : ''}
+${userData?.previousCompany ? `Previous Company: ${userData.previousCompany}` : ''}
+${userData?.achievements ? `Achievements: ${userData.achievements}` : ''}
+${userData?.certifications ? `Certifications: ${userData.certifications}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
 
 ${contextInsights}
@@ -181,21 +217,22 @@ QUESTIONS ALREADY ASKED (DO NOT REPEAT):
 ${previousQuestions.map(q => `- ${q}`).join('\n')}
 
 CRITICAL INSTRUCTIONS:
-1. You are the SAME interviewer continuing the conversation - no reintroductions
-2. Reference specific details from their previous answers naturally
-3. DO NOT repeat any previously asked questions or themes
-4. Maintain the exact same tone and conversation style established earlier
-5. Build intelligently on what you already know about them
-6. Show full memory of previous discussions
+1. You are the SAME interviewer who knows their full profile AND previous answers
+2. Reference specific details from BOTH their profile AND previous responses
+3. Use phrases like "You mentioned earlier..." or "Building on what you shared about..." 
+4. DO NOT repeat any previously asked questions or themes
+5. DO NOT ask for information already in their profile
+6. Maintain the exact same tone and conversation style
+7. Show you remember everything - profile + previous answers
 
-Create 7 professional questions that demonstrate continuity and memory:
-1. Reference their personal background in context of professional decisions
-2. Build on themes they mentioned in background interview
-3. Ask about career transitions using their personal motivations as context
-4. Explore achievements that align with their stated values
-5. Assess leadership style based on their personality insights
-6. Connect their career goals to their personal aspirations
-7. Understand professional preferences through their personal lens
+Create 7 professional questions that demonstrate full knowledge:
+1. Reference their career progression from profile in context of their personal values
+2. Build on their stated career goals using insights from background interview
+3. Connect their current role to what they shared about motivations
+4. Explore leadership based on their profile achievements AND personal philosophy
+5. Ask about career transitions using their educational background as context
+6. Connect their target role to their personal aspirations discussed earlier
+7. Understand their professional preferences through their stated work style
 
 Return ONLY JSON:
 {
@@ -244,15 +281,25 @@ Return ONLY JSON:
     const keyThemes = previousInterviewData?.keyThemes || [];
     const previousQuestions = previousInterviewData?.previousQuestions || [];
     
-    const prompt = `You are completing the final interview phase as the same AI interviewer. You have comprehensive knowledge of this candidate from your previous conversations.
+    const prompt = `You are completing the final interview phase as the same AI interviewer. You have comprehensive knowledge of this candidate's full profile AND all previous interview answers.
 
-CANDIDATE DATA:
+COMPLETE CANDIDATE PROFILE:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
-${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
-${userData?.yearsOfExperience ? `Experience: ${userData.yearsOfExperience} years` : ''}
-${userData?.education ? `Education: ${userData.education}${userData.university ? ` from ${userData.university}` : ''}` : ''}
+${userData?.email ? `Email: ${userData.email}` : ''}
+${userData?.phone ? `Phone: ${userData.phone}` : ''}
 ${userData?.location ? `Location: ${userData.location}` : ''}
+${userData?.age ? `Age: ${userData.age}` : ''}
+${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
+${userData?.yearsOfExperience ? `Years of Experience: ${userData.yearsOfExperience}` : ''}
+${userData?.education ? `Education: ${userData.education}${userData.university ? ` from ${userData.university}` : ''}` : ''}
+${userData?.skills ? `Skills: ${userData.skills.join(', ')}` : ''}
 ${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
+${userData?.careerGoals ? `Career Goals: ${userData.careerGoals}` : ''}
+${userData?.targetRole ? `Target Role: ${userData.targetRole}` : ''}
+${userData?.workStyle ? `Work Style: ${userData.workStyle}` : ''}
+${userData?.previousRole ? `Previous Role: ${userData.previousRole}` : ''}
+${userData?.achievements ? `Achievements: ${userData.achievements}` : ''}
+${userData?.certifications ? `Certifications: ${userData.certifications}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
 
 ${contextInsights}
@@ -265,25 +312,26 @@ QUESTIONS ALREADY ASKED (DO NOT REPEAT):
 ${previousQuestions.map(q => `- ${q}`).join('\n')}
 
 CRITICAL INSTRUCTIONS:
-1. You are the SAME interviewer who has conducted the full previous conversations
-2. Reference specific details from their background and professional answers
-3. DO NOT repeat any previously asked questions or themes
-4. Maintain the exact same tone and conversation style from the beginning
-5. Show complete memory of all previous discussions
-6. Build technical questions that connect to their personal and professional insights
+1. You are the SAME interviewer who knows their full profile AND all previous answers
+2. Reference specific details from their profile, background answers, AND professional answers
+3. Use phrases like "Based on your ${userRole} experience..." or "You mentioned in our earlier conversation..."
+4. DO NOT repeat any previously asked questions or themes
+5. DO NOT ask for information already in their profile
+6. Maintain the exact same tone and conversation style from the beginning
+7. Show complete memory of profile + all previous discussions
 
-Create 11 technical questions for a ${userRole} in ${userField} that demonstrate full continuity:
-1. Reference their career journey when assessing technical decision-making
-2. Connect their problem-solving approach to their stated values
-3. Use their professional achievements as context for technical scenarios
-4. Assess cognitive abilities through their domain expertise
-5. Test reasoning skills that align with their experience level
-6. Evaluate analytical thinking based on their career progression
-7. Explore technical leadership using their management insights
-8. Assess adaptability through their career transition stories
-9. Test memory and processing in their professional context
-10. Evaluate communication of technical concepts to their stated audience
-11. Challenge creative problem-solving using their innovation examples
+Create 11 technical questions for a ${userRole} in ${userField} that demonstrate total continuity:
+1. Reference their ${userData?.education || 'educational background'} when assessing technical foundation
+2. Connect their ${userData?.skills?.join(' and ') || 'technical skills'} to problem-solving scenarios
+3. Use their ${userData?.achievements || 'professional achievements'} as context for technical leadership
+4. Build on their stated ${userData?.careerGoals || 'career goals'} with technical scenarios
+5. Test cognitive abilities through their ${userData?.yearsOfExperience || 'stated experience'} level
+6. Evaluate analytical thinking using their ${userData?.workStyle || 'work approach'} insights
+7. Assess technical communication based on their background responses
+8. Test adaptability through their career transition insights from earlier interviews
+9. Evaluate memory and processing in their ${userData?.currentRole || 'professional'} context
+10. Challenge creative problem-solving using their innovation examples from previous answers
+11. Assess technical leadership using their management insights from all previous discussions
 
 Return ONLY JSON:
 {
