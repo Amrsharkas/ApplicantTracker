@@ -52,15 +52,8 @@ interface JobPosting {
 
 interface AIMatchResponse {
   matchScore: number;
-  isStrongMatch: boolean;
-  feedback: string;
-  reasons: string[];
-  suggestedActions?: string[];
-  alternativeJobs?: {
-    suggestedRole: string;
-    reason: string;
-    matchScore: number;
-  }[];
+  isGoodMatch: boolean;
+  missingRequirements?: string[];
 }
 
 interface JobPostingsModalProps {
@@ -1133,7 +1126,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
           )}
         </AnimatePresence>
 
-        {/* Enhanced Application Analysis Modal */}
+        {/* Application Analysis Modal */}
         <AnimatePresence>
           {showApplicationAnalysis && applicationAnalysis && (
             <motion.div
@@ -1147,14 +1140,14 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                className="bg-white rounded-lg max-w-lg w-full"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="p-6">
                   {/* Header */}
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
-                      {applicationAnalysis.isStrongMatch ? (
+                      {applicationAnalysis.isGoodMatch ? (
                         <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full">
                           <CheckCircle className="h-6 w-6 text-green-600" />
                         </div>
@@ -1165,10 +1158,10 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                       )}
                       <div>
                         <h3 className="text-xl font-semibold text-gray-900">
-                          Smart Application Analysis
+                          Application Analysis
                         </h3>
                         <p className="text-sm text-gray-600">
-                          AI-powered match evaluation based on your profile and interviews
+                          Based on your profile and interview responses
                         </p>
                       </div>
                     </div>
@@ -1190,107 +1183,42 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Building className="h-3 w-3" />
                       <span>{selectedJob?.companyName}</span>
-                      <span>•</span>
-                      <MapPin className="h-3 w-3" />
-                      <span>{selectedJob?.location || 'Remote'}</span>
                     </div>
                   </div>
 
-                  {/* Match Score */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-900">Match Score</span>
-                      <span className="text-sm font-semibold text-gray-900">{applicationAnalysis.matchScore}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div 
-                        className={`h-3 rounded-full transition-all duration-500 ${
-                          applicationAnalysis.matchScore >= 80 ? 'bg-green-500' :
-                          applicationAnalysis.matchScore >= 60 ? 'bg-yellow-500' :
-                          'bg-red-500'
-                        }`}
-                        style={{ width: `${applicationAnalysis.matchScore}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Feedback */}
-                  <div className={`p-4 rounded-lg mb-6 ${
-                    applicationAnalysis.isStrongMatch 
-                      ? 'bg-green-50 border border-green-200' 
-                      : 'bg-orange-50 border border-orange-200'
-                  }`}>
-                    <h4 className={`font-medium mb-2 ${
-                      applicationAnalysis.matchScore >= 70 ? 'text-green-800' : 'text-red-800'
-                    }`}>
-                      {applicationAnalysis.matchScore >= 70 
-                        ? '✅ You match this job well' 
-                        : '❌ You don\'t match this job well'}
-                    </h4>
-                    <p className={`text-sm leading-relaxed ${
-                      applicationAnalysis.isStrongMatch 
-                        ? 'text-green-800' 
-                        : 'text-orange-800'
-                    }`}>
-                      {applicationAnalysis.feedback}
-                    </p>
-                  </div>
-
-                  {/* Detailed Analysis */}
-                  {applicationAnalysis.reasons.length > 0 && (
-                    <div className="mb-6">
-                      <h4 className="font-medium text-gray-900 mb-3">Detailed Analysis:</h4>
-                      <div className="space-y-2">
-                        {applicationAnalysis.reasons.map((reason, index) => (
-                          <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                            <div className={`w-2 h-2 rounded-full mt-2 ${
-                              applicationAnalysis.isStrongMatch ? 'bg-green-500' : 'bg-orange-500'
-                            }`} />
-                            <p className="text-sm text-gray-700 leading-relaxed">{reason}</p>
-                          </div>
-                        ))}
+                  {/* Match Result */}
+                  {applicationAnalysis.isGoodMatch ? (
+                    <div className="p-4 rounded-lg mb-6 bg-green-50 border border-green-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <h4 className="font-medium text-green-800">✅ You match this role</h4>
                       </div>
+                      <p className="text-sm text-green-700">
+                        Your profile and interview responses align with the job's requirements.
+                      </p>
                     </div>
-                  )}
-
-                  {/* Suggested Actions */}
-                  {applicationAnalysis.suggestedActions && applicationAnalysis.suggestedActions.length > 0 && (
-                    <div className="mb-6">
-                      <h4 className="font-medium text-gray-900 mb-3">Suggested Actions:</h4>
-                      <div className="space-y-2">
-                        {applicationAnalysis.suggestedActions.map((action, index) => (
-                          <div key={index} className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <Zap className="h-4 w-4 text-blue-600 mt-1" />
-                            <p className="text-sm text-blue-800 leading-relaxed">{action}</p>
-                          </div>
-                        ))}
+                  ) : (
+                    <div className="p-4 rounded-lg mb-6 bg-orange-50 border border-orange-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertTriangle className="h-5 w-5 text-orange-600" />
+                        <h4 className="font-medium text-orange-800">⚠️ You're missing the following for this role:</h4>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Alternative Job Recommendations */}
-                  {applicationAnalysis.alternativeJobs && applicationAnalysis.alternativeJobs.length > 0 && (
-                    <div className="mb-6">
-                      <h4 className="font-medium text-gray-900 mb-3">Better Job Matches For You:</h4>
-                      <div className="space-y-3">
-                        {applicationAnalysis.alternativeJobs.map((altJob, index) => (
-                          <div key={index} className="p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
-                            <div className="flex items-center justify-between mb-2">
-                              <h5 className="font-medium text-green-900">{altJob.suggestedRole}</h5>
-                              <Badge variant="secondary" className="bg-green-200 text-green-800">
-                                {altJob.matchScore}% Match
-                              </Badge>
+                      {applicationAnalysis.missingRequirements && applicationAnalysis.missingRequirements.length > 0 && (
+                        <div className="space-y-1">
+                          {applicationAnalysis.missingRequirements.map((missing, index) => (
+                            <div key={index} className="flex items-start gap-2">
+                              <div className="w-1.5 h-1.5 bg-orange-600 rounded-full mt-2" />
+                              <p className="text-sm text-orange-800">{missing}</p>
                             </div>
-                            <p className="text-sm text-green-800 leading-relaxed">{altJob.reason}</p>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-3 pt-4 border-t">
-                    {applicationAnalysis.isStrongMatch ? (
+                    {applicationAnalysis.isGoodMatch ? (
                       <Button
                         onClick={handleConfirmApplication}
                         disabled={actualApplicationMutation.isPending}
@@ -1337,14 +1265,6 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                         </Button>
                       </>
                     )}
-                  </div>
-
-                  {/* Disclaimer */}
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                    <p className="text-xs text-blue-800">
-                      <strong>Note:</strong> This analysis is based on your profile and interview responses. 
-                      Final hiring decisions are made by employers and may consider additional factors.
-                    </p>
                   </div>
                 </div>
               </motion.div>

@@ -976,36 +976,28 @@ JOB DETAILS:
 - Employment Type: ${employmentType}
 
 ANALYSIS REQUIREMENTS:
-1. Extract key requirements from the job description (skills, experience level, responsibilities, location, etc.)
-2. Cross-reference with user's profile data and ALL three interview responses
-3. Determine if user meets core requirements based on their entire background
-4. If NOT a good match (score < 70), explain specific gaps and suggest alternatives
+1. Extract ALL specific requirements from the job description (technical skills, tools, experience years, education, location, certifications, etc.)
+2. Compare each requirement against user's complete profile and all three interview responses
+3. Identify what the user is missing - be specific (e.g., "Python experience", "3+ years in sales", "willingness to relocate")
+4. If user has 70%+ of requirements, it's a good match
+5. If user has less than 70% of requirements, list only what's missing
 
 EVALUATION CRITERIA:
-- Technical skills alignment (from interview responses)
-- Experience level match (junior vs senior roles)
-- Location compatibility
-- Soft skills and work style fit
-- Career goals alignment
-- Educational background if relevant
+- Technical skills and tools mentioned in job vs user's skills
+- Experience level requirements vs user's actual experience
+- Location requirements vs user's location/preferences
+- Education requirements vs user's background
+- Certifications mentioned vs user's certifications
+- Soft skills required vs user's demonstrated abilities
 
 Response format (JSON):
 {
   "matchScore": number (0-100),
-  "isStrongMatch": boolean,
-  "feedback": "Direct, professional feedback about fit",
-  "reasons": ["Specific reason 1", "Specific reason 2", "Specific reason 3"],
-  "suggestedActions": ["Action 1", "Action 2"] or null,
-  "alternativeJobs": [
-    {
-      "suggestedRole": "Better fitting role title",
-      "reason": "Why this role fits better",
-      "matchScore": number
-    }
-  ] or null
+  "isGoodMatch": boolean,
+  "missingRequirements": ["Missing item 1", "Missing item 2", "Missing item 3"] or null
 }
 
-Be honest and constructive. If match score is below 70, provide specific gaps and alternative role suggestions.`;
+IMPORTANT: Only include items in missingRequirements that the user clearly lacks. Be specific and factual.`;
 
       console.log('🤖 Sending comprehensive job analysis request to OpenAI...');
       const response = await aiInterviewAgent.openai.chat.completions.create({
@@ -1018,18 +1010,17 @@ Be honest and constructive. If match score is below 70, provide specific gaps an
         temperature: 0.3,
       });
 
-      console.log('✅ OpenAI comprehensive analysis response received');
+      console.log('✅ OpenAI analysis response received');
       const analysis = JSON.parse(response.choices[0].message.content || '{}');
       
       // Ensure proper format
       const formattedAnalysis = {
         matchScore: Math.min(Math.max(analysis.matchScore || 0, 0), 100),
-        isStrongMatch: analysis.isStrongMatch || false,
-        feedback: analysis.feedback || "Analysis unavailable",
-        reasons: analysis.reasons || ["Analysis could not be completed"]
+        isGoodMatch: analysis.isGoodMatch || false,
+        missingRequirements: analysis.missingRequirements || null
       };
 
-      console.log('📊 Analysis complete:', { matchScore: formattedAnalysis.matchScore, isStrongMatch: formattedAnalysis.isStrongMatch });
+      console.log('📊 Analysis complete:', { matchScore: formattedAnalysis.matchScore, isGoodMatch: formattedAnalysis.isGoodMatch, missingRequirements: formattedAnalysis.missingRequirements });
       res.json(formattedAnalysis);
     } catch (error) {
       console.error("❌ Error analyzing job application:", error);
