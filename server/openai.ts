@@ -576,23 +576,25 @@ export class AIProfileAnalysisAgent {
       `Q: ${qa.question}\nA: ${qa.answer}`
     ).join('\n\n');
 
-    const prompt = `You are a brutally honest, data-driven career analyst. Your job is to create a comprehensive professional profile by cross-referencing ALL available data sources. This profile will be shown to employers and must represent the most accurate possible reflection of the candidate's capabilities, personality, and fit.
+    const prompt = `You are a fact-based professional analyst creating an employer-facing profile. This profile will be visible to employers and must serve as a truthful, professional, and complete portrait of the candidate's real capabilities, verified skills, work style, and experience.
 
-CRITICAL ANALYSIS REQUIREMENTS:
-1. Cross-reference all data sources for consistency and truth
-2. Include direct quotes from interviews when relevant
-3. Highlight discrepancies between claimed abilities and demonstrated knowledge
-4. Only acknowledge strengths that are verified through interview responses
-5. Be neutral, factual, and professional - no emotional language or flattery
+CRITICAL REQUIREMENTS:
+- Base everything on facts and evidence from interviews
+- Be blunt, neutral, and professional - no praise or flattery
+- Flag discrepancies between claimed abilities and demonstrated knowledge
+- Only acknowledge strengths that are clearly proven
+- Use phrases like "Demonstrated ability to...", "Unable to provide clear examples of...", "Profile suggests... but interview answers lacked..."
 
 CANDIDATE PROFILE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
 ${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
-${userData?.yearsOfExperience ? `Experience: ${userData.yearsOfExperience} years` : ''}
-${userData?.education ? `Education: ${userData.education}${userData.university ? ` from ${userData.university}` : ''}` : ''}
-${userData?.skills ? `Self-Reported Skills: ${Array.isArray(userData.skills) ? userData.skills.join(', ') : userData.skills}` : ''}
+${userData?.totalYearsOfExperience ? `Experience: ${userData.totalYearsOfExperience} years` : ''}
+${userData?.currentEducationLevel ? `Education: ${userData.currentEducationLevel}` : ''}
+${userData?.skillsList ? `Self-Reported Skills: ${Array.isArray(userData.skillsList) ? userData.skillsList.join(', ') : userData.skillsList}` : ''}
 ${userData?.location ? `Location: ${userData.location}` : ''}
 ${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
+${userData?.workplaceSettings ? `Work Preference: ${userData.workplaceSettings}` : ''}
+${userData?.willingToRelocate ? `Willing to Relocate: ${userData.willingToRelocate}` : ''}
 
 ${resumeContent ? `RESUME CONTENT:
 ${resumeContent}
@@ -601,41 +603,47 @@ ${resumeContent}
 ${conversationHistory}
 
 ANALYSIS INSTRUCTIONS:
-- Compare self-reported skills with interview demonstrations
-- Look for contradictions between resume claims and interview responses
-- Identify vague or unconvincing answers that suggest knowledge gaps
-- Note specific examples and concrete details that support claimed abilities
-- Flag any areas where the candidate struggled to provide examples or details
+1. Compare every claimed skill against interview performance
+2. Flag skills that were claimed but not demonstrated
+3. Look for vague, uncertain, or contradictory answers
+4. Note specific examples that support or contradict profile claims
+5. Be brutally honest about gaps and weaknesses
 
-Generate a comprehensive employer-ready profile in JSON format:
+Generate a fact-based employer profile in JSON format:
 {
-  "snapshotOverview": "Brief summary of career level, fields of expertise, and communication style",
-  "verifiedSkills": ["skill1", "skill2", ...] (only skills backed by interview evidence),
-  "interviewHighlights": {
-    "technicalKnowledge": "Direct quotes or summaries showing their technical understanding",
-    "problemSolving": "Examples of how they approach challenges",
-    "teamwork": "Evidence of collaborative abilities",
-    "workPreferences": "Stated preferences about work environment and style"
+  "summaryOverview": "3-5 line factual summary of level, role type, industry focus, and communication style",
+  "verifiedSkills": [
+    {
+      "skill": "skill name",
+      "status": "verified" | "claimed-not-demonstrated" | "basic-understanding",
+      "evidence": "specific evidence or lack thereof from interviews"
+    }
+  ],
+  "interviewInsights": {
+    "backgroundExperience": "Honest summary of what they actually said about their background",
+    "workplaceBehavior": "Actual responses about work style and preferences",
+    "professionalCommunication": "Assessment of how they expressed themselves",
+    "technicalKnowledge": "Factual assessment of technical understanding demonstrated"
   },
-  "flagsAndConcerns": ["concern1", "concern2", ...] (any mismatches, shallow answers, or gaps),
+  "strengths": ["only strengths clearly demonstrated with real examples"],
+  "weaknessesOrGaps": ["specific mismatches between claims and interview performance"],
   "workPreferences": {
-    "environment": "Remote/on-site preference",
-    "teamDynamics": "Solo vs team preference",
-    "relocation": "Willingness to relocate",
-    "workStyle": "Preferred approach to tasks and collaboration"
+    "workMode": "Remote/On-site/Hybrid based on actual statements",
+    "teamStyle": "Team vs individual preference from interviews",
+    "relocation": "Actual willingness to relocate",
+    "careerGoals": "Stated career goals from interviews"
   },
   "experience": [
     {
       "role": "Position Title",
       "company": "Company Name", 
       "duration": "Time period",
-      "description": "Key responsibilities and achievements verified through interview"
+      "description": "Responsibilities verified through interview responses"
     }
-  ],
-  "summary": "Complete professional assessment based on all data sources"
+  ]
 }
 
-Be blunt and professional. Focus on truth over encouragement.`;
+Be blunt and factual. No generic praise. Focus on what was actually demonstrated versus what was claimed.`;
 
     try {
       const response = await openai.chat.completions.create({
@@ -659,34 +667,39 @@ Be blunt and professional. Focus on truth over encouragement.`;
       
       // Store the full comprehensive profile for employers
       const comprehensiveProfile = {
-        snapshotOverview: profile.snapshotOverview || "Professional candidate with demonstrated experience.",
+        summaryOverview: profile.summaryOverview || "Professional candidate with demonstrated experience.",
         verifiedSkills: profile.verifiedSkills || [],
-        interviewHighlights: profile.interviewHighlights || {
-          technicalKnowledge: "Technical background not fully assessed",
-          problemSolving: "Problem-solving approach not detailed",
-          teamwork: "Team collaboration experience not specified",
-          workPreferences: "Work preferences not clearly defined"
+        interviewInsights: profile.interviewInsights || {
+          backgroundExperience: "Background experience not fully assessed",
+          workplaceBehavior: "Workplace behavior not detailed",
+          professionalCommunication: "Communication style not specified",
+          technicalKnowledge: "Technical knowledge not clearly demonstrated"
         },
-        flagsAndConcerns: profile.flagsAndConcerns || [],
+        strengths: profile.strengths || [],
+        weaknessesOrGaps: profile.weaknessesOrGaps || [],
         workPreferences: profile.workPreferences || {
-          environment: "Not specified",
-          teamDynamics: "Not specified",
+          workMode: "Not specified",
+          teamStyle: "Not specified",
           relocation: "Not specified",
-          workStyle: "Not specified"
+          careerGoals: "Not specified"
         },
-        experience: profile.experience || [],
-        summary: profile.summary || profile.snapshotOverview || "Professional candidate with demonstrated experience."
+        experience: profile.experience || []
       };
+
+      // Extract simple skills list for backward compatibility
+      const simpleSkills = comprehensiveProfile.verifiedSkills.map((skill: any) => 
+        typeof skill === 'string' ? skill : skill.skill
+      );
 
       // Return legacy format for backward compatibility
       return {
-        summary: comprehensiveProfile.summary,
-        skills: comprehensiveProfile.verifiedSkills,
-        personality: comprehensiveProfile.interviewHighlights.teamwork,
+        summary: comprehensiveProfile.summaryOverview,
+        skills: simpleSkills,
+        personality: comprehensiveProfile.interviewInsights.professionalCommunication,
         experience: comprehensiveProfile.experience,
-        strengths: comprehensiveProfile.verifiedSkills,
-        careerGoals: comprehensiveProfile.workPreferences.workStyle,
-        workStyle: comprehensiveProfile.workPreferences.environment,
+        strengths: comprehensiveProfile.strengths,
+        careerGoals: comprehensiveProfile.workPreferences.careerGoals,
+        workStyle: comprehensiveProfile.workPreferences.workMode,
         // Add the comprehensive profile for employers
         comprehensiveProfile
       };

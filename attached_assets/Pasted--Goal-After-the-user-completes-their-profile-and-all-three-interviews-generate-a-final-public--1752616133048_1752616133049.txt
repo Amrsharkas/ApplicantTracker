@@ -1,0 +1,195 @@
+🎯 Goal:
+After the user completes their profile and all three interviews, generate a final, public-facing profile that reflects exactly who the candidate is — based on facts, evidence, and interview answers, not on assumptions or unverified claims.
+
+
+This profile will be visible to employers and must serve as a truthful, professional, and complete portrait of the user’s real capabilities, verified skills, work style, and experience.
+
+
+🧠 Instructions for Profile Generation Logic:
+✅ STEP 1: Merge All Data Sources
+The system must analyze and extract content from the following:
+
+
+The original profile inputs (education, skills, experience, preferences)
+
+
+The Background Interview
+
+
+The Professional Interview
+
+
+The Technical Interview
+
+
+All sections of the final profile must reflect information that was confirmed across these sources. Do not rely on the profile inputs alone.
+
+
+📐 Profile Structure — What Must Be Included
+1. Summary Overview (3–5 lines)
+A factual summary of the user’s level, role type, industry focus, and communication or behavioral style.
+
+
+Example:
+
+
+“Entry-level software engineer with exposure to front-end frameworks and interest in startup environments. Calm communicator, prefers working with small agile teams.”
+
+
+2. Verified Skills
+A list of skills the system can confidently confirm based on interview answers + profile.
+
+
+If a skill was listed in the profile but the candidate gave a weak, vague, or no example during interviews, flag it.
+
+
+Example:
+
+
+JavaScript – Verified
+
+
+Team Leadership – Claimed but not demonstrated in interview
+
+
+SQL – Demonstrated basic understanding
+
+
+3. Interview Insights (Categorized Summaries)
+Create short, honest summaries using interview responses. Use actual quotes only when meaningful.
+
+
+Organize by category:
+
+
+Background & Experience
+
+
+Workplace Behavior & Preferences
+
+
+Professional Communication
+
+
+Technical Knowledge
+
+
+For each:
+
+
+Summarize what the user actually said
+
+
+Be blunt if vague or uncertain answers were given
+
+
+Avoid general praise
+
+
+Example (Technical Knowledge):
+
+
+“Candidate claimed experience with React but was unable to explain core concepts such as hooks or component lifecycle. Understanding appears surface-level.”
+
+
+Example (Professional Behavior):
+
+
+“Described managing two projects but struggled to describe how timelines or team roles were handled. Responses lacked clarity or detail.”
+
+
+4. Strengths (Only If Proven)
+List only strengths that were clearly demonstrated across interviews. Each must be tied to a real example or confident, detailed response.
+
+
+Example:
+
+
+Able to explain past mistakes with honesty and reflection
+
+
+Shows preference for independent work, supported by 3 examples from past roles
+
+
+5. Weaknesses or Gaps
+Call out mismatches or areas where profile claims weren’t backed up.
+
+
+Example:
+
+
+“Although the candidate listed ‘advanced Excel’ on their profile, they were unable to explain key functions beyond basic formulas during the technical interview.”
+
+
+Or:
+
+
+“Said they enjoy leadership roles but expressed discomfort with delegation and team accountability.”
+
+
+6. Work Preferences
+Clearly state:
+
+
+Preferred work mode (Remote, On-site, Hybrid)
+
+
+Team vs. individual working style
+
+
+Willingness to relocate
+
+
+Stated career goals
+These must be gathered from both the profile and interviews.
+
+
+7. Language and Tone
+Always professional
+
+
+No optimism or unnecessary praise
+
+
+No flattery (e.g., “You’re great at…”)
+
+
+Be blunt, neutral, and fact-based
+
+
+Use phrases like:
+
+
+“Demonstrated ability to…”
+
+
+“Unable to provide clear examples of…”
+
+
+“Profile suggests…, but interview answers lacked…”
+
+
+🚫 What to Avoid
+Do not write generic strengths (e.g., “Hardworking,” “Team player”) unless proven in responses
+
+
+Do not hide weak performance — explain it clearly
+
+
+Do not assume anything that wasn’t explicitly said or demonstrated
+
+
+✅ Final Check Before Display:
+Before showing the final profile:
+
+
+Has every claimed skill or trait in the profile been checked against interview performance?
+
+
+Are all included strengths backed by real interview content?
+
+
+Are weaknesses stated factually, not emotionally?
+
+
+Is the profile clear, easy to scan, and free from false praise?
