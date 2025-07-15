@@ -62,8 +62,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      
+      // Preprocess the data to handle empty date fields
+      const processedBody = { ...req.body };
+      
+      // Convert empty date strings to null
+      const dateFields = ['birthdate'];
+      dateFields.forEach(field => {
+        if (processedBody[field] === '') {
+          processedBody[field] = null;
+        }
+      });
+      
+      // Convert empty arrays to null where appropriate
+      const arrayFields = ['jobTypes', 'jobTitles', 'jobCategories', 'preferredWorkCountries', 'workExperiences', 'languages', 'degrees', 'highSchools', 'certifications', 'trainingCourses', 'otherUrls'];
+      arrayFields.forEach(field => {
+        if (Array.isArray(processedBody[field]) && processedBody[field].length === 0) {
+          processedBody[field] = null;
+        }
+      });
+      
       const profileData = insertApplicantProfileSchema.parse({
-        ...req.body,
+        ...processedBody,
         userId
       });
 
