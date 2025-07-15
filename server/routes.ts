@@ -924,6 +924,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Job Application Analysis Route
+  app.post('/api/job-application/analyze', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { jobId, jobTitle, jobDescription, companyName, requirements, employmentType } = req.body;
+
+      // Get user profile and interview data
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+      const interviewHistory = await storage.getInterviewHistory(userId);
+
+      if (!profile?.aiProfile) {
+        return res.status(400).json({ 
+          message: "Complete your interview process first to get personalized job analysis" 
+        });
+      }
+
+      // Get completed interviews for context
+      const completedInterviews = interviewHistory.filter(session => session.isCompleted);
+      let allInterviewResponses: any[] = [];
+      
+      completedInterviews.forEach(session => {
+        const sessionData = session.sessionData as any;
+        if (sessionData.responses) {
+          allInterviewResponses = allInterviewResponses.concat(sessionData.responses);
+        }
+      });
+
+      // Use AI to analyze job match
+      const analysisPrompt = `
+You are a career counselor analyzing job fit. Be direct and professional.
+
+USER PROFILE:
+- Name: ${user?.firstName} ${user?.lastName}
+- Email: ${user?.email}
+- AI Profile: ${JSON.stringify(profile.aiProfile)}
+- Interview Responses: ${JSON.stringify(allInterviewResponses)}
+
+JOB DETAILS:
+- Title: ${jobTitle}
+- Company: ${companyName}
+- Description: ${jobDescription}
+- Requirements: ${JSON.stringify(requirements)}
+- Employment Type: ${employmentType}
+
+Analyze this job match and provide:
+1. Match score (0-100)
+2. Whether it's a strong match (true/false)
+3. Direct feedback (1-2 sentences)
+4. Specific reasons (3-5 bullet points)
+
+Be honest and professional. If it's not a good match, explain why clearly.
+
+Response format (JSON):
+{
+  "matchScore": number,
+  "isStrongMatch": boolean,
+  "feedback": "string",
+  "reasons": ["reason1", "reason2", "reason3"]
+}`;
+
+      const response = await aiInterviewService.openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          { role: "system", content: "You are a professional career counselor. Analyze job matches honestly and provide concrete feedback." },
+          { role: "user", content: analysisPrompt }
+        ],
+        response_format: { type: "json_object" },
+      });
+
+      const analysis = JSON.parse(response.choices[0].message.content || '{}');
+      
+      // Ensure proper format
+      const formattedAnalysis = {
+        matchScore: Math.min(Math.max(analysis.matchScore || 0, 0), 100),
+        isStrongMatch: analysis.isStrongMatch || false,
+        feedback: analysis.feedback || "Analysis unavailable",
+        reasons: analysis.reasons || ["Analysis could not be completed"]
+      };
+
+      res.json(formattedAnalysis);
+    } catch (error) {
+      console.error("Error analyzing job application:", error);
+      res.status(500).json({ message: "Failed to analyze job application" });
+    }
+  });
+
   // Test endpoint to manually trigger job postings fetch
   app.get('/api/test-job-postings', async (req, res) => {
     try {
