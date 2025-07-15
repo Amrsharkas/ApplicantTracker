@@ -985,7 +985,7 @@ Response format (JSON):
   "reasons": ["reason1", "reason2", "reason3"]
 }`;
 
-      const response = await aiInterviewService.openai.chat.completions.create({
+      const response = await aiInterviewAgent.openai.chat.completions.create({
         model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         messages: [
           { role: "system", content: "You are a professional career counselor. Analyze job matches honestly and provide concrete feedback." },

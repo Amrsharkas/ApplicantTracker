@@ -40,6 +40,8 @@ export interface GeneratedProfile {
 
 // AI Agent 1: Interview Conductor - analyzes resume/profile and conducts personalized interviews
 export class AIInterviewAgent {
+  public openai = openai;
+
   async generateWelcomeMessage(userData: any): Promise<string> {
     const prompt = `You are an AI interviewer for Plato, an AI-powered job matching platform. Generate a professional welcome message for a candidate starting their comprehensive interview process.
 
