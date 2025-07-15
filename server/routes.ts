@@ -930,12 +930,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { jobId, jobTitle, jobDescription, companyName, requirements, employmentType } = req.body;
 
+      console.log('📊 Job Analysis Request:', { userId, jobTitle, companyName });
+
       // Get user profile and interview data
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
       const interviewHistory = await storage.getInterviewHistory(userId);
 
+      console.log('👤 User data:', { hasUser: !!user, hasProfile: !!profile, hasAiProfile: !!profile?.aiProfile });
+
       if (!profile?.aiProfile) {
+        console.log('❌ No AI profile found for user');
         return res.status(400).json({ 
           message: "Complete your interview process first to get personalized job analysis" 
         });
@@ -985,6 +990,7 @@ Response format (JSON):
   "reasons": ["reason1", "reason2", "reason3"]
 }`;
 
+      console.log('🤖 Sending request to OpenAI for job analysis...');
       const response = await aiInterviewAgent.openai.chat.completions.create({
         model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         messages: [
@@ -994,6 +1000,7 @@ Response format (JSON):
         response_format: { type: "json_object" },
       });
 
+      console.log('✅ OpenAI response received');
       const analysis = JSON.parse(response.choices[0].message.content || '{}');
       
       // Ensure proper format
@@ -1004,10 +1011,12 @@ Response format (JSON):
         reasons: analysis.reasons || ["Analysis could not be completed"]
       };
 
+      console.log('📊 Analysis complete:', { matchScore: formattedAnalysis.matchScore, isStrongMatch: formattedAnalysis.isStrongMatch });
       res.json(formattedAnalysis);
     } catch (error) {
-      console.error("Error analyzing job application:", error);
-      res.status(500).json({ message: "Failed to analyze job application" });
+      console.error("❌ Error analyzing job application:", error);
+      console.error("Error details:", error.message);
+      res.status(500).json({ message: "Failed to analyze job match. Please try again." });
     }
   });
 
