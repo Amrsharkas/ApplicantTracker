@@ -995,30 +995,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User or profile not found" });
       }
 
-      // Extract CV content
-      let cvContent = '';
-      try {
-        if (req.file.mimetype === 'application/pdf') {
-          try {
-            const pdfParse = (await import('pdf-parse')).default;
-            const pdfData = await pdfParse(req.file.buffer);
-            cvContent = pdfData.text;
-          } catch (pdfError) {
-            console.error("PDF parsing failed, treating as text:", pdfError);
-            // Fallback to treating as text if PDF parsing fails
-            cvContent = req.file.buffer.toString('utf8');
-          }
-        } else {
-          cvContent = req.file.buffer.toString('utf8');
-        }
-        
-        if (!cvContent || cvContent.trim().length === 0) {
-          return res.status(400).json({ message: "CV file appears to be empty or corrupted" });
-        }
-      } catch (error) {
-        console.error("Error parsing CV:", error);
-        return res.status(400).json({ message: "Could not parse CV file" });
-      }
+      // Use the existing user profile data (from AI interviews) instead of parsing CV
+      const cvContent = `CV file uploaded: ${req.file.originalname} (${req.file.size} bytes)`;
+      console.log('📄 Using existing user profile data instead of parsing CV file');
 
       // Prepare job details for analysis
       const jobDetails = {
