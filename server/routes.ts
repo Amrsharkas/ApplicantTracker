@@ -751,32 +751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/interview/history', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const history = await storage.getInterviewHistory(userId);
-      const profile = await storage.getApplicantProfile(userId);
-      
-      // If user has completed all interviews and has an AI profile, use that for all interviews
-      const hasCompleteProfile = profile?.aiProfileGenerated && profile?.aiProfile;
-      
-      // Modify history to show unified profile for completed interviews
-      const modifiedHistory = history.map(session => {
-        if (session.isCompleted && hasCompleteProfile) {
-          return {
-            ...session,
-            generatedProfile: profile.aiProfile
-          };
-        }
-        return session;
-      });
-      
-      res.json(modifiedHistory);
-    } catch (error) {
-      console.error("Error fetching interview history:", error);
-      res.status(500).json({ message: "Failed to fetch interview history" });
-    }
-  });
+
 
   app.post('/api/interview/voice-submit', isAuthenticated, async (req: any, res) => {
     try {

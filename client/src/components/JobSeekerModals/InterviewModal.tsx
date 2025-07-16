@@ -731,95 +731,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                 <span className="text-sm font-medium text-green-700">Interview Complete!</span>
               </div>
               <p className="text-sm text-green-600 mt-1">
-                Your AI profile has been generated successfully.
+                Your AI profile has been generated successfully. You can now explore job opportunities and apply to positions.
               </p>
             </CardContent>
           </Card>
-
-          {currentSession.generatedProfile && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Users className="h-5 w-5" />
-                  <span>Your Generated AI Profile</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="text-sm text-muted-foreground">
-                    {currentSession.generatedProfile.summary}
-                  </div>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowProfileDetails(!showProfileDetails)}
-                  >
-                    {showProfileDetails ? 'Hide' : 'Show'} Full Profile Details
-                  </Button>
-
-                  {showProfileDetails && (
-                    <Accordion type="single" collapsible className="w-full">
-                      <AccordionItem value="skills">
-                        <AccordionTrigger className="text-sm">
-                          <div className="flex items-center space-x-2">
-                            <Target className="h-4 w-4" />
-                            <span>Skills & Expertise</span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <div className="flex flex-wrap gap-2">
-                            {currentSession.generatedProfile.skills?.map((skill: string, index: number) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-
-                      <AccordionItem value="strengths">
-                        <AccordionTrigger className="text-sm">
-                          <div className="flex items-center space-x-2">
-                            <Users className="h-4 w-4" />
-                            <span>Key Strengths</span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <ul className="list-disc list-inside space-y-1 text-sm">
-                            {currentSession.generatedProfile.strengths?.map((strength: string, index: number) => (
-                              <li key={index}>{strength}</li>
-                            ))}
-                          </ul>
-                        </AccordionContent>
-                      </AccordionItem>
-
-                      <AccordionItem value="workstyle">
-                        <AccordionTrigger className="text-sm">
-                          <div className="flex items-center space-x-2">
-                            <Briefcase className="h-4 w-4" />
-                            <span>Work Style & Goals</span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <div className="space-y-3 text-sm">
-                            <div>
-                              <span className="font-medium">Work Style:</span>
-                              <p className="text-muted-foreground mt-1">{currentSession.generatedProfile.workStyle}</p>
-                            </div>
-                            <div>
-                              <span className="font-medium">Career Goals:</span>
-                              <p className="text-muted-foreground mt-1">{currentSession.generatedProfile.careerGoals}</p>
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -970,90 +885,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             </CardContent>
           </Card>
 
-          {currentSession.generatedProfile && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Users className="h-5 w-5" />
-                  <span>Your Generated AI Profile</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="text-sm text-muted-foreground">
-                    {currentSession.generatedProfile.summary}
-                  </div>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowProfileDetails(!showProfileDetails)}
-                  >
-                    {showProfileDetails ? 'Hide' : 'Show'} Full Profile Details
-                  </Button>
 
-                  {showProfileDetails && (
-                    <Accordion type="single" collapsible className="w-full">
-                      <AccordionItem value="skills">
-                        <AccordionTrigger className="text-sm">
-                          <div className="flex items-center space-x-2">
-                            <Target className="h-4 w-4" />
-                            <span>Skills & Expertise</span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <div className="flex flex-wrap gap-2">
-                            {currentSession.generatedProfile.skills?.map((skill: string, index: number) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-
-                      <AccordionItem value="strengths">
-                        <AccordionTrigger className="text-sm">
-                          <div className="flex items-center space-x-2">
-                            <Users className="h-4 w-4" />
-                            <span>Key Strengths</span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <ul className="list-disc list-inside space-y-1 text-sm">
-                            {currentSession.generatedProfile.strengths?.map((strength: string, index: number) => (
-                              <li key={index}>{strength}</li>
-                            ))}
-                          </ul>
-                        </AccordionContent>
-                      </AccordionItem>
-
-                      <AccordionItem value="workstyle">
-                        <AccordionTrigger className="text-sm">
-                          <div className="flex items-center space-x-2">
-                            <Briefcase className="h-4 w-4" />
-                            <span>Work Style & Goals</span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <div className="space-y-3 text-sm">
-                            <div>
-                              <span className="font-medium">Work Style:</span>
-                              <p className="text-muted-foreground mt-1">{currentSession.generatedProfile.workStyle}</p>
-                            </div>
-                            <div>
-                              <span className="font-medium">Career Goals:</span>
-                              <p className="text-muted-foreground mt-1">{currentSession.generatedProfile.careerGoals}</p>
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
 
