@@ -799,6 +799,7 @@ export class AirtableService {
 
     try {
       const fields = {
+        'Name': applicationData.name,
         'User ID': applicationData.userId,
         'Email': applicationData.email,
         'Job Title': applicationData.jobTitle,

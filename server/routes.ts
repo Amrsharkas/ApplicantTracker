@@ -1016,8 +1016,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cvContent
       );
 
-      // If score is above 1%, store in Airtable and create application
-      if (analysis.score >= 1) {
+      // If score is above 50, store in Airtable and create application
+      if (analysis.score >= 50) {
         // Store in Airtable job applications base
         try {
           await airtableService.storeJobApplication({
@@ -1037,28 +1037,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Continue with local storage even if Airtable fails
         }
 
-        // Create local application record with a valid job ID
-        // First, create a job record if it doesn't exist
-        let jobRecord;
-        try {
-          jobRecord = await storage.createJobFromAirtable({
-            id: jobId,
-            title: jobTitle,
-            company: companyName,
-            description: jobDescription,
-            requirements: requirements ? requirements.split(',') : [],
-            location: 'Remote',
-            postedAt: new Date()
-          });
-        } catch (error) {
-          console.error('Error creating job record:', error);
-          // Use a default job ID if creation fails
-          jobRecord = { id: 1 };
-        }
-
+        // Create local application record
         const applicationData = {
           userId,
-          jobId: jobRecord.id,
+          jobId: parseInt(jobId) || 0,
           jobTitle,
           companyName,
           appliedAt: new Date(),
@@ -1073,7 +1055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         score: analysis.score,
         message: analysis.message,
-        submitted: analysis.score >= 1,
+        submitted: analysis.score >= 50,
         analysisDetails: analysis.detailedAnalysis
       });
 

@@ -140,8 +140,6 @@ Changelog:
 - July 15, 2025. Enhanced job description display with smooth, intelligent panel experience featuring scrollable job details with sticky job titles, always-visible apply buttons, and smart visual cues for strong matches. Job details now slide in from the right while maintaining full filter functionality, with enhanced application analysis modals providing detailed match evaluation and professional feedback
 - July 15, 2025. Added CV upload requirement to job application process - users must upload CV/Resume before job analysis, then system evaluates fit using complete profile + interview data. Applications now send both AI-generated profile and uploaded CV to companies with detailed logging for company access
 - July 15, 2025. Implemented comprehensive profile generation system that creates brutally honest, data-driven profiles for employers. System cross-references all interview responses with initial profile data, includes direct quotes, highlights discrepancies, flags concerns, and only acknowledges verified skills. Profiles include snapshot overview, verified skills, interview highlights with direct quotes, flags/concerns, and detailed work preferences
-- July 16, 2025. Fixed job application CV parsing errors by simplifying to use existing user profile data instead of attempting to parse uploaded CV files. Removed complex PDF parsing that was causing failures
-- July 16, 2025. Changed job application success threshold from 50% to 1% for broader application approval. Added comprehensive application results modal with score display, detailed analysis, and visual feedback instead of toast notifications
 ```
 
 ## User Preferences
