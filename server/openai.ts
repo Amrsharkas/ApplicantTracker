@@ -566,12 +566,11 @@ Return ONLY JSON:
 
   // New method for job application scoring
   async analyzeJobApplication(userProfile: any, jobDetails: any, resumeContent: string): Promise<{
-    missingRequirements: string[];
-    shouldSubmit: boolean;
+    score: number;
     message: string;
     detailedAnalysis: string;
   }> {
-    const prompt = `You are an expert HR analyst. Analyze how well this candidate fits the job requirements and identify any missing requirements.
+    const prompt = `You are an expert HR analyst. Analyze how well this candidate fits the job requirements and provide a compatibility score from 0-100.
 
 CANDIDATE PROFILE:
 ${JSON.stringify(userProfile, null, 2)}
@@ -587,20 +586,18 @@ Experience Level: ${jobDetails.experienceLevel || 'Not specified'}
 RESUME CONTENT:
 ${resumeContent}
 
-ANALYSIS INSTRUCTIONS:
-1. Extract all key requirements from the job description
-2. Check if the candidate meets each requirement based on their profile, skills, and experience
-3. List any missing requirements that the candidate clearly lacks
-4. If the candidate has 3 or fewer missing requirements, they should be submitted
-5. If the candidate has 4 or more missing requirements, they should not be submitted
+SCORING CRITERIA:
+- Skills alignment (40 points)
+- Experience relevance (30 points)
+- Educational background (15 points)
+- Communication quality from interviews (15 points)
 
 Return JSON with:
 {
-  "missingRequirements": ["requirement1", "requirement2", ...],
-  "shouldSubmit": true/false,
+  "score": [0-100 integer],
   "detailedAnalysis": "Professional analysis of fit with specific examples",
-  "successMessage": "Humorous, kind, encouraging message for successful applications",
-  "failureMessage": "Humorous, kind, supportive message for unsuccessful applications about exploring other opportunities"
+  "goodFitMessage": "Humorous, kind, encouraging message for scores 50+",
+  "poorFitMessage": "Humorous, kind, supportive message for scores <50 about exploring other opportunities"
 }`;
 
     try {
@@ -611,20 +608,16 @@ Return JSON with:
       });
 
       const analysis = JSON.parse(response.choices[0].message.content || '{}');
-      const missingRequirements = analysis.missingRequirements || [];
-      const shouldSubmit = missingRequirements.length < 4;
       
       return {
-        missingRequirements,
-        shouldSubmit,
-        message: shouldSubmit ? analysis.successMessage : analysis.failureMessage,
+        score: analysis.score || 0,
+        message: analysis.score >= 50 ? analysis.goodFitMessage : analysis.poorFitMessage,
         detailedAnalysis: analysis.detailedAnalysis || 'Analysis not available'
       };
     } catch (error) {
       console.error("Error analyzing job application:", error);
       return {
-        missingRequirements: [],
-        shouldSubmit: true,
+        score: 0,
         message: "Well, this is awkward... our crystal ball is in the shop! 🔮 But hey, don't let that stop you - sometimes the best opportunities come from the most unexpected places!",
         detailedAnalysis: "Analysis could not be completed due to technical issues."
       };

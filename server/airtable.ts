@@ -798,45 +798,24 @@ export class AirtableService {
     }
 
     try {
-      // Try common field variations
-      const possibleFields = [
-        { 'Name': applicationData.name, 'Email': applicationData.email },
-        { 'name': applicationData.name, 'email': applicationData.email },
-        { 'Applicant Name': applicationData.name, 'Applicant Email': applicationData.email },
-        { 'Full Name': applicationData.name, 'Email Address': applicationData.email }
-      ];
+      const fields = {
+        'name': applicationData.name,
+        'userId': applicationData.userId,
+        'email': applicationData.email,
+        'jobTitle': applicationData.jobTitle,
+        'companyName': applicationData.companyName,
+        'applicationDate': applicationData.applicationDate,
+        'resume': applicationData.resume,
+        'userProfile': applicationData.userProfile,
+        'score': applicationData.score,
+        'analysisDetails': applicationData.analysisDetails
+      };
 
-      let success = false;
-      let lastError = null;
-
-      for (const fields of possibleFields) {
-        try {
-          const testFields = {
-            ...fields,
-            'Job Title': applicationData.jobTitle,
-            'Company': applicationData.companyName,
-            'Application Date': applicationData.applicationDate,
-            'Score': applicationData.score
-          };
-
-          await jobApplicationsBase(JOB_APPLICATIONS_TABLE).create([{ fields: testFields }]);
-          console.log(`✅ Successfully stored job application for ${applicationData.name} to ${applicationData.jobTitle} at ${applicationData.companyName}`);
-          success = true;
-          break;
-        } catch (fieldError) {
-          lastError = fieldError;
-          console.log(`❌ Failed with field set: ${JSON.stringify(Object.keys(fields))}`);
-        }
-      }
-
-      if (!success) {
-        console.error('All field variations failed. Last error:', lastError);
-        // Don't throw error to allow the application to continue
-        console.log('⚠️ Airtable storage failed, but continuing with local storage');
-      }
+      await jobApplicationsBase(JOB_APPLICATIONS_TABLE).create([{ fields }]);
+      console.log(`✅ Successfully stored job application for ${applicationData.name} to ${applicationData.jobTitle} at ${applicationData.companyName}`);
     } catch (error) {
       console.error('Error storing job application in Airtable:', error);
-      console.log('⚠️ Airtable storage failed, but continuing with local storage');
+      throw new Error('Failed to store job application in Airtable');
     }
   }
 }

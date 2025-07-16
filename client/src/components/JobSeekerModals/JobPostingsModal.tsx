@@ -81,12 +81,6 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   const [applicationAnalysis, setApplicationAnalysis] = useState<AIMatchResponse | null>(null);
   const [showCVUpload, setShowCVUpload] = useState(false);
   const [uploadedCV, setUploadedCV] = useState<File | null>(null);
-  const [submissionResult, setSubmissionResult] = useState<{
-    success: boolean;
-    message: string;
-    submitted: boolean;
-    missingRequirements?: string[];
-  } | null>(null);
   const [filters, setFilters] = useState({
     workplace: [] as string[],
     country: "",
@@ -207,15 +201,22 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
       return response.json();
     },
     onSuccess: (data) => {
-      setSubmissionResult({
-        success: data.success,
-        message: data.message,
-        submitted: data.submitted,
-        missingRequirements: data.missingRequirements || []
-      });
       if (data.submitted) {
-        queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+        toast({
+          title: "Application Submitted!",
+          description: data.message,
+        });
+      } else {
+        toast({
+          title: "Application Not Submitted",
+          description: data.message,
+          variant: "destructive",
+        });
       }
+      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+      setShowCVUpload(false);
+      setSelectedJob(null);
+      resetApplicationState();
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -229,11 +230,10 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
         }, 500);
         return;
       }
-      setSubmissionResult({
-        success: false,
-        message: "Oops! Something went wrong while submitting your application. Please try again - we promise we're not doing this on purpose! 😅",
-        submitted: false,
-        missingRequirements: []
+      toast({
+        title: "Error",
+        description: "Failed to submit application. Please try again.",
+        variant: "destructive",
       });
     },
   });
@@ -569,7 +569,6 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
     setApplicationAnalysis(null);
     setShowCVUpload(false);
     setUploadedCV(null);
-    setSubmissionResult(null);
   };
 
   const handleConfirmApplication = () => {
@@ -1356,88 +1355,6 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                         </Button>
                       </>
                     )}
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Submission Result Modal */}
-        <AnimatePresence>
-          {submissionResult && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-              onClick={() => setSubmissionResult(null)}
-            >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-white rounded-lg max-w-md w-full"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className={`flex items-center justify-center w-12 h-12 rounded-full ${
-                        submissionResult.submitted ? 'bg-green-100' : 'bg-yellow-100'
-                      }`}>
-                        {submissionResult.submitted ? (
-                          <CheckCircle className="h-6 w-6 text-green-600" />
-                        ) : (
-                          <AlertCircle className="h-6 w-6 text-yellow-600" />
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-semibold text-gray-900">
-                          {submissionResult.submitted ? 'Application Submitted!' : 'Application Not Submitted'}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          {submissionResult.submitted ? 'Your application has been processed' : 'Review the requirements below'}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSubmissionResult(null)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <div className="mb-6">
-                    <p className="text-gray-700 mb-4">{submissionResult.message}</p>
-                    
-                    {submissionResult.missingRequirements && submissionResult.missingRequirements.length > 0 && (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <h4 className="font-medium text-yellow-800 mb-2">Missing Requirements:</h4>
-                        <ul className="text-sm text-yellow-700 space-y-1">
-                          {submissionResult.missingRequirements.map((req, index) => (
-                            <li key={index} className="flex items-start gap-2">
-                              <span className="text-yellow-500">•</span>
-                              <span>{req}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={() => {
-                        setSubmissionResult(null);
-                        resetApplicationState();
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      Close
-                    </Button>
                   </div>
                 </div>
               </motion.div>

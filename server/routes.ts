@@ -1016,8 +1016,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cvContent
       );
 
-      // If application should be submitted (less than 4 missing requirements)
-      if (analysis.shouldSubmit) {
+      // If score is above 1, store in Airtable and create application (lowered for testing)
+      if (analysis.score >= 1) {
         // Store in Airtable job applications base
         try {
           await airtableService.storeJobApplication({
@@ -1029,7 +1029,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             applicationDate: new Date().toISOString(),
             resume: cvContent.substring(0, 5000), // Limit resume content
             userProfile: JSON.stringify(userProfile.aiProfile || userProfile),
-            score: analysis.missingRequirements.length,
+            score: analysis.score,
             analysisDetails: analysis.detailedAnalysis
           });
         } catch (airtableError) {
@@ -1058,9 +1058,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Return response with appropriate message
       res.json({
         success: true,
-        missingRequirements: analysis.missingRequirements,
+        score: analysis.score,
         message: analysis.message,
-        submitted: analysis.shouldSubmit,
+        submitted: analysis.score >= 1,
         analysisDetails: analysis.detailedAnalysis
       });
 
