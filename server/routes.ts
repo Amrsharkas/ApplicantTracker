@@ -1187,6 +1187,17 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
+  // Clear tracking for testing
+  app.post('/api/debug/clear-tracking', isAuthenticated, async (req, res) => {
+    try {
+      airtableService.clearProcessedTracking();
+      res.json({ message: 'Tracking cleared successfully' });
+    } catch (error) {
+      console.error('Error clearing tracking:', error);
+      res.status(500).json({ message: 'Failed to clear tracking' });
+    }
+  });
+
   // Set up automatic Airtable monitoring (every 30 seconds)
   setInterval(async () => {
     try {

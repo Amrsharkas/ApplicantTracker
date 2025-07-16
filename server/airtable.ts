@@ -414,6 +414,13 @@ export class AirtableService {
   private processedRecords = new Set<string>();
   private processedJobMatches = new Set<string>();
 
+  // Method to clear all tracking for testing
+  clearProcessedTracking(): void {
+    this.processedRecords.clear();
+    this.processedJobMatches.clear();
+    console.log('🔄 Cleared all processed record tracking');
+  }
+
   async checkForNewJobEntries(): Promise<AirtableJobEntry[]> {
     const allJobEntries = await this.getRecordsWithJobData();
     console.log(`📋 Found ${allJobEntries.length} total entries with job data in Airtable`);
