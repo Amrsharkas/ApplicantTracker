@@ -1037,17 +1037,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Continue with local storage even if Airtable fails
         }
 
-        // Create local application record
-        const applicationData = {
-          userId,
-          jobId: parseInt(jobId) || 0,
-          jobTitle,
-          companyName,
-          appliedAt: new Date(),
-          status: 'pending'
-        };
+        // Create local application record (skip if no valid jobId)
+        try {
+          const applicationData = {
+            userId,
+            jobId: parseInt(jobId) || 1, // Use 1 as default instead of 0
+            jobTitle,
+            companyName,
+            appliedAt: new Date(),
+            status: 'pending'
+          };
 
-        await storage.createApplication(applicationData);
+          await storage.createApplication(applicationData);
+        } catch (dbError) {
+          console.error('Failed to store in local database:', dbError);
+          // Continue without local storage if it fails
+        }
       }
 
       // Return response with appropriate message

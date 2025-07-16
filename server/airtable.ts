@@ -799,16 +799,16 @@ export class AirtableService {
 
     try {
       const fields = {
-        'Name': applicationData.name,
-        'User ID': applicationData.userId,
-        'Email': applicationData.email,
-        'Job Title': applicationData.jobTitle,
-        'Company Name': applicationData.companyName,
-        'Application Date': applicationData.applicationDate,
-        'Resume': applicationData.resume,
-        'User Profile': applicationData.userProfile,
-        'Score': applicationData.score,
-        'Analysis Details': applicationData.analysisDetails
+        'name': applicationData.name,
+        'userId': applicationData.userId,
+        'email': applicationData.email,
+        'jobTitle': applicationData.jobTitle,
+        'companyName': applicationData.companyName,
+        'applicationDate': applicationData.applicationDate,
+        'resume': applicationData.resume,
+        'userProfile': applicationData.userProfile,
+        'score': applicationData.score,
+        'analysisDetails': applicationData.analysisDetails
       };
 
       await jobApplicationsBase(JOB_APPLICATIONS_TABLE).create([{ fields }]);
