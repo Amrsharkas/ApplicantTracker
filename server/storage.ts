@@ -40,6 +40,7 @@ export interface IStorage {
   createJobMatch(match: InsertJobMatch): Promise<JobMatch>;
   calculateJobMatches(userId: string): Promise<void>;
   createJobFromAirtable(jobData: any): Promise<Job>;
+  clearJobMatches(userId: string): Promise<void>;
 
   // Application operations
   getApplications(userId: string): Promise<(Application & { job: Job })[]>;
@@ -255,6 +256,12 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return job;
+  }
+
+  async clearJobMatches(userId: string): Promise<void> {
+    await db.delete(jobMatches)
+      .where(eq(jobMatches.userId, userId));
+    console.log(`🗑️ Cleared all job matches for user ${userId}`);
   }
 
 

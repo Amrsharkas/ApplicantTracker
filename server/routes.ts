@@ -834,6 +834,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/job-matches', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      
+      // Check current job matches in Airtable
+      const airtableMatches = await airtableService.getJobMatchesFromAirtable();
+      const userAirtableMatches = airtableMatches.filter(match => match.userId === userId);
+      
+      console.log(`📋 Airtable matches for user ${userId}: ${userAirtableMatches.length}`);
+      
+      // If no matches in Airtable, clear database matches for this user
+      if (userAirtableMatches.length === 0) {
+        // Get current database matches and remove them
+        const currentMatches = await storage.getJobMatches(userId);
+        if (currentMatches.length > 0) {
+          console.log(`🗑️ Clearing ${currentMatches.length} obsolete job matches for user ${userId}`);
+          // Clear job matches from database since they're no longer in Airtable
+          await storage.clearJobMatches(userId);
+        }
+        res.json([]);
+        return;
+      }
+      
+      // If matches exist in Airtable, ensure they're synced to database
+      for (const airtableMatch of userAirtableMatches) {
+        await airtableService.processJobMatch(airtableMatch);
+      }
+      
+      // Return current database matches
       const matches = await storage.getJobMatches(userId);
       res.json(matches);
     } catch (error) {
