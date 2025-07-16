@@ -972,6 +972,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Job Application Analysis and Submission Route
+  app.post('/api/applications/analyze-and-submit', isAuthenticated, multer({ storage: multer.memoryStorage() }).single('cv'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { jobId, jobTitle, companyName, jobDescription, requirements, skills, experienceLevel } = req.body;
+
+      if (!req.file) {
+        return res.status(400).json({ message: "CV file is required" });
+      }
+
+      // Get user data
+      const user = await storage.getUser(userId);
+      const userProfile = await storage.getApplicantProfile(userId);
+      
+      if (!user || !userProfile) {
+        return res.status(404).json({ message: "User or profile not found" });
+      }
+
+      // Extract CV content
+      let cvContent = '';
+      try {
+        if (req.file.mimetype === 'application/pdf') {
+          const pdfParse = (await import('pdf-parse')).default;
+          const pdfData = await pdfParse(req.file.buffer);
+          cvContent = pdfData.text;
+        } else {
+          cvContent = req.file.buffer.toString('utf8');
+        }
+      } catch (error) {
+        console.error("Error parsing CV:", error);
+        return res.status(400).json({ message: "Could not parse CV file" });
+      }
+
+      // Prepare job details for analysis
+      const jobDetails = {
+        title: jobTitle,
+        company: companyName,
+        description: jobDescription,
+        requirements: requirements ? requirements.split(',').map((r: string) => r.trim()) : [],
+        skills: skills ? skills.split(',').map((s: string) => s.trim()) : [],
+        experienceLevel: experienceLevel || 'Mid-level'
+      };
+
+      // Use AI to analyze the application
+      const analysis = await aiInterviewAgent.analyzeJobApplication(
+        { ...user, ...userProfile },
+        jobDetails,
+        cvContent
+      );
+
+      // If score is above 50, store in Airtable and create application
+      if (analysis.score >= 50) {
+        // Store in Airtable job applications base
+        try {
+          await airtableService.storeJobApplication({
+            name: `${user.firstName} ${user.lastName}`,
+            userId: userId,
+            email: user.email || '',
+            jobTitle: jobTitle,
+            companyName: companyName,
+            applicationDate: new Date().toISOString(),
+            resume: cvContent.substring(0, 5000), // Limit resume content
+            userProfile: JSON.stringify(userProfile.aiProfile || userProfile),
+            score: analysis.score,
+            analysisDetails: analysis.detailedAnalysis
+          });
+        } catch (airtableError) {
+          console.error('Failed to store in Airtable:', airtableError);
+          // Continue with local storage even if Airtable fails
+        }
+
+        // Create local application record
+        const applicationData = {
+          userId,
+          jobId: parseInt(jobId) || 0,
+          jobTitle,
+          companyName,
+          appliedAt: new Date(),
+          status: 'pending'
+        };
+
+        await storage.createApplication(applicationData);
+      }
+
+      // Return response with appropriate message
+      res.json({
+        success: true,
+        score: analysis.score,
+        message: analysis.message,
+        submitted: analysis.score >= 50,
+        analysisDetails: analysis.detailedAnalysis
+      });
+
+    } catch (error) {
+      console.error("Error analyzing job application:", error);
+      res.status(500).json({ message: "Failed to analyze job application" });
+    }
+  });
+
   // AI Job Application Analysis Route
   app.post('/api/job-application/analyze', isAuthenticated, async (req: any, res) => {
     try {

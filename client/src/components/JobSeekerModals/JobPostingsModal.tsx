@@ -170,6 +170,68 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
     },
   });
 
+  const submitApplicationMutation = useMutation({
+    mutationFn: async (data: { job: JobPosting; cvFile: File }) => {
+      const formData = new FormData();
+      formData.append('cv', data.cvFile);
+      formData.append('jobId', data.job.recordId);
+      formData.append('jobTitle', data.job.jobTitle);
+      formData.append('companyName', data.job.companyName);
+      formData.append('jobDescription', data.job.jobDescription);
+      formData.append('requirements', data.job.skills?.join(',') || '');
+      formData.append('skills', data.job.skills?.join(',') || '');
+      formData.append('experienceLevel', data.job.experienceLevel || '');
+
+      const response = await fetch('/api/applications/analyze-and-submit', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.submitted) {
+        toast({
+          title: "Application Submitted!",
+          description: data.message,
+        });
+      } else {
+        toast({
+          title: "Application Not Submitted",
+          description: data.message,
+          variant: "destructive",
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+      setShowCVUpload(false);
+      setSelectedJob(null);
+      resetApplicationState();
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to submit application. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const actualApplicationMutation = useMutation({
     mutationFn: async (data: { job: JobPosting; cvFile: File | null }) => {
       const response = await apiRequest("/api/applications", {
@@ -492,8 +554,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   const handleCVUploadAndAnalyze = () => {
     if (!uploadedCV || !selectedJob) return;
     
-    setShowCVUpload(false);
-    applicationMutation.mutate({ job: selectedJob, cvFile: uploadedCV });
+    submitApplicationMutation.mutate({ job: selectedJob, cvFile: uploadedCV });
   };
 
   const resetApplicationState = () => {
@@ -1395,11 +1456,20 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                     </Button>
                     <Button
                       onClick={handleCVUploadAndAnalyze}
-                      disabled={!uploadedCV}
+                      disabled={!uploadedCV || submitApplicationMutation.isPending}
                       className="flex items-center gap-2 flex-1"
                     >
-                      <CheckCircle className="h-4 w-4" />
-                      Continue to Analysis
+                      {submitApplicationMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4" />
+                          Submit Application
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>

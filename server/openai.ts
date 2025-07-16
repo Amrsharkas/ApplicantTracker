@@ -563,6 +563,66 @@ Return ONLY JSON:
     // Legacy fallback - returns personal questions for backward compatibility
     return this.getFallbackPersonalQuestions();
   }
+
+  // New method for job application scoring
+  async analyzeJobApplication(userProfile: any, jobDetails: any, resumeContent: string): Promise<{
+    score: number;
+    message: string;
+    detailedAnalysis: string;
+  }> {
+    const prompt = `You are an expert HR analyst. Analyze how well this candidate fits the job requirements and provide a compatibility score from 0-100.
+
+CANDIDATE PROFILE:
+${JSON.stringify(userProfile, null, 2)}
+
+JOB DETAILS:
+Title: ${jobDetails.title}
+Company: ${jobDetails.company}
+Description: ${jobDetails.description}
+Requirements: ${jobDetails.requirements?.join(', ') || 'Not specified'}
+Skills: ${jobDetails.skills?.join(', ') || 'Not specified'}
+Experience Level: ${jobDetails.experienceLevel || 'Not specified'}
+
+RESUME CONTENT:
+${resumeContent}
+
+SCORING CRITERIA:
+- Skills alignment (40 points)
+- Experience relevance (30 points)
+- Educational background (15 points)
+- Communication quality from interviews (15 points)
+
+Return JSON with:
+{
+  "score": [0-100 integer],
+  "detailedAnalysis": "Professional analysis of fit with specific examples",
+  "goodFitMessage": "Humorous, kind, encouraging message for scores 50+",
+  "poorFitMessage": "Humorous, kind, supportive message for scores <50 about exploring other opportunities"
+}`;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" }
+      });
+
+      const analysis = JSON.parse(response.choices[0].message.content || '{}');
+      
+      return {
+        score: analysis.score || 0,
+        message: analysis.score >= 50 ? analysis.goodFitMessage : analysis.poorFitMessage,
+        detailedAnalysis: analysis.detailedAnalysis || 'Analysis not available'
+      };
+    } catch (error) {
+      console.error("Error analyzing job application:", error);
+      return {
+        score: 0,
+        message: "Well, this is awkward... our crystal ball is in the shop! 🔮 But hey, don't let that stop you - sometimes the best opportunities come from the most unexpected places!",
+        detailedAnalysis: "Analysis could not be completed due to technical issues."
+      };
+    }
+  }
 }
 
 // AI Agent 2: Profile Analyzer - creates comprehensive user analysis from resume, profile, and interview responses
