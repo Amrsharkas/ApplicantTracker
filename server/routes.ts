@@ -999,11 +999,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let cvContent = '';
       try {
         if (req.file.mimetype === 'application/pdf') {
-          const pdfParse = (await import('pdf-parse')).default;
-          const pdfData = await pdfParse(req.file.buffer);
-          cvContent = pdfData.text;
+          try {
+            const pdfParse = (await import('pdf-parse')).default;
+            const pdfData = await pdfParse(req.file.buffer);
+            cvContent = pdfData.text;
+          } catch (pdfError) {
+            console.error("PDF parsing failed, treating as text:", pdfError);
+            // Fallback to treating as text if PDF parsing fails
+            cvContent = req.file.buffer.toString('utf8');
+          }
         } else {
           cvContent = req.file.buffer.toString('utf8');
+        }
+        
+        if (!cvContent || cvContent.trim().length === 0) {
+          return res.status(400).json({ message: "CV file appears to be empty or corrupted" });
         }
       } catch (error) {
         console.error("Error parsing CV:", error);
