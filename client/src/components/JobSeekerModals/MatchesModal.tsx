@@ -39,6 +39,7 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
   const { data: matches = [], isLoading } = useQuery({
     queryKey: ["/api/job-matches"],
     enabled: isOpen,
+    refetchInterval: isOpen ? 30000 : false, // Refresh every 30 seconds when modal is open to sync with Airtable
   });
 
   const refreshMutation = useMutation({

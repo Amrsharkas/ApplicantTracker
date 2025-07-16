@@ -48,6 +48,7 @@ export default function Dashboard() {
     queryKey: ["/api/job-matches"],
     retry: false,
     refetchOnWindowFocus: false,
+    refetchInterval: 30000, // Refresh every 30 seconds to sync with Airtable monitoring
   });
 
   const { data: applications = [] } = useQuery({
@@ -282,16 +283,18 @@ export default function Dashboard() {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Job Dashboard</h3>
               
               {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Job Matches</p>
-                      <div className="text-2xl font-bold text-gray-900">{matches.length}</div>
+              <div className={`grid gap-4 mb-6 ${matches.length > 0 ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
+                {matches.length > 0 && (
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">Job Matches</p>
+                        <div className="text-2xl font-bold text-gray-900">{matches.length}</div>
+                      </div>
+                      <Target className="h-8 w-8 text-green-600" />
                     </div>
-                    <Target className="h-8 w-8 text-green-600" />
                   </div>
-                </div>
+                )}
                 
                 <div className="bg-white rounded-lg p-4 border border-gray-200">
                   <div className="flex items-center justify-between">
@@ -315,19 +318,19 @@ export default function Dashboard() {
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <button
-                  onClick={() => openModal('matches')}
-                  className="bg-white rounded-lg p-6 border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-left group"
-                >
-                  <div className="flex items-center space-x-3 mb-2">
-                    <Target className="h-6 w-6 text-blue-600 group-hover:scale-110 transition-transform" />
-                    <h4 className="text-lg font-semibold text-gray-900">View Job Matches</h4>
-                  </div>
-                  <p className="text-sm text-gray-600">See jobs that match your profile with AI scoring</p>
-                </button>
-
-
+              <div className={`grid gap-4 ${matches.length > 0 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
+                {matches.length > 0 && (
+                  <button
+                    onClick={() => openModal('matches')}
+                    className="bg-white rounded-lg p-6 border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-left group"
+                  >
+                    <div className="flex items-center space-x-3 mb-2">
+                      <Target className="h-6 w-6 text-blue-600 group-hover:scale-110 transition-transform" />
+                      <h4 className="text-lg font-semibold text-gray-900">View Job Matches</h4>
+                    </div>
+                    <p className="text-sm text-gray-600">See jobs that match your profile with AI scoring</p>
+                  </button>
+                )}
 
                 <button
                   onClick={() => openModal('jobPostings')}
@@ -339,8 +342,6 @@ export default function Dashboard() {
                   </div>
                   <p className="text-sm text-gray-600">Browse all available job opportunities from employers</p>
                 </button>
-
-
               </div>
 
               {/* Applications Link */}
@@ -395,10 +396,12 @@ export default function Dashboard() {
       />
 
 
-      <MatchesModal 
-        isOpen={activeModal === 'matches'} 
-        onClose={closeModal} 
-      />
+      {matches.length > 0 && (
+        <MatchesModal 
+          isOpen={activeModal === 'matches'} 
+          onClose={closeModal} 
+        />
+      )}
       <ApplicationsModal 
         isOpen={activeModal === 'applications'} 
         onClose={closeModal} 

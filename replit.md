@@ -141,6 +141,7 @@ Changelog:
 - July 15, 2025. Added CV upload requirement to job application process - users must upload CV/Resume before job analysis, then system evaluates fit using complete profile + interview data. Applications now send both AI-generated profile and uploaded CV to companies with detailed logging for company access
 - July 15, 2025. Implemented comprehensive profile generation system that creates brutally honest, data-driven profiles for employers. System cross-references all interview responses with initial profile data, includes direct quotes, highlights discrepancies, flags concerns, and only acknowledges verified skills. Profiles include snapshot overview, verified skills, interview highlights with direct quotes, flags/concerns, and detailed work preferences
 - July 16, 2025. Removed interview history modal and all profile displays from user interface. Generated AI profiles are now completely hidden from applicants - only visible to employers through Airtable integration. This ensures profiles remain confidential and prevents users from seeing their generated assessment details
+- July 16, 2025. Enhanced real-time job matching system - job matches now refresh every 30 seconds to sync with Airtable "platojobmatches" table. Dashboard conditionally hides job matches section when no matches exist, with responsive grid layout that adapts based on available data. MatchesModal includes real-time updates and improved empty state messaging
 ```
 
 ## User Preferences
