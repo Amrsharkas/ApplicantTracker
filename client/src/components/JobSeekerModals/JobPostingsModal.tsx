@@ -185,10 +185,16 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
       const response = await fetch('/api/applications/analyze-and-submit', {
         method: 'POST',
         body: formData,
+        credentials: 'include', // Include cookies for authentication
       });
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('Application submission failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 

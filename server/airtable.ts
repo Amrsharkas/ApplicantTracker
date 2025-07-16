@@ -28,6 +28,12 @@ if (!AIRTABLE_JOB_POSTINGS_BASE_ID) {
   console.log('✅ Job postings base configured:', AIRTABLE_JOB_POSTINGS_BASE_ID);
 }
 
+if (!AIRTABLE_JOB_APPLICATIONS_BASE_ID) {
+  console.warn('⚠️ Job applications base NOT configured - missing AIRTABLE_JOB_APPLICATIONS_BASE_ID');
+} else {
+  console.log('✅ Job applications base configured:', AIRTABLE_JOB_APPLICATIONS_BASE_ID);
+}
+
 Airtable.configure({
   endpointUrl: 'https://api.airtable.com',
   apiKey: AIRTABLE_API_KEY

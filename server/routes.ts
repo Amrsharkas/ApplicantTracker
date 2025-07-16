@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { aiInterviewService, aiProfileAnalysisAgent } from "./openai";
+import { aiInterviewService, aiProfileAnalysisAgent, aiInterviewAgent } from "./openai";
 import { airtableService } from "./airtable";
 import multer from "multer";
 import { z } from "zod";
@@ -975,10 +975,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Job Application Analysis and Submission Route
   app.post('/api/applications/analyze-and-submit', isAuthenticated, multer({ storage: multer.memoryStorage() }).single('cv'), async (req: any, res) => {
     try {
+      console.log('🔍 Job application analysis request received');
+      console.log('📋 Request body:', req.body);
+      console.log('📄 File uploaded:', req.file ? 'Yes' : 'No');
+      
       const userId = req.user.claims.sub;
       const { jobId, jobTitle, companyName, jobDescription, requirements, skills, experienceLevel } = req.body;
 
       if (!req.file) {
+        console.error('❌ No CV file uploaded');
         return res.status(400).json({ message: "CV file is required" });
       }
 
@@ -1066,8 +1071,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     } catch (error) {
-      console.error("Error analyzing job application:", error);
-      res.status(500).json({ message: "Failed to analyze job application" });
+      console.error("❌ Error analyzing job application:", error);
+      console.error("🔍 Error details:", {
+        message: error.message,
+        stack: error.stack,
+        userId: req.user?.claims?.sub,
+        hasFile: !!req.file,
+        bodyKeys: Object.keys(req.body || {})
+      });
+      res.status(500).json({ 
+        message: "Failed to analyze job application",
+        error: error.message 
+      });
     }
   });
 

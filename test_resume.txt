@@ -1,0 +1,34 @@
+JOHN SMITH
+Investment Banking Analyst
+New York, NY | john.smith@email.com | (555) 123-4567
+
+EDUCATION
+Master of Business Administration (MBA), Finance - Harvard Business School (2023)
+Bachelor of Science in Economics - University of Pennsylvania (2020)
+
+EXPERIENCE
+Investment Banking Analyst
+Goldman Sachs, New York, NY (2021-Present)
+• Analyzed financial statements and market data for M&A transactions
+• Created detailed financial models and valuation analyses
+• Supported senior bankers in client presentations and deal execution
+• Managed multiple projects simultaneously in fast-paced environment
+
+Financial Analyst Intern
+JPMorgan Chase, New York, NY (Summer 2020)
+• Assisted with financial analysis and reporting
+• Developed Excel models for investment analysis
+• Supported team with market research and data analysis
+
+SKILLS
+• Financial Modeling (Excel, VBA)
+• Valuation Analysis (DCF, Comparable Analysis)
+• Market Research and Analysis
+• PowerPoint Presentations
+• Bloomberg Terminal
+• SQL and Python
+• Strong analytical and communication skills
+
+CERTIFICATIONS
+• CFA Level I Candidate
+• Bloomberg Market Concepts (BMC)
