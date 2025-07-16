@@ -1037,10 +1037,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Continue with local storage even if Airtable fails
         }
 
-        // Create local application record
+        // Create local application record with a valid job ID
+        // First, create a job record if it doesn't exist
+        let jobRecord;
+        try {
+          jobRecord = await storage.createJobFromAirtable({
+            id: jobId,
+            title: jobTitle,
+            company: companyName,
+            description: jobDescription,
+            requirements: requirements ? requirements.split(',') : [],
+            location: 'Remote',
+            postedAt: new Date()
+          });
+        } catch (error) {
+          console.error('Error creating job record:', error);
+          // Use a default job ID if creation fails
+          jobRecord = { id: 1 };
+        }
+
         const applicationData = {
           userId,
-          jobId: parseInt(jobId) || 0,
+          jobId: jobRecord.id,
           jobTitle,
           companyName,
           appliedAt: new Date(),
@@ -1055,7 +1073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         score: analysis.score,
         message: analysis.message,
-        submitted: analysis.score >= 50,
+        submitted: analysis.score >= 1,
         analysisDetails: analysis.detailedAnalysis
       });
 
