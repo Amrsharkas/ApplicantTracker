@@ -1016,8 +1016,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cvContent
       );
 
-      // If score is above 50, store in Airtable and create application
-      if (analysis.score >= 50) {
+      // If score is above 1%, store in Airtable and create application
+      if (analysis.score >= 1) {
         // Store in Airtable job applications base
         try {
           await airtableService.storeJobApplication({

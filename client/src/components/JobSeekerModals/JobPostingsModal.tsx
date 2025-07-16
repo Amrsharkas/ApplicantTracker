@@ -81,6 +81,8 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   const [applicationAnalysis, setApplicationAnalysis] = useState<AIMatchResponse | null>(null);
   const [showCVUpload, setShowCVUpload] = useState(false);
   const [uploadedCV, setUploadedCV] = useState<File | null>(null);
+  const [showApplicationResults, setShowApplicationResults] = useState(false);
+  const [applicationResults, setApplicationResults] = useState<any>(null);
   const [filters, setFilters] = useState({
     workplace: [] as string[],
     country: "",
@@ -201,18 +203,8 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
       return response.json();
     },
     onSuccess: (data) => {
-      if (data.submitted) {
-        toast({
-          title: "Application Submitted!",
-          description: data.message,
-        });
-      } else {
-        toast({
-          title: "Application Not Submitted",
-          description: data.message,
-          variant: "destructive",
-        });
-      }
+      setApplicationResults(data);
+      setShowApplicationResults(true);
       queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
       setShowCVUpload(false);
       setSelectedJob(null);
@@ -1476,6 +1468,110 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                           Submit Application
                         </>
                       )}
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Application Results Modal */}
+        <AnimatePresence>
+          {showApplicationResults && applicationResults && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+              onClick={() => setShowApplicationResults(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-6">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className={`flex items-center justify-center w-12 h-12 rounded-full ${
+                        applicationResults.submitted ? 'bg-green-100' : 'bg-red-100'
+                      }`}>
+                        {applicationResults.submitted ? (
+                          <CheckCircle className="h-6 w-6 text-green-600" />
+                        ) : (
+                          <AlertTriangle className="h-6 w-6 text-red-600" />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold text-gray-900">
+                          {applicationResults.submitted ? 'Application Submitted!' : 'Application Analysis'}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Score: {applicationResults.score}%
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowApplicationResults(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Score Display */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Match Score</span>
+                      <span className="text-sm font-bold text-gray-900">{applicationResults.score}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${
+                          applicationResults.score >= 70 ? 'bg-green-500' : 
+                          applicationResults.score >= 50 ? 'bg-yellow-500' : 
+                          'bg-red-500'
+                        }`}
+                        style={{ width: `${applicationResults.score}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Status Message */}
+                  <div className={`p-4 rounded-lg mb-6 ${
+                    applicationResults.submitted ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                  }`}>
+                    <p className={`text-sm ${
+                      applicationResults.submitted ? 'text-green-800' : 'text-red-800'
+                    }`}>
+                      {applicationResults.message}
+                    </p>
+                  </div>
+
+                  {/* Detailed Analysis */}
+                  {applicationResults.analysisDetails && (
+                    <div className="mb-6">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-3">Detailed Analysis</h4>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans">
+                          {applicationResults.analysisDetails}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Button */}
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => setShowApplicationResults(false)}
+                      className="px-6"
+                    >
+                      Close
                     </Button>
                   </div>
                 </div>
