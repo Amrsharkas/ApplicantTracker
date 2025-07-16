@@ -488,20 +488,28 @@ export class AirtableService {
   async processJobMatch(jobMatch: AirtableJobMatch): Promise<void> {
     try {
       console.log(`Processing job match for user ${jobMatch.userId}: ${jobMatch.jobTitle}`);
+      console.log('🔧 Job match data before processing:', {
+        jobTitle: jobMatch.jobTitle,
+        companyName: jobMatch.companyName,
+        description: jobMatch.jobDescription?.substring(0, 50) + '...'
+      });
       
       // Use company name from Airtable field
       const company = jobMatch.companyName || 'Company from Airtable';
       
       // Create the job in the database
-      const job = await storage.createJobFromAirtable({
+      const jobData = {
         title: jobMatch.jobTitle!,
         company: company,
         description: jobMatch.jobDescription!,
-        location: 'Remote', // Default location
-        experienceLevel: 'mid', // Default level
+        location: 'Remote',
+        experienceLevel: 'Mid-level',
         skills: this.extractSkills(jobMatch.jobDescription!),
-        jobType: 'full-time' // Default type
-      });
+        employmentType: 'Full-time'
+      };
+      
+      console.log('🔧 Sending to createJobFromAirtable:', jobData);
+      const job = await storage.createJobFromAirtable(jobData);
 
       console.log(`✅ Created job: ${job.title} at ${job.company} (ID: ${job.id})`);
 

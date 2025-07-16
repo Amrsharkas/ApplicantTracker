@@ -236,13 +236,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createJobFromAirtable(jobData: any): Promise<Job> {
+    console.log('🔧 Creating job from Airtable data:', {
+      title: jobData.title,
+      company: jobData.company,
+      description: jobData.description?.substring(0, 100) + '...'
+    });
+    
     const [job] = await db
       .insert(jobs)
       .values({
-        title: jobData.jobTitle,
-        description: jobData.jobDescription,
-        company: jobData.companyName,
-        location: jobData.location || null,
+        title: jobData.title, // Fixed: use correct field name
+        description: jobData.description,
+        company: jobData.company,
+        location: jobData.location || 'Remote',
         salaryRange: jobData.salaryRange || null,
         employmentType: jobData.employmentType || 'Full-time',
         experienceLevel: jobData.experienceLevel || 'Mid-level',
@@ -250,7 +256,7 @@ export class DatabaseStorage implements IStorage {
         postedDate: new Date(),
         requirements: [],
         benefits: [],
-        remote: false,
+        remote: true,
         applicationCount: 0,
         isActive: true
       })

@@ -1332,9 +1332,9 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     } catch (error) {
       console.error("❌ Airtable monitoring error:", error);
     }
-  }, 30000); // Check every 30 seconds
+  }, 60000); // Check every 60 seconds (1 minute)
 
-  console.log("🚀 Airtable job monitoring system started - checking every 30 seconds");
+  console.log("🚀 Airtable job monitoring system started - checking every 60 seconds");
 
   const httpServer = createServer(app);
   return httpServer;
