@@ -20,21 +20,26 @@ export class EmployerQuestionService {
         messages: [
           {
             role: "system",
-            content: `Extract each question as a separate line item from the following text. Only include actual questions. Return a JSON object with "questions" as an array of objects with a "question" field.
+            content: `Analyze the text and determine if it contains multiple numbered questions or is one single question.
+
+RULES:
+- If the text contains explicit numbering (1., 2., 3., etc. or 1), 2), 3), etc.), split into separate questions
+- If there are NO numbers before questions, treat the entire text as ONE single question
+- Clean up formatting (remove extra spaces, line breaks) but preserve the question content
+- Return a JSON object with "questions" as an array of objects with a "question" field
 
 Format:
 {
   "questions": [
-    { "question": "First question text here" },
-    { "question": "Second question text here" }
+    { "question": "Question text here" }
   ]
 }
 
-Clean up formatting (remove numbers, bullets, extra spaces) and make questions clear and complete. If no valid questions are found, return an empty array.`
+If no valid questions are found, return an empty array.`
           },
           {
             role: "user",
-            content: `Extract each question as a separate line item from the following text. Only include actual questions:
+            content: `Analyze this text and determine if it's one question or multiple numbered questions:
 """
 ${employerQuestionsText}
 """`
@@ -72,62 +77,43 @@ ${employerQuestionsText}
   private simpleParseQuestions(text: string): ParsedEmployerQuestion[] {
     console.log('Using fallback simple parsing for:', text);
     
-    // Enhanced numbered questions pattern - handles multiline questions
-    // Pattern for: "1. Question text that may span multiple lines?"
+    // Check if text contains explicit numbering (1., 2., 3., etc. or 1), 2), 3), etc.)
     const cleanText = text.replace(/\n+/g, ' ').trim();
-    const numberedPattern = /(\d+\.?\s+)([^0-9]+?)(?=\d+\.|\s*$)/g;
-    const matches = Array.from(cleanText.matchAll(numberedPattern));
+    const hasNumbering = /\d+[\.)]\s+/.test(cleanText);
     
-    if (matches.length > 0) {
-      const questions: ParsedEmployerQuestion[] = [];
-      for (const match of matches) {
-        const questionText = match[2]?.trim();
-        if (questionText && questionText.length > 20) { // Ensure it's a substantial question
-          // Clean up the question text
-          const cleanQuestion = questionText
-            .replace(/\s+/g, ' ')
-            .trim();
-          questions.push({ question: cleanQuestion });
+    if (hasNumbering) {
+      // Multiple numbered questions - parse them separately
+      const numberedPattern = /(\d+[\.)]\s+)([^0-9]+?)(?=\d+[\.)]|\s*$)/g;
+      const matches = Array.from(cleanText.matchAll(numberedPattern));
+      
+      if (matches.length > 0) {
+        const questions: ParsedEmployerQuestion[] = [];
+        for (const match of matches) {
+          const questionText = match[2]?.trim();
+          if (questionText && questionText.length > 10) {
+            // Clean up the question text
+            const cleanQuestion = questionText
+              .replace(/\s+/g, ' ')
+              .trim();
+            questions.push({ question: cleanQuestion });
+          }
         }
+        console.log('Extracted numbered questions:', questions);
+        if (questions.length > 0) return questions;
       }
-      console.log('Extracted numbered questions:', questions);
-      if (questions.length > 0) return questions;
     }
     
-    // Try to split on question marks for multiple questions
-    const questionSplits = text.split('?').filter(part => part.trim().length > 20);
-    if (questionSplits.length > 1) {
-      const questions: ParsedEmployerQuestion[] = [];
-      for (let i = 0; i < questionSplits.length - 1; i++) { // Skip last empty part after final ?
-        const questionText = questionSplits[i]
-          .replace(/^\d+\.?\s*/, '') // Remove leading numbers
-          .trim() + '?';
-        if (questionText.length > 20) {
-          questions.push({ question: questionText });
-        }
-      }
-      console.log('Extracted question mark split questions:', questions);
-      if (questions.length > 0) return questions;
+    // No explicit numbering - treat entire text as one question
+    const singleQuestion = cleanText
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    if (singleQuestion.length > 10) {
+      console.log('Treating as single question:', singleQuestion);
+      return [{ question: singleQuestion }];
     }
     
-    // Fallback to line-by-line parsing
-    const lines = text.split('\n').filter(line => line.trim() !== '');
-    const questions: ParsedEmployerQuestion[] = [];
-
-    for (const line of lines) {
-      const cleanLine = line.trim()
-        .replace(/^\d+\.?\s*/, '') // Remove leading numbers
-        .replace(/^[-•*]\s*/, '')  // Remove bullets
-        .trim();
-
-      if (cleanLine.includes('?') || cleanLine.toLowerCase().includes('question')) {
-        questions.push({
-          question: cleanLine.endsWith('?') ? cleanLine : cleanLine + '?'
-        });
-      }
-    }
-
-    return questions;
+    return [];
   }
 
   async evaluateUserAnswers(questions: ParsedEmployerQuestion[], userAnswers: string[]): Promise<{
