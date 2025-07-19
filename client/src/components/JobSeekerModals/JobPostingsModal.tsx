@@ -81,6 +81,10 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   const [showApplicationAnalysis, setShowApplicationAnalysis] = useState(false);
   const [applicationAnalysis, setApplicationAnalysis] = useState<AIMatchResponse | null>(null);
   const [showAILoadingModal, setShowAILoadingModal] = useState(false);
+  const [aiLoadingResult, setAiLoadingResult] = useState<{
+    type: 'success' | 'error' | null;
+    message: string;
+  }>({ type: null, message: '' });
   const [filters, setFilters] = useState({
     workplace: [] as string[],
     country: "",
@@ -116,34 +120,48 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
       return response;
     },
     onSuccess: (data) => {
-      setShowAILoadingModal(false);
-      toast({
-        title: "Application Submitted Successfully!",
-        description: `Your application has been analyzed and submitted. ${data.analysis.matchedSkills}/${data.analysis.totalRequiredSkills} required skills matched.`,
+      setAiLoadingResult({
+        type: 'success',
+        message: `Application submitted successfully! ${data.analysis.matchedSkills}/${data.analysis.totalRequiredSkills} required skills matched.`
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
-      setSelectedJob(null);
-      resetApplicationState();
+      setTimeout(() => {
+        setShowAILoadingModal(false);
+        setAiLoadingResult({ type: null, message: '' });
+        toast({
+          title: "Application Submitted Successfully!",
+          description: `Your application has been analyzed and submitted. ${data.analysis.matchedSkills}/${data.analysis.totalRequiredSkills} required skills matched.`,
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+        setSelectedJob(null);
+        resetApplicationState();
+      }, 2000);
     },
     onError: (error: Error) => {
-      setShowAILoadingModal(false);
-      console.error('Application submission error:', error);
-      if (isUnauthorizedError(error)) {
+      setAiLoadingResult({
+        type: 'error',
+        message: `Application failed: ${error.message}`
+      });
+      setTimeout(() => {
+        setShowAILoadingModal(false);
+        setAiLoadingResult({ type: null, message: '' });
+        console.error('Application submission error:', error);
+        if (isUnauthorizedError(error)) {
+          toast({
+            title: "Unauthorized", 
+            description: "You are logged out. Logging in again...",
+            variant: "destructive",
+          });
+          setTimeout(() => {
+            window.location.href = "/api/login";
+          }, 500);
+          return;
+        }
         toast({
-          title: "Unauthorized", 
-          description: "You are logged out. Logging in again...",
+          title: "Application Failed",
+          description: `Failed to submit application: ${error.message}`,
           variant: "destructive",
         });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Application Failed",
-        description: `Failed to submit application: ${error.message}`,
-        variant: "destructive",
-      });
+      }, 3000);
     },
   });
 
@@ -1307,46 +1325,67 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                     />
                   </div>
 
-                  {/* Fun Loading Messages */}
+                  {/* Fun Loading Messages or Result */}
                   <div className="space-y-3">
-                    <h3 className="text-xl font-bold text-gray-900">
-                      🤖 AI Assistant at Work!
-                    </h3>
-                    <motion.div
-                      key={Math.random()}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="space-y-2"
-                    >
-                      <p className="text-gray-600 font-medium">
-                        Analyzing your profile against job requirements...
-                      </p>
+                    {aiLoadingResult.type === null ? (
+                      <>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          🤖 AI Assistant at Work!
+                        </h3>
+                        <motion.div
+                          key={Math.random()}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="space-y-2"
+                        >
+                          <p className="text-gray-600 font-medium">
+                            Analyzing your profile against job requirements...
+                          </p>
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                            className="mx-auto w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full"
+                          />
+                        </motion.div>
+                        
+                        {/* Fun rotating messages */}
+                        <motion.p
+                          key={Date.now()}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="text-sm text-blue-600 italic"
+                        >
+                          {[
+                            "🔍 Scanning your skills like a digital Sherlock Holmes...",
+                            "🎯 Calculating match percentages with rocket science precision...", 
+                            "🧪 Mixing your experience with job requirements in our AI lab...",
+                            "🎪 Performing algorithmic acrobatics to find your best fit...",
+                            "🚀 Launching deep analysis protocols into the data stratosphere...",
+                            "🎨 Painting a masterpiece of your professional compatibility...",
+                            "🔮 Consulting the ancient algorithms of employment wisdom...",
+                            "⚡ Charging up the skill-matching superpowers...",
+                            "🎵 Harmonizing your talents with opportunity frequencies..."
+                          ][Math.floor(Math.random() * 9)]}
+                        </motion.p>
+                      </>
+                    ) : (
                       <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                        className="mx-auto w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full"
-                      />
-                    </motion.div>
-                    
-                    {/* Fun rotating messages */}
-                    <motion.p
-                      key={Date.now()}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="text-sm text-blue-600 italic"
-                    >
-                      {[
-                        "🔍 Scanning your skills like a digital Sherlock Holmes...",
-                        "🎯 Calculating match percentages with rocket science precision...", 
-                        "🧪 Mixing your experience with job requirements in our AI lab...",
-                        "🎪 Performing algorithmic acrobatics to find your best fit...",
-                        "🚀 Launching deep analysis protocols into the data stratosphere...",
-                        "🎨 Painting a masterpiece of your professional compatibility...",
-                        "🔮 Consulting the ancient algorithms of employment wisdom...",
-                        "⚡ Charging up the skill-matching superpowers...",
-                        "🎵 Harmonizing your talents with opportunity frequencies..."
-                      ][Math.floor(Math.random() * 9)]}
-                    </motion.p>
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="space-y-3"
+                      >
+                        <h3 className={`text-xl font-bold ${
+                          aiLoadingResult.type === 'success' ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {aiLoadingResult.type === 'success' ? '✅ Success!' : '❌ Error'}
+                        </h3>
+                        <p className={`text-sm font-medium ${
+                          aiLoadingResult.type === 'success' ? 'text-green-700' : 'text-red-700'
+                        }`}>
+                          {aiLoadingResult.message}
+                        </p>
+                      </motion.div>
+                    )}
                   </div>
 
                   {/* Progress dots */}
