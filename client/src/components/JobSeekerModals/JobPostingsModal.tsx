@@ -449,8 +449,9 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   };
 
   const handleApply = (job: JobPosting) => {
-    // Always allow application, proceed directly
-    proceedWithApplication(job);
+    // Show job details first, then allow application
+    setSelectedJob(job);
+    setViewedJobDetails(prev => new Set([...prev, job.recordId]));
   };
 
   const proceedWithApplication = (job: JobPosting) => {
@@ -1086,14 +1087,14 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                         Close
                       </Button>
                       <Button
-                        onClick={() => handleApply(selectedJob)}
-                        disabled={applicationMutation.isPending}
+                        onClick={() => proceedWithApplication(selectedJob)}
+                        disabled={newApplicationMutation.isPending}
                         className="flex items-center gap-2 px-6"
                       >
-                        {applicationMutation.isPending ? (
+                        {newApplicationMutation.isPending ? (
                           <>
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Analyzing Match...
+                            AI Analyzing...
                           </>
                         ) : (
                           <>

@@ -245,6 +245,7 @@ export class AirtableService {
     }
 
     try {
+      // Try different field name variations to match Airtable schema
       const fields = {
         'Job Title': applicationData.jobTitle,
         'Job ID': applicationData.jobId,
@@ -256,8 +257,27 @@ export class AirtableService {
         'Notes': applicationData.notes,
       };
 
-      await jobApplicationsBase!(JOB_APPLICATIONS_TABLE).create([{ fields }]);
-      console.log(`Successfully submitted application for ${applicationData.applicantName} to ${applicationData.jobTitle} at ${applicationData.companyName}`);
+      console.log('📋 Attempting to submit with fields:', Object.keys(fields));
+
+      try {
+        await jobApplicationsBase!(JOB_APPLICATIONS_TABLE).create([{ fields }]);
+        console.log(`Successfully submitted application for ${applicationData.applicantName} to ${applicationData.jobTitle} at ${applicationData.companyName}`);
+      } catch (fieldError) {
+        console.warn('Initial field submission failed, trying with simplified fields:', fieldError.message);
+        
+        // Try with minimal fields that are more likely to exist
+        const simplifiedFields = {
+          'Name': applicationData.applicantName,
+          'Job': applicationData.jobTitle,
+          'Company': applicationData.companyName,
+          'User ID': applicationData.applicantId,
+          'Notes': applicationData.notes,
+          'Profile': typeof applicationData.aiProfile === 'string' ? applicationData.aiProfile : JSON.stringify(applicationData.aiProfile),
+        };
+        
+        await jobApplicationsBase!(JOB_APPLICATIONS_TABLE).create([{ fields: simplifiedFields }]);
+        console.log(`Successfully submitted application with simplified fields for ${applicationData.applicantName}`);
+      }
     } catch (error) {
       console.error('Error submitting job application to Airtable:', error);
       throw new Error('Failed to submit job application to Airtable');
