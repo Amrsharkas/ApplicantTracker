@@ -2,7 +2,7 @@ import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key"
+  apiKey: process.env.OPENAI_API_KEY || "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"
 });
 
 export interface InterviewQuestion {
@@ -785,7 +785,8 @@ Be blunt and factual. No generic praise. Focus on what was actually demonstrated
 
     try {
       // Check if OpenAI is properly configured
-      if (!this.openai.apiKey || this.openai.apiKey === "default_key") {
+      console.log('🔑 OpenAI API Key configured:', !!this.openai.apiKey);
+      if (!this.openai.apiKey) {
         throw new Error("OpenAI API key not properly configured");
       }
 

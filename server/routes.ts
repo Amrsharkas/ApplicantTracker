@@ -1021,9 +1021,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('📋 Job details for analysis:', jobDetails);
 
+      // Prepare complete user data for AI analysis
+      const completeUserData = {
+        ...user,
+        ...userProfile,
+        // Make sure aiProfile is accessible
+        aiProfile: userProfile.aiProfile || userProfile.aiProfileGenerated || "No AI profile available"
+      };
+
+      console.log('🔍 Complete user data prepared for AI:', {
+        hasFirstName: !!completeUserData.firstName,
+        hasSkills: !!completeUserData.skills,
+        hasAIProfile: !!completeUserData.aiProfile,
+        aiProfileLength: completeUserData.aiProfile ? completeUserData.aiProfile.length : 0
+      });
+
       // Use AI to analyze if user meets job requirements (3 or fewer missing requirements)
+      console.log('🤖 Starting OpenAI analysis...');
       const analysis = await aiInterviewAgent.analyzeJobQualifications(
-        { ...user, ...userProfile },
+        completeUserData,
         jobDetails
       );
 
