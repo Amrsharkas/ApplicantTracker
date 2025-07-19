@@ -393,6 +393,7 @@ export default function Dashboard() {
       <ApplicationsModal 
         isOpen={activeModal === 'applications'} 
         onClose={closeModal} 
+        onOpenJobPostings={() => openModal('jobPostings')}
       />
       <JobPostingsModal 
         isOpen={activeModal === 'jobPostings'} 

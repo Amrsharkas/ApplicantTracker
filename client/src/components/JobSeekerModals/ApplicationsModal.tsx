@@ -34,9 +34,10 @@ interface AirtableApplication {
 interface ApplicationsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenJobPostings?: () => void;
 }
 
-export function ApplicationsModal({ isOpen, onClose }: ApplicationsModalProps) {
+export function ApplicationsModal({ isOpen, onClose, onOpenJobPostings }: ApplicationsModalProps) {
   const [statusFilter, setStatusFilter] = useState("all");
   const { toast } = useToast();
 
@@ -263,7 +264,15 @@ export function ApplicationsModal({ isOpen, onClose }: ApplicationsModalProps) {
                         Withdraw
                       </Button>
                     )}
-                    <Button variant="outline" size="sm" className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex items-center gap-2"
+                      onClick={() => {
+                        onClose(); // Close applications modal
+                        onOpenJobPostings?.(); // Open job postings modal
+                      }}
+                    >
                       <Eye className="w-4 h-4" />
                       View Details
                     </Button>
