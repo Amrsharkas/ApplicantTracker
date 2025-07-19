@@ -137,42 +137,7 @@ export default function Dashboard() {
                 </p>
               </div>
               
-              {/* Hiring Statistics */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-8 border border-blue-200">
-                <h3 className="text-2xl font-bold text-center text-gray-900 mb-6">
-                  Why Traditional Job Hunting Doesn't Work
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-red-600 mb-2">75%</div>
-                    <p className="text-sm text-gray-700">
-                      of resumes are rejected by ATS systems before human review
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-orange-600 mb-2">3 mins</div>
-                    <p className="text-sm text-gray-700">
-                      average time recruiters spend reading each resume
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-purple-600 mb-2">250+</div>
-                    <p className="text-sm text-gray-700">
-                      applications submitted for each job posting on average
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="mt-6 pt-6 border-t border-blue-200">
-                  <div className="text-center">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-2">How Plato Changes the Game</h4>
-                    <p className="text-gray-700 max-w-3xl mx-auto">
-                      Our AI understands your true potential beyond keywords. We match you with opportunities 
-                      based on your skills, personality, and career goals - not just resume scanning.
-                    </p>
-                  </div>
-                </div>
-              </div>
+
             </div>
           ) : (
             /* Show getting started checklist for incomplete users */
@@ -358,6 +323,27 @@ export default function Dashboard() {
                     <User className="h-3 w-3 text-blue-600" />
                     <span className="text-gray-600">Profile Completion:</span>
                     <span className="font-medium text-gray-900">{profileProgress}%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Compact Industry Stats */}
+              <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="text-center">
+                  <h5 className="text-xs font-medium text-gray-500 mb-3">Why AI-Powered Job Matching Works Better</h5>
+                  <div className="flex justify-center items-center space-x-8 text-xs">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-red-600">75%</div>
+                      <p className="text-gray-600">resumes rejected by ATS</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-orange-600">3min</div>
+                      <p className="text-gray-600">recruiter reading time</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-purple-600">250+</div>
+                      <p className="text-gray-600">applications per posting</p>
+                    </div>
                   </div>
                 </div>
               </div>
