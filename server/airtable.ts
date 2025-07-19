@@ -245,21 +245,22 @@ export class AirtableService {
     }
 
     try {
-      // Use direct Airtable API with exact payload structure
+      // Use direct Airtable API with exact field names from Airtable base
       const payload = {
         fields: {
-          "Job Title": applicationData.jobTitle,
+          "Job title": applicationData.jobTitle,
           "Job ID": applicationData.jobId,
-          "Job Description": applicationData.jobDescription || `${applicationData.jobTitle} position at ${applicationData.companyName}`,
-          "Company Name": applicationData.companyName,
+          "Job description": applicationData.jobDescription || `${applicationData.jobTitle} position at ${applicationData.companyName}`,
+          "Company": applicationData.companyName,
           "Applicant Name": applicationData.applicantName,
-          "Applicant ID": applicationData.applicantId,
-          "AI Profile": typeof applicationData.aiProfile === 'string' ? applicationData.aiProfile : JSON.stringify(applicationData.aiProfile),
-          "Notes": applicationData.notes || `Application submitted for ${applicationData.jobTitle}`
+          "Applicant User ID": applicationData.applicantId,
+          "User profile": JSON.stringify(applicationData.aiProfile),
+          "Notes": applicationData.notes || "No missing skills"
         }
       };
 
-      console.log('📋 Submitting with payload structure:', Object.keys(payload.fields));
+      console.log('📋 Airtable payload before submission:', JSON.stringify(payload, null, 2));
+      console.log('📋 Field names being sent:', Object.keys(payload.fields));
 
       // Use direct fetch to Airtable API with exact specification
       const response = await fetch('https://api.airtable.com/v0/appEYs1fTytFXoJ7x/platojobapplications', {
