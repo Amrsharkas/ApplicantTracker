@@ -124,44 +124,36 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
         type: 'success',
         message: `Application submitted successfully! ${data.analysis.matchedSkills}/${data.analysis.totalRequiredSkills} required skills matched.`
       });
-      setTimeout(() => {
-        setShowAILoadingModal(false);
-        setAiLoadingResult({ type: null, message: '' });
-        toast({
-          title: "Application Submitted Successfully!",
-          description: `Your application has been analyzed and submitted. ${data.analysis.matchedSkills}/${data.analysis.totalRequiredSkills} required skills matched.`,
-        });
-        queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
-        setSelectedJob(null);
-        resetApplicationState();
-      }, 2000);
+      toast({
+        title: "Application Submitted Successfully!",
+        description: `Your application has been analyzed and submitted. ${data.analysis.matchedSkills}/${data.analysis.totalRequiredSkills} required skills matched.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+      setSelectedJob(null);
+      resetApplicationState();
     },
     onError: (error: Error) => {
       setAiLoadingResult({
         type: 'error',
         message: `Application failed: ${error.message}`
       });
-      setTimeout(() => {
-        setShowAILoadingModal(false);
-        setAiLoadingResult({ type: null, message: '' });
-        console.error('Application submission error:', error);
-        if (isUnauthorizedError(error)) {
-          toast({
-            title: "Unauthorized", 
-            description: "You are logged out. Logging in again...",
-            variant: "destructive",
-          });
-          setTimeout(() => {
-            window.location.href = "/api/login";
-          }, 500);
-          return;
-        }
+      console.error('Application submission error:', error);
+      if (isUnauthorizedError(error)) {
         toast({
-          title: "Application Failed",
-          description: `Failed to submit application: ${error.message}`,
+          title: "Unauthorized", 
+          description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
-      }, 3000);
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Application Failed",
+        description: `Failed to submit application: ${error.message}`,
+        variant: "destructive",
+      });
     },
   });
 
@@ -1384,6 +1376,15 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                         }`}>
                           {aiLoadingResult.message}
                         </p>
+                        <Button
+                          onClick={() => {
+                            setShowAILoadingModal(false);
+                            setAiLoadingResult({ type: null, message: '' });
+                          }}
+                          className="mt-4"
+                        >
+                          Close
+                        </Button>
                       </motion.div>
                     )}
                   </div>
