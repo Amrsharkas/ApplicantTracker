@@ -976,8 +976,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // New Automatic Job Application Analysis Route
   app.post('/api/applications/auto-analyze', isAuthenticated, async (req: any, res) => {
     try {
-      console.log('🤖 Automatic job application analysis started');
+      console.log('\n🤖 === AUTOMATIC JOB APPLICATION ANALYSIS STARTED ===');
       console.log('📋 Request body:', req.body);
+      console.log('👤 User ID:', req.user?.claims?.sub);
       
       const userId = req.user.claims.sub;
       const { jobId, jobTitle, companyName, jobDescription, requirements, experienceLevel } = req.body;

@@ -575,6 +575,15 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   // New automatic application mutation
   const autoApplicationMutation = useMutation({
     mutationFn: async (job: JobPosting) => {
+      console.log('🚀 Starting application analysis for:', job.jobTitle);
+      console.log('📋 Request data:', {
+        jobId: job.recordId,
+        jobTitle: job.jobTitle,
+        companyName: job.companyName,
+        requirements: job.skills?.join(',') || '',
+        experienceLevel: job.experienceLevel || ''
+      });
+      
       const response = await apiRequest("/api/applications/auto-analyze", {
         method: "POST",
         body: JSON.stringify({
@@ -586,6 +595,8 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
           experienceLevel: job.experienceLevel || ''
         }),
       });
+      
+      console.log('✅ API response received:', response);
       return response;
     },
     onSuccess: (data) => {
