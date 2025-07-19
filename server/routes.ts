@@ -1007,6 +1007,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         experienceLevel: experienceLevel || 'Mid-level'
       };
 
+      // Debug user profile data
+      console.log('🔍 User data for analysis:', {
+        userId,
+        hasUser: !!user,
+        hasProfile: !!userProfile,
+        hasAIProfile: !!userProfile.aiProfile,
+        userKeys: user ? Object.keys(user) : [],
+        profileKeys: userProfile ? Object.keys(userProfile) : []
+      });
+
       // Use AI to analyze if user meets job requirements (3 or fewer missing requirements)
       const analysis = await aiInterviewAgent.analyzeJobQualifications(
         { ...user, ...userProfile },
@@ -1083,9 +1093,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.user?.claims?.sub,
         bodyKeys: Object.keys(req.body || {})
       });
-      res.status(500).json({ 
-        message: "Failed to analyze job application",
-        error: error.message 
+      res.json({ 
+        qualified: false,
+        message: "Failed to analyze application. Please try again."
       });
     }
   });

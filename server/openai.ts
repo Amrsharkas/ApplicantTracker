@@ -779,23 +779,33 @@ Be blunt and factual. No generic praise. Focus on what was actually demonstrated
 
   // New method for automatic job qualification analysis
   async analyzeJobQualifications(userData: any, jobDetails: any): Promise<{missingRequirements: string[]}> {
-    const prompt = `You are an expert hiring manager analyzing whether a candidate meets job requirements.
+    console.log('🤖 Starting AI job qualification analysis...');
+    console.log('📊 Candidate data keys:', Object.keys(userData));
+    console.log('📋 Job details:', jobDetails);
+
+    try {
+      // Check if OpenAI is properly configured
+      if (!this.openai.apiKey || this.openai.apiKey === "default_key") {
+        throw new Error("OpenAI API key not properly configured");
+      }
+
+      const prompt = `You are an expert hiring manager analyzing whether a candidate meets job requirements.
 
 CANDIDATE PROFILE:
-Name: ${userData.firstName} ${userData.lastName || ''}
+Name: ${userData.firstName || 'Not specified'} ${userData.lastName || ''}
 Current Role: ${userData.currentRole || 'Not specified'}
 Years of Experience: ${userData.yearsOfExperience || 'Not specified'}
 Education: ${userData.education || 'Not specified'}
-Skills: ${userData.skills ? userData.skills.join(', ') : 'Not specified'}
+Skills: ${userData.skills ? (Array.isArray(userData.skills) ? userData.skills.join(', ') : userData.skills) : 'Not specified'}
 
-AI-Generated Profile Summary: ${userData.aiProfile || 'No AI profile available'}
+AI-Generated Profile Summary: ${typeof userData.aiProfile === 'string' ? userData.aiProfile : 'No AI profile available'}
 
 JOB REQUIREMENTS:
 Position: ${jobDetails.title}
 Company: ${jobDetails.company}
 Experience Level: ${jobDetails.experienceLevel}
 Description: ${jobDetails.description}
-Specific Requirements: ${jobDetails.requirements.join(', ') || 'No specific requirements listed'}
+Specific Requirements: ${Array.isArray(jobDetails.requirements) ? jobDetails.requirements.join(', ') : 'No specific requirements listed'}
 
 ANALYSIS TASK:
 Compare the candidate's profile against the job requirements. Identify specific missing requirements or qualifications.
@@ -815,8 +825,8 @@ GUIDELINES:
 
 Return only valid JSON.`;
 
-    try {
-      const response = await openai.chat.completions.create({
+      console.log('🔍 Sending request to OpenAI...');
+      const response = await this.openai.chat.completions.create({
         model: "gpt-4o",
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
@@ -824,6 +834,7 @@ Return only valid JSON.`;
         max_tokens: 800
       });
 
+      console.log('✅ OpenAI response received');
       const analysis = JSON.parse(response.choices[0].message.content || '{"missingRequirements": []}');
       console.log('🔍 AI qualification analysis completed:', analysis);
       
@@ -831,9 +842,17 @@ Return only valid JSON.`;
         missingRequirements: analysis.missingRequirements || []
       };
     } catch (error) {
-      console.error("Error analyzing job qualifications:", error);
+      console.error("❌ Error analyzing job qualifications:", error);
+      console.error("🔍 OpenAI error details:", {
+        name: error.name,
+        message: error.message,
+        status: error.status,
+        type: error.type
+      });
+      
+      // Return a safe fallback
       return {
-        missingRequirements: ["Unable to analyze qualifications at this time"]
+        missingRequirements: ["Technical analysis error - please try again"]
       };
     }
   }

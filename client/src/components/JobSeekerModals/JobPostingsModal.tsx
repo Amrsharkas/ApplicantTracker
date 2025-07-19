@@ -552,7 +552,14 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   };
 
   const handleApply = (job: JobPosting) => {
-    setSelectedJob(job);
+    // First, check if user has viewed the full job details
+    if (selectedJob?.recordId !== job.recordId) {
+      // User hasn't viewed this job details yet - show them first
+      setSelectedJob(job);
+      return;
+    }
+    
+    // User has viewed the details, proceed with application
     setApplicationStatus('analyzing');
     autoApplicationMutation.mutate(job);
   };
