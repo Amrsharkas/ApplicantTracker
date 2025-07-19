@@ -133,12 +133,26 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
       resetApplicationState();
     },
     onError: (error: Error) => {
-      setAiLoadingResult({
-        type: 'error',
-        message: `Application failed: ${error.message}`
-      });
       console.error('Application submission error:', error);
+      
+      // Check if it's a duplicate application error
+      if (error.message.includes('already applied')) {
+        setAiLoadingResult({
+          type: 'info',
+          message: `You've already applied to this position!\n\nWe know you're excited about this opportunity, but one application per job should do the trick! 😊`
+        });
+        toast({
+          title: "Already Applied!",
+          description: "You've already submitted an application for this position. We know you're enthusiastic!",
+        });
+        return;
+      }
+      
       if (isUnauthorizedError(error)) {
+        setAiLoadingResult({
+          type: 'error',
+          message: `Application failed: ${error.message}`
+        });
         toast({
           title: "Unauthorized", 
           description: "You are logged out. Logging in again...",
@@ -149,6 +163,11 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
         }, 500);
         return;
       }
+      
+      setAiLoadingResult({
+        type: 'error',
+        message: `Application failed: ${error.message}`
+      });
       toast({
         title: "Application Failed",
         description: `Failed to submit application: ${error.message}`,
@@ -1367,12 +1386,15 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                         className="space-y-3"
                       >
                         <h3 className={`text-xl font-bold ${
-                          aiLoadingResult.type === 'success' ? 'text-green-600' : 'text-red-600'
+                          aiLoadingResult.type === 'success' ? 'text-green-600' : 
+                          aiLoadingResult.type === 'info' ? 'text-blue-600' : 'text-red-600'
                         }`}>
-                          {aiLoadingResult.type === 'success' ? '✅ Success!' : '❌ Error'}
+                          {aiLoadingResult.type === 'success' ? '✅ Success!' : 
+                           aiLoadingResult.type === 'info' ? '🎉 Already Applied!' : '❌ Error'}
                         </h3>
-                        <p className={`text-sm font-medium ${
-                          aiLoadingResult.type === 'success' ? 'text-green-700' : 'text-red-700'
+                        <p className={`text-sm font-medium whitespace-pre-line ${
+                          aiLoadingResult.type === 'success' ? 'text-green-700' : 
+                          aiLoadingResult.type === 'info' ? 'text-blue-700' : 'text-red-700'
                         }`}>
                           {aiLoadingResult.message}
                         </p>
