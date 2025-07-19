@@ -1068,36 +1068,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user's applications from Airtable
       const airtableApplications = await airtableService.getUserApplications(userId);
       
-      // Process each application to determine status
-      const processedApplications = await Promise.all(
-        airtableApplications.map(async (app) => {
-          let status = 'pending';
-          
-          // Check if user was accepted (appears in job matches)
-          const isAccepted = await airtableService.checkUserAccepted(userId, app.jobTitle);
-          if (isAccepted) {
+      // Use status directly from Airtable instead of calculating it
+      const processedApplications = airtableApplications.map((app) => {
+        // Normalize status to lowercase and handle variations
+        let status = 'pending'; // Default status
+        if (app.status) {
+          const normalizedStatus = app.status.toLowerCase().trim();
+          // Map Airtable status values to our expected values
+          if (['accepted', 'approved', 'hired'].includes(normalizedStatus)) {
             status = 'accepted';
+          } else if (['pending', 'under review', 'reviewing'].includes(normalizedStatus)) {
+            status = 'pending';
+          } else if (['denied', 'rejected', 'declined'].includes(normalizedStatus)) {
+            status = 'denied';
+          } else if (['closed', 'cancelled', 'expired'].includes(normalizedStatus)) {
+            status = 'closed';
           } else {
-            // Check if job still exists
-            const jobStatus = await airtableService.checkJobStatus(app.jobId, app.jobTitle);
-            if (jobStatus === 'removed') {
-              status = 'closed';
-            }
-            // If still exists but not accepted, status remains 'pending'
+            status = normalizedStatus; // Use as-is if it's already a valid status
           }
-          
-          return {
-            recordId: app.recordId,
-            jobTitle: app.jobTitle,
-            jobId: app.jobId,
-            companyName: app.companyName,
-            appliedAt: app.createdTime,
-            status,
-            notes: app.notes,
-            jobDescription: app.jobDescription
-          };
-        })
-      );
+        }
+        
+        return {
+          recordId: app.recordId,
+          jobTitle: app.jobTitle,
+          jobId: app.jobId,
+          companyName: app.companyName,
+          appliedAt: app.createdTime,
+          status,
+          notes: app.notes,
+          jobDescription: app.jobDescription
+        };
+      });
       
       console.log(`📋 Returning ${processedApplications.length} processed applications for user ${userId}`);
       res.json(processedApplications);

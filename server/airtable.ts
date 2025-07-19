@@ -540,6 +540,7 @@ export class AirtableService {
         applicantUserId: record.get('Applicant User ID') as string,
         userProfile: record.get('User profile') as string,
         notes: record.get('Notes') as string,
+        status: record.get('Status') as string, // Add new Status field
         createdTime: record.get('Created Time') || new Date().toISOString()
       }));
 
