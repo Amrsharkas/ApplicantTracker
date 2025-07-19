@@ -806,14 +806,18 @@ export class AirtableService {
     }
 
     try {
+      // Try multiple field name variations to match existing table structure
       const fields = {
-        'Job Title': applicationData.jobTitle,
-        'Job ID': applicationData.userId, // Using userId as unique identifier 
-        'Job Description': applicationData.analysisDetails || 'Smart application based on skill matching',
-        'Company Name': applicationData.companyName,
-        'Applicant Name': applicationData.name,
-        'Applicant ID': applicationData.userId,
-        'AI Profile': applicationData.userProfile
+        'jobTitle': applicationData.jobTitle,
+        'userId': applicationData.userId,
+        'email': applicationData.email,
+        'companyName': applicationData.companyName,
+        'applicantName': applicationData.name,
+        'applicantId': applicationData.userId,
+        'aiProfile': applicationData.userProfile,
+        'score': applicationData.score,
+        'analysisDetails': applicationData.analysisDetails,
+        'applicationDate': applicationData.applicationDate
       };
 
       console.log('📤 Storing job application with fields:', Object.keys(fields));

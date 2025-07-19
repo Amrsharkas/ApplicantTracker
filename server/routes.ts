@@ -983,14 +983,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { jobId, jobTitle, companyName, jobDescription, requirements, skills, experienceLevel } = req.body;
 
-      if (!req.file) {
-        console.error('❌ No CV file uploaded');
-        return res.status(400).json({ 
-          success: false,
-          qualified: false,
-          message: "CV file is required" 
-        });
-      }
+      // CV upload is optional - proceed without it
+      const cvContent = req.file ? 
+        `CV file uploaded: ${req.file.originalname} (${req.file.size} bytes)` : 
+        'No CV uploaded - using AI profile data';
 
       // Get user data and AI profile
       const user = await storage.getUser(userId);
@@ -1042,7 +1038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             jobTitle: jobTitle,
             companyName: companyName,
             applicationDate: new Date().toISOString(),
-            resume: `CV file uploaded: ${req.file.originalname} (${req.file.size} bytes)`,
+            resume: cvContent,
             userProfile: JSON.stringify(userProfile.aiProfile),
             score: 100 - (missingSkills.length * 10), // Score based on skill match
             analysisDetails: `Skills Match Analysis: Missing ${missingSkills.length} out of ${jobRequiredSkills.length} required skills. Missing: ${missingSkills.join(', ')}`
