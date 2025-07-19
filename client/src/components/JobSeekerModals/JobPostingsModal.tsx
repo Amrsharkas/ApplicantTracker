@@ -122,11 +122,11 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
     onSuccess: (data) => {
       setAiLoadingResult({
         type: 'success',
-        message: `Application submitted successfully! ${data.analysis.matchedSkills}/${data.analysis.totalRequiredSkills} required skills matched.`
+        message: `Application submitted successfully!`
       });
       toast({
         title: "Application Submitted Successfully!",
-        description: `Your application has been analyzed and submitted. ${data.analysis.matchedSkills}/${data.analysis.totalRequiredSkills} required skills matched.`,
+        description: `Your application has been analyzed and submitted.`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
       setSelectedJob(null);
