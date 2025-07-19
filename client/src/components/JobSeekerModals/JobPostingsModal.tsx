@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw } from "lucide-react";
+import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft } from "lucide-react";
 
 // Country-City data structure
 const COUNTRIES_CITIES = {
@@ -1053,14 +1053,26 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         <span>{selectedJob.postedDate ? formatDate(selectedJob.postedDate) : 'Recently posted'}</span>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedJob(null)}
-                      className="ml-4"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-2 ml-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedJob(null)}
+                        className="hover:bg-gray-100"
+                        title="Back to job list"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleClose}
+                        className="hover:bg-gray-100"
+                        title="Close"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
