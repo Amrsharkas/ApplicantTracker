@@ -229,6 +229,46 @@ export class AirtableService {
     return formatted;
   }
 
+  async checkExistingApplication(jobId: string, userId: string): Promise<boolean> {
+    if (!AIRTABLE_JOB_APPLICATIONS_BASE_ID) {
+      console.warn('Job applications Airtable base not configured, cannot check for duplicates');
+      return false;
+    }
+
+    try {
+      const filterFormula = `AND({Job ID} = "${jobId}", {Applicant User ID} = "${userId}")`;
+      const url = `https://api.airtable.com/v0/${AIRTABLE_JOB_APPLICATIONS_BASE_ID}/Table 1?filterByFormula=${encodeURIComponent(filterFormula)}`;
+      
+      console.log(`🔍 Checking for existing application: Job ID ${jobId}, User ID ${userId}`);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': 'Bearer pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        console.error('❌ Error checking for existing application:', response.status, await response.text());
+        return false;
+      }
+
+      const data = await response.json();
+      const existingApplications = data.records || [];
+      
+      if (existingApplications.length > 0) {
+        console.log(`⚠️ Found ${existingApplications.length} existing application(s) for this job`);
+        return true;
+      } else {
+        console.log('✅ No existing application found, proceeding with submission');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Error checking for existing application:', error);
+      return false; // Allow submission if check fails
+    }
+  }
+
   async submitJobApplication(applicationData: {
     jobTitle: string;
     jobId: string;
@@ -242,6 +282,12 @@ export class AirtableService {
     if (!jobApplicationsBase) {
       console.warn('Job applications Airtable base not configured, skipping application submission');
       return;
+    }
+
+    // Check for existing application first
+    const isDuplicate = await this.checkExistingApplication(applicationData.jobId, applicationData.applicantId);
+    if (isDuplicate) {
+      throw new Error('You have already applied to this job position.');
     }
 
     try {
