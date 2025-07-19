@@ -527,7 +527,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { job } = req.body;
 
+      console.log('📝 Job application submission attempt:', {
+        userId,
+        jobTitle: job?.jobTitle,
+        jobId: job?.recordId
+      });
+
       if (!job) {
+        console.error('❌ No job data provided in request body');
         return res.status(400).json({ message: 'Job data is required' });
       }
 
@@ -573,7 +580,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Submit to Airtable
+      console.log('📤 Submitting to Airtable:', {
+        jobTitle: applicationData.jobTitle,
+        applicantName: applicationData.applicantName,
+        missingSkillsCount: missingSkills.length
+      });
+      
       await airtableService.submitJobApplication(applicationData);
+
+      console.log('✅ Application submitted successfully to Airtable');
 
       res.json({
         success: true,

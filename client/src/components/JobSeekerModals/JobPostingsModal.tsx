@@ -105,10 +105,12 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   // New application mutation for the updated endpoint
   const newApplicationMutation = useMutation({
     mutationFn: async (data: { job: JobPosting }) => {
+      console.log('Submitting job application:', data);
       const response = await apiRequest("/api/job-applications/submit", {
         method: "POST",
         body: JSON.stringify(data),
       });
+      console.log('Application response:', response);
       return response;
     },
     onSuccess: (data) => {
@@ -121,9 +123,10 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
       resetApplicationState();
     },
     onError: (error: Error) => {
+      console.error('Application submission error:', error);
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
+          title: "Unauthorized", 
           description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
@@ -134,7 +137,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
       }
       toast({
         title: "Application Failed",
-        description: "Failed to submit application. Please try again.",
+        description: `Failed to submit application: ${error.message}`,
         variant: "destructive",
       });
     },
