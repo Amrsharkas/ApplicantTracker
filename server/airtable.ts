@@ -245,59 +245,40 @@ export class AirtableService {
     }
 
     try {
-      // Try different field name variations to match Airtable schema
-      const fields = {
-        'Job Title': applicationData.jobTitle,
-        'Job ID': applicationData.jobId,
-        'Job Description': applicationData.jobDescription,
-        'Company Name': applicationData.companyName,
-        'Applicant Name': applicationData.applicantName,
-        'Applicant ID': applicationData.applicantId,
-        'AI Profile': typeof applicationData.aiProfile === 'string' ? applicationData.aiProfile : JSON.stringify(applicationData.aiProfile),
-        'Notes': applicationData.notes,
+      // Use direct Airtable API with exact payload structure
+      const payload = {
+        fields: {
+          "Job Title": applicationData.jobTitle,
+          "Job ID": applicationData.jobId,
+          "Job Description": applicationData.jobDescription || `${applicationData.jobTitle} position at ${applicationData.companyName}`,
+          "Company Name": applicationData.companyName,
+          "Applicant Name": applicationData.applicantName,
+          "Applicant ID": applicationData.applicantId,
+          "AI Profile": typeof applicationData.aiProfile === 'string' ? applicationData.aiProfile : JSON.stringify(applicationData.aiProfile),
+          "Notes": applicationData.notes || `Application submitted for ${applicationData.jobTitle}`
+        }
       };
 
-      console.log('📋 Attempting to submit with fields:', Object.keys(fields));
+      console.log('📋 Submitting with payload structure:', Object.keys(payload.fields));
 
-      // First, let's inspect what fields actually exist in the table
-      console.log('🔍 Inspecting Airtable table structure...');
-      try {
-        const existingRecords = await jobApplicationsBase!(JOB_APPLICATIONS_TABLE).select({ maxRecords: 1 }).firstPage();
-        if (existingRecords.length > 0) {
-          console.log('📋 Existing field names in table:', Object.keys(existingRecords[0].fields));
-        }
-      } catch (inspectError) {
-        console.log('📋 Could not inspect existing records, table might be empty');
+      // Use direct fetch to Airtable API with exact specification
+      const response = await fetch('https://api.airtable.com/v0/appEYs1fTytFXoJ7x/platojobapplications', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Airtable API error:', response.status, errorText);
+        throw new Error(`Airtable API error: ${response.status} - ${errorText}`);
       }
 
-      try {
-        await jobApplicationsBase!(JOB_APPLICATIONS_TABLE).create([{ fields }]);
-        console.log(`✅ Successfully submitted application for ${applicationData.applicantName} to ${applicationData.jobTitle} at ${applicationData.companyName}`);
-      } catch (fieldError) {
-        console.warn('🔄 Initial field submission failed, trying with simplified field names:', fieldError.message);
-        
-        // Try with the most basic field names possible
-        const basicFields = {
-          'Name': applicationData.applicantName || 'Unknown',
-          'Job': applicationData.jobTitle || 'Unknown Position',
-          'Company': applicationData.companyName || 'Unknown Company',
-        };
-        
-        try {
-          await jobApplicationsBase!(JOB_APPLICATIONS_TABLE).create([{ fields: basicFields }]);
-          console.log(`✅ Successfully submitted application with basic fields for ${applicationData.applicantName}`);
-        } catch (basicError) {
-          console.warn('🔄 Basic fields failed, trying single field approach:', basicError.message);
-          
-          // Ultimate fallback - just one field
-          const singleField = {
-            'fldWoWv6BRYl1fXOK': `Application from ${applicationData.applicantName} for ${applicationData.jobTitle} at ${applicationData.companyName}`,
-          };
-          
-          await jobApplicationsBase!(JOB_APPLICATIONS_TABLE).create([{ fields: singleField }]);
-          console.log(`✅ Successfully submitted application with single field for ${applicationData.applicantName}`);
-        }
-      }
+      const result = await response.json();
+      console.log('✅ Successfully submitted application to Airtable:', result.id);
     } catch (error) {
       console.error('Error submitting job application to Airtable:', error);
       throw new Error('Failed to submit job application to Airtable');
