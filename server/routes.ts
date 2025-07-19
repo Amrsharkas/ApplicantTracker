@@ -1039,8 +1039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Use AI to analyze if user meets job requirements (3 or fewer missing requirements)
       console.log('🤖 Starting OpenAI analysis...');
-      const aiAgent = new AIInterviewAgent();
-      const analysis = await aiAgent.analyzeJobQualifications(
+      const analysis = await aiInterviewAgent.analyzeJobQualifications(
         completeUserData,
         jobDetails
       );
