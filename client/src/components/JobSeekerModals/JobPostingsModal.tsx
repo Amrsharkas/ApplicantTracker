@@ -598,6 +598,13 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
       return data;
     },
     onSuccess: (data) => {
+      console.log('📥 Application response received:', data);
+      
+      // Validate API response format
+      if (typeof data.qualified !== 'boolean') {
+        throw new Error('Invalid API response: missing "qualified" flag.');
+      }
+      
       setApplicationStatus(data.qualified ? 'success' : 'failed');
       setApplicationMessage(data.message);
       if (data.qualified) {

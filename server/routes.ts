@@ -988,7 +988,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userProfile = await storage.getApplicantProfile(userId);
       
       if (!user || !userProfile) {
-        return res.status(404).json({ message: "User or profile not found" });
+        return res.status(404).json({ 
+          qualified: false, 
+          message: "User or profile not found" 
+        });
       }
 
       // Check if user has completed interviews (required for AI analysis)
@@ -999,75 +1002,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Prepare job details for analysis
-      const jobDetails = {
-        title: jobTitle,
-        company: companyName,
-        description: jobDescription,
-        requirements: requirements ? requirements.split(',').map((r: string) => r.trim()) : [],
-        experienceLevel: experienceLevel || 'Mid-level'
-      };
-
-      // Debug user profile data
-      console.log('🔍 User data for analysis:', {
-        userId,
+      console.log('🔍 User data retrieved:', {
         hasUser: !!user,
         hasProfile: !!userProfile,
         hasAIProfile: !!userProfile.aiProfile,
-        userKeys: user ? Object.keys(user) : [],
-        profileKeys: userProfile ? Object.keys(userProfile) : [],
-        aiProfileType: typeof userProfile.aiProfile,
-        aiProfileLength: userProfile.aiProfile ? userProfile.aiProfile.length : 0
+        aiProfileType: typeof userProfile.aiProfile
       });
 
-      console.log('📋 Job details for analysis:', jobDetails);
+      // Get job skills from the job posting in Airtable
+      let jobSkills = [];
+      try {
+        const jobPostings = await airtableService.getAllJobPostings();
+        const currentJob = jobPostings.find(job => job.recordId === jobId);
+        if (currentJob && currentJob.skills) {
+          jobSkills = Array.isArray(currentJob.skills) ? currentJob.skills : currentJob.skills.split(',').map(s => s.trim());
+        }
+      } catch (error) {
+        console.error('❌ Error fetching job skills from Airtable:', error);
+      }
 
-      // Prepare complete user data for AI analysis
-      const completeUserData = {
-        ...user,
-        ...userProfile,
-        // Make sure aiProfile is accessible
-        aiProfile: userProfile.aiProfile || userProfile.aiProfileGenerated || "No AI profile available"
-      };
+      console.log('📋 Job skills required:', jobSkills);
 
-      console.log('🔍 Complete user data prepared for AI:', {
-        hasFirstName: !!completeUserData.firstName,
-        hasSkills: !!completeUserData.skills,
-        hasAIProfile: !!completeUserData.aiProfile,
-        aiProfileLength: completeUserData.aiProfile ? completeUserData.aiProfile.length : 0
-      });
+      // Parse user's AI profile to extract skills
+      let userSkills = [];
+      try {
+        if (userProfile.aiProfile && typeof userProfile.aiProfile === 'object' && userProfile.aiProfile.skills) {
+          userSkills = Array.isArray(userProfile.aiProfile.skills) ? userProfile.aiProfile.skills : [];
+        } else if (userProfile.skills) {
+          userSkills = Array.isArray(userProfile.skills) ? userProfile.skills : userProfile.skills.split(',').map(s => s.trim());
+        } else if (userProfile.skillsList) {
+          userSkills = Array.isArray(userProfile.skillsList) ? userProfile.skillsList : userProfile.skillsList.split(',').map(s => s.trim());
+        }
+      } catch (error) {
+        console.error('❌ Error parsing user skills:', error);
+      }
 
-      // Use AI to analyze if user meets job requirements (3 or fewer missing requirements)
-      console.log('🤖 Starting OpenAI analysis...');
-      const analysis = await aiInterviewAgent.analyzeJobQualifications(
-        completeUserData,
-        jobDetails
+      console.log('👤 User skills available:', userSkills);
+
+      // Compare skills and count missing ones
+      const missingSkills = jobSkills.filter(jobSkill => 
+        !userSkills.some(userSkill => 
+          userSkill.toLowerCase().includes(jobSkill.toLowerCase()) || 
+          jobSkill.toLowerCase().includes(userSkill.toLowerCase())
+        )
       );
 
-      console.log('🔍 Analysis result:', {
-        missingRequirements: analysis.missingRequirements,
-        totalMissing: analysis.missingRequirements.length,
-        qualified: analysis.missingRequirements.length <= 3
+      console.log('🔍 Skills comparison result:', {
+        jobSkills: jobSkills,
+        userSkills: userSkills,
+        missingSkills: missingSkills,
+        totalMissing: missingSkills.length,
+        qualified: missingSkills.length <= 3
       });
 
-      console.log('✅ AI analysis completed successfully!');
-
-      const qualified = analysis.missingRequirements.length <= 3;
+      const qualified = missingSkills.length <= 3;
 
       if (qualified) {
         // User qualifies - submit application to Airtable
         try {
-          await airtableService.storeJobApplication({
-            jobTitle: jobTitle,
-            jobId: jobId,
-            jobDescription: jobDescription,
-            companyName: companyName,
-            applicantName: `${user.firstName} ${user.lastName}`,
-            userId: userId,
-            aiProfile: userProfile.aiProfile,
-            applicationDate: new Date().toISOString(),
-            status: 'submitted'
-          });
+          // Use the correct Airtable base for job applications
+          const airtableResponse = await fetch(
+            `https://api.airtable.com/v0/appEYs1fTytFXoJ7x/platojobapplications`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                fields: {
+                  'Job Title': jobTitle,
+                  'Job ID': jobId,
+                  'Job Description': jobDescription,
+                  'Company Name': companyName,
+                  'Applicant Name': `${user.firstName} ${user.lastName}`,
+                  'Applicant ID': userId,
+                  'AI User Profile': JSON.stringify(userProfile.aiProfile || {})
+                }
+              })
+            }
+          );
+
+          if (!airtableResponse.ok) {
+            throw new Error(`Airtable API error: ${airtableResponse.status}`);
+          }
+
           console.log('✅ Application successfully stored in Airtable');
         } catch (airtableError) {
           console.error('❌ Failed to store in Airtable:', airtableError);
@@ -1095,16 +1114,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json({
           qualified: true,
-          message: `🎉 Congratulations! Your application has been successfully submitted to ${companyName}. They now have access to your comprehensive AI-generated profile and will review your qualifications for the ${jobTitle} position.`,
-          missingRequirements: analysis.missingRequirements
+          message: `Congratulations! You meet the requirements for this position. Your application has been submitted successfully.`
         });
       } else {
-        // User doesn't qualify - kind rejection message
-        const missingCount = analysis.missingRequirements.length;
+        // User doesn't qualify - show rejection message
         res.json({
           qualified: false,
-          message: `We've carefully reviewed your qualifications for this ${jobTitle} position at ${companyName}. While you have many great skills, we found ${missingCount} key requirements that don't align with your current experience. We'd encourage you to continue building these skills and apply for positions that are a closer match to your background. Keep growing - the right opportunity is out there! 💪`,
-          missingRequirements: analysis.missingRequirements
+          message: "Unfortunately, you don't meet enough of the job requirements. We encourage you to continue improving your profile and apply again in the future!"
         });
       }
 
