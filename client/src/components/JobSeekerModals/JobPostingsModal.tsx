@@ -79,8 +79,8 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [showApplicationAnalysis, setShowApplicationAnalysis] = useState(false);
   const [applicationAnalysis, setApplicationAnalysis] = useState<AIMatchResponse | null>(null);
-  const [applicationStatus, setApplicationStatus] = useState<'idle' | 'analyzing' | 'success' | 'failed'>('idle');
-  const [applicationMessage, setApplicationMessage] = useState('');
+  const [showCVUpload, setShowCVUpload] = useState(false);
+  const [uploadedCV, setUploadedCV] = useState<File | null>(null);
   const [filters, setFilters] = useState({
     workplace: [] as string[],
     country: "",
@@ -214,6 +214,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
         });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+      setShowCVUpload(false);
       setSelectedJob(null);
       resetApplicationState();
     },
@@ -552,82 +553,29 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   };
 
   const handleApply = (job: JobPosting) => {
-    // First, check if user has viewed the full job details
-    if (selectedJob?.recordId !== job.recordId) {
-      // User hasn't viewed this job details yet - show them first
-      setSelectedJob(job);
-      return;
-    }
+    setSelectedJob(job);
+    setShowCVUpload(true);
+  };
+
+  const handleCVUploadAndAnalyze = () => {
+    if (!uploadedCV || !selectedJob) return;
     
-    // User has viewed the details, proceed with application
-    setApplicationStatus('analyzing');
-    autoApplicationMutation.mutate(job);
+    submitApplicationMutation.mutate({ job: selectedJob, cvFile: uploadedCV });
   };
 
   const resetApplicationState = () => {
     setSelectedJob(null);
     setShowApplicationAnalysis(false);
     setApplicationAnalysis(null);
-    setApplicationStatus('idle');
-    setApplicationMessage('');
+    setShowCVUpload(false);
+    setUploadedCV(null);
   };
 
-  // New automatic application mutation
-  const autoApplicationMutation = useMutation({
-    mutationFn: async (job: JobPosting) => {
-      console.log('🚀 Starting application analysis for:', job.jobTitle);
-      console.log('📋 Request data:', {
-        jobId: job.recordId,
-        jobTitle: job.jobTitle,
-        companyName: job.companyName,
-        requirements: job.skills?.join(',') || '',
-        experienceLevel: job.experienceLevel || ''
-      });
-      
-      const response = await apiRequest("POST", "/api/applications/auto-analyze", {
-        jobId: job.recordId,
-        jobTitle: job.jobTitle,
-        companyName: job.companyName,
-        jobDescription: job.jobDescription,
-        requirements: job.skills?.join(',') || '',
-        experienceLevel: job.experienceLevel || ''
-      });
-      
-      const data = await response.json();
-      console.log('✅ API response received:', data);
-      return data;
-    },
-    onSuccess: (data) => {
-      console.log('📥 Application response received:', data);
-      
-      // Validate API response format
-      if (typeof data.qualified !== 'boolean') {
-        throw new Error('Invalid API response: missing "qualified" flag.');
-      }
-      
-      setApplicationStatus(data.qualified ? 'success' : 'failed');
-      setApplicationMessage(data.message);
-      if (data.qualified) {
-        queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
-      }
-    },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      console.error('Auto application error details:', error);
-      setApplicationStatus('failed');
-      setApplicationMessage('Failed to analyze application. Please try again.');
-    },
-  });
+  const handleConfirmApplication = () => {
+    if (selectedJob) {
+      actualApplicationMutation.mutate({ job: selectedJob, cvFile: uploadedCV });
+    }
+  };
 
   const showRelatedNotice = showingRelatedJobs && activeFiltersCount > 0;
 
@@ -1414,15 +1362,15 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
           )}
         </AnimatePresence>
 
-        {/* Application Status Modal */}
+        {/* CV Upload Modal */}
         <AnimatePresence>
-          {applicationStatus !== 'idle' && selectedJob && (
+          {showCVUpload && selectedJob && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-              onClick={() => applicationStatus !== 'analyzing' && resetApplicationState()}
+              onClick={() => setShowCVUpload(false)}
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
@@ -1435,38 +1383,21 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                   {/* Header */}
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
-                      <div className={`flex items-center justify-center w-12 h-12 rounded-full ${
-                        applicationStatus === 'analyzing' ? 'bg-blue-100' :
-                        applicationStatus === 'success' ? 'bg-green-100' : 'bg-red-100'
-                      }`}>
-                        {applicationStatus === 'analyzing' ? (
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                        ) : applicationStatus === 'success' ? (
-                          <CheckCircle className="h-6 w-6 text-green-600" />
-                        ) : (
-                          <X className="h-6 w-6 text-red-600" />
-                        )}
+                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full">
+                        <Briefcase className="h-6 w-6 text-blue-600" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-semibold text-gray-900">
-                          {applicationStatus === 'analyzing' ? 'Analyzing Application' :
-                           applicationStatus === 'success' ? 'Application Submitted!' : 'Application Not Submitted'}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          {applicationStatus === 'analyzing' ? 'Checking your qualifications...' :
-                           applicationStatus === 'success' ? 'Your application was successfully submitted' : 'Unfortunately, you may not be qualified for this role'}
-                        </p>
+                        <h3 className="text-xl font-semibold text-gray-900">Upload Your CV</h3>
+                        <p className="text-sm text-gray-600">Required to apply for this position</p>
                       </div>
                     </div>
-                    {applicationStatus !== 'analyzing' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={resetApplicationState}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowCVUpload(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
 
                   {/* Job Info */}
@@ -1481,26 +1412,72 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                     </div>
                   </div>
 
-                  {/* Application Message */}
-                  {applicationMessage && applicationStatus !== 'analyzing' && (
-                    <div className={`p-4 rounded-lg mb-6 ${
-                      applicationStatus === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-                    }`}>
-                      <p className="text-sm">{applicationMessage}</p>
+                  {/* CV Upload Area */}
+                  <div className="mb-6">
+                    <label htmlFor="cv-upload" className="block text-sm font-medium text-gray-700 mb-2">
+                      Upload CV/Resume (PDF, DOC, DOCX)
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                      <input
+                        id="cv-upload"
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) => setUploadedCV(e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="cv-upload"
+                        className="cursor-pointer flex flex-col items-center gap-2"
+                      >
+                        {uploadedCV ? (
+                          <>
+                            <CheckCircle className="h-8 w-8 text-green-500" />
+                            <p className="text-sm text-green-600 font-medium">{uploadedCV.name}</p>
+                            <p className="text-xs text-gray-500">Click to change file</p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full">
+                              <ArrowRight className="h-6 w-6 text-gray-400" />
+                            </div>
+                            <p className="text-sm text-gray-600">Click to upload your CV</p>
+                            <p className="text-xs text-gray-500">PDF, DOC, or DOCX files only</p>
+                          </>
+                        )}
+                      </label>
                     </div>
-                  )}
+                  </div>
 
                   {/* Action Buttons */}
-                  {applicationStatus !== 'analyzing' && (
-                    <div className="flex items-center gap-3">
-                      <Button
-                        onClick={resetApplicationState}
-                        className="flex-1"
-                      >
-                        {applicationStatus === 'success' ? 'Done' : 'Continue Job Search'}
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowCVUpload(false);
+                        resetApplicationState();
+                      }}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleCVUploadAndAnalyze}
+                      disabled={!uploadedCV || submitApplicationMutation.isPending}
+                      className="flex items-center gap-2 flex-1"
+                    >
+                      {submitApplicationMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4" />
+                          Submit Application
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
             </motion.div>

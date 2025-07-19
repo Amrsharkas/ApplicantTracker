@@ -2,7 +2,7 @@ import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || "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"
+  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key"
 });
 
 export interface InterviewQuestion {
@@ -773,87 +773,6 @@ Be blunt and factual. No generic praise. Focus on what was actually demonstrated
         strengths: [],
         careerGoals: "Looking to advance career in chosen field.",
         workStyle: "Team-oriented with focus on results."
-      };
-    }
-  }
-
-  // New method for automatic job qualification analysis
-  async analyzeJobQualifications(userData: any, jobDetails: any): Promise<{missingRequirements: string[]}> {
-    console.log('🤖 Starting AI job qualification analysis...');
-    console.log('📊 Candidate data keys:', Object.keys(userData));
-    console.log('📋 Job details:', jobDetails);
-
-    try {
-      // Check if OpenAI is properly configured
-      console.log('🔑 OpenAI API Key configured:', !!this.openai.apiKey);
-      if (!this.openai.apiKey) {
-        throw new Error("OpenAI API key not properly configured");
-      }
-
-      const prompt = `You are an expert hiring manager analyzing whether a candidate meets job requirements.
-
-CANDIDATE PROFILE:
-Name: ${userData.firstName || 'Not specified'} ${userData.lastName || ''}
-Current Role: ${userData.currentRole || 'Not specified'}
-Years of Experience: ${userData.yearsOfExperience || 'Not specified'}
-Education: ${userData.education || 'Not specified'}
-Skills: ${userData.skills ? (Array.isArray(userData.skills) ? userData.skills.join(', ') : userData.skills) : 'Not specified'}
-
-AI-Generated Profile Summary: ${typeof userData.aiProfile === 'string' ? userData.aiProfile : 'No AI profile available'}
-
-JOB REQUIREMENTS:
-Position: ${jobDetails.title}
-Company: ${jobDetails.company}
-Experience Level: ${jobDetails.experienceLevel}
-Description: ${jobDetails.description}
-Specific Requirements: ${Array.isArray(jobDetails.requirements) ? jobDetails.requirements.join(', ') : 'No specific requirements listed'}
-
-ANALYSIS TASK:
-Compare the candidate's profile against the job requirements. Identify specific missing requirements or qualifications.
-
-Return a JSON object with:
-{
-  "missingRequirements": ["List of specific requirements the candidate does not meet"]
-}
-
-GUIDELINES:
-- Be thorough but fair in your analysis
-- Focus on hard requirements (specific skills, experience, education) rather than soft skills
-- Consider both the explicit requirements and those implied by the job description
-- If the candidate has related experience or transferable skills, give them credit
-- Only list requirements as "missing" if there's no evidence they can meet them
-- Maximum 10 missing requirements to avoid overwhelming results
-
-Return only valid JSON.`;
-
-      console.log('🔍 Sending request to OpenAI...');
-      const response = await this.openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        temperature: 0.1,
-        max_tokens: 800
-      });
-
-      console.log('✅ OpenAI response received');
-      const analysis = JSON.parse(response.choices[0].message.content || '{"missingRequirements": []}');
-      console.log('🔍 AI qualification analysis completed:', analysis);
-      
-      return {
-        missingRequirements: analysis.missingRequirements || []
-      };
-    } catch (error) {
-      console.error("❌ Error analyzing job qualifications:", error);
-      console.error("🔍 OpenAI error details:", {
-        name: error.name,
-        message: error.message,
-        status: error.status,
-        type: error.type
-      });
-      
-      // Return a safe fallback
-      return {
-        missingRequirements: ["Technical analysis error - please try again"]
       };
     }
   }

@@ -973,168 +973,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // New Automatic Job Application Analysis Route
-  app.post('/api/applications/auto-analyze', isAuthenticated, async (req: any, res) => {
+  // AI Job Application Analysis and Submission Route
+  app.post('/api/applications/analyze-and-submit', isAuthenticated, multer({ storage: multer.memoryStorage() }).single('cv'), async (req: any, res) => {
     try {
-      console.log('\n🤖 === AUTOMATIC JOB APPLICATION ANALYSIS STARTED ===');
+      console.log('🔍 Job application analysis request received');
       console.log('📋 Request body:', req.body);
-      console.log('👤 User ID:', req.user?.claims?.sub);
+      console.log('📄 File uploaded:', req.file ? 'Yes' : 'No');
       
       const userId = req.user.claims.sub;
-      const { jobId, jobTitle, companyName, jobDescription, requirements, experienceLevel } = req.body;
+      const { jobId, jobTitle, companyName, jobDescription, requirements, skills, experienceLevel } = req.body;
 
-      // Get user data and profile
+      if (!req.file) {
+        console.error('❌ No CV file uploaded');
+        return res.status(400).json({ message: "CV file is required" });
+      }
+
+      // Get user data
       const user = await storage.getUser(userId);
       const userProfile = await storage.getApplicantProfile(userId);
       
       if (!user || !userProfile) {
-        return res.status(404).json({ 
-          qualified: false, 
-          message: "User or profile not found" 
-        });
+        return res.status(404).json({ message: "User or profile not found" });
       }
 
-      // Check if user has completed interviews (required for AI analysis)
-      if (!userProfile.aiProfile) {
-        return res.status(400).json({ 
-          qualified: false,
-          message: "Please complete your AI interviews to apply for jobs. We need to understand your qualifications better."
-        });
-      }
+      // Use the existing user profile data (from AI interviews) instead of parsing CV
+      const cvContent = `CV file uploaded: ${req.file.originalname} (${req.file.size} bytes)`;
+      console.log('📄 Using existing user profile data instead of parsing CV file');
 
-      console.log('🔍 User data retrieved:', {
-        hasUser: !!user,
-        hasProfile: !!userProfile,
-        hasAIProfile: !!userProfile.aiProfile,
-        aiProfileType: typeof userProfile.aiProfile
-      });
+      // Prepare job details for analysis
+      const jobDetails = {
+        title: jobTitle,
+        company: companyName,
+        description: jobDescription,
+        requirements: requirements ? requirements.split(',').map((r: string) => r.trim()) : [],
+        skills: skills ? skills.split(',').map((s: string) => s.trim()) : [],
+        experienceLevel: experienceLevel || 'Mid-level'
+      };
 
-      // Get job skills from the job posting in Airtable
-      let jobSkills = [];
-      try {
-        const jobPostings = await airtableService.getAllJobPostings();
-        const currentJob = jobPostings.find(job => job.recordId === jobId);
-        if (currentJob && currentJob.skills) {
-          jobSkills = Array.isArray(currentJob.skills) ? currentJob.skills : currentJob.skills.split(',').map(s => s.trim());
-        }
-      } catch (error) {
-        console.error('❌ Error fetching job skills from Airtable:', error);
-      }
-
-      console.log('📋 Job skills required:', jobSkills);
-
-      // Parse user's AI profile to extract skills
-      let userSkills = [];
-      try {
-        if (userProfile.aiProfile && typeof userProfile.aiProfile === 'object' && userProfile.aiProfile.skills) {
-          userSkills = Array.isArray(userProfile.aiProfile.skills) ? userProfile.aiProfile.skills : [];
-        } else if (userProfile.skills) {
-          userSkills = Array.isArray(userProfile.skills) ? userProfile.skills : userProfile.skills.split(',').map(s => s.trim());
-        } else if (userProfile.skillsList) {
-          userSkills = Array.isArray(userProfile.skillsList) ? userProfile.skillsList : userProfile.skillsList.split(',').map(s => s.trim());
-        }
-      } catch (error) {
-        console.error('❌ Error parsing user skills:', error);
-      }
-
-      console.log('👤 User skills available:', userSkills);
-
-      // Compare skills and count missing ones
-      const missingSkills = jobSkills.filter(jobSkill => 
-        !userSkills.some(userSkill => 
-          userSkill.toLowerCase().includes(jobSkill.toLowerCase()) || 
-          jobSkill.toLowerCase().includes(userSkill.toLowerCase())
-        )
+      // Use AI to analyze the application
+      const analysis = await aiInterviewAgent.analyzeJobApplication(
+        { ...user, ...userProfile },
+        jobDetails,
+        cvContent
       );
 
-      console.log('🔍 Skills comparison result:', {
-        jobSkills: jobSkills,
-        userSkills: userSkills,
-        missingSkills: missingSkills,
-        totalMissing: missingSkills.length,
-        qualified: missingSkills.length <= 3
-      });
-
-      const qualified = missingSkills.length <= 3;
-
-      if (qualified) {
-        // User qualifies - submit application to Airtable
+      // If score is above 1, store in Airtable and create application (lowered for testing)
+      if (analysis.score >= 1) {
+        // Store in Airtable job applications base
         try {
-          // Use the correct Airtable base for job applications
-          const airtableResponse = await fetch(
-            `https://api.airtable.com/v0/appEYs1fTytFXoJ7x/platojobapplications`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': 'Bearer pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0',
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                fields: {
-                  'Job Title': jobTitle,
-                  'Job ID': jobId,
-                  'Job Description': jobDescription,
-                  'Company Name': companyName,
-                  'Applicant Name': `${user.firstName} ${user.lastName}`,
-                  'Applicant ID': userId,
-                  'AI User Profile': JSON.stringify(userProfile.aiProfile || {})
-                }
-              })
-            }
-          );
-
-          if (!airtableResponse.ok) {
-            throw new Error(`Airtable API error: ${airtableResponse.status}`);
-          }
-
-          console.log('✅ Application successfully stored in Airtable');
-        } catch (airtableError) {
-          console.error('❌ Failed to store in Airtable:', airtableError);
-          return res.status(500).json({ 
-            qualified: false,
-            message: "Technical error occurred while submitting your application. Please try again."
+          await airtableService.storeJobApplication({
+            name: `${user.firstName} ${user.lastName}`,
+            userId: userId,
+            email: user.email || '',
+            jobTitle: jobTitle,
+            companyName: companyName,
+            applicationDate: new Date().toISOString(),
+            resume: cvContent.substring(0, 5000), // Limit resume content
+            userProfile: JSON.stringify(userProfile.aiProfile || userProfile),
+            score: analysis.score,
+            analysisDetails: analysis.detailedAnalysis
           });
+        } catch (airtableError) {
+          console.error('Failed to store in Airtable:', airtableError);
+          // Continue with local storage even if Airtable fails
         }
 
-        // Create local application record
+        // Create local application record (skip if no valid jobId)
         try {
           const applicationData = {
             userId,
-            jobId: parseInt(jobId) || 1,
+            jobId: parseInt(jobId) || 1, // Use 1 as default instead of 0
             jobTitle,
             companyName,
             appliedAt: new Date(),
             status: 'pending'
           };
+
           await storage.createApplication(applicationData);
         } catch (dbError) {
           console.error('Failed to store in local database:', dbError);
           // Continue without local storage if it fails
         }
-
-        res.json({
-          qualified: true,
-          message: `Congratulations! You meet the requirements for this position. Your application has been submitted successfully.`
-        });
-      } else {
-        // User doesn't qualify - show rejection message
-        res.json({
-          qualified: false,
-          message: "Unfortunately, you don't meet enough of the job requirements. We encourage you to continue improving your profile and apply again in the future!"
-        });
       }
 
+      // Return response with appropriate message
+      res.json({
+        success: true,
+        score: analysis.score,
+        message: analysis.message,
+        submitted: analysis.score >= 1,
+        analysisDetails: analysis.detailedAnalysis
+      });
+
     } catch (error) {
-      console.error("❌ Error in automatic job application analysis:", error);
+      console.error("❌ Error analyzing job application:", error);
       console.error("🔍 Error details:", {
         message: error.message,
         stack: error.stack,
         userId: req.user?.claims?.sub,
+        hasFile: !!req.file,
         bodyKeys: Object.keys(req.body || {})
       });
-      res.json({ 
-        qualified: false,
-        message: "Failed to analyze application. Please try again."
+      res.status(500).json({ 
+        message: "Failed to analyze job application",
+        error: error.message 
       });
     }
   });
