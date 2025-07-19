@@ -189,17 +189,7 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
                       </div>
                       
                       <div className="flex flex-col items-end gap-2 ml-4">
-                        <Button
-                          onClick={() => {
-                            toast({
-                              title: "Interview Request Sent",
-                              description: "We'll connect you with the employer to arrange your interview!",
-                            });
-                          }}
-                          className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
-                        >
-                          Arrange Interview
-                        </Button>
+                        {/* Removed "Arrange Interview" button */}
                       </div>
                     </div>
                   </CardContent>
