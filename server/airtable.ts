@@ -1178,10 +1178,21 @@ export class AirtableService {
             
             // Handle different possible formats from Airtable
             let isoString = '';
-            if (rawDateTime.includes(' at ')) {
-              // Format: "2025-07-19 at 17:54" 
+            let timezoneOffset = 0; // Default to UTC
+            
+            if (rawDateTime.includes(' at ') && rawDateTime.includes('(America/New_York)')) {
+              // Format: "2025-07-19 at 19:45 (America/New_York)" 
+              const cleanedDateTime = rawDateTime.replace(' (America/New_York)', '').replace(' at ', 'T');
+              isoString = cleanedDateTime.includes(':') ? `${cleanedDateTime}:00` : cleanedDateTime;
+              // America/New_York is EST/EDT - currently EST (UTC-5) or EDT (UTC-4)
+              // In July, it's EDT (UTC-4), so we need to add 4 hours to convert to UTC
+              timezoneOffset = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
+            } else if (rawDateTime.includes(' at ')) {
+              // Format: "2025-07-19 at 17:54" (legacy format)
               const dateTimeParts = rawDateTime.replace(' at ', 'T');
               isoString = dateTimeParts.includes(':') ? `${dateTimeParts}:00` : dateTimeParts;
+              // Assume EST/EDT timezone for legacy format
+              timezoneOffset = 4 * 60 * 60 * 1000; // EDT in July
             } else if (rawDateTime.includes('T')) {
               // Already in ISO-like format
               isoString = rawDateTime.includes(':') && !rawDateTime.includes(':00') ? `${rawDateTime}:00` : rawDateTime;
@@ -1190,19 +1201,33 @@ export class AirtableService {
               isoString = rawDateTime;
             }
             
-            // The time in Airtable appears to be in EST/EDT timezone
-            // Create date object and treat as local time, then convert to proper timezone
+            console.log(`🔍 Cleaned ISO string: "${isoString}"`);
+            console.log(`🔍 Timezone offset: ${timezoneOffset / (60 * 60 * 1000)} hours`);
+            
+            // Create date object and apply timezone conversion
+            console.log(`🔍 About to create Date object from: "${isoString}"`);
             const tempDate = new Date(isoString);
+            console.log(`🔍 Date object created:`, tempDate);
+            console.log(`🔍 Date.getTime():`, tempDate.getTime());
+            console.log(`🔍 isNaN check:`, isNaN(tempDate.getTime()));
+            
             if (!isNaN(tempDate.getTime())) {
-              // Instead of adjusting timezone, let's create a date object that represents
-              // the actual time in EST and pass it as ISO string
-              // This way the frontend can display it correctly in the user's timezone
-              parsedDateTime = tempDate.toISOString();
-              console.log(`✅ Parsed date: ${rawDateTime} -> ${parsedDateTime}`);
-              console.log(`✅ Time: ${tempDate.getHours()}:${tempDate.getMinutes()}`);
+              // Convert from local timezone (EDT) to UTC
+              const utcDate = new Date(tempDate.getTime() + timezoneOffset);
+              parsedDateTime = utcDate.toISOString();
+              console.log(`✅ Parsed date with timezone conversion: ${rawDateTime} -> ${parsedDateTime}`);
+              console.log(`✅ Original time: ${tempDate.getHours()}:${tempDate.getMinutes()}, UTC time: ${utcDate.getHours()}:${utcDate.getMinutes()}`);
             } else {
-              console.warn(`❌ Invalid date created from: ${rawDateTime}`);
-              parsedDateTime = rawDateTime;
+              console.warn(`❌ Invalid date created from ISO string: "${isoString}"`);
+              console.warn(`❌ Original raw datetime: "${rawDateTime}"`);
+              // Try a direct conversion as fallback
+              const directDate = new Date(rawDateTime.replace(' at ', ' ').replace(' (America/New_York)', ''));
+              if (!isNaN(directDate.getTime())) {
+                console.log(`✅ Fallback parsing worked!`);
+                parsedDateTime = directDate.toISOString();
+              } else {
+                parsedDateTime = rawDateTime;
+              }
             }
           } catch (error) {
             console.warn(`❌ Failed to parse date: ${rawDateTime}`, error);
