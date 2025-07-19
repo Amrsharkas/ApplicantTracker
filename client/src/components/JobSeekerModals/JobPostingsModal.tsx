@@ -376,13 +376,13 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
 
   // AI Match Score calculation (simplified)
   const calculateAIMatchScore = (job: JobPosting): number => {
-    if (!userProfile?.aiProfile) return 0;
+    if (!userProfile?.aiProfile) return 50; // Default score when no profile
     
     let score = 0;
     const profile = userProfile.aiProfile;
     
     // Skills matching
-    if (job.skills && profile.skills) {
+    if (job.skills && profile.skills && job.skills.length > 0) {
       const matchingSkills = job.skills.filter(skill => 
         profile.skills.some((userSkill: string) => 
           userSkill.toLowerCase().includes(skill.toLowerCase()) ||
@@ -390,11 +390,14 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
         )
       );
       score += (matchingSkills.length / job.skills.length) * 40;
+    } else {
+      // Add base score if no skills specified
+      score += 25;
     }
     
     // Experience level matching
     if (job.experienceLevel && profile.experience) {
-      const experienceYears = profile.experience.length;
+      const experienceYears = Array.isArray(profile.experience) ? profile.experience.length : 0;
       const jobLevel = job.experienceLevel.toLowerCase();
       if (
         (jobLevel.includes('entry') && experienceYears <= 2) ||
@@ -404,6 +407,9 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
       ) {
         score += 30;
       }
+    } else {
+      // Add base score if no experience level specified
+      score += 15;
     }
     
     // Location preference (if available in profile)
@@ -413,12 +419,17 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
       } else if (profile.workStyle.toLowerCase().includes('office') && job.employmentType?.toLowerCase().includes('office')) {
         score += 20;
       }
+    } else {
+      // Add base score if no location preference
+      score += 10;
     }
     
     // Random factor for demonstration
     score += Math.random() * 10;
     
-    return Math.min(Math.round(score), 100);
+    // Ensure score is a valid number
+    const finalScore = Math.min(Math.round(score), 100);
+    return isNaN(finalScore) ? 50 : finalScore; // Fallback to 50 if NaN
   };
 
   // Helper functions
@@ -863,7 +874,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                                   }`}>
                                     <Star className="h-3 w-3" />
                                     <span className="text-xs font-medium">
-                                      {matchScore}% Match
+                                      {isNaN(matchScore) ? '50' : matchScore}% Match
                                     </span>
                                   </div>
                                   {matchScore >= 80 && (
@@ -998,7 +1009,10 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                         <div className="flex items-center gap-1 bg-green-100 px-2 py-1 rounded">
                           <Star className="h-4 w-4 text-green-600" />
                           <span className="text-sm font-medium text-green-800">
-                            {calculateAIMatchScore(selectedJob)}% Match
+                            {(() => {
+                              const score = calculateAIMatchScore(selectedJob);
+                              return isNaN(score) ? '50' : score;
+                            })()}% Match
                           </span>
                         </div>
                       </div>
@@ -1113,7 +1127,10 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1 text-sm text-gray-600">
                         <Star className="h-4 w-4 text-green-600" />
-                        <span className="font-medium">{calculateAIMatchScore(selectedJob)}% Match</span>
+                        <span className="font-medium">{(() => {
+                          const score = calculateAIMatchScore(selectedJob);
+                          return isNaN(score) ? '50' : score;
+                        })()}% Match</span>
                       </div>
                       <div className="h-4 w-px bg-gray-300"></div>
                       <div className="text-sm text-gray-600">
