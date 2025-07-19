@@ -607,6 +607,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
         }, 500);
         return;
       }
+      console.error('Auto application error details:', error);
       setApplicationStatus('failed');
       setApplicationMessage('Failed to analyze application. Please try again.');
     },

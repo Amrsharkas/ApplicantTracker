@@ -1014,8 +1014,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasProfile: !!userProfile,
         hasAIProfile: !!userProfile.aiProfile,
         userKeys: user ? Object.keys(user) : [],
-        profileKeys: userProfile ? Object.keys(userProfile) : []
+        profileKeys: userProfile ? Object.keys(userProfile) : [],
+        aiProfileType: typeof userProfile.aiProfile,
+        aiProfileLength: userProfile.aiProfile ? userProfile.aiProfile.length : 0
       });
+
+      console.log('📋 Job details for analysis:', jobDetails);
 
       // Use AI to analyze if user meets job requirements (3 or fewer missing requirements)
       const analysis = await aiInterviewAgent.analyzeJobQualifications(
@@ -1028,6 +1032,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalMissing: analysis.missingRequirements.length,
         qualified: analysis.missingRequirements.length <= 3
       });
+
+      console.log('✅ AI analysis completed successfully!');
 
       const qualified = analysis.missingRequirements.length <= 3;
 
