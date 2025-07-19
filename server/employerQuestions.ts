@@ -27,10 +27,14 @@ The text may contain:
 - Questions with expected answers in parentheses or following specific patterns
 - Mixed formatting with questions and answers
 
-Return a JSON array of objects with this structure:
+IMPORTANT: Always return a JSON object with "questions" as an array:
 {
-  "question": "The actual question text",
-  "expectedAnswer": "The expected answer if provided, otherwise omit this field"
+  "questions": [
+    {
+      "question": "The actual question text",
+      "expectedAnswer": "The expected answer if provided, otherwise omit this field"
+    }
+  ]
 }
 
 Be very careful to:
@@ -50,15 +54,20 @@ Be very careful to:
       });
 
       const result = JSON.parse(response.choices[0].message.content || '{"questions": []}');
+      console.log('OpenAI response for employer questions:', result);
       
       // Handle different possible response formats
       if (result.questions && Array.isArray(result.questions)) {
         return result.questions;
       } else if (Array.isArray(result)) {
         return result;
+      } else if (result.question) {
+        // Single question format - convert to array
+        return [{ question: result.question, expectedAnswer: result.expectedAnswer }];
       } else {
         console.warn('Unexpected response format from OpenAI:', result);
-        return [];
+        // Try fallback parsing
+        return this.simpleParseQuestions(employerQuestionsText);
       }
 
     } catch (error) {
@@ -70,6 +79,47 @@ Be very careful to:
   }
 
   private simpleParseQuestions(text: string): ParsedEmployerQuestion[] {
+    console.log('Using fallback simple parsing for:', text);
+    
+    // Enhanced numbered questions pattern - handles multiline questions
+    // Pattern for: "1. Question text that may span multiple lines?"
+    const cleanText = text.replace(/\n+/g, ' ').trim();
+    const numberedPattern = /(\d+\.?\s+)([^0-9]+?)(?=\d+\.|\s*$)/g;
+    const matches = Array.from(cleanText.matchAll(numberedPattern));
+    
+    if (matches.length > 0) {
+      const questions: ParsedEmployerQuestion[] = [];
+      for (const match of matches) {
+        const questionText = match[2]?.trim();
+        if (questionText && questionText.length > 20) { // Ensure it's a substantial question
+          // Clean up the question text
+          const cleanQuestion = questionText
+            .replace(/\s+/g, ' ')
+            .trim();
+          questions.push({ question: cleanQuestion });
+        }
+      }
+      console.log('Extracted numbered questions:', questions);
+      if (questions.length > 0) return questions;
+    }
+    
+    // Try to split on question marks for multiple questions
+    const questionSplits = text.split('?').filter(part => part.trim().length > 20);
+    if (questionSplits.length > 1) {
+      const questions: ParsedEmployerQuestion[] = [];
+      for (let i = 0; i < questionSplits.length - 1; i++) { // Skip last empty part after final ?
+        const questionText = questionSplits[i]
+          .replace(/^\d+\.?\s*/, '') // Remove leading numbers
+          .trim() + '?';
+        if (questionText.length > 20) {
+          questions.push({ question: questionText });
+        }
+      }
+      console.log('Extracted question mark split questions:', questions);
+      if (questions.length > 0) return questions;
+    }
+    
+    // Fallback to line-by-line parsing
     const lines = text.split('\n').filter(line => line.trim() !== '');
     const questions: ParsedEmployerQuestion[] = [];
 

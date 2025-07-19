@@ -1206,11 +1206,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { employerQuestions } = req.body;
       
+      console.log('📋 Received employer questions to parse:', employerQuestions);
+      
       if (!employerQuestions || typeof employerQuestions !== 'string') {
+        console.log('❌ No valid employer questions provided');
         return res.json({ questions: [] });
       }
 
       const questions = await employerQuestionService.parseEmployerQuestions(employerQuestions);
+      
+      console.log('✅ Parsed questions result:', questions);
       
       res.json({ questions });
     } catch (error) {
