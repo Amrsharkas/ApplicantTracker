@@ -538,38 +538,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Job data is required' });
       }
 
-      // Get user info and AI profile
+      // Get user info
       const user = await storage.getUser(userId);
-      const profile = await storage.getApplicantProfile(userId);
-
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      // Extract and normalize skills from job and user profile
-      const jobSkills = Array.isArray(job.skills) ? job.skills.map(s => s.toLowerCase().trim()) : [];
-      const userSkills = Array.isArray(profile?.aiProfile?.skills) ? profile.aiProfile.skills.map(s => s.toLowerCase().trim()) : [];
+      // Fetch complete user profile from Airtable "platouserprofiles" table
+      console.log('📋 Fetching complete user profile from Airtable...');
+      const completeUserProfileString = await airtableService.getUserProfileFromInterview(userId);
       
-      // Debug logging
-      if (jobSkills.length === 0) console.warn("⚠️ Job has no required skills listed");
-      if (userSkills.length === 0) console.warn("⚠️ User AI profile has no skills listed");
+      let userProfileData: any = {};
+      let userSkills: string[] = [];
+      
+      if (completeUserProfileString) {
+        try {
+          // Parse the complete profile from Airtable
+          userProfileData = JSON.parse(completeUserProfileString);
+          
+          // Extract skills from the comprehensive profile
+          if (userProfileData.comprehensiveProfile?.verifiedSkills) {
+            userSkills = userProfileData.comprehensiveProfile.verifiedSkills.map((skill: any) => 
+              typeof skill === 'string' ? skill.toLowerCase().trim() : skill.skill?.toLowerCase().trim()
+            ).filter(Boolean);
+          } else if (userProfileData.skills) {
+            userSkills = Array.isArray(userProfileData.skills) 
+              ? userProfileData.skills.map((s: string) => s.toLowerCase().trim()) 
+              : [];
+          }
+          
+          console.log('✅ Using complete user profile from Airtable interview');
+        } catch (parseError) {
+          console.error('❌ Failed to parse user profile from Airtable:', parseError);
+          userSkills = [];
+        }
+      } else {
+        console.warn('⚠️ No complete user profile found in Airtable');
+      }
+
+      // Validate and extract job skills
+      const jobSkills = Array.isArray(job.skills) ? job.skills.map((s: string) => s.toLowerCase().trim()) : [];
+      
+      // Validation and logging
+      if (jobSkills.length === 0) {
+        console.warn("⚠️ Job has no required skills listed");
+        return res.status(400).json({ 
+          message: 'No skills listed for this job.',
+          analysis: {
+            missingSkills: [],
+            notes: 'No skills required for this position',
+            totalRequiredSkills: 0,
+            matchedSkills: 0
+          }
+        });
+      }
+      
+      if (userSkills.length === 0) {
+        console.warn("⚠️ User has no skills in their AI profile");
+      }
       
       console.log('📋 Job Skills:', jobSkills);
       console.log('📋 User Skills:', userSkills);
 
-      // Find missing skills
+      // Perform skill comparison
       const missingSkills = jobSkills.filter(skill => !userSkills.includes(skill));
       const matchedSkills = jobSkills.length - missingSkills.length;
       const totalSkills = jobSkills.length;
 
       console.log(`📊 Skills Analysis: ${matchedSkills}/${totalSkills} matched, ${missingSkills.length} missing`);
 
-      // Generate notes based on missing skills
+      // Generate notes based on missing skills  
       const notesString = missingSkills.length > 0
         ? missingSkills.map(skill => `• Missing: ${skill}`).join('\n')
         : "No missing skills";
 
-      // Prepare application data
+      // Prepare application data with complete profile from Airtable
       const applicationData = {
         jobTitle: job.jobTitle,
         jobId: job.recordId,
@@ -577,7 +620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyName: job.companyName,
         applicantName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email || `User ${userId}`,
         applicantId: userId,
-        aiProfile: profile?.aiProfile || profile || {},
+        aiProfile: userProfileData, // Use complete profile from Airtable
         notes: notesString
       };
 
