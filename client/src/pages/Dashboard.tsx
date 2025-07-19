@@ -330,19 +330,19 @@ export default function Dashboard() {
               {/* Compact Industry Stats */}
               <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
                 <div className="text-center">
-                  <h5 className="text-xs font-medium text-gray-500 mb-3">Why AI-Powered Job Matching Works Better</h5>
+                  <h5 className="text-xs font-medium text-gray-500 mb-3">Why Job Seeking Is So Challenging</h5>
                   <div className="flex justify-center items-center space-x-8 text-xs">
                     <div className="text-center">
-                      <div className="text-lg font-bold text-red-600">75%</div>
-                      <p className="text-gray-600">resumes rejected by ATS</p>
+                      <div className="text-lg font-bold text-red-600">6 months</div>
+                      <p className="text-gray-600">average job search time</p>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold text-orange-600">3min</div>
-                      <p className="text-gray-600">recruiter reading time</p>
+                      <div className="text-lg font-bold text-orange-600">118</div>
+                      <p className="text-gray-600">applications to get one offer</p>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold text-purple-600">250+</div>
-                      <p className="text-gray-600">applications per posting</p>
+                      <div className="text-lg font-bold text-purple-600">2%</div>
+                      <p className="text-gray-600">application response rate</p>
                     </div>
                   </div>
                 </div>
