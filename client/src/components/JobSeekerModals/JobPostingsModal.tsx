@@ -553,7 +553,12 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   const handleApply = (job: JobPosting) => {
     // Check if user has viewed the full job details first
     if (!viewedJobDetails.has(job.recordId)) {
-      // Show job details first
+      // Show job details first with a helpful message
+      toast({
+        title: "View Job Details Required",
+        description: "Please view the full job details before applying to ensure you understand the role requirements.",
+        variant: "destructive",
+      });
       setSelectedJob(job);
       return;
     }
@@ -1015,15 +1020,10 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
                                         Analyzing...
                                       </>
-                                    ) : viewedJobDetails.has(job.recordId) ? (
-                                      <>
-                                        <ArrowRight className="h-3 w-3" />
-                                        Apply Now
-                                      </>
                                     ) : (
                                       <>
-                                        <Eye className="h-3 w-3" />
-                                        View Details First
+                                        <ArrowRight className="h-3 w-3" />
+                                        Apply
                                       </>
                                     )}
                                   </Button>
