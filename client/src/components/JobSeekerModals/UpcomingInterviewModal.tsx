@@ -54,8 +54,15 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
   });
 
   const formatInterviewDateTime = (dateTimeString: string) => {
+    if (!dateTimeString) return 'Invalid Date';
+    
     try {
       const date = new Date(dateTimeString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date';
+      }
       
       // Format date like "July 21st, 2025"
       const dateOptions: Intl.DateTimeFormatOptions = {
@@ -79,9 +86,10 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
       const ordinalSuffix = getOrdinalSuffix(day);
       const finalDate = formattedDate.replace(day.toString(), `${day}${ordinalSuffix}`);
       
-      return `${finalDate} @ ${formattedTime}`;
-    } catch {
-      return dateTimeString; // Fallback to original string
+      return { date: finalDate, time: formattedTime };
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return 'Invalid Date';
     }
   };
 
@@ -96,8 +104,15 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
   };
 
   const getTimeUntilInterview = (dateTimeString: string) => {
+    if (!dateTimeString) return "Time unknown";
+    
     try {
       const interviewDate = new Date(dateTimeString);
+      
+      if (isNaN(interviewDate.getTime())) {
+        return "Time unknown";
+      }
+      
       const now = new Date();
       const diffMs = interviewDate.getTime() - now.getTime();
       
@@ -112,18 +127,26 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
       if (diffDays > 0) {
         return `In ${diffDays} day${diffDays > 1 ? 's' : ''}`;
       } else if (diffHours > 0) {
-        return `In ${diffHours} hour${diffHours > 1 ? 's' : ''} ${diffMinutes} min`;
+        return `In ${diffHours} hour${diffHours > 1 ? 's' : ''} ${diffMinutes > 0 ? ` ${diffMinutes} min` : ''}`;
       } else {
-        return `In ${diffMinutes} minute${diffMinutes > 1 ? 's' : ''}`;
+        return `In ${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''}`;
       }
-    } catch {
+    } catch (error) {
+      console.error('Time calculation error:', error);
       return "Time unknown";
     }
   };
 
   const getStatusBadge = (dateTimeString: string) => {
+    if (!dateTimeString) return <Badge variant="secondary">Unknown</Badge>;
+    
     try {
       const interviewDate = new Date(dateTimeString);
+      
+      if (isNaN(interviewDate.getTime())) {
+        return <Badge variant="secondary">Unknown</Badge>;
+      }
+      
       const now = new Date();
       const diffMs = interviewDate.getTime() - now.getTime();
       const diffHours = diffMs / (1000 * 60 * 60);
@@ -137,7 +160,8 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
       } else {
         return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>;
       }
-    } catch {
+    } catch (error) {
+      console.error('Status badge error:', error);
       return <Badge variant="secondary">Unknown</Badge>;
     }
   };
@@ -239,18 +263,42 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                        <Calendar className="w-4 h-4 text-blue-600" />
-                        <span className="font-medium">
-                          {formatInterviewDateTime(interview.interviewDateTime)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                        <Clock className="w-4 h-4" />
-                        <span>{getTimeUntilInterview(interview.interviewDateTime)}</span>
-                      </div>
+                    <div className="space-y-4">
+                      {(() => {
+                        const formattedDateTime = formatInterviewDateTime(interview.interviewDateTime);
+                        if (typeof formattedDateTime === 'object' && formattedDateTime.date && formattedDateTime.time) {
+                          return (
+                            <>
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-3">
+                                  <Calendar className="w-5 h-5 text-blue-600" />
+                                  <span className="text-2xl font-bold text-slate-800 dark:text-slate-200">
+                                    {formattedDateTime.date}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <Clock className="w-5 h-5 text-blue-600" />
+                                  <span className="text-xl font-bold text-blue-700 dark:text-blue-300">
+                                    {formattedDateTime.time}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                                <Clock className="w-4 h-4" />
+                                <span className="font-medium">{getTimeUntilInterview(interview.interviewDateTime)}</span>
+                              </div>
+                            </>
+                          );
+                        } else {
+                          return (
+                            <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                              <Calendar className="w-4 h-4" />
+                              <span className="font-medium">{formattedDateTime}</span>
+                            </div>
+                          );
+                        }
+                      })()}
                     </div>
 
                     <div className="flex items-center gap-2 mt-4">

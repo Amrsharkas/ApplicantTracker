@@ -1168,6 +1168,22 @@ export class AirtableService {
 
       const interviews: AirtableJobMatch[] = records.map(record => {
         const fields = record.fields as any;
+        
+        // Parse the Airtable date format "2025-07-19 at 17:54" to ISO format
+        let parsedDateTime = '';
+        const rawDateTime = fields['Interview date&time'] || '';
+        if (rawDateTime) {
+          try {
+            // Convert "2025-07-19 at 17:54" to "2025-07-19T17:54:00"
+            const dateTimeParts = rawDateTime.replace(' at ', 'T');
+            const fullDateTime = dateTimeParts.includes(':') ? `${dateTimeParts}:00` : dateTimeParts;
+            parsedDateTime = new Date(fullDateTime).toISOString();
+          } catch (error) {
+            console.warn(`Failed to parse date: ${rawDateTime}`, error);
+            parsedDateTime = rawDateTime; // Fallback to original
+          }
+        }
+        
         return {
           recordId: record.id,
           name: fields['Name'] || 'Unknown',
@@ -1175,7 +1191,7 @@ export class AirtableService {
           jobTitle: fields['Job title'] || 'Unknown Position',
           jobDescription: fields['Job description'] || '',
           companyName: fields['Company name'] || 'Unknown Company',
-          interviewDateTime: fields['Interview date&time'] || '',
+          interviewDateTime: parsedDateTime,
           interviewLink: fields['Interview Link'] || ''
         };
       });
