@@ -33,6 +33,7 @@ interface UpcomingInterviewModalProps {
 
 export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewModalProps) {
   const { toast } = useToast();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: interviews = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/upcoming-interviews"],
@@ -153,12 +154,14 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
     }
   };
 
-  const handleManualRefresh = () => {
-    refetch();
-    toast({
-      title: "Refreshed",
-      description: "Interview schedule has been updated",
-    });
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      // Add a small delay to show the animation
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
   };
 
   // Sort interviews by date (earliest first)
@@ -179,10 +182,11 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
               variant="outline" 
               size="sm" 
               onClick={handleManualRefresh}
+              disabled={isRefreshing || isLoading}
               className="flex items-center gap-2"
             >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </Button>
           </div>
         </DialogHeader>
