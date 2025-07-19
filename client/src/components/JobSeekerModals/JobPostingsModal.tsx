@@ -102,6 +102,44 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   });
   const { toast } = useToast();
 
+  // New application mutation for the updated endpoint
+  const newApplicationMutation = useMutation({
+    mutationFn: async (data: { job: JobPosting }) => {
+      const response = await apiRequest("/api/job-applications/submit", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      return response;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Application Submitted Successfully!",
+        description: `Your application has been analyzed and submitted. ${data.analysis.matchedSkills}/${data.analysis.totalRequiredSkills} required skills matched.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+      setSelectedJob(null);
+      resetApplicationState();
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Application Failed",
+        description: "Failed to submit application. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: jobPostings = [], isLoading, error } = useQuery({
     queryKey: ["/api/job-postings"],
     enabled: isOpen,
@@ -130,154 +168,11 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
     enabled: isOpen,
   });
 
-  const applicationMutation = useMutation({
-    mutationFn: async (data: { job: JobPosting; cvFile: File }) => {
-      const response = await apiRequest("/api/job-application/analyze", {
-        method: "POST",
-        body: JSON.stringify({
-          jobId: data.job.recordId,
-          jobTitle: data.job.jobTitle,
-          jobDescription: data.job.jobDescription,
-          companyName: data.job.companyName,
-          requirements: data.job.skills || [],
-          employmentType: data.job.employmentType
-        }),
-      });
-      return response;
-    },
-    onSuccess: (data) => {
-      setApplicationAnalysis(data);
-      setShowApplicationAnalysis(true);
-    },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to analyze job match. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
 
-  const submitApplicationMutation = useMutation({
-    mutationFn: async (data: { job: JobPosting; cvFile: File }) => {
-      const formData = new FormData();
-      formData.append('cv', data.cvFile);
-      formData.append('jobId', data.job.recordId);
-      formData.append('jobTitle', data.job.jobTitle);
-      formData.append('companyName', data.job.companyName);
-      formData.append('jobDescription', data.job.jobDescription);
-      formData.append('requirements', data.job.skills?.join(',') || '');
-      formData.append('skills', data.job.skills?.join(',') || '');
-      formData.append('experienceLevel', data.job.experienceLevel || '');
 
-      const response = await fetch('/api/applications/analyze-and-submit', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include', // Include cookies for authentication
-      });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Application submission failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText
-        });
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
 
-      return response.json();
-    },
-    onSuccess: (data) => {
-      if (data.submitted) {
-        toast({
-          title: "Application Submitted!",
-          description: data.message,
-        });
-      } else {
-        toast({
-          title: "Application Not Submitted",
-          description: data.message,
-          variant: "destructive",
-        });
-      }
-      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
-      setSelectedJob(null);
-      resetApplicationState();
-    },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to submit application. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
 
-  const actualApplicationMutation = useMutation({
-    mutationFn: async (data: { job: JobPosting; cvFile: File | null }) => {
-      const response = await apiRequest("/api/applications", {
-        method: "POST",
-        body: JSON.stringify({
-          jobId: 1, // Placeholder since we don't have actual job IDs
-          jobTitle: data.job.jobTitle,
-          companyName: data.job.companyName,
-          status: "pending",
-          appliedAt: new Date().toISOString()
-        }),
-      });
-      return response;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Application Submitted",
-        description: "Your application has been submitted successfully!",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
-      setShowApplicationAnalysis(false);
-      setSelectedJob(null);
-    },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to submit application. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Calculate active filters count
   const activeFiltersCount = Object.values(filters).filter(value => 
@@ -551,26 +446,13 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   };
 
   const handleApply = (job: JobPosting) => {
-    // Check if user has viewed the full job details first
-    if (!viewedJobDetails.has(job.recordId)) {
-      // Show job details first with a helpful message
-      toast({
-        title: "View Job Details Required",
-        description: "Please view the full job details before applying to ensure you understand the role requirements.",
-        variant: "destructive",
-      });
-      setSelectedJob(job);
-      return;
-    }
-    
-    // User has viewed details, proceed with application
+    // Always allow application, proceed directly
     proceedWithApplication(job);
   };
 
   const proceedWithApplication = (job: JobPosting) => {
-    // Create a fake file for the API (since CV upload is now optional)
-    const fakeFile = new File([''], 'no-cv-uploaded.txt', { type: 'text/plain' });
-    submitApplicationMutation.mutate({ job, cvFile: fakeFile });
+    // Use the new job application endpoint
+    newApplicationMutation.mutate({ job });
   };
 
 
@@ -581,12 +463,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
     setApplicationAnalysis(null);
   };
 
-  const handleConfirmApplication = () => {
-    if (selectedJob) {
-      const fakeFile = new File([''], 'no-cv-uploaded.txt', { type: 'text/plain' });
-      actualApplicationMutation.mutate({ job: selectedJob, cvFile: fakeFile });
-    }
-  };
+
 
   const showRelatedNotice = showingRelatedJobs && activeFiltersCount > 0;
 
@@ -1012,13 +889,13 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                                   <Button
                                     size="sm"
                                     onClick={() => handleApply(job)}
-                                    disabled={submitApplicationMutation.isPending}
+                                    disabled={newApplicationMutation.isPending}
                                     className="flex items-center gap-1"
                                   >
-                                    {submitApplicationMutation.isPending ? (
+                                    {newApplicationMutation.isPending ? (
                                       <>
                                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                                        Analyzing...
+                                        AI Analyzing...
                                       </>
                                     ) : (
                                       <>

@@ -229,6 +229,41 @@ export class AirtableService {
     return formatted;
   }
 
+  async submitJobApplication(applicationData: {
+    jobTitle: string;
+    jobId: string;
+    jobDescription: string;
+    companyName: string;
+    applicantName: string;
+    applicantId: string;
+    aiProfile: any;
+    notes: string;
+  }): Promise<void> {
+    if (!jobApplicationsBase) {
+      console.warn('Job applications Airtable base not configured, skipping application submission');
+      return;
+    }
+
+    try {
+      const fields = {
+        'Job Title': applicationData.jobTitle,
+        'Job ID': applicationData.jobId,
+        'Job Description': applicationData.jobDescription,
+        'Company Name': applicationData.companyName,
+        'Applicant Name': applicationData.applicantName,
+        'Applicant ID': applicationData.applicantId,
+        'AI Profile': typeof applicationData.aiProfile === 'string' ? applicationData.aiProfile : JSON.stringify(applicationData.aiProfile),
+        'Notes': applicationData.notes,
+      };
+
+      await jobApplicationsBase!(JOB_APPLICATIONS_TABLE).create([{ fields }]);
+      console.log(`Successfully submitted application for ${applicationData.applicantName} to ${applicationData.jobTitle} at ${applicationData.companyName}`);
+    } catch (error) {
+      console.error('Error submitting job application to Airtable:', error);
+      throw new Error('Failed to submit job application to Airtable');
+    }
+  }
+
   async storeUserProfile(name: string, profileData: any, userId: string, email?: string): Promise<void> {
     if (!base) {
       console.warn('Airtable not configured, skipping profile storage');

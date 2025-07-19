@@ -521,6 +521,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // New Job Application Endpoint with AI Skill Analysis
+  app.post('/api/job-applications/submit', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { job } = req.body;
+
+      if (!job) {
+        return res.status(400).json({ message: 'Job data is required' });
+      }
+
+      // Get user info and AI profile
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Extract skills from job and user profile
+      const jobSkills = job.skills || [];
+      const userSkills = profile?.aiProfile?.skills || profile?.skillsList || [];
+
+      // Perform skill analysis (case-insensitive comparison)
+      const normalizeSkill = (skill: string) => skill.toLowerCase().trim();
+      const normalizedJobSkills = jobSkills.map(normalizeSkill);
+      const normalizedUserSkills = userSkills.map(normalizeSkill);
+
+      const missingSkills = jobSkills.filter(jobSkill => 
+        !normalizedUserSkills.includes(normalizeSkill(jobSkill))
+      );
+
+      // Generate notes based on missing skills
+      let notes = '';
+      if (missingSkills.length === 0) {
+        notes = 'No missing skills - candidate meets all job requirements';
+      } else {
+        notes = missingSkills.map(skill => `• Missing experience with ${skill}`).join('\n');
+      }
+
+      // Prepare application data
+      const applicationData = {
+        jobTitle: job.jobTitle,
+        jobId: job.recordId,
+        jobDescription: job.jobDescription,
+        companyName: job.companyName,
+        applicantName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email || `User ${userId}`,
+        applicantId: userId,
+        aiProfile: profile?.aiProfile || profile || {},
+        notes
+      };
+
+      // Submit to Airtable
+      await airtableService.submitJobApplication(applicationData);
+
+      res.json({
+        success: true,
+        message: 'Application submitted successfully',
+        analysis: {
+          missingSkills,
+          notes,
+          totalRequiredSkills: jobSkills.length,
+          matchedSkills: jobSkills.length - missingSkills.length
+        }
+      });
+
+    } catch (error) {
+      console.error('Error submitting job application:', error);
+      res.status(500).json({ 
+        message: 'Failed to submit application. Please try again.',
+        error: error.message 
+      });
+    }
+  });
+
   app.post('/api/interview/complete', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
