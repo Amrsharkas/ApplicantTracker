@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { EmployerQuestionsModal } from "./EmployerQuestionsModal";
 import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft } from "lucide-react";
 
 // Country-City data structure
@@ -48,6 +49,7 @@ interface JobPosting {
   experienceLevel?: string;
   skills?: string[];
   postedDate?: string;
+  employerQuestions?: string;
 }
 
 interface AIMatchResponse {
@@ -88,6 +90,9 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     type: 'success' | 'error' | null;
     message: string;
   }>({ type: null, message: '' });
+  const [showEmployerQuestions, setShowEmployerQuestions] = useState(false);
+  const [pendingApplication, setPendingApplication] = useState<JobPosting | null>(null);
+  const [employerAnswers, setEmployerAnswers] = useState<string[]>([]);
   const [filters, setFilters] = useState({
     workplace: [] as string[],
     country: "",
@@ -527,8 +532,38 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
   };
 
   const proceedWithApplication = (job: JobPosting) => {
-    // Use the new job application endpoint
-    newApplicationMutation.mutate({ job });
+    // Check if job has employer questions
+    if (job.employerQuestions && job.employerQuestions.trim() !== '') {
+      // Show employer questions modal
+      setPendingApplication(job);
+      setShowEmployerQuestions(true);
+    } else {
+      // Submit application directly if no questions
+      submitApplication(job, []);
+    }
+  };
+
+  const handleEmployerQuestionsSubmit = (answers: string[]) => {
+    if (pendingApplication) {
+      setEmployerAnswers(answers);
+      setShowEmployerQuestions(false);
+      submitApplication(pendingApplication, answers);
+    }
+  };
+
+  const submitApplication = (job: JobPosting, answers: string[]) => {
+    // Format answers for notes field
+    const notesWithAnswers = answers.length > 0 
+      ? `Employer Questions Responses:\n${answers.map((answer, index) => `Q${index + 1}: ${answer}`).join('\n\n')}`
+      : '';
+
+    // Use the new job application endpoint with answers in notes
+    newApplicationMutation.mutate({ 
+      job: {
+        ...job,
+        notes: notesWithAnswers
+      }
+    });
   };
 
 
@@ -537,6 +572,9 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     setSelectedJob(null);
     setShowApplicationAnalysis(false);
     setApplicationAnalysis(null);
+    setShowEmployerQuestions(false);
+    setPendingApplication(null);
+    setEmployerAnswers([]);
   };
 
 
@@ -1523,6 +1561,19 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
         </AnimatePresence>
 
       </DialogContent>
+
+      {/* Employer Questions Modal */}
+      <EmployerQuestionsModal
+        isOpen={showEmployerQuestions}
+        onClose={() => {
+          setShowEmployerQuestions(false);
+          setPendingApplication(null);
+        }}
+        onSubmit={handleEmployerQuestionsSubmit}
+        jobTitle={pendingApplication?.jobTitle || ''}
+        companyName={pendingApplication?.companyName || ''}
+        employerQuestions={pendingApplication?.employerQuestions || ''}
+      />
     </Dialog>
   );
 }

@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { aiInterviewService, aiProfileAnalysisAgent, aiInterviewAgent } from "./openai";
 import { airtableService } from "./airtable";
+import { employerQuestionService } from "./employerQuestions";
 import multer from "multer";
 import { z } from "zod";
 import { insertApplicantProfileSchema, insertApplicationSchema } from "@shared/schema";
@@ -530,13 +531,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('📝 Job application submission attempt:', {
         userId,
         jobTitle: job?.jobTitle,
-        jobId: job?.recordId
+        jobId: job?.recordId,
+        hasEmployerAnswers: !!job?.notes
       });
 
       if (!job) {
         console.error('❌ No job data provided in request body');
         return res.status(400).json({ message: 'Job data is required' });
       }
+
+      // Extract employer question answers from notes field if present
+      const employerQuestionAnswers = job.notes || '';
+      console.log('📋 Employer question answers:', employerQuestionAnswers ? 'Present' : 'None');
 
       // Get user info
       const user = await storage.getUser(userId);
@@ -640,9 +646,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📊 Skills Analysis: ${matchedSkills}/${totalSkills} matched, ${missingSkills.length} missing`);
 
       // Generate notes based on missing skills  
-      const notesString = missingSkills.length > 0
+      const skillsNotesString = missingSkills.length > 0
         ? missingSkills.map(skill => `• Missing: ${skill}`).join('\n')
         : "No missing skills";
+
+      // Combine employer question answers with skill analysis notes
+      let combinedNotes = skillsNotesString;
+      if (employerQuestionAnswers && employerQuestionAnswers.trim() !== '') {
+        combinedNotes = employerQuestionAnswers + '\n\n--- Skills Analysis ---\n' + skillsNotesString;
+      }
 
       // Prepare application data with complete profile from Airtable
       const applicationData = {
@@ -653,7 +665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         applicantName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email || `User ${userId}`,
         applicantId: userId,
         aiProfile: userProfileData, // Use complete profile from Airtable
-        notes: notesString
+        notes: combinedNotes
       };
 
       // Submit to Airtable
@@ -674,7 +686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: 'Application submitted successfully',
         analysis: {
           missingSkills,
-          notes: notesString,
+          notes: combinedNotes,
           totalRequiredSkills: totalSkills,
           matchedSkills: matchedSkills
         }
@@ -1186,6 +1198,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching job postings:", error);
       res.status(500).json({ message: "Failed to fetch job postings" });
+    }
+  });
+
+  // Employer questions parsing endpoint
+  app.post('/api/parse-employer-questions', isAuthenticated, async (req: any, res) => {
+    try {
+      const { employerQuestions } = req.body;
+      
+      if (!employerQuestions || typeof employerQuestions !== 'string') {
+        return res.json({ questions: [] });
+      }
+
+      const questions = await employerQuestionService.parseEmployerQuestions(employerQuestions);
+      
+      res.json({ questions });
+    } catch (error) {
+      console.error("Error parsing employer questions:", error);
+      res.status(500).json({ message: "Failed to parse employer questions" });
     }
   });
 
