@@ -24,6 +24,7 @@ export default function Dashboard() {
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<{title: string, id: string} | null>(null);
 
   const { data: profile, refetch: refetchProfile } = useQuery({
     queryKey: ["/api/candidate/profile"],
@@ -71,8 +72,14 @@ export default function Dashboard() {
 
   const closeModal = () => {
     setActiveModal(null);
+    setSelectedJobDetails(null); // Reset job details when closing
     // Refresh profile data when closing modals to ensure dashboard is up-to-date
     refetchProfile();
+  };
+
+  const openJobDetails = (jobTitle: string, jobId: string) => {
+    setSelectedJobDetails({ title: jobTitle, id: jobId });
+    setActiveModal('jobPostings');
   };
 
   const profileProgress = profile?.completionPercentage || 0;
@@ -393,11 +400,13 @@ export default function Dashboard() {
       <ApplicationsModal 
         isOpen={activeModal === 'applications'} 
         onClose={closeModal} 
-        onOpenJobPostings={() => openModal('jobPostings')}
+        onOpenJobDetails={openJobDetails}
       />
       <JobPostingsModal 
         isOpen={activeModal === 'jobPostings'} 
         onClose={closeModal} 
+        initialJobTitle={selectedJobDetails?.title}
+        initialJobId={selectedJobDetails?.id}
       />
     </div>
   );

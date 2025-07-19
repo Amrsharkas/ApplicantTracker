@@ -34,10 +34,10 @@ interface AirtableApplication {
 interface ApplicationsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenJobPostings?: () => void;
+  onOpenJobDetails?: (jobTitle: string, jobId: string) => void;
 }
 
-export function ApplicationsModal({ isOpen, onClose, onOpenJobPostings }: ApplicationsModalProps) {
+export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: ApplicationsModalProps) {
   const [statusFilter, setStatusFilter] = useState("all");
   const { toast } = useToast();
 
@@ -270,7 +270,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobPostings }: Applic
                       className="flex items-center gap-2"
                       onClick={() => {
                         onClose(); // Close applications modal
-                        onOpenJobPostings?.(); // Open job postings modal
+                        onOpenJobDetails?.(application.jobTitle, application.jobId); // Open specific job details
                       }}
                     >
                       <Eye className="w-4 h-4" />

@@ -59,6 +59,8 @@ interface AIMatchResponse {
 interface JobPostingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialJobTitle?: string;
+  initialJobId?: string;
 }
 
 const funnyNoJobsMessages = [
@@ -74,7 +76,7 @@ const funnyNoJobsMessages = [
   "🍕 No jobs yet, but that just means more time to grab a snack before the opportunities flood in!"
 ];
 
-export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
+export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobId }: JobPostingsModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [viewedJobDetails, setViewedJobDetails] = useState<Set<string>>(new Set());
@@ -206,11 +208,28 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
     enabled: isOpen,
   });
 
+  // Auto-open specific job when modal opens with initial job parameters
+  useEffect(() => {
+    if (isOpen && initialJobTitle && jobPostings.length > 0 && !selectedJob) {
+      // Find the job by title or job ID
+      const targetJob = jobPostings.find(job => 
+        job.jobTitle === initialJobTitle || 
+        (initialJobId && job.recordId === initialJobId)
+      );
+      
+      if (targetJob) {
+        setSelectedJob(targetJob);
+        setViewedJobDetails(prev => new Set([...prev, targetJob.recordId]));
+      }
+    }
+  }, [isOpen, initialJobTitle, initialJobId, jobPostings, selectedJob]);
 
-
-
-
-
+  // Reset selectedJob when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedJob(null);
+    }
+  }, [isOpen]);
 
   // Calculate active filters count
   const activeFiltersCount = Object.values(filters).filter(value => 
