@@ -1174,14 +1174,32 @@ export class AirtableService {
         const rawDateTime = fields['Interview date&time'] || '';
         if (rawDateTime) {
           try {
-            // Convert "2025-07-19 at 17:54" to "2025-07-19T17:54:00"
-            const dateTimeParts = rawDateTime.replace(' at ', 'T');
-            const fullDateTime = dateTimeParts.includes(':') ? `${dateTimeParts}:00` : dateTimeParts;
-            // Create date object and ensure it's properly formatted
-            const dateObj = new Date(fullDateTime);
-            if (!isNaN(dateObj.getTime())) {
-              parsedDateTime = dateObj.toISOString();
+            console.log(`🔍 Raw Airtable datetime: "${rawDateTime}"`);
+            
+            // Handle different possible formats from Airtable
+            let isoString = '';
+            if (rawDateTime.includes(' at ')) {
+              // Format: "2025-07-19 at 17:54" 
+              const dateTimeParts = rawDateTime.replace(' at ', 'T');
+              isoString = dateTimeParts.includes(':') ? `${dateTimeParts}:00` : dateTimeParts;
+            } else if (rawDateTime.includes('T')) {
+              // Already in ISO-like format
+              isoString = rawDateTime.includes(':') && !rawDateTime.includes(':00') ? `${rawDateTime}:00` : rawDateTime;
+            } else {
+              // Other formats - try direct parsing
+              isoString = rawDateTime;
+            }
+            
+            // The time in Airtable appears to be in EST/EDT timezone
+            // Create date object and treat as local time, then convert to proper timezone
+            const tempDate = new Date(isoString);
+            if (!isNaN(tempDate.getTime())) {
+              // Instead of adjusting timezone, let's create a date object that represents
+              // the actual time in EST and pass it as ISO string
+              // This way the frontend can display it correctly in the user's timezone
+              parsedDateTime = tempDate.toISOString();
               console.log(`✅ Parsed date: ${rawDateTime} -> ${parsedDateTime}`);
+              console.log(`✅ Time: ${tempDate.getHours()}:${tempDate.getMinutes()}`);
             } else {
               console.warn(`❌ Invalid date created from: ${rawDateTime}`);
               parsedDateTime = rawDateTime;

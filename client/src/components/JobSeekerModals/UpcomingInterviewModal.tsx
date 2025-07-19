@@ -58,10 +58,23 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
     
     try {
       console.log('🔍 Frontend received dateTimeString:', dateTimeString);
-      const date = new Date(dateTimeString);
+      
+      // Handle the case where backend sends us a properly formatted ISO string
+      let date = new Date(dateTimeString);
+      
+      // If the date is invalid, try alternative parsing
+      if (isNaN(date.getTime())) {
+        // Try parsing the original Airtable format directly
+        if (dateTimeString.includes(' at ')) {
+          const cleanedDate = dateTimeString.replace(' at ', 'T') + ':00';
+          date = new Date(cleanedDate);
+        }
+      }
+      
       console.log('🔍 Created Date object:', date);
       console.log('🔍 Date getHours():', date.getHours());
       console.log('🔍 Date getMinutes():', date.getMinutes());
+      console.log('🔍 Date toISOString():', date.toISOString());
       
       // Check if date is valid
       if (isNaN(date.getTime())) {
