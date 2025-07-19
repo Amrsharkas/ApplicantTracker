@@ -20,33 +20,24 @@ export class EmployerQuestionService {
         messages: [
           {
             role: "system",
-            content: `You are an expert at parsing employer questions from text. Extract individual questions and their expected answers (if provided) from the given text. 
+            content: `Extract each question as a separate line item from the following text. Only include actual questions. Return a JSON object with "questions" as an array of objects with a "question" field.
 
-The text may contain:
-- Multiple questions separated by newlines, numbers, or bullets
-- Questions with expected answers in parentheses or following specific patterns
-- Mixed formatting with questions and answers
-
-IMPORTANT: Always return a JSON object with "questions" as an array:
+Format:
 {
   "questions": [
-    {
-      "question": "The actual question text",
-      "expectedAnswer": "The expected answer if provided, otherwise omit this field"
-    }
+    { "question": "First question text here" },
+    { "question": "Second question text here" }
   ]
 }
 
-Be very careful to:
-1. Extract each question as a separate item
-2. Clean up formatting (remove numbers, bullets, extra spaces)
-3. Only include expectedAnswer if one is clearly provided
-4. Make questions clear and complete
-5. If there are no valid questions, return an empty array`
+Clean up formatting (remove numbers, bullets, extra spaces) and make questions clear and complete. If no valid questions are found, return an empty array.`
           },
           {
             role: "user",
-            content: `Please parse the following employer questions text and extract individual questions:\n\n${employerQuestionsText}`
+            content: `Extract each question as a separate line item from the following text. Only include actual questions:
+"""
+${employerQuestionsText}
+"""`
           }
         ],
         response_format: { type: "json_object" },

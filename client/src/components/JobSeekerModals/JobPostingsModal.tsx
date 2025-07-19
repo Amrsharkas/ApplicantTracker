@@ -1603,7 +1603,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
         onSubmit={handleEmployerQuestionsSubmit}
         jobTitle={pendingApplication?.jobTitle || ''}
         companyName={pendingApplication?.companyName || ''}
-        employerQuestions={pendingApplication?.employerQuestions || ''}
+        jobId={pendingApplication?.recordId || ''}
       />
     </Dialog>
   );

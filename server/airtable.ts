@@ -296,6 +296,37 @@ export class AirtableService {
     }
   }
 
+  async getLatestEmployerQuestions(jobRecordId: string): Promise<string | null> {
+    try {
+      console.log(`📋 Fetching latest employer questions for job record ID: ${jobRecordId}`);
+      
+      // Fetch the specific job posting record directly from Airtable
+      const url = `https://api.airtable.com/v0/${AIRTABLE_JOB_POSTINGS_BASE_ID}/platojobpostings/${jobRecordId}`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': 'Bearer pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        console.error(`❌ Failed to fetch job record: ${response.status} - ${await response.text()}`);
+        return null;
+      }
+
+      const jobRecord = await response.json();
+      const employerQuestions = jobRecord.fields?.["Employer Questions"] || null;
+      
+      console.log(`✅ Retrieved employer questions:`, employerQuestions ? 'Present' : 'None');
+      
+      return employerQuestions;
+    } catch (error) {
+      console.error('❌ Error fetching latest employer questions:', error);
+      return null;
+    }
+  }
+
   async checkExistingApplication(employerJobId: string, userId: string): Promise<boolean> {
     if (!AIRTABLE_JOB_APPLICATIONS_BASE_ID) {
       console.warn('Job applications Airtable base not configured, cannot check for duplicates');

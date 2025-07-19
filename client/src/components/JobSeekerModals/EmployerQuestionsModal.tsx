@@ -18,7 +18,7 @@ interface EmployerQuestionsModalProps {
   onSubmit: (answers: string[]) => void;
   jobTitle: string;
   companyName: string;
-  employerQuestions: string;
+  jobId: string;
 }
 
 export function EmployerQuestionsModal({ 
@@ -27,41 +27,61 @@ export function EmployerQuestionsModal({
   onSubmit, 
   jobTitle, 
   companyName, 
-  employerQuestions 
+  jobId 
 }: EmployerQuestionsModalProps) {
   const [questions, setQuestions] = useState<ParsedEmployerQuestion[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [rawQuestions, setRawQuestions] = useState<string>('');
   const { toast } = useToast();
 
-  // Parse questions when modal opens
+  // Fetch real-time questions when modal opens
   useEffect(() => {
-    if (isOpen && employerQuestions) {
-      parseQuestions();
+    if (isOpen && jobId) {
+      fetchRealtimeQuestions();
+    } else if (isOpen) {
+      setQuestions([]);
+      setAnswers([]);
+      setRawQuestions('');
     }
-  }, [isOpen, employerQuestions]);
+  }, [isOpen, jobId]);
 
-  const parseQuestions = async () => {
+  const fetchRealtimeQuestions = async () => {
     setIsParsing(true);
     try {
-      const response = await fetch('/api/parse-employer-questions', {
+      console.log('🔄 Fetching real-time employer questions for job:', jobId);
+      
+      const response = await fetch('/api/employer-questions/realtime', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ employerQuestions }),
+        body: JSON.stringify({ jobId }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to parse questions');
+        throw new Error('Failed to fetch real-time questions');
       }
 
       const data = await response.json();
+      console.log('📋 Real-time questions response:', data);
+      
       setQuestions(data.questions || []);
       setAnswers(new Array(data.questions?.length || 0).fill(''));
+      setRawQuestions(data.rawText || '');
+      setLastUpdated(data.lastUpdated || new Date().toISOString());
+      
+      if (data.questions?.length === 0 && data.rawText) {
+        toast({
+          title: "Questions Updated",
+          description: "No valid questions found in the employer text. The employer may need to format their questions properly.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      console.error('Error parsing questions:', error);
+      console.error('Error fetching real-time questions:', error);
       toast({
         title: "Error",
         description: "Failed to load employer questions. Please try again.",
@@ -121,6 +141,12 @@ export function EmployerQuestionsModal({
           <div className="text-sm text-slate-600 dark:text-slate-400 mt-2">
             <p><strong>{jobTitle}</strong> at <strong>{companyName}</strong></p>
             <p>Please answer the following questions from the employer:</p>
+            {lastUpdated && (
+              <div className="flex items-center gap-1 mt-2 text-xs text-slate-500">
+                <Clock className="h-3 w-3" />
+                Questions updated: {new Date(lastUpdated).toLocaleString()}
+              </div>
+            )}
           </div>
         </DialogHeader>
 
@@ -136,11 +162,25 @@ export function EmployerQuestionsModal({
             <div className="text-center py-12">
               <HelpCircle className="mx-auto h-12 w-12 text-slate-400 mb-4" />
               <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">
-                No Questions Found
+                No Questions Available
               </h3>
-              <p className="text-slate-500 dark:text-slate-400">
-                Unable to parse employer questions. Please try again.
+              <p className="text-slate-500 dark:text-slate-400 mb-4">
+                The employer has not added any questions for this posting.
               </p>
+              {rawQuestions && (
+                <div className="text-xs text-slate-400 mt-2 p-3 bg-slate-50 dark:bg-slate-800 rounded border">
+                  <p className="font-medium mb-1">Raw employer text found:</p>
+                  <p className="text-left">{rawQuestions}</p>
+                </div>
+              )}
+              <Button
+                variant="outline"
+                onClick={fetchRealtimeQuestions}
+                disabled={isParsing}
+                className="mt-4"
+              >
+                {isParsing ? 'Refreshing...' : 'Refresh Questions'}
+              </Button>
             </div>
           ) : (
             <div className="space-y-6">

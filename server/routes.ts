@@ -1201,26 +1201,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Employer questions parsing endpoint
-  app.post('/api/parse-employer-questions', isAuthenticated, async (req: any, res) => {
+  // Cache for parsed employer questions (5-minute expiration)
+  const employerQuestionsCache = new Map<string, {
+    questions: any[];
+    rawText: string;
+    parsedAt: number;
+  }>();
+
+  // Real-time employer questions endpoint - fetches directly from Airtable
+  app.post('/api/employer-questions/realtime', isAuthenticated, async (req: any, res) => {
     try {
-      const { employerQuestions } = req.body;
+      const { jobId } = req.body;
       
-      console.log('📋 Received employer questions to parse:', employerQuestions);
+      console.log('📋 Fetching real-time employer questions for job:', jobId);
       
-      if (!employerQuestions || typeof employerQuestions !== 'string') {
-        console.log('❌ No valid employer questions provided');
-        return res.json({ questions: [] });
+      if (!jobId) {
+        return res.status(400).json({ message: 'Job ID is required' });
       }
 
-      const questions = await employerQuestionService.parseEmployerQuestions(employerQuestions);
+      // Fetch the latest employer questions directly from Airtable
+      const latestEmployerQuestions = await airtableService.getLatestEmployerQuestions(jobId);
+      
+      console.log('📋 Latest employer questions from Airtable:', latestEmployerQuestions ? 'Present' : 'None');
+      
+      if (!latestEmployerQuestions || latestEmployerQuestions.trim() === '') {
+        console.log('❌ No employer questions found for this job');
+        return res.json({ questions: [], rawText: '', lastUpdated: new Date().toISOString() });
+      }
+
+      // Check cache first (5-minute expiration)
+      const cacheKey = `${jobId}_${Buffer.from(latestEmployerQuestions).toString('base64').slice(0, 20)}`;
+      const cached = employerQuestionsCache.get(cacheKey);
+      const now = Date.now();
+      
+      if (cached && (now - cached.parsedAt) < 300000) { // 5 minutes = 300000ms
+        console.log('✅ Using cached parsed questions');
+        return res.json({
+          questions: cached.questions,
+          rawText: cached.rawText,
+          lastUpdated: new Date(cached.parsedAt).toISOString(),
+          fromCache: true
+        });
+      }
+
+      // Parse the questions using OpenAI
+      const questions = await employerQuestionService.parseEmployerQuestions(latestEmployerQuestions);
       
       console.log('✅ Parsed questions result:', questions);
       
-      res.json({ questions });
+      // Cache the result
+      employerQuestionsCache.set(cacheKey, {
+        questions,
+        rawText: latestEmployerQuestions,
+        parsedAt: now
+      });
+
+      // Clean old cache entries (keep only last 100 entries)
+      if (employerQuestionsCache.size > 100) {
+        const oldestKeys = Array.from(employerQuestionsCache.keys()).slice(0, 50);
+        oldestKeys.forEach(key => employerQuestionsCache.delete(key));
+      }
+      
+      res.json({ 
+        questions,
+        rawText: latestEmployerQuestions,
+        lastUpdated: new Date().toISOString(),
+        fromCache: false
+      });
     } catch (error) {
-      console.error("Error parsing employer questions:", error);
-      res.status(500).json({ message: "Failed to parse employer questions" });
+      console.error("Error fetching real-time employer questions:", error);
+      res.status(500).json({ message: "Failed to fetch employer questions" });
     }
   });
 
