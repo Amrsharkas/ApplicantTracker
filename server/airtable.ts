@@ -245,7 +245,18 @@ export class AirtableService {
     }
 
     try {
-      // Use direct Airtable API with exact field names from Airtable base
+      // Simplified User profile for debugging
+      const simplifiedProfile = {
+        skills: applicationData.aiProfile?.skills || []
+      };
+
+      // Create notes string from missing skills
+      const missingSkills = applicationData.notes?.split('\n').filter(line => line.includes('Missing:')).map(line => line.replace('• Missing: ', '')) || [];
+      const notesString = missingSkills.length > 0
+        ? missingSkills.map(skill => `• Missing: ${skill}`).join('\n')
+        : "No missing skills";
+
+      // Use exact field names matching Airtable base
       const payload = {
         fields: {
           "Job title": applicationData.jobTitle,
@@ -254,28 +265,50 @@ export class AirtableService {
           "Company": applicationData.companyName,
           "Applicant Name": applicationData.applicantName,
           "Applicant User ID": applicationData.applicantId,
-          "User profile": JSON.stringify(applicationData.aiProfile),
-          "Notes": applicationData.notes || "No missing skills"
+          "User profile": JSON.stringify(simplifiedProfile),
+          "Notes": notesString
         }
       };
 
-      console.log('📋 Airtable payload before submission:', JSON.stringify(payload, null, 2));
+      console.log("Airtable Payload:\n", JSON.stringify(payload, null, 2));
       console.log('📋 Field names being sent:', Object.keys(payload.fields));
 
-      // Use direct fetch to Airtable API with exact specification
-      const response = await fetch('https://api.airtable.com/v0/appEYs1fTytFXoJ7x/platojobapplications', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
+      // Try different possible table names since the error suggests model not found
+      const possibleTableNames = ['platojobapplications', 'Applications', 'Job Applications', 'Table 1', 'tblApplications'];
+      let response;
+      let lastError;
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Airtable API error:', response.status, errorText);
-        throw new Error(`Airtable API error: ${response.status} - ${errorText}`);
+      for (const tableName of possibleTableNames) {
+        const url = `https://api.airtable.com/v0/appEYs1fTytFXoJ7x/${tableName}`;
+        console.log(`🔍 Trying table name: ${tableName} at ${url}`);
+        
+        try {
+          response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (response.ok) {
+            console.log(`✅ Success with table name: ${tableName}`);
+            break;
+          } else {
+            const errorText = await response.text();
+            console.log(`❌ Failed with ${tableName}: ${response.status} - ${errorText}`);
+            lastError = errorText;
+          }
+        } catch (fetchError) {
+          console.log(`❌ Network error with ${tableName}:`, fetchError);
+          lastError = fetchError;
+        }
+      }
+
+      if (!response || !response.ok) {
+        console.error('❌ All table names failed. Last error:', lastError);
+        throw new Error(`Airtable API error: All table names failed - ${lastError}`);
       }
 
       const result = await response.json();
