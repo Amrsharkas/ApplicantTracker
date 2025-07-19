@@ -76,7 +76,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      accepted: { variant: "default" as const, color: "bg-green-100 text-green-800", label: "Successful" },
+      accepted: { variant: "default" as const, color: "bg-green-100 text-green-800", label: "Accepted" },
       pending: { variant: "secondary" as const, color: "bg-yellow-100 text-yellow-800", label: "Pending" },
       closed: { variant: "outline" as const, color: "bg-gray-100 text-gray-800", label: "Closed" },
       denied: { variant: "destructive" as const, color: "bg-red-100 text-red-800", label: "Denied" }
@@ -164,7 +164,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
             <Card className="glass-card">
               <CardContent className="p-3 text-center">
                 <div className="text-2xl font-bold text-green-600">{stats.accepted}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Successful</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">Accepted</div>
               </CardContent>
             </Card>
             <Card className="glass-card">
@@ -198,7 +198,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Applications</SelectItem>
-                <SelectItem value="accepted">Successful</SelectItem>
+                <SelectItem value="accepted">Accepted</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="closed">Closed</SelectItem>
                 <SelectItem value="denied">Denied</SelectItem>
