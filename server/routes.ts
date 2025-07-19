@@ -546,26 +546,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      // Extract skills from job and user profile
-      const jobSkills = job.skills || [];
-      const userSkills = profile?.aiProfile?.skills || profile?.skillsList || [];
+      // Extract and normalize skills from job and user profile
+      const jobSkills = Array.isArray(job.skills) ? job.skills.map(s => s.toLowerCase().trim()) : [];
+      const userSkills = Array.isArray(profile?.aiProfile?.skills) ? profile.aiProfile.skills.map(s => s.toLowerCase().trim()) : [];
+      
+      // Debug logging
+      if (jobSkills.length === 0) console.warn("⚠️ Job has no required skills listed");
+      if (userSkills.length === 0) console.warn("⚠️ User AI profile has no skills listed");
+      
+      console.log('📋 Job Skills:', jobSkills);
+      console.log('📋 User Skills:', userSkills);
 
-      // Perform skill analysis (case-insensitive comparison)
-      const normalizeSkill = (skill: string) => skill.toLowerCase().trim();
-      const normalizedJobSkills = jobSkills.map(normalizeSkill);
-      const normalizedUserSkills = userSkills.map(normalizeSkill);
+      // Find missing skills
+      const missingSkills = jobSkills.filter(skill => !userSkills.includes(skill));
+      const matchedSkills = jobSkills.length - missingSkills.length;
+      const totalSkills = jobSkills.length;
 
-      const missingSkills = jobSkills.filter(jobSkill => 
-        !normalizedUserSkills.includes(normalizeSkill(jobSkill))
-      );
+      console.log(`📊 Skills Analysis: ${matchedSkills}/${totalSkills} matched, ${missingSkills.length} missing`);
 
       // Generate notes based on missing skills
-      let notes = '';
-      if (missingSkills.length === 0) {
-        notes = 'No missing skills - candidate meets all job requirements';
-      } else {
-        notes = missingSkills.map(skill => `• Missing experience with ${skill}`).join('\n');
-      }
+      const notesString = missingSkills.length > 0
+        ? missingSkills.map(skill => `• Missing: ${skill}`).join('\n')
+        : "No missing skills";
 
       // Prepare application data
       const applicationData = {
@@ -576,13 +578,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         applicantName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email || `User ${userId}`,
         applicantId: userId,
         aiProfile: profile?.aiProfile || profile || {},
-        notes
+        notes: notesString
       };
 
       // Submit to Airtable
       console.log('📤 Submitting to Airtable:', {
         jobTitle: applicationData.jobTitle,
         applicantName: applicationData.applicantName,
+        totalSkills,
+        matchedSkills,
         missingSkillsCount: missingSkills.length
       });
       
@@ -595,9 +599,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: 'Application submitted successfully',
         analysis: {
           missingSkills,
-          notes,
-          totalRequiredSkills: jobSkills.length,
-          matchedSkills: jobSkills.length - missingSkills.length
+          notes: notesString,
+          totalRequiredSkills: totalSkills,
+          matchedSkills: matchedSkills
         }
       });
 
