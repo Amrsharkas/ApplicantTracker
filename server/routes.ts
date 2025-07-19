@@ -552,45 +552,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let userSkills: string[] = [];
       
       if (completeUserProfileString) {
-        try {
-          // Parse the complete profile from Airtable
-          userProfileData = JSON.parse(completeUserProfileString);
-          
-          // Extract skills from the comprehensive profile
-          if (userProfileData.comprehensiveProfile?.verifiedSkills) {
-            userSkills = userProfileData.comprehensiveProfile.verifiedSkills.map((skill: any) => 
-              typeof skill === 'string' ? skill.toLowerCase().trim() : skill.skill?.toLowerCase().trim()
+        // The profile is stored as formatted markdown text, not JSON
+        // Extract skills from the markdown text using regex
+        const skillsMatch = completeUserProfileString.match(/## ✅ \*\*VERIFIED SKILLS\*\*[\s\S]*?(?=##|$)/);
+        if (skillsMatch) {
+          const skillsSection = skillsMatch[0];
+          const skillLines = skillsSection.match(/• \*\*(.*?)\*\*/g);
+          if (skillLines) {
+            userSkills = skillLines.map(line => 
+              line.replace(/• \*\*(.*?)\*\*.*/, '$1').toLowerCase().trim()
             ).filter(Boolean);
-          } else if (userProfileData.skills) {
-            userSkills = Array.isArray(userProfileData.skills) 
-              ? userProfileData.skills.map((s: string) => s.toLowerCase().trim()) 
-              : [];
           }
-          
-          console.log('✅ Using complete user profile from Airtable interview');
-        } catch (parseError) {
-          console.error('❌ Failed to parse user profile from Airtable:', parseError);
-          userSkills = [];
         }
+        
+        // If no verified skills section, try to extract from any skills mentions
+        if (userSkills.length === 0) {
+          const allSkillMatches = completeUserProfileString.match(/\*\*([\w\s]+)\*\*/g);
+          if (allSkillMatches) {
+            userSkills = allSkillMatches
+              .map(match => match.replace(/\*\*/g, '').toLowerCase().trim())
+              .filter(skill => 
+                skill.length > 2 && 
+                !skill.includes('overview') && 
+                !skill.includes('profile') &&
+                !skill.includes('skills') &&
+                !skill.includes('insights')
+              );
+          }
+        }
+        
+        userProfileData = { formattedProfile: completeUserProfileString };
+        console.log('✅ Using complete user profile from Airtable interview');
       } else {
         console.warn('⚠️ No complete user profile found in Airtable');
       }
 
-      // Validate and extract job skills
-      const jobSkills = Array.isArray(job.skills) ? job.skills.map((s: string) => s.toLowerCase().trim()) : [];
+      // Extract job skills from job description text instead of job.skills array
+      let jobSkills: string[] = [];
+      const jobDescription = job.jobDescription || '';
       
-      // Validation and logging
+      // Look for skills in various formats within the job description
+      const skillPatterns = [
+        /(?:skills?|requirements?|qualifications?|experience)[:\s]*([^.]*)/gi,
+        /(?:proficiency|knowledge|expertise)\s+(?:in|with|of)[:\s]*([^.]*)/gi,
+        /(?:must have|required|essential)[:\s]*([^.]*)/gi
+      ];
+      
+      skillPatterns.forEach(pattern => {
+        const matches = jobDescription.match(pattern);
+        if (matches) {
+          matches.forEach(match => {
+            // Extract individual skills from the matched text
+            const skillText = match.replace(/(?:skills?|requirements?|qualifications?|experience|proficiency|knowledge|expertise|must have|required|essential)[:\s]*/gi, '');
+            const extractedSkills = skillText.split(/[,;•\-\n]/)
+              .map(skill => skill.trim().toLowerCase())
+              .filter(skill => skill.length > 2 && skill.length < 30);
+            jobSkills.push(...extractedSkills);
+          });
+        }
+      });
+      
+      // Remove duplicates and common words
+      jobSkills = [...new Set(jobSkills)].filter(skill => 
+        !['and', 'or', 'with', 'in', 'of', 'the', 'to', 'for', 'on'].includes(skill)
+      );
+      
+      console.log('📋 Extracted job skills from description:', jobSkills);
+      
+      // If no skills found in description, allow application to proceed
       if (jobSkills.length === 0) {
-        console.warn("⚠️ Job has no required skills listed");
-        return res.status(400).json({ 
-          message: 'No skills listed for this job.',
-          analysis: {
-            missingSkills: [],
-            notes: 'No skills required for this position',
-            totalRequiredSkills: 0,
-            matchedSkills: 0
-          }
-        });
+        console.warn("⚠️ No specific skills extracted from job description");
+        jobSkills = ['general experience']; // Use generic requirement
       }
       
       if (userSkills.length === 0) {
