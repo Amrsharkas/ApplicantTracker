@@ -280,28 +280,7 @@ export default function Dashboard() {
         {showFullDashboard && (
           <div className="space-y-8">
             <div className="border-t border-gray-200 pt-8">
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-bold text-gray-900">Your Job Dashboard</h3>
-                
-                {/* Compact Stats - Moved to top right */}
-                <div className="flex items-center space-x-6 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <Target className="h-4 w-4 text-green-600" />
-                    <span className="text-gray-600">Matches:</span>
-                    <span className="font-semibold text-gray-900">{matches.length}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <FileText className="h-4 w-4 text-purple-600" />
-                    <span className="text-gray-600">Applications:</span>
-                    <span className="font-semibold text-gray-900">{applications.length}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <User className="h-4 w-4 text-blue-600" />
-                    <span className="text-gray-600">Profile:</span>
-                    <span className="font-semibold text-gray-900">{profileProgress}%</span>
-                  </div>
-                </div>
-              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-8">Your Job Dashboard</h3>
 
               {/* Large Action Buttons */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -360,6 +339,28 @@ export default function Dashboard() {
                   <div className="text-white text-2xl">→</div>
                 </div>
               </button>
+
+              {/* Small Stats Section */}
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <h4 className="text-sm font-medium text-gray-500 mb-3">Quick Stats</h4>
+                <div className="flex items-center space-x-8 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <Target className="h-3 w-3 text-green-600" />
+                    <span className="text-gray-600">Job Matches:</span>
+                    <span className="font-medium text-gray-900">{matches.length}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <FileText className="h-3 w-3 text-purple-600" />
+                    <span className="text-gray-600">Applications:</span>
+                    <span className="font-medium text-gray-900">{applications.length}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <User className="h-3 w-3 text-blue-600" />
+                    <span className="text-gray-600">Profile Completion:</span>
+                    <span className="font-medium text-gray-900">{profileProgress}%</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
