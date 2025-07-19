@@ -80,6 +80,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   const [viewedJobDetails, setViewedJobDetails] = useState<Set<string>>(new Set());
   const [showApplicationAnalysis, setShowApplicationAnalysis] = useState(false);
   const [applicationAnalysis, setApplicationAnalysis] = useState<AIMatchResponse | null>(null);
+  const [showAILoadingModal, setShowAILoadingModal] = useState(false);
   const [filters, setFilters] = useState({
     workplace: [] as string[],
     country: "",
@@ -106,6 +107,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   const newApplicationMutation = useMutation({
     mutationFn: async (data: { job: JobPosting }) => {
       console.log('Submitting job application:', data);
+      setShowAILoadingModal(true);
       const response = await apiRequest("/api/job-applications/submit", {
         method: "POST",
         body: JSON.stringify(data),
@@ -114,6 +116,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
       return response;
     },
     onSuccess: (data) => {
+      setShowAILoadingModal(false);
       toast({
         title: "Application Submitted Successfully!",
         description: `Your application has been analyzed and submitted. ${data.analysis.matchedSkills}/${data.analysis.totalRequiredSkills} required skills matched.`,
@@ -123,6 +126,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
       resetApplicationState();
     },
     onError: (error: Error) => {
+      setShowAILoadingModal(false);
       console.error('Application submission error:', error);
       if (isUnauthorizedError(error)) {
         toast({
@@ -1257,6 +1261,117 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
           )}
         </AnimatePresence>
 
+        {/* Fun AI Loading Modal */}
+        <AnimatePresence>
+          {showAILoadingModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-[60]"
+            >
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                className="bg-white rounded-xl p-8 max-w-md w-full text-center shadow-2xl border border-blue-100"
+              >
+                <div className="space-y-6">
+                  {/* Animated AI Brain */}
+                  <div className="relative mx-auto w-20 h-20">
+                    <motion.div
+                      animate={{ 
+                        scale: [1, 1.1, 1],
+                        rotate: [0, 5, -5, 0],
+                      }}
+                      transition={{ 
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                      className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl"
+                    >
+                      🧠
+                    </motion.div>
+                    <motion.div
+                      animate={{ 
+                        opacity: [0.3, 0.8, 0.3],
+                        scale: [1, 1.2, 1]
+                      }}
+                      transition={{ 
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                      className="absolute inset-0 bg-blue-400 rounded-full blur-md -z-10"
+                    />
+                  </div>
+
+                  {/* Fun Loading Messages */}
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-bold text-gray-900">
+                      🤖 AI Assistant at Work!
+                    </h3>
+                    <motion.div
+                      key={Math.random()}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-2"
+                    >
+                      <p className="text-gray-600 font-medium">
+                        Analyzing your profile against job requirements...
+                      </p>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        className="mx-auto w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full"
+                      />
+                    </motion.div>
+                    
+                    {/* Fun rotating messages */}
+                    <motion.p
+                      key={Date.now()}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-sm text-blue-600 italic"
+                    >
+                      {[
+                        "🔍 Scanning your skills like a digital Sherlock Holmes...",
+                        "🎯 Calculating match percentages with rocket science precision...", 
+                        "🧪 Mixing your experience with job requirements in our AI lab...",
+                        "🎪 Performing algorithmic acrobatics to find your best fit...",
+                        "🚀 Launching deep analysis protocols into the data stratosphere...",
+                        "🎨 Painting a masterpiece of your professional compatibility...",
+                        "🔮 Consulting the ancient algorithms of employment wisdom...",
+                        "⚡ Charging up the skill-matching superpowers...",
+                        "🎵 Harmonizing your talents with opportunity frequencies..."
+                      ][Math.floor(Math.random() * 9)]}
+                    </motion.p>
+                  </div>
+
+                  {/* Progress dots */}
+                  <div className="flex justify-center gap-2">
+                    {[0, 1, 2].map((i) => (
+                      <motion.div
+                        key={i}
+                        animate={{ 
+                          scale: [1, 1.3, 1],
+                          opacity: [0.4, 1, 0.4]
+                        }}
+                        transition={{ 
+                          duration: 1,
+                          repeat: Infinity,
+                          delay: i * 0.2
+                        }}
+                        className="w-2 h-2 bg-blue-500 rounded-full"
+                      />
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
       </DialogContent>
     </Dialog>

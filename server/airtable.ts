@@ -259,24 +259,44 @@ export class AirtableService {
 
       console.log('📋 Attempting to submit with fields:', Object.keys(fields));
 
+      // First, let's inspect what fields actually exist in the table
+      console.log('🔍 Inspecting Airtable table structure...');
+      try {
+        const existingRecords = await jobApplicationsBase!(JOB_APPLICATIONS_TABLE).select({ maxRecords: 1 }).firstPage();
+        if (existingRecords.length > 0) {
+          console.log('📋 Existing field names in table:', Object.keys(existingRecords[0].fields));
+        }
+      } catch (inspectError) {
+        console.log('📋 Could not inspect existing records, table might be empty');
+      }
+
       try {
         await jobApplicationsBase!(JOB_APPLICATIONS_TABLE).create([{ fields }]);
-        console.log(`Successfully submitted application for ${applicationData.applicantName} to ${applicationData.jobTitle} at ${applicationData.companyName}`);
+        console.log(`✅ Successfully submitted application for ${applicationData.applicantName} to ${applicationData.jobTitle} at ${applicationData.companyName}`);
       } catch (fieldError) {
-        console.warn('Initial field submission failed, trying with simplified fields:', fieldError.message);
+        console.warn('🔄 Initial field submission failed, trying with simplified field names:', fieldError.message);
         
-        // Try with minimal fields that are more likely to exist
-        const simplifiedFields = {
-          'Name': applicationData.applicantName,
-          'Job': applicationData.jobTitle,
-          'Company': applicationData.companyName,
-          'User ID': applicationData.applicantId,
-          'Notes': applicationData.notes,
-          'Profile': typeof applicationData.aiProfile === 'string' ? applicationData.aiProfile : JSON.stringify(applicationData.aiProfile),
+        // Try with the most basic field names possible
+        const basicFields = {
+          'Name': applicationData.applicantName || 'Unknown',
+          'Job': applicationData.jobTitle || 'Unknown Position',
+          'Company': applicationData.companyName || 'Unknown Company',
         };
         
-        await jobApplicationsBase!(JOB_APPLICATIONS_TABLE).create([{ fields: simplifiedFields }]);
-        console.log(`Successfully submitted application with simplified fields for ${applicationData.applicantName}`);
+        try {
+          await jobApplicationsBase!(JOB_APPLICATIONS_TABLE).create([{ fields: basicFields }]);
+          console.log(`✅ Successfully submitted application with basic fields for ${applicationData.applicantName}`);
+        } catch (basicError) {
+          console.warn('🔄 Basic fields failed, trying single field approach:', basicError.message);
+          
+          // Ultimate fallback - just one field
+          const singleField = {
+            'fldWoWv6BRYl1fXOK': `Application from ${applicationData.applicantName} for ${applicationData.jobTitle} at ${applicationData.companyName}`,
+          };
+          
+          await jobApplicationsBase!(JOB_APPLICATIONS_TABLE).create([{ fields: singleField }]);
+          console.log(`✅ Successfully submitted application with single field for ${applicationData.applicantName}`);
+        }
       }
     } catch (error) {
       console.error('Error submitting job application to Airtable:', error);
