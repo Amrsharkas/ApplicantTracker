@@ -229,40 +229,67 @@ export class AirtableService {
     return formatted;
   }
 
-  async getEmployerJobId(jobRecordId: string): Promise<string | null> {
+  async getEmployerJobId(jobRecordId: string): Promise<string> {
     if (!AIRTABLE_JOB_POSTINGS_BASE_ID) {
       console.warn('Job postings Airtable base not configured, cannot lookup Job ID');
-      return null;
+      throw new Error('Job posting system not configured. Please contact support.');
     }
 
     try {
       console.log(`🔍 Looking up employer Job ID for record: ${jobRecordId}`);
+      console.log(`🔍 Using base ID: ${AIRTABLE_JOB_POSTINGS_BASE_ID}`);
       
-      const response = await fetch(`https://api.airtable.com/v0/${AIRTABLE_JOB_POSTINGS_BASE_ID}/platojobpostings/${jobRecordId}`, {
-        headers: {
-          'Authorization': 'Bearer pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0',
-          'Content-Type': 'application/json'
+      // Try different possible table names for job postings
+      const possibleTableNames = ['platojobpostings', 'Job Postings', 'Table 1', 'tblDncwzlJBapB2V8'];
+      let jobPost;
+      let lastError;
+
+      for (const tableName of possibleTableNames) {
+        const url = `https://api.airtable.com/v0/${AIRTABLE_JOB_POSTINGS_BASE_ID}/${tableName}/${jobRecordId}`;
+        console.log(`🔍 Trying table name: ${tableName} at ${url}`);
+        
+        try {
+          const response = await fetch(url, {
+            headers: {
+              'Authorization': 'Bearer pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0',
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            jobPost = await response.json();
+            console.log(`✅ Success with table name: ${tableName}`);
+            console.log("Fetched job post:", JSON.stringify(jobPost, null, 2));
+            break;
+          } else {
+            const errorText = await response.text();
+            console.log(`❌ Failed with ${tableName}: ${response.status} - ${errorText}`);
+            lastError = errorText;
+          }
+        } catch (error) {
+          console.log(`❌ Exception with ${tableName}:`, error);
+          lastError = error;
         }
-      });
-
-      if (!response.ok) {
-        console.error('❌ Error fetching job posting:', response.status, await response.text());
-        return null;
       }
 
-      const jobPost = await response.json();
+      if (!jobPost) {
+        console.error('❌ Failed to fetch job posting from all table attempts. Last error:', lastError);
+        throw new Error('Something went wrong fetching job details. Please try again or contact support.');
+      }
+
       const employerJobId = jobPost.fields?.["Job ID"];
+      console.log("Extracted employerJobId:", employerJobId);
       
-      if (employerJobId) {
-        console.log(`✅ Found employer Job ID: ${employerJobId}`);
-        return employerJobId;
-      } else {
-        console.warn('⚠️ No Job ID field found in job posting, using record ID as fallback');
-        return jobRecordId;
+      if (!employerJobId) {
+        console.error('❌ Missing Job ID field in job posting:', jobPost.fields);
+        throw new Error('Missing Job ID in fetched job posting');
       }
+
+      console.log(`✅ Found employer Job ID: ${employerJobId}`);
+      return employerJobId;
     } catch (error) {
       console.error('❌ Error looking up employer Job ID:', error);
-      return jobRecordId; // Fallback to record ID
+      throw error; // Re-throw to surface to user
     }
   }
 
@@ -323,9 +350,6 @@ export class AirtableService {
 
     // Lookup the employer-defined Job ID from the job posting
     const employerJobId = await this.getEmployerJobId(applicationData.jobId);
-    if (!employerJobId) {
-      throw new Error('Unable to lookup job details. Please try again.');
-    }
 
     // Check for existing application using employer Job ID
     const isDuplicate = await this.checkExistingApplication(employerJobId, applicationData.applicantId);
