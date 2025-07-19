@@ -57,7 +57,11 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
     if (!dateTimeString) return 'Invalid Date';
     
     try {
+      console.log('🔍 Frontend received dateTimeString:', dateTimeString);
       const date = new Date(dateTimeString);
+      console.log('🔍 Created Date object:', date);
+      console.log('🔍 Date getHours():', date.getHours());
+      console.log('🔍 Date getMinutes():', date.getMinutes());
       
       // Check if date is valid
       if (isNaN(date.getTime())) {
@@ -80,6 +84,8 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
       
       const formattedDate = date.toLocaleDateString('en-US', dateOptions);
       const formattedTime = date.toLocaleTimeString('en-US', timeOptions);
+      
+      console.log('🔍 Formatted time result:', formattedTime);
       
       // Add ordinal suffix to day
       const day = date.getDate();
