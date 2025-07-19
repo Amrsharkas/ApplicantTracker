@@ -1177,9 +1177,17 @@ export class AirtableService {
             // Convert "2025-07-19 at 17:54" to "2025-07-19T17:54:00"
             const dateTimeParts = rawDateTime.replace(' at ', 'T');
             const fullDateTime = dateTimeParts.includes(':') ? `${dateTimeParts}:00` : dateTimeParts;
-            parsedDateTime = new Date(fullDateTime).toISOString();
+            // Create date object and ensure it's properly formatted
+            const dateObj = new Date(fullDateTime);
+            if (!isNaN(dateObj.getTime())) {
+              parsedDateTime = dateObj.toISOString();
+              console.log(`✅ Parsed date: ${rawDateTime} -> ${parsedDateTime}`);
+            } else {
+              console.warn(`❌ Invalid date created from: ${rawDateTime}`);
+              parsedDateTime = rawDateTime;
+            }
           } catch (error) {
-            console.warn(`Failed to parse date: ${rawDateTime}`, error);
+            console.warn(`❌ Failed to parse date: ${rawDateTime}`, error);
             parsedDateTime = rawDateTime; // Fallback to original
           }
         }
