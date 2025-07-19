@@ -376,11 +376,8 @@ export class AirtableService {
         userProfileForApplication = JSON.stringify(applicationData.aiProfile || {});
       }
 
-      // Create notes string from missing skills
-      const missingSkills = applicationData.notes?.split('\n').filter(line => line.includes('Missing:')).map(line => line.replace('• Missing: ', '')) || [];
-      const notesString = missingSkills.length > 0
-        ? missingSkills.map(skill => `• Missing: ${skill}`).join('\n')
-        : "No missing skills";
+      // Use the complete notes field (employer answers + AI analysis) from applicationData
+      const notesString = applicationData.notes || "No additional notes";
 
       // Use exact field names matching Airtable base with employer Job ID
       const payload = {

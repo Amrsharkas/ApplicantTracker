@@ -501,6 +501,26 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     setSearchQuery("");
   };
 
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Force refresh the job postings data
+      await refetch();
+      toast({
+        title: "Refreshed",
+        description: "Job postings have been updated with the latest data.",
+      });
+    } catch (error) {
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh job postings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString();
@@ -607,6 +627,17 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                   Clear Filters ({activeFiltersCount})
                 </Button>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-1"
+                title="Refresh job postings"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
