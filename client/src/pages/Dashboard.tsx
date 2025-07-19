@@ -301,28 +301,29 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              {/* Upcoming Interview - Only show if interviews are scheduled */}
-              {upcomingInterviews.length > 0 && (
-                <button
-                  onClick={() => openModal('upcomingInterview')}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-6"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="bg-white bg-opacity-20 rounded-lg p-3">
-                        <MessageCircle className="h-6 w-6 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <h4 className="text-xl font-bold">Upcoming Interview</h4>
-                        <p className="text-blue-100">
-                          {upcomingInterviews.length} interview{upcomingInterviews.length > 1 ? 's' : ''} scheduled
-                        </p>
-                      </div>
+              {/* Upcoming Interview - Always show */}
+              <button
+                onClick={() => openModal('upcomingInterview')}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-6"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                      <MessageCircle className="h-6 w-6 text-white" />
                     </div>
-                    <div className="text-white text-2xl">→</div>
+                    <div className="text-left">
+                      <h4 className="text-xl font-bold">Upcoming Interviews</h4>
+                      <p className="text-blue-100">
+                        {upcomingInterviews.length > 0 
+                          ? `${upcomingInterviews.length} interview${upcomingInterviews.length > 1 ? 's' : ''} scheduled`
+                          : "Check your interview schedule"
+                        }
+                      </p>
+                    </div>
                   </div>
-                </button>
-              )}
+                  <div className="text-white text-2xl">→</div>
+                </div>
+              </button>
 
               {/* Applications Button - Full Width */}
               <button

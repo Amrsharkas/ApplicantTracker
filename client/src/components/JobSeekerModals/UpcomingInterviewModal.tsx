@@ -196,11 +196,17 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
             <div className="text-center py-12">
               <Users className="mx-auto h-12 w-12 text-slate-400 mb-4" />
               <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">
-                No Upcoming Interviews
+                It's Awfully Quiet in Here... 🦗
               </h3>
-              <p className="text-slate-500 dark:text-slate-400">
-                Your interview schedule will appear here when employers schedule meetings with you.
+              <p className="text-slate-500 dark:text-slate-400 mb-4">
+                No interviews scheduled yet, but don't worry! We're confident someone amazing will reach out soon.
               </p>
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 max-w-md mx-auto">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  💡 <strong>Pro tip:</strong> Keep applying to jobs and updating your profile. 
+                  Great opportunities are just around the corner!
+                </p>
+              </div>
             </div>
           ) : (
             sortedInterviews.map((interview) => (
