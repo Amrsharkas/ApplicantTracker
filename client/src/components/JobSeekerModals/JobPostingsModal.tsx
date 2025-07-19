@@ -396,9 +396,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     return { jobs: allJobsSorted, isRelated: false };
   };
 
-  const { jobs: filteredJobs, isRelated: showingRelatedJobs } = getFilteredJobs();
-
-  // AI Match Score calculation (simplified)
+  // AI Match Score calculation (simplified) - MOVED BEFORE getFilteredJobs
   const calculateAIMatchScore = (job: JobPosting): number => {
     if (!userProfile?.aiProfile) return 50; // Default score when no profile
     
@@ -462,6 +460,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     const finalScore = Math.min(Math.round(score), 100);
     return isNaN(finalScore) ? 50 : finalScore; // Fallback to 50 if NaN
   };
+
+  const { jobs: filteredJobs, isRelated: showingRelatedJobs } = getFilteredJobs();
 
   // Helper functions
   const toggleFilter = (filterType: keyof typeof expandedFilters) => {
