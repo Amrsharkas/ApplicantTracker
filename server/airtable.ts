@@ -245,10 +245,20 @@ export class AirtableService {
     }
 
     try {
-      // Simplified User profile for debugging
-      const simplifiedProfile = {
-        skills: applicationData.aiProfile?.skills || []
-      };
+      // Fetch the complete user profile from the "platouserprofiles" table
+      console.log(`📋 Fetching complete user profile for user ID: ${applicationData.applicantId}`);
+      const existingUserProfile = await this.getUserProfileFromInterview(applicationData.applicantId);
+      
+      let userProfileForApplication: string;
+      if (existingUserProfile) {
+        // Use the complete existing profile from interview
+        userProfileForApplication = existingUserProfile;
+        console.log('✅ Using complete existing user profile from interview');
+      } else {
+        // Fallback to current profile data if no interview profile exists
+        console.log('⚠️ No interview profile found, using current profile data');
+        userProfileForApplication = JSON.stringify(applicationData.aiProfile || {});
+      }
 
       // Create notes string from missing skills
       const missingSkills = applicationData.notes?.split('\n').filter(line => line.includes('Missing:')).map(line => line.replace('• Missing: ', '')) || [];
@@ -265,7 +275,7 @@ export class AirtableService {
           "Company": applicationData.companyName,
           "Applicant Name": applicationData.applicantName,
           "Applicant User ID": applicationData.applicantId,
-          "User profile": JSON.stringify(simplifiedProfile),
+          "User profile": userProfileForApplication,
           "Notes": notesString
         }
       };
@@ -316,6 +326,34 @@ export class AirtableService {
     } catch (error) {
       console.error('Error submitting job application to Airtable:', error);
       throw new Error('Failed to submit job application to Airtable');
+    }
+  }
+
+  async getUserProfileFromInterview(userId: string): Promise<string | null> {
+    if (!base) {
+      console.warn('Airtable user profiles base not configured, cannot fetch profile');
+      return null;
+    }
+
+    try {
+      console.log(`📋 Fetching existing user profile for user ID: ${userId}`);
+      
+      const records = await base(TABLE_NAME).select({
+        filterByFormula: `{User ID} = '${userId}'`,
+        maxRecords: 1
+      }).firstPage();
+
+      if (records.length > 0) {
+        const userProfile = records[0].get('User profile') as string;
+        console.log(`✅ Found existing user profile for user ${userId}`);
+        return userProfile;
+      } else {
+        console.log(`⚠️ No existing user profile found for user ${userId}`);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error fetching user profile from Airtable:', error);
+      return null;
     }
   }
 
