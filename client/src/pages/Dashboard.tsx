@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { 
@@ -97,6 +97,25 @@ export default function Dashboard() {
   // Show full dashboard only when BOTH essential info is complete AND AI interview is done
   const showFullDashboard = hasEssentialInfo && hasCompletedInterview;
 
+  // Show welcome toast only once after completing interview
+  useEffect(() => {
+    if (showFullDashboard && profile?.aiProfileGenerated) {
+      // Check if we've already shown this toast
+      const hasShownWelcomeToast = localStorage.getItem(`welcomeToast_${user?.id}`);
+      
+      if (!hasShownWelcomeToast) {
+        toast({
+          title: "Ready to Find Your Perfect Role! 🎉",
+          description: "Your profile is complete and your AI interview has generated a comprehensive professional analysis. Use the tools below to discover opportunities that match your unique skills and career goals.",
+          duration: 8000, // Show for 8 seconds
+        });
+        
+        // Mark that we've shown the toast for this user
+        localStorage.setItem(`welcomeToast_${user?.id}`, 'shown');
+      }
+    }
+  }, [showFullDashboard, profile?.aiProfileGenerated, user?.id, toast]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -141,18 +160,10 @@ export default function Dashboard() {
       <main className="max-w-5xl mx-auto px-6 py-8">
         {/* Getting Started Section or Hiring Stats */}
         <div className="mb-8">
-          {/* Show hiring statistics for completed users */}
+          {/* Show full dashboard for completed users */}
           {showFullDashboard ? (
             <div className="space-y-6">
-              <div className="text-center">
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">Ready to Find Your Perfect Role!</h2>
-                <p className="text-gray-600 max-w-2xl mx-auto">
-                  Your profile is complete and your AI interview has generated a comprehensive professional analysis. 
-                  Use the tools below to discover opportunities that match your unique skills and career goals.
-                </p>
-              </div>
-              
-
+              {/* Removed congratulations message - now shown as toast notification */}
             </div>
           ) : (
             /* Show getting started checklist for incomplete users */
