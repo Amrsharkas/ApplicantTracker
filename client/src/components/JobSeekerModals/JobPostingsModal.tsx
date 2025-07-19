@@ -569,6 +569,15 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                   Clear Filters ({activeFiltersCount})
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClose}
+                className="hover:bg-gray-100"
+                title="Close"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </DialogTitle>
         </DialogHeader>
@@ -1015,7 +1024,14 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
               exit={{ opacity: 0 }}
               className="absolute inset-0 bg-black bg-opacity-30 flex z-40"
             >
-              <div className="flex-1" onClick={() => setSelectedJob(null)} />
+              <div 
+                className="flex-1" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('Backdrop clicked');
+                  setSelectedJob(null);
+                }} 
+              />
               
               <motion.div
                 initial={{ x: '100%' }}
@@ -1057,7 +1073,11 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setSelectedJob(null)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          console.log('Back button clicked');
+                          setSelectedJob(null);
+                        }}
                         className="hover:bg-gray-100"
                         title="Back to job list"
                       >
@@ -1066,7 +1086,11 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={handleClose}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          console.log('Close button clicked');
+                          handleClose();
+                        }}
                         className="hover:bg-gray-100"
                         title="Close"
                       >
