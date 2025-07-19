@@ -17,6 +17,7 @@ import { ComprehensiveProfileModal } from "@/components/JobSeekerModals/Comprehe
 import { UserProfileModal } from "@/components/JobSeekerModals/UserProfileModal";
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
 import { InterviewModal } from "@/components/JobSeekerModals/InterviewModal";
+import { UpcomingInterviewModal } from "@/components/JobSeekerModals/UpcomingInterviewModal";
 
 import { JobPostingsModal } from "@/components/JobSeekerModals/JobPostingsModal";
 
@@ -56,6 +57,13 @@ export default function Dashboard() {
     queryKey: ["/api/applications"],
     retry: false,
     refetchOnWindowFocus: false,
+  });
+
+  const { data: upcomingInterviews = [] } = useQuery({
+    queryKey: ["/api/upcoming-interviews"],
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchInterval: 30000, // Refresh every 30 seconds to sync with Airtable monitoring
   });
 
   if (isLoading) {
@@ -293,6 +301,29 @@ export default function Dashboard() {
                 </button>
               </div>
 
+              {/* Upcoming Interview - Only show if interviews are scheduled */}
+              {upcomingInterviews.length > 0 && (
+                <button
+                  onClick={() => openModal('upcomingInterview')}
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-6"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                        <MessageCircle className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <h4 className="text-xl font-bold">Upcoming Interview</h4>
+                        <p className="text-blue-100">
+                          {upcomingInterviews.length} interview{upcomingInterviews.length > 1 ? 's' : ''} scheduled
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-white text-2xl">→</div>
+                  </div>
+                </button>
+              )}
+
               {/* Applications Button - Full Width */}
               <button
                 onClick={() => openModal('applications')}
@@ -401,6 +432,10 @@ export default function Dashboard() {
         isOpen={activeModal === 'applications'} 
         onClose={closeModal} 
         onOpenJobDetails={openJobDetails}
+      />
+      <UpcomingInterviewModal 
+        isOpen={activeModal === 'upcomingInterview'} 
+        onClose={closeModal} 
       />
       <JobPostingsModal 
         isOpen={activeModal === 'jobPostings'} 

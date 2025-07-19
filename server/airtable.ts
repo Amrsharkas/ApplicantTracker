@@ -66,6 +66,8 @@ export interface AirtableJobMatch {
   jobTitle: string;
   jobDescription: string;
   companyName: string;
+  interviewDateTime?: string;
+  interviewLink?: string;
 }
 
 export interface AirtableJobPosting {
@@ -1140,6 +1142,46 @@ export class AirtableService {
     } catch (error) {
       console.error('Error storing job application in Airtable:', error);
       throw new Error('Failed to store job application in Airtable');
+    }
+  }
+
+  async getUpcomingInterviews(userId: string): Promise<AirtableJobMatch[]> {
+    if (!jobMatchesBase) {
+      console.warn('🔍 Job matches base not configured, returning empty interviews');
+      return [];
+    }
+
+    try {
+      console.log(`📋 Fetching upcoming interviews for user ID: ${userId}`);
+      console.log(`📋 Checking dedicated job matches base with ID: ${AIRTABLE_JOB_MATCHES_BASE_ID}`);
+      console.log(`📋 Looking for table: ${JOB_MATCHES_TABLE}`);
+
+      const records = await jobMatchesBase(JOB_MATCHES_TABLE).select({
+        filterByFormula: `AND({User ID} = '${userId}', {Interview date&time} != '')`,
+        sort: [{ field: 'Interview date&time', direction: 'asc' }]
+      }).all();
+
+      console.log(`📋 Found ${records.length} interview records for user ${userId}`);
+
+      const interviews: AirtableJobMatch[] = records.map(record => {
+        const fields = record.fields as any;
+        return {
+          recordId: record.id,
+          name: fields['Name'] || 'Unknown',
+          userId: fields['User ID'] || '',
+          jobTitle: fields['Job title'] || 'Unknown Position',
+          jobDescription: fields['Job description'] || '',
+          companyName: fields['Company name'] || 'Unknown Company',
+          interviewDateTime: fields['Interview date&time'] || '',
+          interviewLink: fields['Interview Link'] || ''
+        };
+      });
+
+      console.log(`📋 Returning ${interviews.length} processed interviews for user ${userId}`);
+      return interviews;
+    } catch (error) {
+      console.error('Error fetching upcoming interviews:', error);
+      return [];
     }
   }
 }
