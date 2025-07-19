@@ -176,9 +176,10 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
     },
   });
 
-  const { data: jobPostings = [], isLoading, error } = useQuery({
+  const { data: jobPostings = [], isLoading, error, refetch } = useQuery({
     queryKey: ["/api/job-postings"],
     enabled: isOpen,
+    refetchInterval: isOpen ? 30000 : false, // Auto-refresh every 30 seconds when modal is open
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
@@ -808,11 +809,11 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                         {getRandomFunnyMessage()}
                       </p>
                       <Button
-                        onClick={() => window.location.reload()}
+                        onClick={() => refetch()}
                         className="mt-4"
                         variant="outline"
                       >
-                        Refresh Page
+                        Refresh Jobs
                       </Button>
                     </div>
                   ) : (

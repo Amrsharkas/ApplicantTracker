@@ -42,36 +42,13 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
     refetchInterval: isOpen ? 30000 : false, // Refresh every 30 seconds when modal is open to sync with Airtable
   });
 
-  const refreshMutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest("POST", "/api/job-matches/refresh");
-    },
-    onSuccess: () => {
-      toast({
-        title: "Matches Refreshed",
-        description: "Your job matches have been updated!",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/job-matches"] });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Refresh Failed",
-        description: error.message || "Failed to refresh matches",
-        variant: "destructive",
-      });
-    },
-  });
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/job-matches"] });
+    toast({
+      title: "Matches Refreshed",
+      description: "Your job matches have been updated!",
+    });
+  };
 
   const formatSalary = (min?: number, max?: number) => {
     if (!min && !max) return "Salary not specified";
@@ -87,13 +64,12 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
           <div className="flex items-center justify-between">
             <DialogTitle className="text-2xl font-bold text-slate-800">AI Job Matches</DialogTitle>
             <Button
-              onClick={() => refreshMutation.mutate()}
-              disabled={refreshMutation.isPending}
+              onClick={handleRefresh}
               variant="outline"
               size="sm"
               className="flex items-center gap-2"
             >
-              <RefreshCw className={`w-4 h-4 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+              <RefreshCw className="w-4 h-4" />
               Refresh
             </Button>
           </div>
@@ -121,11 +97,10 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
               </div>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button
-                  onClick={() => refreshMutation.mutate()}
-                  disabled={refreshMutation.isPending}
+                  onClick={handleRefresh}
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
                 >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+                  <RefreshCw className="w-4 h-4 mr-2" />
                   Check Again (Pretty Please!)
                 </Button>
                 <Button
