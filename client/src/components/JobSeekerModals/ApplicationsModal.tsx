@@ -253,17 +253,7 @@ export function ApplicationsModal({ isOpen, onClose }: ApplicationsModalProps) {
                     </div>
                   </div>
 
-                  {/* AI Analysis Notes */}
-                  {application.notes && (
-                    <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4 mb-4">
-                      <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        AI Analysis Notes:
-                      </h4>
-                      <div className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-line">
-                        {application.notes}
-                      </div>
-                    </div>
-                  )}
+
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-2">
