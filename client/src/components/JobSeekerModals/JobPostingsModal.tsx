@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye } from "lucide-react";
+import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw } from "lucide-react";
 
 // Country-City data structure
 const COUNTRIES_CITIES = {
@@ -81,6 +81,7 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
   const [showApplicationAnalysis, setShowApplicationAnalysis] = useState(false);
   const [applicationAnalysis, setApplicationAnalysis] = useState<AIMatchResponse | null>(null);
   const [showAILoadingModal, setShowAILoadingModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [aiLoadingResult, setAiLoadingResult] = useState<{
     type: 'success' | 'error' | null;
     message: string;
@@ -809,10 +810,16 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
                         {getRandomFunnyMessage()}
                       </p>
                       <Button
-                        onClick={() => refetch()}
+                        onClick={async () => {
+                          setIsRefreshing(true);
+                          await refetch();
+                          setTimeout(() => setIsRefreshing(false), 1000);
+                        }}
+                        disabled={isRefreshing}
                         className="mt-4"
                         variant="outline"
                       >
+                        <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                         Refresh Jobs
                       </Button>
                     </div>

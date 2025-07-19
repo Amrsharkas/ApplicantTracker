@@ -1,12 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { isUnauthorizedError } from "@/lib/authUtils";
+
 import { MapPin, DollarSign, Target, Building, RefreshCw } from "lucide-react";
 
 interface JobMatch {
@@ -33,7 +32,6 @@ interface MatchesModalProps {
 }
 
 export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: matches = [], isLoading } = useQuery({
@@ -42,12 +40,12 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
     refetchInterval: isOpen ? 30000 : false, // Refresh every 30 seconds when modal is open to sync with Airtable
   });
 
-  const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["/api/job-matches"] });
-    toast({
-      title: "Matches Refreshed",
-      description: "Your job matches have been updated!",
-    });
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ["/api/job-matches"] });
+    setTimeout(() => setIsRefreshing(false), 1000); // Show animation for 1 second
   };
 
   const formatSalary = (min?: number, max?: number) => {
@@ -65,11 +63,12 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
             <DialogTitle className="text-2xl font-bold text-slate-800">AI Job Matches</DialogTitle>
             <Button
               onClick={handleRefresh}
+              disabled={isRefreshing}
               variant="outline"
               size="sm"
               className="flex items-center gap-2"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
@@ -98,9 +97,10 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button
                   onClick={handleRefresh}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                  disabled={isRefreshing}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white disabled:opacity-70"
                 >
-                  <RefreshCw className="w-4 h-4 mr-2" />
+                  <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                   Check Again (Pretty Please!)
                 </Button>
                 <Button
