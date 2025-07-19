@@ -229,17 +229,54 @@ export class AirtableService {
     return formatted;
   }
 
-  async checkExistingApplication(jobId: string, userId: string): Promise<boolean> {
+  async getEmployerJobId(jobRecordId: string): Promise<string | null> {
+    if (!AIRTABLE_JOB_POSTINGS_BASE_ID) {
+      console.warn('Job postings Airtable base not configured, cannot lookup Job ID');
+      return null;
+    }
+
+    try {
+      console.log(`🔍 Looking up employer Job ID for record: ${jobRecordId}`);
+      
+      const response = await fetch(`https://api.airtable.com/v0/${AIRTABLE_JOB_POSTINGS_BASE_ID}/platojobpostings/${jobRecordId}`, {
+        headers: {
+          'Authorization': 'Bearer pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        console.error('❌ Error fetching job posting:', response.status, await response.text());
+        return null;
+      }
+
+      const jobPost = await response.json();
+      const employerJobId = jobPost.fields?.["Job ID"];
+      
+      if (employerJobId) {
+        console.log(`✅ Found employer Job ID: ${employerJobId}`);
+        return employerJobId;
+      } else {
+        console.warn('⚠️ No Job ID field found in job posting, using record ID as fallback');
+        return jobRecordId;
+      }
+    } catch (error) {
+      console.error('❌ Error looking up employer Job ID:', error);
+      return jobRecordId; // Fallback to record ID
+    }
+  }
+
+  async checkExistingApplication(employerJobId: string, userId: string): Promise<boolean> {
     if (!AIRTABLE_JOB_APPLICATIONS_BASE_ID) {
       console.warn('Job applications Airtable base not configured, cannot check for duplicates');
       return false;
     }
 
     try {
-      const filterFormula = `AND({Job ID} = "${jobId}", {Applicant User ID} = "${userId}")`;
+      const filterFormula = `AND({Job ID} = "${employerJobId}", {Applicant User ID} = "${userId}")`;
       const url = `https://api.airtable.com/v0/${AIRTABLE_JOB_APPLICATIONS_BASE_ID}/Table 1?filterByFormula=${encodeURIComponent(filterFormula)}`;
       
-      console.log(`🔍 Checking for existing application: Job ID ${jobId}, User ID ${userId}`);
+      console.log(`🔍 Checking for existing application: Employer Job ID ${employerJobId}, User ID ${userId}`);
       
       const response = await fetch(url, {
         headers: {
@@ -284,8 +321,14 @@ export class AirtableService {
       return;
     }
 
-    // Check for existing application first
-    const isDuplicate = await this.checkExistingApplication(applicationData.jobId, applicationData.applicantId);
+    // Lookup the employer-defined Job ID from the job posting
+    const employerJobId = await this.getEmployerJobId(applicationData.jobId);
+    if (!employerJobId) {
+      throw new Error('Unable to lookup job details. Please try again.');
+    }
+
+    // Check for existing application using employer Job ID
+    const isDuplicate = await this.checkExistingApplication(employerJobId, applicationData.applicantId);
     if (isDuplicate) {
       throw new Error('You have already applied to this job position.');
     }
@@ -312,11 +355,11 @@ export class AirtableService {
         ? missingSkills.map(skill => `• Missing: ${skill}`).join('\n')
         : "No missing skills";
 
-      // Use exact field names matching Airtable base
+      // Use exact field names matching Airtable base with employer Job ID
       const payload = {
         fields: {
           "Job title": applicationData.jobTitle,
-          "Job ID": applicationData.jobId,
+          "Job ID": employerJobId, // Use employer-defined Job ID instead of record ID
           "Job description": applicationData.jobDescription || `${applicationData.jobTitle} position at ${applicationData.companyName}`,
           "Company": applicationData.companyName,
           "Applicant Name": applicationData.applicantName,
