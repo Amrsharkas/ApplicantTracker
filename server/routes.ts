@@ -1048,12 +1048,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Application routes
+  // Application routes - Real Airtable applications
   app.get('/api/applications', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const applications = await storage.getApplications(userId);
-      res.json(applications);
+      
+      // Get user's applications from Airtable
+      const airtableApplications = await airtableService.getUserApplications(userId);
+      
+      // Process each application to determine status
+      const processedApplications = await Promise.all(
+        airtableApplications.map(async (app) => {
+          let status = 'pending';
+          
+          // Check if user was accepted (appears in job matches)
+          const isAccepted = await airtableService.checkUserAccepted(userId, app.jobTitle);
+          if (isAccepted) {
+            status = 'accepted';
+          } else {
+            // Check if job still exists
+            const jobStatus = await airtableService.checkJobStatus(app.jobId, app.jobTitle);
+            if (jobStatus === 'removed') {
+              status = 'closed';
+            }
+            // If still exists but not accepted, status remains 'pending'
+          }
+          
+          return {
+            recordId: app.recordId,
+            jobTitle: app.jobTitle,
+            jobId: app.jobId,
+            companyName: app.companyName,
+            appliedAt: app.createdTime,
+            status,
+            notes: app.notes,
+            jobDescription: app.jobDescription
+          };
+        })
+      );
+      
+      console.log(`📋 Returning ${processedApplications.length} processed applications for user ${userId}`);
+      res.json(processedApplications);
     } catch (error) {
       console.error("Error fetching applications:", error);
       res.status(500).json({ message: "Failed to fetch applications" });

@@ -514,6 +514,79 @@ export class AirtableService {
     }
   }
 
+  async getUserApplications(userId: string): Promise<any[]> {
+    if (!jobApplicationsBase) {
+      console.warn('Job applications base not configured, returning empty array');
+      return [];
+    }
+
+    try {
+      console.log(`📋 Fetching applications for user ID: ${userId}`);
+      
+      const records = await jobApplicationsBase(JOB_APPLICATIONS_TABLE).select({
+        filterByFormula: `{Applicant User ID} = '${userId}'`,
+        maxRecords: 100
+      }).firstPage();
+
+      const applications = records.map(record => ({
+        recordId: record.id,
+        jobTitle: record.get('Job title') as string,
+        jobId: record.get('Job ID') as string,
+        jobDescription: record.get('Job description') as string,
+        companyName: record.get('Company') as string,
+        applicantName: record.get('Applicant Name') as string,
+        applicantUserId: record.get('Applicant User ID') as string,
+        userProfile: record.get('User profile') as string,
+        notes: record.get('Notes') as string,
+        createdTime: record.get('Created Time') || new Date().toISOString()
+      }));
+
+      console.log(`✅ Found ${applications.length} applications for user ${userId}`);
+      return applications;
+    } catch (error) {
+      console.error('❌ Error fetching user applications from Airtable:', error);
+      return [];
+    }
+  }
+
+  async checkJobStatus(jobId: string, jobTitle: string): Promise<'exists' | 'removed'> {
+    if (!jobPostingsBase) {
+      console.warn('Job postings base not configured');
+      return 'exists'; // Default to exists if we can't check
+    }
+
+    try {
+      const records = await jobPostingsBase('Table 1').select({
+        filterByFormula: `OR({Job ID} = '${jobId}', {Job title} = '${jobTitle}')`,
+        maxRecords: 1
+      }).firstPage();
+
+      return records.length > 0 ? 'exists' : 'removed';
+    } catch (error) {
+      console.error('Error checking job status:', error);
+      return 'exists'; // Default to exists if there's an error
+    }
+  }
+
+  async checkUserAccepted(userId: string, jobTitle: string): Promise<boolean> {
+    if (!jobMatchesBase) {
+      console.warn('Job matches base not configured');
+      return false;
+    }
+
+    try {
+      const records = await jobMatchesBase(JOB_MATCHES_TABLE).select({
+        filterByFormula: `AND({User ID} = '${userId}', {Job title} = '${jobTitle}')`,
+        maxRecords: 1
+      }).firstPage();
+
+      return records.length > 0;
+    } catch (error) {
+      console.error('Error checking user acceptance:', error);
+      return false;
+    }
+  }
+
   async getAllUserProfiles(): Promise<AirtableUserProfile[]> {
     if (!base) {
       console.warn('Airtable not configured, returning empty array');

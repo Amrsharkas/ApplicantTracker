@@ -4,39 +4,31 @@ import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { 
-  MapPin, 
-  DollarSign, 
   Calendar, 
   Building, 
   Clock,
   CheckCircle,
   XCircle,
   Eye,
-  FileText
+  FileText,
+  RefreshCw,
+  AlertCircle
 } from "lucide-react";
 
-interface Application {
-  id: number;
-  status: string;
+interface AirtableApplication {
+  recordId: string;
+  jobTitle: string;
+  jobId: string;
+  companyName: string;
   appliedAt: string;
-  coverLetter?: string;
+  status: 'pending' | 'accepted' | 'closed' | 'denied';
   notes?: string;
-  job: {
-    id: number;
-    title: string;
-    company: string;
-    description: string;
-    location: string;
-    salaryMin?: number;
-    salaryMax?: number;
-    experienceLevel?: string;
-    skills?: string[];
-    jobType?: string;
-  };
+  jobDescription?: string;
 }
 
 interface ApplicationsModalProps {
@@ -48,9 +40,10 @@ export function ApplicationsModal({ isOpen, onClose }: ApplicationsModalProps) {
   const [statusFilter, setStatusFilter] = useState("all");
   const { toast } = useToast();
 
-  const { data: applications = [], isLoading } = useQuery({
+  const { data: applications = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/applications"],
     enabled: isOpen,
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
@@ -65,11 +58,36 @@ export function ApplicationsModal({ isOpen, onClose }: ApplicationsModalProps) {
     },
   });
 
-  const formatSalary = (min?: number, max?: number) => {
-    if (!min && !max) return "Salary not specified";
-    if (min && max) return `$${(min / 1000).toFixed(0)}k - $${(max / 1000).toFixed(0)}k`;
-    if (min) return `$${(min / 1000).toFixed(0)}k+`;
-    return `Up to $${(max! / 1000).toFixed(0)}k`;
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'accepted':
+        return <CheckCircle className="w-4 h-4" />;
+      case 'pending':
+        return <Clock className="w-4 h-4" />;
+      case 'closed':
+        return <XCircle className="w-4 h-4" />;
+      case 'denied':
+        return <AlertCircle className="w-4 h-4" />;
+      default:
+        return <Clock className="w-4 h-4" />;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      accepted: { variant: "default" as const, color: "bg-green-100 text-green-800", label: "Accepted" },
+      pending: { variant: "secondary" as const, color: "bg-yellow-100 text-yellow-800", label: "Pending" },
+      closed: { variant: "outline" as const, color: "bg-gray-100 text-gray-800", label: "Closed" },
+      denied: { variant: "destructive" as const, color: "bg-red-100 text-red-800", label: "Denied" }
+    };
+    
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    return (
+      <Badge variant={config.variant} className={`${config.color} flex items-center gap-1`}>
+        {getStatusIcon(status)}
+        {config.label}
+      </Badge>
+    );
   };
 
   const formatDate = (dateString: string) => {
@@ -81,76 +99,59 @@ export function ApplicationsModal({ isOpen, onClose }: ApplicationsModalProps) {
     });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'applied':
-        return "bg-blue-100 text-blue-700 border-blue-200";
-      case 'reviewed':
-        return "bg-yellow-100 text-yellow-700 border-yellow-200";
-      case 'interviewed':
-        return "bg-purple-100 text-purple-700 border-purple-200";
-      case 'offered':
-        return "bg-green-100 text-green-700 border-green-200";
-      case 'rejected':
-        return "bg-red-100 text-red-700 border-red-200";
-      default:
-        return "bg-slate-100 text-slate-700 border-slate-200";
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'applied':
-        return <FileText className="w-4 h-4" />;
-      case 'reviewed':
-        return <Eye className="w-4 h-4" />;
-      case 'interviewed':
-        return <Clock className="w-4 h-4" />;
-      case 'offered':
-        return <CheckCircle className="w-4 h-4" />;
-      case 'rejected':
-        return <XCircle className="w-4 h-4" />;
-      default:
-        return <FileText className="w-4 h-4" />;
-    }
-  };
-
-  const filteredApplications = applications.filter((app: Application) => {
+  const filteredApplications = applications.filter((app: AirtableApplication) => {
     if (statusFilter === "all") return true;
-    return app.status.toLowerCase() === statusFilter.toLowerCase();
+    return app.status === statusFilter;
   });
 
   const getApplicationStats = () => {
-    const stats = applications.reduce((acc: any, app: Application) => {
-      const status = app.status.toLowerCase();
-      acc[status] = (acc[status] || 0) + 1;
+    const stats = applications.reduce((acc: any, app: AirtableApplication) => {
+      acc[app.status] = (acc[app.status] || 0) + 1;
       return acc;
     }, {});
     
     return {
       total: applications.length,
-      applied: stats.applied || 0,
-      reviewed: stats.reviewed || 0,
-      interviewed: stats.interviewed || 0,
-      offered: stats.offered || 0,
-      rejected: stats.rejected || 0,
+      accepted: stats.accepted || 0,
+      pending: stats.pending || 0,
+      closed: stats.closed || 0,
+      denied: stats.denied || 0,
     };
   };
 
   const stats = getApplicationStats();
 
+  const handleManualRefresh = () => {
+    refetch();
+    toast({
+      title: "Refreshed",
+      description: "Applications have been updated",
+    });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-slate-200">
-            My Applications
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-slate-200">
+              My Applications
+            </DialogTitle>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleManualRefresh}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </Button>
+          </div>
         </DialogHeader>
         
         <div className="space-y-6">
           {/* Application Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <Card className="glass-card">
               <CardContent className="p-3 text-center">
                 <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">
@@ -161,32 +162,26 @@ export function ApplicationsModal({ isOpen, onClose }: ApplicationsModalProps) {
             </Card>
             <Card className="glass-card">
               <CardContent className="p-3 text-center">
-                <div className="text-2xl font-bold text-blue-600">{stats.applied}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Applied</div>
+                <div className="text-2xl font-bold text-green-600">{stats.accepted}</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">Accepted</div>
               </CardContent>
             </Card>
             <Card className="glass-card">
               <CardContent className="p-3 text-center">
-                <div className="text-2xl font-bold text-yellow-600">{stats.reviewed}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Reviewed</div>
+                <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">Pending</div>
               </CardContent>
             </Card>
             <Card className="glass-card">
               <CardContent className="p-3 text-center">
-                <div className="text-2xl font-bold text-purple-600">{stats.interviewed}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Interviewed</div>
+                <div className="text-2xl font-bold text-gray-600">{stats.closed}</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">Closed</div>
               </CardContent>
             </Card>
             <Card className="glass-card">
               <CardContent className="p-3 text-center">
-                <div className="text-2xl font-bold text-green-600">{stats.offered}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Offered</div>
-              </CardContent>
-            </Card>
-            <Card className="glass-card">
-              <CardContent className="p-3 text-center">
-                <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Rejected</div>
+                <div className="text-2xl font-bold text-red-600">{stats.denied}</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">Denied</div>
               </CardContent>
             </Card>
           </div>
@@ -202,133 +197,87 @@ export function ApplicationsModal({ isOpen, onClose }: ApplicationsModalProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Applications</SelectItem>
-                <SelectItem value="applied">Applied</SelectItem>
-                <SelectItem value="reviewed">Reviewed</SelectItem>
-                <SelectItem value="interviewed">Interviewed</SelectItem>
-                <SelectItem value="offered">Offered</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="accepted">Accepted</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+                <SelectItem value="denied">Denied</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Applications List */}
-          <div className="max-h-[50vh] overflow-y-auto space-y-4">
+          <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
             {isLoading ? (
-              <div className="flex items-center justify-center py-8">
+              <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
             ) : filteredApplications.length === 0 ? (
-              <div className="text-center py-8">
-                <FileText className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                  {statusFilter === "all" ? "No applications yet" : `No ${statusFilter} applications`}
+              <div className="text-center py-12">
+                <FileText className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  {statusFilter === "all" ? "No Applications Yet" : `No ${statusFilter} Applications`}
                 </h3>
-                <p className="text-slate-600 dark:text-slate-400">
+                <p className="text-slate-500 dark:text-slate-400">
                   {statusFilter === "all" 
-                    ? "Start applying to jobs to see them here"
-                    : `You have no applications with ${statusFilter} status`
+                    ? "Start applying to jobs to see your applications here"
+                    : `You don't have any ${statusFilter} applications`
                   }
                 </p>
               </div>
             ) : (
-              filteredApplications.map((application: Application, index: number) => (
+              filteredApplications.map((application: AirtableApplication) => (
                 <motion.div
-                  key={application.id}
+                  key={application.recordId}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  className="glass-card p-6 rounded-lg"
                 >
-                  <Card className="glass-card hover:shadow-lg transition-all duration-200">
-                    <CardContent className="p-6">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-lg">
-                              {application.job.title}
-                            </h3>
-                            <Badge className={`${getStatusColor(application.status)} border`}>
-                              <span className="flex items-center gap-1">
-                                {getStatusIcon(application.status)}
-                                {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
-                              </span>
-                            </Badge>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 mb-2">
-                            <Building className="w-4 h-4 text-blue-600" />
-                            <p className="text-blue-600 dark:text-blue-400 font-medium">
-                              {application.job.company}
-                            </p>
-                          </div>
-                          
-                          <p className="text-slate-600 dark:text-slate-400 mb-3 line-clamp-2">
-                            {application.job.description}
-                          </p>
-                          
-                          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500 dark:text-slate-400 mb-3">
-                            <div className="flex items-center gap-1">
-                              <MapPin className="w-4 h-4" />
-                              <span>{application.job.location}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <DollarSign className="w-4 h-4" />
-                              <span>{formatSalary(application.job.salaryMin, application.job.salaryMax)}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-4 h-4" />
-                              <span>Applied {formatDate(application.appliedAt)}</span>
-                            </div>
-                            {application.job.jobType && (
-                              <Badge variant="outline" className="capitalize">
-                                {application.job.jobType}
-                              </Badge>
-                            )}
-                          </div>
-
-                          {application.job.skills && application.job.skills.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mb-3">
-                              {application.job.skills.slice(0, 4).map((skill) => (
-                                <Badge 
-                                  key={skill} 
-                                  variant="secondary"
-                                  className="bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/20 dark:text-blue-300"
-                                >
-                                  {skill}
-                                </Badge>
-                              ))}
-                              {application.job.skills.length > 4 && (
-                                <Badge variant="outline">
-                                  +{application.job.skills.length - 4} more
-                                </Badge>
-                              )}
-                            </div>
-                          )}
-
-                          {application.coverLetter && (
-                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 mt-3">
-                              <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                Cover Letter:
-                              </p>
-                              <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">
-                                {application.coverLetter}
-                              </p>
-                            </div>
-                          )}
-
-                          {application.notes && (
-                            <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 mt-3">
-                              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-1">
-                                Notes:
-                              </p>
-                              <p className="text-sm text-yellow-700 dark:text-yellow-400">
-                                {application.notes}
-                              </p>
-                            </div>
-                          )}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                          {application.jobTitle}
+                        </h3>
+                        {getStatusBadge(application.status)}
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
+                        <div className="flex items-center gap-1">
+                          <Building className="w-4 h-4" />
+                          {application.companyName}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          Applied {formatDate(application.appliedAt)}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
+
+                  {/* AI Analysis Notes */}
+                  {application.notes && (
+                    <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4 mb-4">
+                      <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        AI Analysis Notes:
+                      </h4>
+                      <div className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-line">
+                        {application.notes}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2">
+                    {application.status === 'pending' && (
+                      <Button variant="outline" size="sm" className="flex items-center gap-2">
+                        <XCircle className="w-4 h-4" />
+                        Withdraw
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" className="flex items-center gap-2">
+                      <Eye className="w-4 h-4" />
+                      View Details
+                    </Button>
+                  </div>
                 </motion.div>
               ))
             )}
