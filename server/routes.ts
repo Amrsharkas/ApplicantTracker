@@ -973,10 +973,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Job Application Analysis and Submission Route
+  // Smart Job Application with Skill Matching
   app.post('/api/applications/analyze-and-submit', isAuthenticated, multer({ storage: multer.memoryStorage() }).single('cv'), async (req: any, res) => {
     try {
-      console.log('🔍 Job application analysis request received');
+      console.log('🎯 Smart job application analysis request received');
       console.log('📋 Request body:', req.body);
       console.log('📄 File uploaded:', req.file ? 'Yes' : 'No');
       
@@ -985,41 +985,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!req.file) {
         console.error('❌ No CV file uploaded');
-        return res.status(400).json({ message: "CV file is required" });
+        return res.status(400).json({ 
+          success: false,
+          qualified: false,
+          message: "CV file is required" 
+        });
       }
 
-      // Get user data
+      // Get user data and AI profile
       const user = await storage.getUser(userId);
       const userProfile = await storage.getApplicantProfile(userId);
       
-      if (!user || !userProfile) {
-        return res.status(404).json({ message: "User or profile not found" });
+      if (!user || !userProfile || !userProfile.aiProfile) {
+        console.error('❌ User profile or AI profile not found');
+        return res.status(400).json({ 
+          success: false,
+          qualified: false,
+          message: "Failed to analyze application. Please try again." 
+        });
       }
 
-      // Use the existing user profile data (from AI interviews) instead of parsing CV
-      const cvContent = `CV file uploaded: ${req.file.originalname} (${req.file.size} bytes)`;
-      console.log('📄 Using existing user profile data instead of parsing CV file');
+      console.log('🧠 AI Profile found:', !!userProfile.aiProfile);
+      
+      // Parse job required skills and user AI profile skills
+      const jobRequiredSkills = skills ? 
+        skills.split(',').map((s: string) => s.trim().toLowerCase()) : [];
+      
+      const userAISkills = userProfile.aiProfile?.verifiedSkills || 
+        userProfile.aiProfile?.skills || 
+        [];
+      const userSkillsLower = userAISkills.map((s: string) => s.toLowerCase());
 
-      // Prepare job details for analysis
-      const jobDetails = {
-        title: jobTitle,
-        company: companyName,
-        description: jobDescription,
-        requirements: requirements ? requirements.split(',').map((r: string) => r.trim()) : [],
-        skills: skills ? skills.split(',').map((s: string) => s.trim()) : [],
-        experienceLevel: experienceLevel || 'Mid-level'
-      };
+      console.log('🔍 Job required skills:', jobRequiredSkills);
+      console.log('👤 User AI skills:', userSkillsLower);
 
-      // Use AI to analyze the application
-      const analysis = await aiInterviewAgent.analyzeJobApplication(
-        { ...user, ...userProfile },
-        jobDetails,
-        cvContent
+      // Find missing skills
+      const missingSkills = jobRequiredSkills.filter(
+        jobSkill => !userSkillsLower.includes(jobSkill)
       );
 
-      // If score is above 1, store in Airtable and create application (lowered for testing)
-      if (analysis.score >= 1) {
-        // Store in Airtable job applications base
+      console.log('❌ Missing skills:', missingSkills);
+      console.log('📊 Missing count:', missingSkills.length);
+
+      // Determine if qualified (missing 3 or fewer skills)
+      const qualified = missingSkills.length <= 3;
+      
+      console.log('✅ Qualified for application:', qualified);
+
+      if (qualified) {
+        // User is qualified - submit application to Airtable
         try {
           await airtableService.storeJobApplication({
             name: `${user.firstName} ${user.lastName}`,
@@ -1028,21 +1042,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
             jobTitle: jobTitle,
             companyName: companyName,
             applicationDate: new Date().toISOString(),
-            resume: cvContent.substring(0, 5000), // Limit resume content
-            userProfile: JSON.stringify(userProfile.aiProfile || userProfile),
-            score: analysis.score,
-            analysisDetails: analysis.detailedAnalysis
+            resume: `CV file uploaded: ${req.file.originalname} (${req.file.size} bytes)`,
+            userProfile: JSON.stringify(userProfile.aiProfile),
+            score: 100 - (missingSkills.length * 10), // Score based on skill match
+            analysisDetails: `Skills Match Analysis: Missing ${missingSkills.length} out of ${jobRequiredSkills.length} required skills. Missing: ${missingSkills.join(', ')}`
           });
+
+          console.log('✅ Application stored in Airtable successfully');
         } catch (airtableError) {
-          console.error('Failed to store in Airtable:', airtableError);
-          // Continue with local storage even if Airtable fails
+          console.error('❌ Failed to store in Airtable:', airtableError);
+          return res.status(500).json({ 
+            success: false,
+            qualified: false,
+            message: "Failed to analyze application. Please try again." 
+          });
         }
 
-        // Create local application record (skip if no valid jobId)
+        // Create local application record
         try {
           const applicationData = {
             userId,
-            jobId: parseInt(jobId) || 1, // Use 1 as default instead of 0
+            jobId: parseInt(jobId) || 1,
             jobTitle,
             companyName,
             appliedAt: new Date(),
@@ -1050,23 +1070,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
 
           await storage.createApplication(applicationData);
+          console.log('✅ Application stored locally');
         } catch (dbError) {
-          console.error('Failed to store in local database:', dbError);
-          // Continue without local storage if it fails
+          console.error('❌ Failed to store locally:', dbError);
+          // Continue even if local storage fails
         }
+
+        // Return success response
+        return res.json({
+          success: true,
+          qualified: true,
+          submitted: true,
+          message: `Application submitted successfully! You match ${jobRequiredSkills.length - missingSkills.length} out of ${jobRequiredSkills.length} required skills.`,
+          skillsMatch: {
+            total: jobRequiredSkills.length,
+            matched: jobRequiredSkills.length - missingSkills.length,
+            missing: missingSkills
+          }
+        });
+
+      } else {
+        // User is not qualified - do not submit
+        console.log('❌ User not qualified - too many missing skills');
+        
+        return res.json({
+          success: true,
+          qualified: false,
+          submitted: false,
+          message: "Application Not Submitted\n\nUnfortunately, you don't meet enough of the job requirements to apply at this time. We encourage you to keep growing your skills and try again soon.",
+          skillsMatch: {
+            total: jobRequiredSkills.length,
+            matched: jobRequiredSkills.length - missingSkills.length,
+            missing: missingSkills
+          }
+        });
       }
 
-      // Return response with appropriate message
-      res.json({
-        success: true,
-        score: analysis.score,
-        message: analysis.message,
-        submitted: analysis.score >= 1,
-        analysisDetails: analysis.detailedAnalysis
-      });
-
     } catch (error) {
-      console.error("❌ Error analyzing job application:", error);
+      console.error("❌ Error in smart job application analysis:", error);
       console.error("🔍 Error details:", {
         message: error.message,
         stack: error.stack,
@@ -1074,9 +1115,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasFile: !!req.file,
         bodyKeys: Object.keys(req.body || {})
       });
-      res.status(500).json({ 
-        message: "Failed to analyze job application",
-        error: error.message 
+      
+      return res.status(500).json({ 
+        success: false,
+        qualified: false,
+        message: "Failed to analyze application. Please try again."
       });
     }
   });

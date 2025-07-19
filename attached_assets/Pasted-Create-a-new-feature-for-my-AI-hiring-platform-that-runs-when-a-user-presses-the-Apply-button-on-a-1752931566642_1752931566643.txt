@@ -1,0 +1,84 @@
+Create a new feature for my AI hiring platform that runs when a user presses the "Apply" button on a job posting.
+
+🏗 Objective:
+Compare the applicant’s AI profile (generated from an interview and stored in the database) to the job’s required skills. If the user is missing 3 or fewer required skills, submit their application successfully and store the results in Airtable. All visual elements such as the modal UI must remain exactly as they are — only update the functionality.
+
+---
+
+🔍 Step-by-Step Instructions:
+
+1. ✅ On Apply Button Click:
+   - Retrieve the **job’s required skills** array (e.g. `job.skills`).
+   - Retrieve the **applicant’s AI profile** object (e.g. `user.aiProfile.skills`).
+   - These are both arrays of strings.
+
+2. 🧠 Match Logic:
+   - Compare the job’s required skills with the applicant’s AI profile skills.
+   - Count how many required skills the applicant does **not have**.
+   - If the user is missing **3 or fewer skills**, mark them as `qualified = true`.
+   - Otherwise, mark as `qualified = false`.
+
+3. 📥 If Qualified:
+   - Show a **success message inside the modal** (do not use toast).
+   - Submit the application to **Airtable** `platojobapplications` with:
+
+     ```
+     Base ID: appEYs1fTytFXoJ7x
+     Table: platojobapplications
+     API Key: pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0
+     ```
+
+   - Submit the following fields:
+     - `Job Title`: from the job object
+     - `Job ID`: from the job record
+     - `Job Description`
+     - `Company Name`
+     - `Applicant Name`: from the logged-in user
+     - `Applicant ID`: from the logged-in user
+     - `AI Profile`: submit full profile object (or JSON stringified)
+
+4. ❌ If Not Qualified:
+   - Do **not** submit anything to Airtable.
+   - Instead, update the modal to display the following message:
+
+     ```
+     Application Not Submitted  
+     Unfortunately, you don’t meet enough of the job requirements to apply at this time. We encourage you to keep growing your skills and try again soon.
+     ```
+
+5. 🧯 Error Handling:
+   - If any part of the process fails (e.g., profile missing, Airtable error, API issue), show this in the modal:
+
+     ```
+     Failed to analyze application. Please try again.
+     ```
+
+   - Also log the error to console.
+
+---
+
+🎨 Visuals:
+- Keep **all existing modals, styling, and layout** exactly as-is.
+- Do **not** change any visual elements or UI structure.
+- Display messages **inside the modal**, not as toast notifications.
+
+---
+
+💡 Example:
+If a job requires: `['excel', 'python', 'finance', 'communication']`
+And user has: `['excel', 'finance', 'communication']`
+→ Missing only 1 (`python`) → ✅ Qualified → submit application
+
+If user only has: `['excel']` → Missing 3+ → ❌ Not Qualified
+
+---
+
+🧪 Notes:
+- Assume AI profile is already generated and available for the user.
+- You can use `fetch` to call Airtable API.
+- Use lowercase matching for skills (case-insensitive).
+- Use `.filter()` to compare skill sets.
+
+---
+
+Once complete, the apply button should behave intelligently, submitting only if the applicant is reasonably qualified based on their AI-generated profile.

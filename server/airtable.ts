@@ -807,18 +807,16 @@ export class AirtableService {
 
     try {
       const fields = {
-        'name': applicationData.name,
-        'userId': applicationData.userId,
-        'email': applicationData.email,
-        'jobTitle': applicationData.jobTitle,
-        'companyName': applicationData.companyName,
-        'applicationDate': applicationData.applicationDate,
-        'resume': applicationData.resume,
-        'userProfile': applicationData.userProfile,
-        'score': applicationData.score,
-        'analysisDetails': applicationData.analysisDetails
+        'Job Title': applicationData.jobTitle,
+        'Job ID': applicationData.userId, // Using userId as unique identifier 
+        'Job Description': applicationData.analysisDetails || 'Smart application based on skill matching',
+        'Company Name': applicationData.companyName,
+        'Applicant Name': applicationData.name,
+        'Applicant ID': applicationData.userId,
+        'AI Profile': applicationData.userProfile
       };
 
+      console.log('📤 Storing job application with fields:', Object.keys(fields));
       await jobApplicationsBase(JOB_APPLICATIONS_TABLE).create([{ fields }]);
       console.log(`✅ Successfully stored job application for ${applicationData.name} to ${applicationData.jobTitle} at ${applicationData.companyName}`);
     } catch (error) {

@@ -143,6 +143,7 @@ Changelog:
 - July 16, 2025. Removed interview history modal and all profile displays from user interface. Generated AI profiles are now completely hidden from applicants - only visible to employers through Airtable integration. This ensures profiles remain confidential and prevents users from seeing their generated assessment details
 - July 16, 2025. Enhanced real-time job matching system - job matches now refresh every 30 seconds to sync with Airtable "platojobmatches" table. Dashboard conditionally hides job matches section when no matches exist, with responsive grid layout that adapts based on available data. MatchesModal includes real-time updates and improved empty state messaging
 - July 16, 2025. Updated job matches display to always show the matches modal and button even when no matches exist. Users can now access the job matches section at all times, with improved empty state messaging explaining the matching process
+- July 16, 2025. Implemented intelligent job application system - Apply button now compares applicant's AI-generated skills with job requirements. Applications are only submitted to Airtable if user is missing 3 or fewer required skills, otherwise shows qualification message in modal. System uses real-time skill matching with case-insensitive comparison
 ```
 
 ## User Preferences
