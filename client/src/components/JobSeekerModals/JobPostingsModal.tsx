@@ -424,8 +424,15 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
       score += 10;
     }
     
-    // Random factor for demonstration
-    score += Math.random() * 10;
+    // Career goals alignment (bonus points)
+    if (job.jobDescription && profile.careerGoals) {
+      const descriptionLower = job.jobDescription.toLowerCase();
+      const goalsLower = profile.careerGoals.toLowerCase();
+      if (descriptionLower.includes(goalsLower.split(' ')[0]) || 
+          goalsLower.includes(job.jobTitle.toLowerCase().split(' ')[0])) {
+        score += 10;
+      }
+    }
     
     // Ensure score is a valid number
     const finalScore = Math.min(Math.round(score), 100);
