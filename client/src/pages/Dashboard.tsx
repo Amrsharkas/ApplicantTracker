@@ -278,81 +278,88 @@ export default function Dashboard() {
 
         {/* Job Features - Only show if interview is complete or profile is 80%+ */}
         {showFullDashboard && (
-          <div className="space-y-6">
-            <div className="border-t border-gray-200 pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Job Dashboard</h3>
-              
-              {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Job Matches</p>
-                      <div className="text-2xl font-bold text-gray-900">{matches.length}</div>
-                    </div>
-                    <Target className="h-8 w-8 text-green-600" />
-                  </div>
-                </div>
+          <div className="space-y-8">
+            <div className="border-t border-gray-200 pt-8">
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-bold text-gray-900">Your Job Dashboard</h3>
                 
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Applications</p>
-                      <div className="text-2xl font-bold text-gray-900">{applications.length}</div>
-                    </div>
-                    <FileText className="h-8 w-8 text-purple-600" />
+                {/* Compact Stats - Moved to top right */}
+                <div className="flex items-center space-x-6 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <Target className="h-4 w-4 text-green-600" />
+                    <span className="text-gray-600">Matches:</span>
+                    <span className="font-semibold text-gray-900">{matches.length}</span>
                   </div>
-                </div>
-                
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Profile Score</p>
-                      <div className="text-2xl font-bold text-gray-900">{profileProgress}%</div>
-                    </div>
-                    <User className="h-8 w-8 text-blue-600" />
+                  <div className="flex items-center space-x-2">
+                    <FileText className="h-4 w-4 text-purple-600" />
+                    <span className="text-gray-600">Applications:</span>
+                    <span className="font-semibold text-gray-900">{applications.length}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <User className="h-4 w-4 text-blue-600" />
+                    <span className="text-gray-600">Profile:</span>
+                    <span className="font-semibold text-gray-900">{profileProgress}%</span>
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Large Action Buttons */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <button
                   onClick={() => openModal('matches')}
-                  className="bg-white rounded-lg p-6 border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-left group"
+                  className="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-left group transform hover:scale-105"
                 >
-                  <div className="flex items-center space-x-3 mb-2">
-                    <Target className="h-6 w-6 text-blue-600 group-hover:scale-110 transition-transform" />
-                    <h4 className="text-lg font-semibold text-gray-900">View Job Matches</h4>
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                      <Target className="h-8 w-8 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="text-2xl font-bold">Job Matches</h4>
+                      <p className="text-blue-100 text-lg">AI-Curated Opportunities</p>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600">See jobs that match your profile with AI scoring</p>
+                  <p className="text-blue-100 text-base leading-relaxed">
+                    Discover personalized job matches based on your AI interview analysis and profile data
+                  </p>
                 </button>
 
                 <button
                   onClick={() => openModal('jobPostings')}
-                  className="bg-white rounded-lg p-6 border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-all text-left group"
+                  className="bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-left group transform hover:scale-105"
                 >
-                  <div className="flex items-center space-x-3 mb-2">
-                    <Briefcase className="h-6 w-6 text-green-600 group-hover:scale-110 transition-transform" />
-                    <h4 className="text-lg font-semibold text-gray-900">View Job Postings</h4>
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                      <Briefcase className="h-8 w-8 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="text-2xl font-bold">Job Postings</h4>
+                      <p className="text-green-100 text-lg">Browse All Opportunities</p>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600">Browse all available job opportunities from employers</p>
+                  <p className="text-green-100 text-base leading-relaxed">
+                    Explore all available positions with smart filtering and AI-powered match scoring
+                  </p>
                 </button>
               </div>
 
-              {/* Applications Link */}
-              <div className="bg-white rounded-lg border border-gray-200 mt-4">
-                <button
-                  onClick={() => openModal('applications')}
-                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <FileText className="h-5 w-5 text-gray-600" />
-                    <span className="font-medium text-gray-900">View My Applications</span>
+              {/* Applications Button - Full Width */}
+              <button
+                onClick={() => openModal('applications')}
+                className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                      <FileText className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <h4 className="text-xl font-bold">My Applications</h4>
+                      <p className="text-purple-100">Track your application status and progress</p>
+                    </div>
                   </div>
-                  <span className="text-gray-400">→</span>
-                </button>
-              </div>
+                  <div className="text-white text-2xl">→</div>
+                </div>
+              </button>
             </div>
           </div>
         )}
