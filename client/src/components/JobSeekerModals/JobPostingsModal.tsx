@@ -584,20 +584,18 @@ export function JobPostingsModal({ isOpen, onClose }: JobPostingsModalProps) {
         experienceLevel: job.experienceLevel || ''
       });
       
-      const response = await apiRequest("/api/applications/auto-analyze", {
-        method: "POST",
-        body: JSON.stringify({
-          jobId: job.recordId,
-          jobTitle: job.jobTitle,
-          companyName: job.companyName,
-          jobDescription: job.jobDescription,
-          requirements: job.skills?.join(',') || '',
-          experienceLevel: job.experienceLevel || ''
-        }),
+      const response = await apiRequest("POST", "/api/applications/auto-analyze", {
+        jobId: job.recordId,
+        jobTitle: job.jobTitle,
+        companyName: job.companyName,
+        jobDescription: job.jobDescription,
+        requirements: job.skills?.join(',') || '',
+        experienceLevel: job.experienceLevel || ''
       });
       
-      console.log('✅ API response received:', response);
-      return response;
+      const data = await response.json();
+      console.log('✅ API response received:', data);
+      return data;
     },
     onSuccess: (data) => {
       setApplicationStatus(data.qualified ? 'success' : 'failed');
