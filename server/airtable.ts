@@ -82,16 +82,15 @@ export interface AirtableJobPosting {
 }
 
 export interface AirtableJobApplication {
-  name: string;
-  userId: string;
-  email: string;
   jobTitle: string;
+  jobId: string;
+  jobDescription: string;
   companyName: string;
+  applicantName: string;
+  userId: string;
+  aiProfile: string;
   applicationDate: string;
-  resume: string;
-  userProfile: string;
-  score: number;
-  analysisDetails: string;
+  status: string;
 }
 
 export class AirtableService {
@@ -798,7 +797,7 @@ export class AirtableService {
     }
   }
 
-  // Store job application in Airtable
+  // Store job application in Airtable (updated for new format)
   async storeJobApplication(applicationData: AirtableJobApplication): Promise<void> {
     if (!jobApplicationsBase) {
       console.warn('Job applications base not configured, skipping storage');
@@ -807,20 +806,19 @@ export class AirtableService {
 
     try {
       const fields = {
-        'name': applicationData.name,
-        'userId': applicationData.userId,
-        'email': applicationData.email,
-        'jobTitle': applicationData.jobTitle,
-        'companyName': applicationData.companyName,
-        'applicationDate': applicationData.applicationDate,
-        'resume': applicationData.resume,
-        'userProfile': applicationData.userProfile,
-        'score': applicationData.score,
-        'analysisDetails': applicationData.analysisDetails
+        'Job Title': applicationData.jobTitle,
+        'Job ID': applicationData.jobId,
+        'Job Description': applicationData.jobDescription,
+        'Company': applicationData.companyName,
+        'Applicant Name': applicationData.applicantName,
+        'User ID': applicationData.userId,
+        'AI User Profile/Analysis': applicationData.aiProfile,
+        'Application Date': applicationData.applicationDate,
+        'Status': applicationData.status
       };
 
       await jobApplicationsBase(JOB_APPLICATIONS_TABLE).create([{ fields }]);
-      console.log(`✅ Successfully stored job application for ${applicationData.name} to ${applicationData.jobTitle} at ${applicationData.companyName}`);
+      console.log(`✅ Successfully stored job application for ${applicationData.applicantName} to ${applicationData.jobTitle} at ${applicationData.companyName}`);
     } catch (error) {
       console.error('Error storing job application in Airtable:', error);
       throw new Error('Failed to store job application in Airtable');

@@ -973,22 +973,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Job Application Analysis and Submission Route
-  app.post('/api/applications/analyze-and-submit', isAuthenticated, multer({ storage: multer.memoryStorage() }).single('cv'), async (req: any, res) => {
+  // New Automatic Job Application Analysis Route
+  app.post('/api/applications/auto-analyze', isAuthenticated, async (req: any, res) => {
     try {
-      console.log('🔍 Job application analysis request received');
+      console.log('🤖 Automatic job application analysis started');
       console.log('📋 Request body:', req.body);
-      console.log('📄 File uploaded:', req.file ? 'Yes' : 'No');
       
       const userId = req.user.claims.sub;
-      const { jobId, jobTitle, companyName, jobDescription, requirements, skills, experienceLevel } = req.body;
+      const { jobId, jobTitle, companyName, jobDescription, requirements, experienceLevel } = req.body;
 
-      if (!req.file) {
-        console.error('❌ No CV file uploaded');
-        return res.status(400).json({ message: "CV file is required" });
-      }
-
-      // Get user data
+      // Get user data and profile
       const user = await storage.getUser(userId);
       const userProfile = await storage.getApplicantProfile(userId);
       
@@ -996,9 +990,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User or profile not found" });
       }
 
-      // Use the existing user profile data (from AI interviews) instead of parsing CV
-      const cvContent = `CV file uploaded: ${req.file.originalname} (${req.file.size} bytes)`;
-      console.log('📄 Using existing user profile data instead of parsing CV file');
+      // Check if user has completed interviews (required for AI analysis)
+      if (!userProfile.aiProfile) {
+        return res.status(400).json({ 
+          qualified: false,
+          message: "Please complete your AI interviews to apply for jobs. We need to understand your qualifications better."
+        });
+      }
 
       // Prepare job details for analysis
       const jobDetails = {
@@ -1006,72 +1004,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
         company: companyName,
         description: jobDescription,
         requirements: requirements ? requirements.split(',').map((r: string) => r.trim()) : [],
-        skills: skills ? skills.split(',').map((s: string) => s.trim()) : [],
         experienceLevel: experienceLevel || 'Mid-level'
       };
 
-      // Use AI to analyze the application
-      const analysis = await aiInterviewAgent.analyzeJobApplication(
+      // Use AI to analyze if user meets job requirements (3 or fewer missing requirements)
+      const analysis = await aiInterviewAgent.analyzeJobQualifications(
         { ...user, ...userProfile },
-        jobDetails,
-        cvContent
+        jobDetails
       );
 
-      // If score is above 1, store in Airtable and create application (lowered for testing)
-      if (analysis.score >= 1) {
-        // Store in Airtable job applications base
+      console.log('🔍 Analysis result:', {
+        missingRequirements: analysis.missingRequirements,
+        totalMissing: analysis.missingRequirements.length,
+        qualified: analysis.missingRequirements.length <= 3
+      });
+
+      const qualified = analysis.missingRequirements.length <= 3;
+
+      if (qualified) {
+        // User qualifies - submit application to Airtable
         try {
           await airtableService.storeJobApplication({
-            name: `${user.firstName} ${user.lastName}`,
-            userId: userId,
-            email: user.email || '',
             jobTitle: jobTitle,
+            jobId: jobId,
+            jobDescription: jobDescription,
             companyName: companyName,
+            applicantName: `${user.firstName} ${user.lastName}`,
+            userId: userId,
+            aiProfile: userProfile.aiProfile,
             applicationDate: new Date().toISOString(),
-            resume: cvContent.substring(0, 5000), // Limit resume content
-            userProfile: JSON.stringify(userProfile.aiProfile || userProfile),
-            score: analysis.score,
-            analysisDetails: analysis.detailedAnalysis
+            status: 'submitted'
           });
+          console.log('✅ Application successfully stored in Airtable');
         } catch (airtableError) {
-          console.error('Failed to store in Airtable:', airtableError);
-          // Continue with local storage even if Airtable fails
+          console.error('❌ Failed to store in Airtable:', airtableError);
+          return res.status(500).json({ 
+            qualified: false,
+            message: "Technical error occurred while submitting your application. Please try again."
+          });
         }
 
-        // Create local application record (skip if no valid jobId)
+        // Create local application record
         try {
           const applicationData = {
             userId,
-            jobId: parseInt(jobId) || 1, // Use 1 as default instead of 0
+            jobId: parseInt(jobId) || 1,
             jobTitle,
             companyName,
             appliedAt: new Date(),
             status: 'pending'
           };
-
           await storage.createApplication(applicationData);
         } catch (dbError) {
           console.error('Failed to store in local database:', dbError);
           // Continue without local storage if it fails
         }
+
+        res.json({
+          qualified: true,
+          message: `🎉 Congratulations! Your application has been successfully submitted to ${companyName}. They now have access to your comprehensive AI-generated profile and will review your qualifications for the ${jobTitle} position.`,
+          missingRequirements: analysis.missingRequirements
+        });
+      } else {
+        // User doesn't qualify - kind rejection message
+        const missingCount = analysis.missingRequirements.length;
+        res.json({
+          qualified: false,
+          message: `We've carefully reviewed your qualifications for this ${jobTitle} position at ${companyName}. While you have many great skills, we found ${missingCount} key requirements that don't align with your current experience. We'd encourage you to continue building these skills and apply for positions that are a closer match to your background. Keep growing - the right opportunity is out there! 💪`,
+          missingRequirements: analysis.missingRequirements
+        });
       }
 
-      // Return response with appropriate message
-      res.json({
-        success: true,
-        score: analysis.score,
-        message: analysis.message,
-        submitted: analysis.score >= 1,
-        analysisDetails: analysis.detailedAnalysis
-      });
-
     } catch (error) {
-      console.error("❌ Error analyzing job application:", error);
+      console.error("❌ Error in automatic job application analysis:", error);
       console.error("🔍 Error details:", {
         message: error.message,
         stack: error.stack,
         userId: req.user?.claims?.sub,
-        hasFile: !!req.file,
         bodyKeys: Object.keys(req.body || {})
       });
       res.status(500).json({ 

@@ -777,6 +777,67 @@ Be blunt and factual. No generic praise. Focus on what was actually demonstrated
     }
   }
 
+  // New method for automatic job qualification analysis
+  async analyzeJobQualifications(userData: any, jobDetails: any): Promise<{missingRequirements: string[]}> {
+    const prompt = `You are an expert hiring manager analyzing whether a candidate meets job requirements.
+
+CANDIDATE PROFILE:
+Name: ${userData.firstName} ${userData.lastName || ''}
+Current Role: ${userData.currentRole || 'Not specified'}
+Years of Experience: ${userData.yearsOfExperience || 'Not specified'}
+Education: ${userData.education || 'Not specified'}
+Skills: ${userData.skills ? userData.skills.join(', ') : 'Not specified'}
+
+AI-Generated Profile Summary: ${userData.aiProfile || 'No AI profile available'}
+
+JOB REQUIREMENTS:
+Position: ${jobDetails.title}
+Company: ${jobDetails.company}
+Experience Level: ${jobDetails.experienceLevel}
+Description: ${jobDetails.description}
+Specific Requirements: ${jobDetails.requirements.join(', ') || 'No specific requirements listed'}
+
+ANALYSIS TASK:
+Compare the candidate's profile against the job requirements. Identify specific missing requirements or qualifications.
+
+Return a JSON object with:
+{
+  "missingRequirements": ["List of specific requirements the candidate does not meet"]
+}
+
+GUIDELINES:
+- Be thorough but fair in your analysis
+- Focus on hard requirements (specific skills, experience, education) rather than soft skills
+- Consider both the explicit requirements and those implied by the job description
+- If the candidate has related experience or transferable skills, give them credit
+- Only list requirements as "missing" if there's no evidence they can meet them
+- Maximum 10 missing requirements to avoid overwhelming results
+
+Return only valid JSON.`;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.1,
+        max_tokens: 800
+      });
+
+      const analysis = JSON.parse(response.choices[0].message.content || '{"missingRequirements": []}');
+      console.log('🔍 AI qualification analysis completed:', analysis);
+      
+      return {
+        missingRequirements: analysis.missingRequirements || []
+      };
+    } catch (error) {
+      console.error("Error analyzing job qualifications:", error);
+      return {
+        missingRequirements: ["Unable to analyze qualifications at this time"]
+      };
+    }
+  }
+
   async parseResume(resumeContent: string): Promise<any> {
     const prompt = `Extract structured information from this resume:
 
