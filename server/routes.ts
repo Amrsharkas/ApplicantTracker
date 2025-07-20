@@ -1573,6 +1573,35 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
+  // Admin route for clearing user test data
+  app.delete('/api/admin/clear-user-data/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const authenticatedUserId = req.user?.claims?.sub;
+      
+      // Only allow users to clear their own data
+      if (userId !== authenticatedUserId) {
+        return res.status(403).json({ message: 'Can only clear your own data' });
+      }
+      
+      console.log(`🗑️ Clearing test data for user: ${userId}`);
+      
+      // Delete job matches from Airtable
+      await airtableService.deleteJobMatchesForUser(userId);
+      
+      // Clear processed tracking for fresh testing
+      airtableService.clearProcessedTracking();
+      
+      res.json({ 
+        message: `Successfully cleared all test data for user ${userId}`,
+        cleared: ['job_matches', 'processed_tracking']
+      });
+    } catch (error) {
+      console.error("Error clearing user data:", error);
+      res.status(500).json({ message: "Failed to clear user data" });
+    }
+  });
+
   // Debug endpoint to check Airtable connection
   app.get('/api/debug-airtable', async (req, res) => {
     try {
