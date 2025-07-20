@@ -786,40 +786,6 @@ export class AirtableService {
     console.log('🔄 Cleared all processed record tracking');
   }
 
-  // Delete job matches for a specific user (for testing)
-  async deleteJobMatchesForUser(userId: string): Promise<void> {
-    if (!jobMatchesBase) {
-      console.warn('Job matches base not configured');
-      return;
-    }
-
-    try {
-      console.log(`🗑️ Deleting job matches for user: ${userId}`);
-      
-      // Get all records for this user
-      const records = await jobMatchesBase('Table 1').select({
-        filterByFormula: `{User ID} = "${userId}"`
-      }).all();
-
-      console.log(`📋 Found ${records.length} job match records to delete for user ${userId}`);
-
-      if (records.length > 0) {
-        // Delete in batches of 10 (Airtable limit)
-        for (let i = 0; i < records.length; i += 10) {
-          const batch = records.slice(i, i + 10);
-          await jobMatchesBase('Table 1').destroy(batch.map(record => record.id));
-          console.log(`✅ Deleted batch of ${batch.length} records`);
-        }
-        console.log(`✅ Successfully deleted all ${records.length} job match records for user ${userId}`);
-      } else {
-        console.log(`📋 No job match records found for user ${userId}`);
-      }
-    } catch (error) {
-      console.error('❌ Error deleting job matches:', error);
-      throw error;
-    }
-  }
-
   async checkForNewJobEntries(): Promise<AirtableJobEntry[]> {
     const allJobEntries = await this.getRecordsWithJobData();
     console.log(`📋 Found ${allJobEntries.length} total entries with job data in Airtable`);
