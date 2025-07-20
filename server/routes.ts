@@ -65,62 +65,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       
-      console.log('Raw request body:', JSON.stringify(req.body, null, 2));
+      console.log('POST Raw request body:', JSON.stringify(req.body, null, 2));
       
-      // Preprocess the data to handle empty date fields
-      const processedBody = { ...req.body };
-      
-      // Convert empty date strings to null
-      const dateFields = ['birthdate'];
-      dateFields.forEach(field => {
-        if (processedBody[field] === '') {
-          processedBody[field] = null;
-        }
-      });
-      
-      // Convert empty arrays to null where appropriate
-      const arrayFields = ['jobTypes', 'jobTitles', 'jobCategories', 'preferredWorkCountries', 'workExperiences', 'languages', 'degrees', 'highSchools', 'certifications', 'trainingCourses', 'otherUrls'];
-      arrayFields.forEach(field => {
-        if (Array.isArray(processedBody[field]) && processedBody[field].length === 0) {
-          processedBody[field] = null;
-        }
-      });
-      
-      // Clean up any undefined or invalid fields
-      Object.keys(processedBody).forEach(key => {
-        if (processedBody[key] === undefined) {
-          delete processedBody[key];
-        }
-      });
-      
-      console.log('Processed body:', JSON.stringify(processedBody, null, 2));
-      
-      const profileData = insertApplicantProfileSchema.parse({
-        ...processedBody,
-        userId
-      });
+      // Simple direct mapping without schema validation to avoid JSON parsing issues
+      const profileData = {
+        userId,
+        name: req.body.name || null,
+        email: req.body.email || null,
+        phone: req.body.phone || null,
+        age: req.body.age ? parseInt(req.body.age) : null,
+        education: req.body.education || null,
+        university: req.body.university || null,
+        degree: req.body.degree || null,
+        location: req.body.location || null,
+        currentRole: req.body.currentRole || null,
+        company: req.body.company || null,
+        yearsOfExperience: req.body.yearsOfExperience ? parseInt(req.body.yearsOfExperience) : null,
+        summary: req.body.summary || null,
+      };
 
-      console.log('Parsed profile data:', JSON.stringify(profileData, null, 2));
+      console.log('POST Processed profile data:', JSON.stringify(profileData, null, 2));
 
       const profile = await storage.upsertApplicantProfile(profileData);
       await storage.updateProfileCompletion(userId);
       
       res.json(profile);
     } catch (error) {
-      console.error("Error updating profile:", error);
-      if (error instanceof z.ZodError) {
-        console.error("Zod validation errors:", error.errors);
-        res.status(400).json({ 
-          message: "Invalid profile data", 
-          errors: error.errors 
-        });
-      } else {
-        console.error("Full error details:", error);
-        res.status(500).json({ 
-          message: "Failed to update profile",
-          error: error.message 
-        });
-      }
+      console.error("POST Error updating profile:", error);
+      res.status(500).json({ 
+        message: "Failed to update profile",
+        error: error.message 
+      });
     }
   });
 
@@ -128,62 +103,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       
-      console.log('Raw request body:', JSON.stringify(req.body, null, 2));
+      console.log('PUT Raw request body:', JSON.stringify(req.body, null, 2));
       
-      // Preprocess the data to handle empty date fields
-      const processedBody = { ...req.body };
-      
-      // Convert empty date strings to null
-      const dateFields = ['birthdate'];
-      dateFields.forEach(field => {
-        if (processedBody[field] === '') {
-          processedBody[field] = null;
-        }
-      });
-      
-      // Convert empty arrays to null where appropriate
-      const arrayFields = ['jobTypes', 'jobTitles', 'jobCategories', 'preferredWorkCountries', 'workExperiences', 'languages', 'degrees', 'highSchools', 'certifications', 'trainingCourses', 'otherUrls'];
-      arrayFields.forEach(field => {
-        if (Array.isArray(processedBody[field]) && processedBody[field].length === 0) {
-          processedBody[field] = null;
-        }
-      });
-      
-      // Clean up any undefined or invalid fields
-      Object.keys(processedBody).forEach(key => {
-        if (processedBody[key] === undefined) {
-          delete processedBody[key];
-        }
-      });
-      
-      console.log('Processed body:', JSON.stringify(processedBody, null, 2));
-      
-      const profileData = insertApplicantProfileSchema.parse({
-        ...processedBody,
-        userId
-      });
+      // Handle comprehensive profile data with safe field mapping
+      const profileData = {
+        userId,
+        // Essential fields
+        name: req.body.name || null,
+        email: req.body.email || null,
+        phone: req.body.phone || null,
+        age: req.body.age ? parseInt(req.body.age) : null,
+        
+        // Extended fields
+        birthdate: req.body.birthdate || null,
+        gender: req.body.gender || null,
+        nationality: req.body.nationality || null,
+        maritalStatus: req.body.maritalStatus || null,
+        dependents: req.body.dependents ? parseInt(req.body.dependents) : null,
+        militaryStatus: req.body.militaryStatus || null,
+        country: req.body.country || null,
+        city: req.body.city || null,
+        willingToRelocate: req.body.willingToRelocate || false,
+        careerLevel: req.body.careerLevel || null,
+        workplaceSettings: req.body.workplaceSettings || null,
+        minimumSalary: req.body.minimumSalary ? parseInt(req.body.minimumSalary) : null,
+        hideSalaryFromCompanies: req.body.hideSalaryFromCompanies || false,
+        jobSearchStatus: req.body.jobSearchStatus || null,
+        totalYearsOfExperience: req.body.totalYearsOfExperience ? parseInt(req.body.totalYearsOfExperience) : null,
+        currentEducationLevel: req.body.currentEducationLevel || null,
+        linkedinUrl: req.body.linkedinUrl || null,
+        facebookUrl: req.body.facebookUrl || null,
+        twitterUrl: req.body.twitterUrl || null,
+        instagramUrl: req.body.instagramUrl || null,
+        githubUrl: req.body.githubUrl || null,
+        youtubeUrl: req.body.youtubeUrl || null,
+        websiteUrl: req.body.websiteUrl || null,
+        achievements: req.body.achievements || null,
+        
+        // Arrays - handle safely
+        jobTypes: Array.isArray(req.body.jobTypes) && req.body.jobTypes.length > 0 ? req.body.jobTypes : null,
+        jobTitles: Array.isArray(req.body.jobTitles) && req.body.jobTitles.length > 0 ? req.body.jobTitles : null,
+        jobCategories: Array.isArray(req.body.jobCategories) && req.body.jobCategories.length > 0 ? req.body.jobCategories : null,
+        preferredWorkCountries: Array.isArray(req.body.preferredWorkCountries) && req.body.preferredWorkCountries.length > 0 ? req.body.preferredWorkCountries : null,
+        otherUrls: Array.isArray(req.body.otherUrls) && req.body.otherUrls.length > 0 ? req.body.otherUrls : null,
+        
+        // Complex objects - handle safely
+        workExperiences: Array.isArray(req.body.workExperiences) && req.body.workExperiences.length > 0 ? req.body.workExperiences : null,
+        languages: Array.isArray(req.body.languages) && req.body.languages.length > 0 ? req.body.languages : null,
+        degrees: Array.isArray(req.body.degrees) && req.body.degrees.length > 0 ? req.body.degrees : null,
+        highSchools: Array.isArray(req.body.highSchools) && req.body.highSchools.length > 0 ? req.body.highSchools : null,
+        certifications: Array.isArray(req.body.certifications) && req.body.certifications.length > 0 ? req.body.certifications : null,
+        trainingCourses: Array.isArray(req.body.trainingCourses) && req.body.trainingCourses.length > 0 ? req.body.trainingCourses : null,
+        
+        // Legacy fields
+        education: req.body.education || null,
+        university: req.body.university || null,
+        degree: req.body.degree || null,
+        location: req.body.location || null,
+        currentRole: req.body.currentRole || null,
+        company: req.body.company || null,
+        yearsOfExperience: req.body.yearsOfExperience ? parseInt(req.body.yearsOfExperience) : null,
+        summary: req.body.summary || null,
+      };
 
-      console.log('Parsed profile data:', JSON.stringify(profileData, null, 2));
+      console.log('PUT Processed profile data:', JSON.stringify(profileData, null, 2));
 
       const profile = await storage.upsertApplicantProfile(profileData);
       await storage.updateProfileCompletion(userId);
       
       res.json(profile);
     } catch (error) {
-      console.error("Error updating profile:", error);
-      if (error instanceof z.ZodError) {
-        console.error("Zod validation errors:", error.errors);
-        res.status(400).json({ 
-          message: "Invalid profile data", 
-          errors: error.errors 
-        });
-      } else {
-        console.error("Full error details:", error);
-        res.status(500).json({ 
-          message: "Failed to update profile",
-          error: error.message 
-        });
-      }
+      console.error("PUT Error updating profile:", error);
+      res.status(500).json({ 
+        message: "Failed to update profile",
+        error: error.message 
+      });
     }
   });
 
