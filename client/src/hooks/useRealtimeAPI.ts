@@ -166,11 +166,11 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
     // Set a timeout for the connection attempt
     const connectionTimeout = setTimeout(() => {
       if (isConnecting) {
-        console.error('Voice connection timeout after 10 seconds');
+        console.error('Voice connection timeout after 5 seconds');
         setIsConnecting(false);
         options.onError?.(new Error('Voice connection timeout - OpenAI Realtime API may be unavailable'));
       }
-    }, 10000); // 10 second timeout
+    }, 5000); // 5 second timeout
     
     try {
       await initializeAudio();

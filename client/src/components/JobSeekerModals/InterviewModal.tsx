@@ -466,17 +466,18 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       console.error('Voice interview error:', error);
       
       // Provide more specific error messaging
-      let errorMessage = "Could not start voice interview. Please try text mode.";
-      if (error?.message?.includes('OpenAI API error')) {
-        errorMessage = "OpenAI voice services are temporarily unavailable. Please use text interview.";
+      let errorMessage = "Voice feature is currently unavailable. Using text interview instead.";
+      if (error?.message?.includes('timeout')) {
+        errorMessage = "Voice connection timed out. Switched to text interview for you.";
       } else if (error?.message?.includes('Failed to get ephemeral token')) {
-        errorMessage = "Voice interview setup failed. Please try the text interview instead.";
+        errorMessage = "Voice setup failed. Using text interview instead.";
+      } else if (error?.message?.includes('WebSocket')) {
+        errorMessage = "Voice connection failed. Switched to text interview.";
       }
       
       toast({
-        title: "Voice Interview Unavailable",
+        title: "Switched to Text Interview",
         description: errorMessage,
-        variant: "destructive",
       });
       
       // Automatically start text interview instead
