@@ -651,7 +651,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           responses: [],
           currentQuestionIndex: 0,
           interviewSet: interviewData.interviewSet,
-          context: {}
+          userProfile: interviewData.userProfile
         },
         isCompleted: false
       });
@@ -763,9 +763,14 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         
         // If there are questions, show the first one after the welcome
         if (interviewData.questions && interviewData.questions.length > 0) {
+          const firstQuestionObj = interviewData.questions[0];
+          const firstQuestionText = typeof firstQuestionObj === 'string' 
+            ? firstQuestionObj 
+            : firstQuestionObj?.question || firstQuestionObj?.text || 'Question content not available';
+            
           const firstQuestion: InterviewMessage = {
             type: 'question',
-            content: interviewData.questions[0],
+            content: firstQuestionText,
             timestamp: new Date()
           };
           setMessages([welcomeMessage, firstQuestion]);
@@ -774,9 +779,14 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         }
       } else if (interviewData.questions && interviewData.questions.length > 0) {
         // Show first question directly if no welcome message
+        const firstQuestionObj = interviewData.questions[0];
+        const firstQuestionText = typeof firstQuestionObj === 'string' 
+          ? firstQuestionObj 
+          : firstQuestionObj?.question || firstQuestionObj?.text || 'Question content not available';
+          
         const firstQuestion: InterviewMessage = {
           type: 'question',
-          content: interviewData.questions[0],
+          content: firstQuestionText,
           timestamp: new Date()
         };
         setMessages([firstQuestion]);
