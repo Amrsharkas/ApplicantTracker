@@ -156,7 +156,23 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       const endpoint = selectedInterviewType 
         ? `/api/interview/start/${selectedInterviewType}`
         : "/api/interview/start";
+      
+      console.log('Starting interview with endpoint:', endpoint);
       const response = await apiRequest("POST", endpoint, {});
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Interview start failed:', response.status, errorText);
+        throw new Error(`Interview API returned error: ${response.status}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const htmlContent = await response.text();
+        console.error('Expected JSON but got:', contentType, htmlContent.substring(0, 200));
+        throw new Error('Server returned HTML instead of JSON');
+      }
+      
       return response.json();
     },
     onSuccess: (data) => {

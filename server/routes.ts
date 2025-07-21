@@ -302,17 +302,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentSet = await aiInterviewService.generatePersonalInterview({
           ...user,
           ...profile
-        }, resumeContent);
+        }, resumeContent || undefined);
       } else if (interviewType === 'professional') {
         currentSet = await aiInterviewService.generateProfessionalInterview({
           ...user,
           ...profile
-        }, resumeContent, interviewContext);
+        }, resumeContent || undefined, interviewContext);
       } else if (interviewType === 'technical') {
         currentSet = await aiInterviewService.generateTechnicalInterview({
           ...user,
           ...profile
-        }, resumeContent, interviewContext);
+        }, resumeContent || undefined, interviewContext);
       }
 
       if (!currentSet) {
