@@ -156,8 +156,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       const endpoint = selectedInterviewType 
         ? `/api/interview/start/${selectedInterviewType}`
         : "/api/interview/start";
-      const response = await apiRequest("POST", endpoint, {});
-      return response.json();
+      return await apiRequest(endpoint, { 
+        method: "POST", 
+        body: JSON.stringify({}) 
+      });
     },
     onSuccess: (data) => {
       setIsStartingInterview(false);
@@ -211,12 +213,14 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
   const respondMutation = useMutation({
     mutationFn: async (answer: string) => {
-      const response = await apiRequest("POST", "/api/interview/respond", {
-        sessionId: currentSession?.id,
-        answer,
-        questionIndex: currentQuestionIndex
+      return await apiRequest("/api/interview/respond", {
+        method: "POST",
+        body: JSON.stringify({
+          sessionId: currentSession?.id,
+          answer,
+          questionIndex: currentQuestionIndex
+        })
       });
-      return response.json();
     },
     onSuccess: (data) => {
       if (data.isComplete) {
@@ -279,11 +283,13 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
   const processTextInterviewMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/interview/complete", {
-        sessionId: currentSession?.id,
-        interviewType: selectedInterviewType
+      return await apiRequest("/api/interview/complete", {
+        method: "POST",
+        body: JSON.stringify({
+          sessionId: currentSession?.id,
+          interviewType: selectedInterviewType
+        })
       });
-      return response.json();
     },
     onSuccess: (data) => {
       setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
@@ -343,11 +349,13 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           answer: item.content
         }));
 
-      const response = await apiRequest("POST", "/api/interview/complete-voice", {
-        conversationHistory: responses,
-        interviewType: selectedInterviewType
+      return await apiRequest("/api/interview/complete-voice", {
+        method: "POST",
+        body: JSON.stringify({
+          conversationHistory: responses,
+          interviewType: selectedInterviewType
+        })
       });
-      return response.json();
     },
     onSuccess: (data) => {
       setIsProcessingInterview(false);
