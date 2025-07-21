@@ -15,8 +15,8 @@ const upload = multer({
 });
 
 // Fallback questions in case AI generation fails
-function getFallbackQuestions(interviewType: string) {
-  const fallbackQuestionSets = {
+function getFallbackQuestions(interviewType: string): { question: string }[] {
+  const fallbackQuestionSets: Record<string, { question: string }[]> = {
     personal: [
       { question: "Tell me about your background and what led you to your current career path." },
       { question: "What are your core values and how do they influence your work?" },
@@ -302,7 +302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating realtime session:", error);
       res.status(500).json({ 
         message: "Failed to create realtime session",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
       });
     }
   });
@@ -393,21 +393,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate the specific interview set with context
       console.log(`Generating ${interviewType} interview questions...`);
       let currentSet;
-      if (interviewType === 'personal') {
-        currentSet = await aiInterviewService.generatePersonalInterview({
-          ...user,
-          ...profile
-        }, resumeContent);
-      } else if (interviewType === 'professional') {
-        currentSet = await aiInterviewService.generateProfessionalInterview({
-          ...user,
-          ...profile
-        }, resumeContent, interviewContext);
-      } else if (interviewType === 'technical') {
-        currentSet = await aiInterviewService.generateTechnicalInterview({
-          ...user,
-          ...profile
-        }, resumeContent, interviewContext);
+      try {
+        if (interviewType === 'personal') {
+          currentSet = await aiInterviewService.generatePersonalInterview({
+            ...user,
+            ...profile
+          }, resumeContent || undefined);
+        } else if (interviewType === 'professional') {
+          currentSet = await aiInterviewService.generateProfessionalInterview({
+            ...user,
+            ...profile
+          }, resumeContent || undefined, interviewContext);
+        } else if (interviewType === 'technical') {
+          currentSet = await aiInterviewService.generateTechnicalInterview({
+            ...user,
+            ...profile
+          }, resumeContent || undefined, interviewContext);
+        }
+      } catch (aiError) {
+        console.warn(`AI interview generation failed for ${interviewType}:`, aiError);
+        currentSet = null; // Will trigger fallback
       }
       
       console.log('Interview set generated:', { hasSet: !!currentSet, questionCount: currentSet?.questions?.length || 0 });
@@ -451,10 +456,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error starting typed interview:", error);
-      console.error("Error details:", error.message, error.stack);
+      console.error("Error details:", (error as Error).message, (error as Error).stack);
       res.status(500).json({ 
         message: "Failed to start interview",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
       });
     }
   });
@@ -470,10 +475,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const resumeContent = profile?.resumeContent || null;
 
       // Use AI Agent 1 to generate personalized interview questions (legacy personal interview)
-      const questions = await aiInterviewService.generateInitialQuestions({
-        ...user,
-        ...profile
-      }, resumeContent);
+      let questions;
+      try {
+        questions = await aiInterviewService.generateInitialQuestions({
+          ...user,
+          ...profile
+        }, resumeContent || undefined);
+      } catch (aiError) {
+        console.warn('AI question generation failed, using fallback questions:', aiError);
+        // Use fallback questions if AI service fails
+        questions = getFallbackQuestions('personal');
+      }
 
       const session = await storage.createInterviewSession({
         userId,
@@ -492,10 +504,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error starting legacy interview:", error);
-      console.error("Error details:", error.message, error.stack);
+      console.error("Error details:", (error as Error).message, (error as Error).stack);
       res.status(500).json({ 
         message: "Failed to start interview",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
       });
     }
   });
