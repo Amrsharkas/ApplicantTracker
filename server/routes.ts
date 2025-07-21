@@ -64,6 +64,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       
+      console.log('📝 Profile update request for user:', userId);
+      console.log('📝 Request body:', JSON.stringify(req.body, null, 2));
+      
       // Preprocess the data to handle empty date fields
       const processedBody = { ...req.body };
       
@@ -83,18 +86,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
+      // Validate the data using schema
       const profileData = insertApplicantProfileSchema.parse({
         ...processedBody,
         userId
       });
 
+      console.log('✅ Profile data validated successfully');
+      
       const profile = await storage.upsertApplicantProfile(profileData);
       await storage.updateProfileCompletion(userId);
       
+      console.log('✅ Profile updated successfully');
       res.json(profile);
     } catch (error) {
-      console.error("Error updating profile:", error);
-      res.status(500).json({ message: "Failed to update profile" });
+      console.error("❌ Error updating profile:", error);
+      
+      // Check if it's a validation error
+      if (error && typeof error === 'object' && 'issues' in error) {
+        console.error("Validation errors:", error);
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: error
+        });
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: "Failed to update profile", error: errorMessage });
     }
   });
 

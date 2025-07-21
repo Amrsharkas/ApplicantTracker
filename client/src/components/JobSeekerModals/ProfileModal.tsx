@@ -52,38 +52,38 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      age: profile?.age || undefined,
-      education: profile?.education || "",
-      university: profile?.university || "",
-      degree: profile?.degree || "",
-      location: profile?.location || "",
-      currentRole: profile?.currentRole || "",
-      company: profile?.company || "",
-      yearsOfExperience: profile?.yearsOfExperience || undefined,
-      summary: profile?.summary || "",
+      age: undefined,
+      education: "",
+      university: "",
+      degree: "",
+      location: "",
+      currentRole: "",
+      company: "",
+      yearsOfExperience: undefined,
+      summary: "",
     },
   });
 
   // Update form when profile data loads
-  useState(() => {
+  useEffect(() => {
     if (profile) {
       form.reset({
-        age: profile.age || undefined,
-        education: profile.education || "",
-        university: profile.university || "",
-        degree: profile.degree || "",
-        location: profile.location || "",
-        currentRole: profile.currentRole || "",
-        company: profile.company || "",
-        yearsOfExperience: profile.yearsOfExperience || undefined,
-        summary: profile.summary || "",
+        age: profile?.age || undefined,
+        education: profile?.education || "",
+        university: profile?.university || "",
+        degree: profile?.degree || "",
+        location: profile?.location || "",
+        currentRole: profile?.currentRole || "",
+        company: profile?.company || "",
+        yearsOfExperience: profile?.yearsOfExperience || undefined,
+        summary: profile?.summary || "",
       });
     }
   }, [profile, form]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
-      await apiRequest("POST", "/api/candidate/profile", data);
+      await apiRequest("PUT", "/api/candidate/profile", data);
     },
     onSuccess: () => {
       toast({
@@ -94,20 +94,34 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/job-matches"] });
     },
     onError: (error) => {
-      if (isUnauthorizedError(error)) {
+      console.error('Profile update error:', error);
+      
+      // Check for authentication errors or JSON parsing errors (often means session expired)
+      if (isUnauthorizedError(error) || error.message.includes('Unexpected token') || error.message.includes('DOCTYPE')) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: "Session Expired",
+          description: "Your session has expired. Please log in again...",
           variant: "destructive",
         });
         setTimeout(() => {
           window.location.href = "/api/login";
-        }, 500);
+        }, 1000);
         return;
       }
+      
+      // Handle validation errors
+      if (error.message.includes('Validation failed') || error.message.includes('validation')) {
+        toast({
+          title: "Validation Error",
+          description: "Please check all required fields and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       toast({
         title: "Update Failed",
-        description: error.message || "Failed to update profile",
+        description: error.message || "Failed to update profile. Please try again.",
         variant: "destructive",
       });
     },
@@ -161,10 +175,12 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       
       let errorMessage = "Failed to upload resume. Please try again.";
       
-      if (error.name === 'AbortError') {
-        errorMessage = "Upload timed out. The file may be too large or your connection is slow. Please try again.";
-      } else if (error.message) {
-        errorMessage = error.message;
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = "Upload timed out. The file may be too large or your connection is slow. Please try again.";
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
       }
       
       toast({
@@ -213,21 +229,21 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                 {user?.firstName || 'Anonymous'} {user?.lastName || 'User'}
               </h3>
               <p className="text-slate-600">
-                {profile?.currentRole || 'Job Seeker'} {profile?.company && `at ${profile.company}`}
+                {(profile as any)?.currentRole || 'Job Seeker'} {(profile as any)?.company && `at ${(profile as any).company}`}
               </p>
               <div className="mt-2 space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="secondary" className="bg-green-100 text-green-700">
-                    {profile?.completionPercentage || 0}% Complete
+                    {(profile as any)?.completionPercentage || 0}% Complete
                   </Badge>
                   <span className="text-xs text-gray-500">
-                    {profile?.completionPercentage >= 80 ? "Ready for AI Interview!" : "Fill out more to reach 80%"}
+                    {((profile as any)?.completionPercentage || 0) >= 80 ? "Ready for AI Interview!" : "Fill out more to reach 80%"}
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
                     className="bg-green-600 h-2 rounded-full transition-all duration-300" 
-                    style={{ width: `${profile?.completionPercentage || 0}%` }}
+                    style={{ width: `${(profile as any)?.completionPercentage || 0}%` }}
                   ></div>
                 </div>
               </div>
@@ -272,7 +288,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                   <div>
                     <h4 className="font-medium text-slate-800">Resume</h4>
                     <p className="text-sm text-slate-600">
-                      {profile?.resumeUrl ? 'Resume uploaded (+15% completion)' : 'Upload your resume for AI analysis (+15% completion)'}
+                      {(profile as any)?.resumeUrl ? 'Resume uploaded (+15% completion)' : 'Upload your resume for AI analysis (+15% completion)'}
                     </p>
                   </div>
                 </div>
@@ -454,7 +470,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
               />
 
               {/* AI Profile Display */}
-              {profile?.aiProfile && (
+              {(profile as any)?.aiProfile && (
                 <Card className="glass-card bg-gradient-to-r from-blue-50 to-purple-50">
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
@@ -462,22 +478,22 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                       AI-Generated Profile Insights
                     </h4>
                     <div className="space-y-2 text-sm">
-                      {profile.aiProfile.skills && (
+                      {(profile as any).aiProfile.skills && (
                         <div>
                           <span className="font-medium text-slate-700">Skills: </span>
-                          <span className="text-slate-600">{profile.aiProfile.skills.join(', ')}</span>
+                          <span className="text-slate-600">{(profile as any).aiProfile.skills.join(', ')}</span>
                         </div>
                       )}
-                      {profile.aiProfile.personality && (
+                      {(profile as any).aiProfile.personality && (
                         <div>
                           <span className="font-medium text-slate-700">Personality: </span>
-                          <span className="text-slate-600">{profile.aiProfile.personality}</span>
+                          <span className="text-slate-600">{(profile as any).aiProfile.personality}</span>
                         </div>
                       )}
-                      {profile.aiProfile.workStyle && (
+                      {(profile as any).aiProfile.workStyle && (
                         <div>
                           <span className="font-medium text-slate-700">Work Style: </span>
-                          <span className="text-slate-600">{profile.aiProfile.workStyle}</span>
+                          <span className="text-slate-600">{(profile as any).aiProfile.workStyle}</span>
                         </div>
                       )}
                     </div>
