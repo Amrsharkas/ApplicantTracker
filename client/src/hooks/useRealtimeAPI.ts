@@ -115,7 +115,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
           
           // Convert to base64
           const uint8Array = new Uint8Array(pcm16Data.buffer);
-          const base64 = btoa(String.fromCharCode(...uint8Array));
+          const base64 = btoa(String.fromCharCode.apply(null, Array.from(uint8Array)));
           
           // Send to OpenAI
           websocketRef.current.send(JSON.stringify({
@@ -162,21 +162,13 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
     if (isConnecting || isConnected) return;
     
     setIsConnecting(true);
-    
-    // Set a timeout for the connection attempt
-    const connectionTimeout = setTimeout(() => {
-      if (isConnecting) {
-        console.error('Voice connection timeout after 5 seconds');
-        setIsConnecting(false);
-        options.onError?.(new Error('Voice connection timeout - OpenAI Realtime API may be unavailable'));
-      }
-    }, 5000); // 5 second timeout
+    console.log('🎤 Starting voice interview connection...');
     
     try {
       await initializeAudio();
       
       // Get ephemeral token from server
-      console.log('Requesting ephemeral token for voice interview...');
+      console.log('📡 Requesting OpenAI ephemeral token...');
       const tokenResponse = await fetch('/api/realtime/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -189,12 +181,12 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
-        console.error('Failed to get ephemeral token:', tokenResponse.status, errorText);
-        throw new Error(`Failed to get ephemeral token: ${tokenResponse.status} - ${errorText}`);
+        console.error('❌ Token request failed:', tokenResponse.status, errorText);
+        throw new Error(`Authentication failed: ${tokenResponse.status}`);
       }
       
       const data = await tokenResponse.json();
-      console.log('Received ephemeral token data:', { hasToken: !!data.client_secret?.value });
+      console.log('✅ Token received successfully');
       
       if (!data.client_secret?.value) {
         throw new Error('No ephemeral token in response');
@@ -202,8 +194,8 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       
       const ephemeralKey = data.client_secret.value;
       
-      // Connect to OpenAI Realtime API via WebSocket
-      console.log('Connecting to OpenAI Realtime WebSocket...');
+      // Connect to OpenAI Realtime API
+      console.log('🔗 Connecting to OpenAI Realtime API...');
       const ws = new WebSocket(
         'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01',
         ['realtime', `openai-insecure-api-key.${ephemeralKey}`]
@@ -211,21 +203,9 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       
       websocketRef.current = ws;
       
-      // Connection timeout
-      const connectionTimeout = setTimeout(() => {
-        if (ws.readyState === WebSocket.CONNECTING) {
-          console.error('WebSocket connection timeout');
-          ws.close();
-          setIsConnected(false);
-          if (onError) {
-            onError(new Error('Connection timeout - please try again'));
-          }
-        }
-      }, 10000); // 10 second timeout
-      
       ws.onopen = () => {
-        console.log('WebSocket connected to OpenAI Realtime API successfully');
-        clearTimeout(connectionTimeout);
+        console.log('🎉 Connected to OpenAI Realtime API successfully');
+        setIsConnecting(false);
         setIsConnected(true);
         
         // Build enhanced instructions with user profile
@@ -240,13 +220,13 @@ ${options.userProfile.careerGoals ? `Career Goals: ${options.userProfile.careerG
 ${options.userProfile.targetRole ? `Target Role: ${options.userProfile.targetRole}` : ''}
 ` : '';
 
-        const interviewTypeDesc = {
+        const interviewTypeDesc: { [key: string]: string } = {
           personal: 'background and personal journey',
           professional: 'career experience and achievements', 
           technical: 'technical abilities and problem-solving skills'
         };
 
-        const instructions = `You are conducting a ${interviewParams?.interviewType || 'personal'} interview focusing on ${interviewTypeDesc[interviewParams?.interviewType || 'personal']}.
+        const instructions = `You are conducting a ${interviewParams?.interviewType || 'personal'} interview focusing on ${interviewTypeDesc[interviewParams?.interviewType || 'personal'] || 'general background'}.
 
 ${profileContext}
 
@@ -266,7 +246,7 @@ Begin by greeting the candidate warmly and asking your first question based on t
           session: {
             modalities: ['text', 'audio'],
             instructions: instructions,
-            voice: 'verse',
+            voice: 'shimmer',
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
             input_audio_transcription: {
@@ -328,23 +308,21 @@ Begin by greeting the candidate warmly and asking your first question based on t
       };
       
       ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        clearTimeout(connectionTimeout);
+        console.error('❌ WebSocket error:', error);
         options.onError?.(new Error('Voice connection failed - please try text interview'));
         setIsConnecting(false);
         setIsConnected(false);
       };
       
       ws.onclose = () => {
-        console.log('WebSocket connection closed');
-        clearTimeout(connectionTimeout);
+        console.log('🔒 WebSocket connection closed');
         setIsConnected(false);
+        setIsConnecting(false);
         stopRecording();
       };
       
     } catch (error) {
-      console.error('Error connecting to OpenAI Realtime API:', error);
-      clearTimeout(connectionTimeout);
+      console.error('❌ Connection error:', error);
       setIsConnecting(false);
       options.onError?.(error as Error);
     }

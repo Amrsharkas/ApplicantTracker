@@ -279,7 +279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         body: JSON.stringify({
           model: "gpt-4o-realtime-preview-2024-10-01",
-          voice: "verse", // Updated to use verse voice as specified in changelog
+          voice: "shimmer", // Changed to shimmer voice as requested by user
           modalities: ["text", "audio"],
           instructions: `You are conducting a ${interviewType || 'personal'} interview. Use the candidate's profile information to ask personalized questions.`,
         }),
