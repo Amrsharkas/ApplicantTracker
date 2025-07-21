@@ -415,19 +415,148 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     },
   });
 
-  const handleSubmitAnswer = () => {
+  const handleSubmitAnswer = async () => {
     if (!currentAnswer.trim() || !currentSession) return;
-
-    const answerMessage: InterviewMessage = {
+    
+    // Add user answer to messages
+    const userMessage: InterviewMessage = {
       type: 'answer',
-      content: currentAnswer,
+      content: currentAnswer.trim(),
       timestamp: new Date()
     };
-
-    setMessages(prev => [...prev, answerMessage]);
-    respondMutation.mutate(currentAnswer);
+    setMessages(prev => [...prev, userMessage]);
+    
+    // Update conversation history for text interviews
+    setConversationHistory(prev => [...prev, { role: 'user', content: currentAnswer.trim() }]);
+    
+    try {
+      // For text interviews, process response through the unified system
+      const currentQuestionIndex = currentSession.sessionData?.currentQuestionIndex || 0;
+      const questions = currentSession.sessionData?.questions || [];
+      
+      if (currentQuestionIndex < questions.length - 1) {
+        // Move to next question
+        const nextIndex = currentQuestionIndex + 1;
+        const nextQuestion: InterviewMessage = {
+          type: 'question',
+          content: questions[nextIndex],
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, nextQuestion]);
+        
+        // Update session data
+        setCurrentSession(prev => prev ? {
+          ...prev,
+          sessionData: {
+            ...prev.sessionData!,
+            currentQuestionIndex: nextIndex,
+            responses: [...(prev.sessionData?.responses || []), currentAnswer.trim()]
+          }
+        } : null);
+        
+        // Check if this is the last question
+        if (nextIndex === questions.length - 1) {
+          setIsInterviewConcluded(true);
+        }
+      } else {
+        // Last question answered - process interview completion
+        await processInterviewCompletion();
+      }
+    } catch (error) {
+      console.error('Error processing answer:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to process your answer. Please try again.',
+        variant: 'destructive'
+      });
+    }
+    
     setCurrentAnswer("");
   };
+
+  const processInterviewCompletion = async () => {
+    if (!currentSession || !selectedInterviewType) return;
+    
+    try {
+      // Submit final answer and process completion
+      const finalAnswer = currentAnswer.trim();
+      const allResponses = [...(currentSession.sessionData?.responses || []), finalAnswer];
+      
+      // Call the interview completion endpoint
+      const response = await fetch('/api/interview/complete-voice', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          conversationHistory: allResponses.map((answer, index) => ({
+            question: currentSession.sessionData?.questions?.[index] || `Question ${index + 1}`,
+            answer: answer
+          })),
+          interviewType: selectedInterviewType
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to complete interview');
+      }
+
+      const completionData = await response.json();
+      
+      // Mark session as completed
+      setCurrentSession(prev => prev ? { 
+        ...prev, 
+        isCompleted: true,
+        generatedProfile: completionData.profile 
+      } : null);
+
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
+      
+      if (completionData.allInterviewsCompleted) {
+        // Final completion - show profile generation success
+        toast({
+          title: "All Interviews Complete!",
+          description: "Your comprehensive AI profile has been generated successfully.",
+        });
+        
+        // Reset to interview types view to show all completed
+        setMode('types');
+        setSelectedInterviewType('');
+      } else if (completionData.nextInterviewType) {
+        // Continue to next interview type automatically
+        toast({
+          title: "Interview Section Complete",
+          description: `Moving to ${completionData.nextInterviewType} interview...`,
+        });
+        
+        // Automatically start next interview
+        setTimeout(() => {
+          setSelectedInterviewType(completionData.nextInterviewType);
+          setMode('selection');
+        }, 1500);
+      } else {
+        // Individual interview complete
+        toast({
+          title: "Interview Complete!",
+          description: "This interview section has been completed successfully.",
+        });
+        setMode('types');
+        setSelectedInterviewType('');
+      }
+      
+    } catch (error) {
+      console.error('Error completing interview:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to complete interview. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };;
 
   const startVoiceInterview = async () => {
     if (!selectedInterviewType) {
@@ -533,10 +662,21 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     }
   };
 
-  const startTextInterview = () => {
+  const startTextInterview = async () => {
+    if (!selectedInterviewType) {
+      toast({
+        title: 'Error',
+        description: 'Please select an interview type first.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setIsStartingInterview(true);
     setMode('text');
     setMessages([]);
+    setIsInterviewConcluded(false);
+    setConversationHistory([]);
     
     // Show loading message immediately
     const loadingMessage: InterviewMessage = {
@@ -546,8 +686,88 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     };
     setMessages([loadingMessage]);
     
-    // Start the interview immediately
-    startInterviewMutation.mutate();
+    try {
+      // Use the same backend system as voice interview
+      const response = await fetch('/api/interview/start-voice', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          interviewType: selectedInterviewType 
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Text interview start failed:', response.status, errorData);
+        throw new Error(errorData.error || `API returned ${response.status}`);
+      }
+
+      const interviewData = await response.json();
+      console.log('Text interview initialized:', interviewData);
+      
+      // Update current session
+      setCurrentSession({
+        id: interviewData.sessionId,
+        sessionData: {
+          questions: interviewData.questions || [],
+          responses: [],
+          currentQuestionIndex: 0,
+          interviewSet: interviewData.interviewSet,
+          context: {}
+        },
+        isCompleted: false
+      });
+
+      // Update with welcome message and first question
+      if (interviewData.welcomeMessage) {
+        const welcomeMessage: InterviewMessage = {
+          type: 'question',
+          content: interviewData.welcomeMessage,
+          timestamp: new Date()
+        };
+        
+        // If there are questions, show the first one after the welcome
+        if (interviewData.questions && interviewData.questions.length > 0) {
+          const firstQuestion: InterviewMessage = {
+            type: 'question',
+            content: interviewData.questions[0],
+            timestamp: new Date()
+          };
+          setMessages([welcomeMessage, firstQuestion]);
+        } else {
+          setMessages([welcomeMessage]);
+        }
+      } else if (interviewData.questions && interviewData.questions.length > 0) {
+        // Show first question directly if no welcome message
+        const firstQuestion: InterviewMessage = {
+          type: 'question',
+          content: interviewData.questions[0],
+          timestamp: new Date()
+        };
+        setMessages([firstQuestion]);
+      }
+      
+      setIsStartingInterview(false);
+      toast({
+        title: "Text Interview Started",
+        description: "You can now type your responses to the interview questions.",
+      });
+    } catch (error) {
+      setIsStartingInterview(false);
+      console.error('Text interview error:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
+      toast({
+        title: 'Failed to Start Interview',
+        description: `Could not start text interview: ${errorMessage}. Please try again.`,
+        variant: 'destructive'
+      });
+      setMode('select');
+    }
   };
 
   const getQuestionCount = (interviewType: string) => {
