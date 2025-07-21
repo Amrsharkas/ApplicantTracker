@@ -430,6 +430,15 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   };
 
   const startVoiceInterview = async () => {
+    if (!selectedInterviewType) {
+      toast({
+        title: 'Error',
+        description: 'Please select an interview type first.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setIsStartingInterview(true);
     setMode('voice');
     setMessages([]);
@@ -439,29 +448,69 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     // Show loading message
     const loadingMessage: InterviewMessage = {
       type: 'question',
-      content: 'Starting your voice interview... Please wait while I prepare your personalized questions.',
+      content: 'Starting your voice interview... Connecting to AI interviewer...',
       timestamp: new Date()
     };
     setMessages([loadingMessage]);
     
     try {
-      // Start an interview session to get the structured questions
-      const interviewSession = await startInterviewMutation.mutateAsync();
+      // Call the dedicated voice interview route
+      const response = await fetch('/api/interview/start-voice', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          interviewType: selectedInterviewType 
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Voice interview start failed:', response.status, errorData);
+        throw new Error(errorData.error || `API returned ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const htmlContent = await response.text();
+        console.error('Expected JSON but got:', contentType, htmlContent.substring(0, 200));
+        throw new Error('Server returned HTML instead of JSON');
+      }
+
+      const interviewData = await response.json();
+      console.log('Voice interview initialized:', interviewData);
       
+      // Update current session
+      setCurrentSession({
+        id: interviewData.sessionId,
+        sessionData: {
+          questions: interviewData.questions || [],
+          responses: [],
+          currentQuestionIndex: 0,
+          interviewSet: interviewData.interviewSet,
+          context: {}
+        },
+        isCompleted: false
+      });
+
       // Update with welcome message
-      if (welcomeMessageData?.welcomeMessage) {
+      if (interviewData.welcomeMessage) {
         const welcomeMessage: InterviewMessage = {
           type: 'question',
-          content: welcomeMessageData.welcomeMessage,
+          content: interviewData.welcomeMessage,
           timestamp: new Date()
         };
         setMessages([welcomeMessage]);
       }
       
+      // Connect to realtime API with the interview data
       await realtimeAPI.connect({
         interviewType: selectedInterviewType,
-        questions: interviewSession.questions,
-        interviewSet: interviewSession.interviewSet
+        questions: interviewData.questions,
+        interviewSet: interviewData.interviewSet,
+        userProfile: interviewData.userProfile
       });
       
       setIsStartingInterview(false);
@@ -472,10 +521,13 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     } catch (error) {
       setIsStartingInterview(false);
       console.error('Voice interview error:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
       toast({
-        title: "Connection Failed",
-        description: "Could not start voice interview. Please try text mode.",
-        variant: "destructive",
+        title: 'Connection Failed',
+        description: `Could not start voice interview: ${errorMessage}. Please try text mode.`,
+        variant: 'destructive'
       });
       setMode('select');
     }

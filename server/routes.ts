@@ -205,19 +205,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         body: JSON.stringify({
           model: "gpt-4o-realtime-preview-2024-10-01",
-          voice: "alloy",
+          voice: "verse",
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error("OpenAI Realtime API error:", response.status, errorText);
+        return res.status(500).json({ 
+          error: "Failed to create realtime session",
+          details: `OpenAI API returned ${response.status}`
+        });
       }
 
       const data = await response.json();
+      console.log("Successfully created realtime session:", data.id);
       res.json(data);
     } catch (error) {
       console.error("Error creating realtime session:", error);
-      res.status(500).json({ message: "Failed to create realtime session" });
+      res.status(500).json({ 
+        error: "Failed to create realtime session",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Voice interview initialization route
+  app.post("/api/interview/start-voice", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { interviewType } = req.body;
+      
+      // Validate interview type
+      if (!['personal', 'professional', 'technical'].includes(interviewType)) {
+        return res.status(400).json({ 
+          error: "Invalid interview type",
+          details: "Must be personal, professional, or technical"
+        });
+      }
+
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+
+      // Get resume content from profile
+      const resumeContent = profile?.resumeContent || null;
+
+      // Get context from previous interviews to maintain continuity
+      const interviewContext = await storage.getInterviewContext(userId, interviewType);
+
+      // Generate the specific interview set with context
+      let currentSet;
+      if (interviewType === 'personal') {
+        currentSet = await aiInterviewService.generatePersonalInterview({
+          ...user,
+          ...profile
+        }, resumeContent || undefined);
+      } else if (interviewType === 'professional') {
+        currentSet = await aiInterviewService.generateProfessionalInterview({
+          ...user,
+          ...profile
+        }, resumeContent || undefined, interviewContext);
+      } else if (interviewType === 'technical') {
+        currentSet = await aiInterviewService.generateTechnicalInterview({
+          ...user,
+          ...profile
+        }, resumeContent || undefined, interviewContext);
+      }
+
+      if (!currentSet) {
+        return res.status(500).json({
+          error: "Failed to generate interview questions",
+          details: `Could not create ${interviewType} interview`
+        });
+      }
+
+      // Create interview session
+      const session = await storage.createInterviewSession({
+        userId,
+        interviewType,
+        sessionData: { 
+          questions: currentSet.questions, 
+          responses: [], 
+          currentQuestionIndex: 0,
+          interviewSet: currentSet,
+          context: interviewContext
+        },
+        isCompleted: false
+      });
+
+      // Generate welcome message
+      const welcomeMessage = await aiInterviewService.generateWelcomeMessage({
+        ...user,
+        ...profile
+      });
+
+      res.json({ 
+        sessionId: session.id,
+        interviewType,
+        interviewSet: currentSet,
+        questions: currentSet.questions,
+        welcomeMessage,
+        userProfile: {
+          ...user,
+          ...profile
+        }
+      });
+    } catch (error) {
+      console.error("Error starting voice interview:", error);
+      res.status(500).json({ 
+        error: "Failed to start voice interview",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
