@@ -205,13 +205,10 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       
       ws.onopen = () => {
         console.log('🎉 WebSocket connection opened successfully!');
-        console.log('🔄 Setting connected state and starting recording...');
+        console.log('🔄 Setting connected state...');
         
         setIsConnecting(false);
         setIsConnected(true);
-        
-        // Start recording immediately when connected
-        startRecording();
         
         // Build enhanced instructions with user profile
         const profileContext = options.userProfile ? `
@@ -270,10 +267,8 @@ Begin by greeting the candidate warmly and asking your first question based on t
           }
         }));
         
-        setIsConnected(true);
-        setIsConnecting(false);
-        
-        // Start recording immediately
+        console.log('🔄 Session configured, starting recording...');
+        // Start recording after session is configured
         startRecording();
       };
       

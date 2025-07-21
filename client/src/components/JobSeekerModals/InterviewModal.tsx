@@ -50,7 +50,7 @@ interface InterviewModalProps {
 }
 
 export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
-  const [mode, setMode] = useState<'types' | 'select' | 'text' | 'voice'>('types');
+  const [mode, setMode] = useState<'types' | 'selection' | 'text' | 'voice'>('types');
   const [selectedInterviewType, setSelectedInterviewType] = useState<string>('');
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState("");
@@ -83,7 +83,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   // Fetch welcome message
   const { data: welcomeMessageData } = useQuery({
     queryKey: ["/api/interview/welcome"],
-    enabled: isOpen && mode !== 'select' && mode !== 'types',
+    enabled: isOpen && mode !== 'selection' && mode !== 'types',
     retry: false,
   });
 
@@ -91,7 +91,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const realtimeAPI = useRealtimeAPI({
     userProfile,
     onMessage: (event) => {
-      console.log('Realtime event:', event);
+      console.log('📨 Realtime event:', event.type, event);
       
       if (event.type === 'response.audio_transcript.delta') {
         // AI speaking
@@ -210,7 +210,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         description: "Failed to start interview. Please try again.",
         variant: "destructive",
       });
-      setMode('select');
+      setMode('selection');
     },
   });
 
@@ -466,44 +466,16 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       });
     } catch (error) {
       setIsStartingInterview(false);
-      console.error('Voice interview error:', error);
-      
-      // Provide more specific error messaging
-      let errorMessage = "Voice feature is currently unavailable. Using text interview instead.";
-      if (error?.message?.includes('timeout')) {
-        errorMessage = "Voice connection timed out. Switched to text interview for you.";
-      } else if (error?.message?.includes('Failed to get ephemeral token')) {
-        errorMessage = "Voice setup failed. Using text interview instead.";
-      } else if (error?.message?.includes('WebSocket')) {
-        errorMessage = "Voice connection failed. Switched to text interview.";
-      }
+      console.error('🔥 Voice interview failed:', error);
       
       toast({
-        title: "Switched to Text Interview",
-        description: errorMessage,
+        title: "Voice Connection Failed",
+        description: error?.message || "Please try the text interview instead.",
+        variant: "destructive",
       });
       
-      // Automatically start text interview instead
-      toast({
-        title: "Starting Text Interview",
-        description: "We've switched you to text mode so you can continue.",
-      });
-      
-      setMode('text');
-      setMessages([]);
-      setIsInterviewConcluded(false);
-      setConversationHistory([]);
-      
-      // Show loading message for text interview
-      const loadingMessage: InterviewMessage = {
-        type: 'question',
-        content: 'Starting your text interview... Please wait while I prepare your personalized questions.',
-        timestamp: new Date()
-      };
-      setMessages([loadingMessage]);
-      
-      // Start text interview automatically
-      startInterviewMutation.mutate();
+      // Stay in voice mode but stop the loading
+      // User can manually choose text interview if needed
     }
   };
 
@@ -856,14 +828,22 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             
             <div className="space-y-2">
               <p className="font-medium">
-                {isStartingInterview ? 'Starting Interview...' : realtimeAPI.isConnected ? 'AI Interview Active' : 'Connecting...'}
+                {(() => {
+                  console.log('🎯 Voice states:', { isStartingInterview, isConnected: realtimeAPI.isConnected, isConnecting: realtimeAPI.isConnecting });
+                  if (isStartingInterview) return 'Starting Interview...';
+                  if (realtimeAPI.isConnected) return 'AI Interview Active';
+                  if (realtimeAPI.isConnecting) return 'Connecting...';
+                  return 'Ready to Connect';
+                })()}
               </p>
               <p className="text-sm text-muted-foreground">
                 {isStartingInterview 
                   ? 'Preparing your personalized questions...'
                   : realtimeAPI.isConnected 
                     ? `Speak naturally - the AI will guide you through ${getQuestionCount(selectedInterviewType)} ${selectedInterviewType} questions`
-                    : 'Setting up your voice interview...'
+                    : realtimeAPI.isConnecting
+                      ? 'Setting up your voice interview...'
+                      : 'Click "Try Text Interview Instead" if voice doesn\'t work'
                 }
               </p>
             </div>
