@@ -467,6 +467,12 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       
       console.log('🎯 realtimeAPI.connect call completed');
       
+      // Auto-start the connection immediately
+      console.log('🚀 Auto-starting voice interview connection...');
+      
+      // Show connecting state immediately
+      setIsStartingInterview(false); // Stop the initial loading
+      
       setIsStartingInterview(false);
       toast({
         title: "Voice Interview Started",
@@ -803,7 +809,16 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     </div>
   );
 
-  const renderVoiceInterview = () => (
+  const renderVoiceInterview = () => {
+    // Auto-start voice interview when entering voice mode
+    useEffect(() => {
+      if (!realtimeAPI.isConnecting && !realtimeAPI.isConnected && !isStartingInterview) {
+        console.log('🚀 Auto-starting voice interview on mode entry...');
+        startVoiceInterview();
+      }
+    }, []);
+
+    return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Voice Interview</h3>
@@ -995,7 +1010,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         </div>
       </div>
     </div>
-  );
+    ); // Closing the return statement
+  }; // Closing the renderVoiceInterview function
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
