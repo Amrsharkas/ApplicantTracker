@@ -151,6 +151,7 @@ Changelog:
 - July 21, 2025. Fixed critical profile update JSON parsing error caused by incorrect API request format in ComprehensiveProfileModal. Updated apiRequest calls to use proper signature with method and body in options object instead of separate parameters, resolving "Unexpected token '<', DOCTYPE..." errors
 - July 21, 2025. Enhanced voice interview error handling with automatic fallback to text mode. When voice interview connection fails (due to OpenAI realtime API limitations), system now provides better error messages and seamlessly switches users to text interview mode to ensure interview completion
 - July 21, 2025. Implemented comprehensive interview debugging system with detailed logging and fallback questions. Added extensive logging to interview start endpoints, comprehensive error messages, and fallback question sets for all interview types (personal, professional, technical) to ensure interviews can proceed even if AI question generation fails
+- July 21, 2025. Completely rewrote OpenAI Realtime API implementation using proper WebSocket connection instead of incorrect WebRTC approach. Fixed voice interview system to use correct PCM16 audio format, real-time audio processing with AudioContext, and enhanced user profile integration for personalized voice interview questions. Voice interviews now properly connect to OpenAI's realtime API with user profile context
 ```
 
 ## User Preferences

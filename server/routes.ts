@@ -256,8 +256,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create ephemeral token for Realtime API
-  app.post("/api/realtime/session", isAuthenticated, async (req, res) => {
+  app.post("/api/realtime/session", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const { interviewType, userProfile } = req.body;
+      
+      console.log(`Creating realtime session for user ${userId}, interview type: ${interviewType}`);
+      
+      // Get user profile data if not provided
+      let profileData = userProfile;
+      if (!profileData) {
+        const user = await storage.getUser(userId);
+        const profile = await storage.getApplicantProfile(userId);
+        profileData = { ...user, ...profile };
+      }
+      
       const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
         method: "POST",
         headers: {
@@ -266,19 +279,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         body: JSON.stringify({
           model: "gpt-4o-realtime-preview-2024-10-01",
-          voice: "alloy",
+          voice: "verse", // Updated to use verse voice as specified in changelog
+          modalities: ["text", "audio"],
+          instructions: `You are conducting a ${interviewType || 'personal'} interview. Use the candidate's profile information to ask personalized questions.`,
         }),
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`OpenAI API error: ${response.status} - ${errorText}`);
         throw new Error(`OpenAI API error: ${response.status}`);
       }
 
       const data = await response.json();
-      res.json(data);
+      console.log('Realtime session created successfully');
+      
+      res.json({
+        ...data,
+        userProfile: profileData
+      });
     } catch (error) {
       console.error("Error creating realtime session:", error);
-      res.status(500).json({ message: "Failed to create realtime session" });
+      res.status(500).json({ 
+        message: "Failed to create realtime session",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 
