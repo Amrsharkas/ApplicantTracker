@@ -851,7 +851,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                 {isStartingInterview 
                   ? 'Preparing your personalized questions...'
                   : realtimeAPI.isConnected 
-                    ? `Speak naturally - the AI will guide you through ${getQuestionCount(selectedInterviewType)} ${selectedInterviewType} questions`
+                    ? (realtimeAPI.isListening 
+                        ? '🎤 Listening... speak now' 
+                        : (realtimeAPI.isSpeaking 
+                            ? '🗣️ AI is speaking...' 
+                            : `Speak naturally - ${getQuestionCount(selectedInterviewType)} ${selectedInterviewType} questions`))
                     : realtimeAPI.isConnecting
                       ? 'Setting up your voice interview...'
                       : 'Click "Try Text Interview Instead" if voice doesn\'t work'
@@ -870,6 +874,12 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               <div className="flex-1">
                 <p className="text-sm font-medium text-blue-800">AI Interviewer</p>
                 <p className="text-sm text-blue-700">{voiceTranscript}</p>
+                {realtimeAPI.isSpeaking && (
+                  <div className="flex items-center space-x-2 mt-2">
+                    <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
+                    <span className="text-xs text-blue-600">AI is speaking...</span>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

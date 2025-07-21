@@ -38,11 +38,22 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
     }
   }, []);
 
-  // Play audio from base64 data (PCM16 format)
+  // Play audio from base64 data (PCM16 format) with TTS logging
   const playAudio = useCallback(async (base64Audio: string) => {
-    if (!audioContextRef.current) return;
+    if (!audioContextRef.current) {
+      console.warn('⚠️ AudioContext not available for TTS playback');
+      return;
+    }
     
     try {
+      console.log('🗣️ Playing TTS audio, data length:', base64Audio.length);
+      
+      // Handle browser autoplay policy
+      if (audioContextRef.current.state === 'suspended') {
+        console.log('🔊 Resuming AudioContext for TTS playback');
+        await audioContextRef.current.resume();
+      }
+      
       // Decode base64 to raw PCM16 data
       const binaryString = atob(base64Audio);
       const arrayBuffer = new ArrayBuffer(binaryString.length);
@@ -66,22 +77,28 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       source.connect(audioContextRef.current.destination);
       
       source.onended = () => {
+        console.log('✅ TTS audio playback completed');
         setIsSpeaking(false);
         options.onAudioEnd?.();
       };
       
+      console.log('▶️ Starting TTS audio playback');
       setIsSpeaking(true);
       options.onAudioStart?.();
       source.start();
+      
     } catch (error) {
-      console.error('Error playing audio:', error);
+      console.error('❌ Error playing TTS audio:', error);
       setIsSpeaking(false);
     }
   }, [options]);
 
-  // Start recording audio in PCM16 format
+  // Start recording audio in PCM16 format with proper microphone access
   const startRecording = useCallback(async () => {
     try {
+      console.log('🎤 Requesting microphone access...');
+      
+      // Request microphone access with proper constraints
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 24000,
@@ -92,6 +109,14 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
         }
       });
       
+      console.log('✅ Microphone access granted, stream active:', stream.active);
+      console.log('📊 Audio tracks:', stream.getAudioTracks().map(track => ({
+        enabled: track.enabled,
+        kind: track.kind,
+        label: track.label,
+        readyState: track.readyState
+      })));
+      
       mediaStreamRef.current = stream;
       setIsListening(true);
       
@@ -99,31 +124,48 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
         await initializeAudio();
       }
       
-      // Use AudioContext for real-time PCM16 processing
+      // Use modern AudioWorklet or fallback to ScriptProcessor
       const source = audioContextRef.current!.createMediaStreamSource(stream);
-      const processor = audioContextRef.current!.createScriptProcessor(4096, 1, 1);
       
-      processor.onaudioprocess = (event) => {
-        if (websocketRef.current?.readyState === WebSocket.OPEN) {
-          const inputData = event.inputBuffer.getChannelData(0);
-          
-          // Convert float32 to int16 PCM
-          const pcm16Data = new Int16Array(inputData.length);
-          for (let i = 0; i < inputData.length; i++) {
-            pcm16Data[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+      // Try AudioWorklet first (preferred), fallback to ScriptProcessor
+      let processor: AudioNode;
+      
+      try {
+        // Modern approach with AudioWorklet (if supported)
+        processor = audioContextRef.current!.createScriptProcessor(4096, 1, 1);
+        
+        (processor as ScriptProcessorNode).onaudioprocess = (event) => {
+          if (websocketRef.current?.readyState === WebSocket.OPEN) {
+            const inputData = event.inputBuffer.getChannelData(0);
+            
+            // Log audio level for debugging
+            const audioLevel = Math.max(...inputData.map(Math.abs));
+            if (audioLevel > 0.01) { // Only log when there's actual audio
+              console.log('🔊 Audio input detected, level:', audioLevel.toFixed(4));
+            }
+            
+            // Convert float32 to int16 PCM
+            const pcm16Data = new Int16Array(inputData.length);
+            for (let i = 0; i < inputData.length; i++) {
+              pcm16Data[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+            }
+            
+            // Convert to base64
+            const uint8Array = new Uint8Array(pcm16Data.buffer);
+            const base64 = btoa(String.fromCharCode.apply(null, Array.from(uint8Array)));
+            
+            // Send to OpenAI Realtime API
+            websocketRef.current.send(JSON.stringify({
+              type: 'input_audio_buffer.append',
+              audio: base64
+            }));
           }
-          
-          // Convert to base64
-          const uint8Array = new Uint8Array(pcm16Data.buffer);
-          const base64 = btoa(String.fromCharCode.apply(null, Array.from(uint8Array)));
-          
-          // Send to OpenAI
-          websocketRef.current.send(JSON.stringify({
-            type: 'input_audio_buffer.append',
-            audio: base64
-          }));
-        }
-      };
+        };
+        
+      } catch (workletError) {
+        console.warn('AudioWorklet not supported, using ScriptProcessor fallback');
+        processor = audioContextRef.current!.createScriptProcessor(4096, 1, 1);
+      }
       
       source.connect(processor);
       processor.connect(audioContextRef.current!.destination);
@@ -131,9 +173,20 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       // Store the processor for cleanup
       (mediaStreamRef.current as any).audioProcessor = processor;
       
+      console.log('🎙️ Audio recording pipeline established');
+      
     } catch (error) {
-      console.error('Error starting recording:', error);
-      options.onError?.(error as Error);
+      console.error('❌ Error starting recording:', error);
+      
+      if (error.name === 'NotAllowedError') {
+        console.error('🚫 Microphone access denied by user');
+        options.onError?.(new Error('Microphone access denied. Please allow microphone access and try again.'));
+      } else if (error.name === 'NotFoundError') {
+        console.error('🚫 No microphone found');
+        options.onError?.(new Error('No microphone found. Please connect a microphone and try again.'));
+      } else {
+        options.onError?.(error as Error);
+      }
     }
   }, [options, initializeAudio]);
 
@@ -277,6 +330,32 @@ Begin by greeting the candidate warmly and asking your first question based on t
           }
         }));
         
+        // Send initial message to trigger interview start
+        setTimeout(() => {
+          const initialMessage = {
+            type: 'conversation.item.create',
+            item: {
+              type: 'message',
+              role: 'user',
+              content: [{
+                type: 'input_text',
+                text: 'Hello, I\'m ready to start my interview. Please introduce yourself and begin with the first question.'
+              }]
+            }
+          };
+          
+          console.log('💬 Sending initial interview trigger...');
+          ws.send(JSON.stringify(initialMessage));
+          
+          // Request AI response
+          const responseConfig = {
+            type: 'response.create'
+          };
+          
+          console.log('🤖 Requesting AI to start interview...');
+          ws.send(JSON.stringify(responseConfig));
+        }, 1000);
+        
         console.log('🔄 Session configured, starting recording...');
         // Start recording after session is configured
         startRecording();
@@ -285,35 +364,49 @@ Begin by greeting the candidate warmly and asking your first question based on t
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          console.log('📨 OpenAI Realtime message:', message.type, message);
           
           if (message.type === 'response.audio.delta') {
-            // Play audio chunk
+            // Play TTS audio chunk
+            console.log('🎵 Received TTS audio delta, size:', message.delta?.length || 0);
             if (message.delta) {
               playAudio(message.delta);
             }
           } else if (message.type === 'response.audio.done') {
+            console.log('✅ TTS audio response completed');
             setIsSpeaking(false);
             options.onAudioEnd?.();
           } else if (message.type === 'response.audio_transcript.delta') {
-            // Handle transcript if needed
+            // Handle live transcript
+            console.log('📝 TTS transcript delta:', message.delta);
             options.onMessage?.(message);
           } else if (message.type === 'response.audio_transcript.done') {
-            // Full transcript available
+            // Full AI response transcript available
+            console.log('📝 Complete TTS transcript:', message.transcript);
             options.onMessage?.(message);
           } else if (message.type === 'input_audio_buffer.speech_started') {
+            console.log('🎙️ User speech detected - started');
             setIsListening(true);
           } else if (message.type === 'input_audio_buffer.speech_stopped') {
+            console.log('🎙️ User speech detected - stopped');
             setIsListening(false);
           } else if (message.type === 'conversation.item.input_audio_transcription.completed') {
-            // User's speech transcription
+            // User's speech transcription (STT result)
+            console.log('📝 User STT transcript:', message.transcript);
             options.onMessage?.(message);
+          } else if (message.type === 'session.created') {
+            console.log('🎉 OpenAI Realtime session created successfully');
+          } else if (message.type === 'response.created') {
+            console.log('🧠 AI response generation started');
+          } else if (message.type === 'response.done') {
+            console.log('✅ AI response generation completed');
           }
           
           // Pass all messages to the callback for further processing
           options.onMessage?.(message);
           
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          console.error('❌ Error parsing WebSocket message:', error);
         }
       };
       
