@@ -169,7 +169,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       
       // Get ephemeral token from server
       console.log('📡 Requesting OpenAI ephemeral token...');
-      const tokenResponse = await fetch('/api/realtime/session', {
+      const tokenResponse = await fetch('/api/openai/ephemeral-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -204,7 +204,8 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       websocketRef.current = ws;
       
       ws.onopen = () => {
-        console.log('🎉 WebSocket opened successfully');
+        console.log('🎉 WebSocket connection opened successfully!');
+        console.log('🔄 Setting connected state and starting recording...');
         
         setIsConnecting(false);
         setIsConnected(true);
