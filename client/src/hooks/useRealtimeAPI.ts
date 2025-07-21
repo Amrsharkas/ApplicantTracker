@@ -42,7 +42,13 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       }
       
       const data = await tokenResponse.json();
-      const ephemeralKey = data.client_secret.value;
+      console.log('Ephemeral token response:', data);
+      const ephemeralKey = data.client_secret?.value || data.client_secret;
+      
+      if (!ephemeralKey) {
+        console.error('No ephemeral key found in response:', data);
+        throw new Error('Invalid ephemeral token response');
+      }
       
       // Create peer connection
       const pc = new RTCPeerConnection();
