@@ -222,9 +222,13 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       }
       
       if (data.firstQuestion) {
+        const questionContent = typeof data.firstQuestion === 'string' 
+          ? data.firstQuestion 
+          : (data.firstQuestion.question || data.firstQuestion.text || JSON.stringify(data.firstQuestion));
+        
         messages.push({
           type: 'question' as const,
-          content: data.firstQuestion,
+          content: questionContent,
           timestamp: new Date()
         });
       }
@@ -455,9 +459,14 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       if (currentQuestionIndex < questions.length - 1) {
         // Move to next question
         const nextIndex = currentQuestionIndex + 1;
+        const questionObj = questions[nextIndex];
+        const questionContent = typeof questionObj === 'string' 
+          ? questionObj 
+          : questionObj?.question || questionObj?.text || JSON.stringify(questionObj);
+          
         const nextQuestion: InterviewMessage = {
           type: 'question',
-          content: typeof questions[nextIndex] === 'string' ? questions[nextIndex] : (questions[nextIndex] as any).question || (questions[nextIndex] as any).text || '',
+          content: questionContent,
           timestamp: new Date()
         };
         
@@ -470,7 +479,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             ...prev.sessionData!,
             currentQuestionIndex: nextIndex,
             responses: [...(prev.sessionData?.responses || []), { 
-              question: typeof questions[currentQuestionIndex] === 'string' ? questions[currentQuestionIndex] : (questions[currentQuestionIndex] as any).question || (questions[currentQuestionIndex] as any).text || '',
+              question: typeof questions[currentQuestionIndex] === 'string' 
+                ? questions[currentQuestionIndex] 
+                : questions[currentQuestionIndex]?.question || questions[currentQuestionIndex]?.text || '',
               answer: currentAnswer.trim() 
             }]
           }

@@ -311,11 +311,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...profile
       });
 
+      // Extract the first question text properly
+      const firstQuestion = currentSet.questions && currentSet.questions.length > 0 
+        ? (typeof currentSet.questions[0] === 'string' ? currentSet.questions[0] : currentSet.questions[0]?.question || '')
+        : '';
+
       res.json({ 
         sessionId: session.id,
         interviewType,
         interviewSet: currentSet,
         questions: currentSet.questions,
+        firstQuestion,
         welcomeMessage,
         userProfile: {
           ...user,
