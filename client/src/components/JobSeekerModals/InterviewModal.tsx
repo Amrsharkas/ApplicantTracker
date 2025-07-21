@@ -1042,7 +1042,16 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                 <MessageCircle className="h-4 w-4 mt-1 text-green-600" />
               )}
               <div className="flex-1">
-                <p className="text-sm">{message.content}</p>
+                <p className="text-sm">
+                  {typeof message.content === 'string' 
+                    ? message.content 
+                    : message.content?.question || message.content?.text || 'Question content not available'
+                  }
+                </p>
+                {/* Show context if available for question objects */}
+                {typeof message.content === 'object' && message.content?.context && (
+                  <p className="text-xs text-muted-foreground mt-1">{message.content.context}</p>
+                )}
                 <span className="text-xs text-muted-foreground">
                   {message.timestamp.toLocaleTimeString()}
                 </span>
