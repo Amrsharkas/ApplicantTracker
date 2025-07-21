@@ -64,6 +64,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const handleProfileUpdate = async (req: any, res: any) => {
     try {
       const userId = req.user.claims.sub;
+      console.log("Profile update request for user:", userId, "with data:", req.body);
       
       // Preprocess the data to handle empty date fields
       const processedBody = { ...req.body };
@@ -84,28 +85,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      const profileData = insertApplicantProfileSchema.parse({
-        ...processedBody,
-        userId
-      });
+      // For simple profile updates, validate only the fields being sent
+      const profileData = {
+        userId,
+        ...processedBody
+      };
 
+      console.log("Attempting to upsert profile with data:", profileData);
       const profile = await storage.upsertApplicantProfile(profileData);
       await storage.updateProfileCompletion(userId);
       
+      console.log("Profile update successful:", profile.id);
       res.json(profile);
     } catch (error) {
       console.error("Error updating profile:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ 
-          error: "Validation error",
-          details: error.errors 
-        });
-      } else {
-        res.status(500).json({ 
-          error: "Failed to update profile",
-          message: error instanceof Error ? error.message : "Unknown error"
-        });
-      }
+      res.status(500).json({ 
+        error: "Failed to update profile",
+        message: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined
+      });
     }
   };
 
