@@ -60,7 +60,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
+  // Handle both PUT and POST for profile updates
+  const handleProfileUpdate = async (req: any, res: any) => {
     try {
       const userId = req.user.claims.sub;
       
@@ -94,9 +95,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(profile);
     } catch (error) {
       console.error("Error updating profile:", error);
-      res.status(500).json({ message: "Failed to update profile" });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ 
+          error: "Validation error",
+          details: error.errors 
+        });
+      } else {
+        res.status(500).json({ 
+          error: "Failed to update profile",
+          message: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
     }
-  });
+  };
+
+  app.put('/api/candidate/profile', isAuthenticated, handleProfileUpdate);
+  app.post('/api/candidate/profile', isAuthenticated, handleProfileUpdate);
 
   // Resume upload route
   app.post('/api/candidate/resume', isAuthenticated, upload.single('resume'), async (req: any, res) => {
