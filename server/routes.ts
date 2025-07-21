@@ -67,49 +67,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('📝 Profile update request for user:', userId);
       console.log('📝 Request body:', JSON.stringify(req.body, null, 2));
       
-      // Preprocess the data to handle empty date fields
-      const processedBody = { ...req.body };
+      // Simple validation for basic profile form fields
+      const allowedFields = [
+        'age', 'education', 'university', 'degree', 'location', 
+        'currentRole', 'company', 'yearsOfExperience', 'summary'
+      ];
       
-      // Convert empty date strings to null
-      const dateFields = ['birthdate'];
-      dateFields.forEach(field => {
-        if (processedBody[field] === '') {
-          processedBody[field] = null;
+      const profileUpdates: any = { userId };
+      
+      // Only include allowed fields and convert undefined/empty values properly
+      Object.keys(req.body).forEach(key => {
+        if (allowedFields.includes(key)) {
+          const value = req.body[key];
+          if (value !== undefined && value !== '') {
+            profileUpdates[key] = value;
+          }
         }
-      });
-      
-      // Convert empty arrays to null where appropriate
-      const arrayFields = ['jobTypes', 'jobTitles', 'jobCategories', 'preferredWorkCountries', 'workExperiences', 'languages', 'degrees', 'highSchools', 'certifications', 'trainingCourses', 'otherUrls'];
-      arrayFields.forEach(field => {
-        if (Array.isArray(processedBody[field]) && processedBody[field].length === 0) {
-          processedBody[field] = null;
-        }
-      });
-      
-      // Validate the data using schema
-      const profileData = insertApplicantProfileSchema.parse({
-        ...processedBody,
-        userId
       });
 
-      console.log('✅ Profile data validated successfully');
+      console.log('✅ Profile data prepared for update:', profileUpdates);
       
-      const profile = await storage.upsertApplicantProfile(profileData);
+      const profile = await storage.upsertApplicantProfile(profileUpdates);
       await storage.updateProfileCompletion(userId);
       
       console.log('✅ Profile updated successfully');
       res.json(profile);
     } catch (error) {
       console.error("❌ Error updating profile:", error);
-      
-      // Check if it's a validation error
-      if (error && typeof error === 'object' && 'issues' in error) {
-        console.error("Validation errors:", error);
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: error
-        });
-      }
       
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ message: "Failed to update profile", error: errorMessage });
