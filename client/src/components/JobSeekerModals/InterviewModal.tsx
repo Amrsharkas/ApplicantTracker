@@ -453,11 +453,19 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         setMessages([welcomeMessage]);
       }
       
+      console.log('🎯 About to call realtimeAPI.connect with:', {
+        interviewType: selectedInterviewType,
+        questions: interviewSession.questions?.length,
+        interviewSet: !!interviewSession.interviewSet
+      });
+      
       await realtimeAPI.connect({
         interviewType: selectedInterviewType,
         questions: interviewSession.questions,
         interviewSet: interviewSession.interviewSet
       });
+      
+      console.log('🎯 realtimeAPI.connect call completed');
       
       setIsStartingInterview(false);
       toast({
@@ -629,7 +637,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               ? 'opacity-50 cursor-not-allowed' 
               : 'cursor-pointer hover:bg-accent/50'
           }`} 
-          onClick={isStartingInterview ? undefined : startVoiceInterview}
+          onClick={isStartingInterview ? undefined : () => {
+            console.log('🎤 Voice interview button clicked');
+            startVoiceInterview();
+          }}
         >
           <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
             {isStartingInterview && mode === 'voice' ? (

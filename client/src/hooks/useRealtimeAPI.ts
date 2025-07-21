@@ -195,7 +195,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       const ephemeralKey = data.client_secret.value;
       
       // Connect to OpenAI Realtime API
-      console.log('🔗 Connecting to OpenAI Realtime API...');
+      console.log('🔗 Connecting to OpenAI Realtime API with key length:', ephemeralKey.length);
       const ws = new WebSocket(
         'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01',
         ['realtime', `openai-insecure-api-key.${ephemeralKey}`]
@@ -203,10 +203,20 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       
       websocketRef.current = ws;
       
+      // Add timeout to catch connection issues
+      const connectionTimeout = setTimeout(() => {
+        if (isConnecting) {
+          console.error('⏰ WebSocket connection timeout');
+          setIsConnecting(false);
+          options.onError?.(new Error('Connection timeout - please try again'));
+        }
+      }, 15000); // 15 second timeout
+      
       ws.onopen = () => {
         console.log('🎉 WebSocket connection opened successfully!');
         console.log('🔄 Setting connected state...');
         
+        clearTimeout(connectionTimeout);
         setIsConnecting(false);
         setIsConnected(true);
         
@@ -309,13 +319,15 @@ Begin by greeting the candidate warmly and asking your first question based on t
       
       ws.onerror = (error) => {
         console.error('❌ WebSocket error:', error);
+        clearTimeout(connectionTimeout);
         options.onError?.(new Error('Voice connection failed - please try text interview'));
         setIsConnecting(false);
         setIsConnected(false);
       };
       
-      ws.onclose = () => {
-        console.log('🔒 WebSocket connection closed');
+      ws.onclose = (event) => {
+        console.log('🔒 WebSocket connection closed', { code: event.code, reason: event.reason });
+        clearTimeout(connectionTimeout);
         setIsConnected(false);
         setIsConnecting(false);
         stopRecording();
