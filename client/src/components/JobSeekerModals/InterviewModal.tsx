@@ -473,7 +473,6 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       // Show connecting state immediately
       setIsStartingInterview(false); // Stop the initial loading
       
-      setIsStartingInterview(false);
       toast({
         title: "Voice Interview Started",
         description: "You can now speak naturally with the AI interviewer.",

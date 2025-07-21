@@ -157,6 +157,7 @@ Changelog:
 - July 21, 2025. Fixed voice interview implementation with shimmer voice as requested by user. Resolved TypeScript compilation errors, simplified WebSocket connection logic, and improved audio processing for OpenAI Realtime API. System now uses shimmer voice instead of verse and has cleaner connection handling without timeout conflicts
 - July 21, 2025. Implemented complete voice interview auto-start system with full speech-to-speech pipeline. Voice interviews now automatically connect when selected, providing proper microphone access prompts, real-time STT transcription, AI-generated responses, and TTS playback with shimmer voice. Added comprehensive audio level detection, voice activity indicators, and enhanced error handling for microphone permissions and WebSocket connections
 - July 21, 2025. Fixed critical React hooks violation that was causing voice interview modal crashes. Moved useEffect hook out of renderVoiceInterview function and into main component body with proper dependency tracking on mode state. Voice interview modal now opens without errors and auto-starts connection properly
+- July 21, 2025. Fixed missing OpenAI ephemeral token endpoint that was preventing voice interview connections. Added /api/openai/ephemeral-token endpoint to server routes with proper authentication and OpenAI Realtime API integration. Voice interviews now successfully connect and establish WebSocket communication with shimmer voice
 ```
 
 ## User Preferences

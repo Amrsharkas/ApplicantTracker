@@ -1775,6 +1775,52 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
+  // OpenAI ephemeral token endpoint for Realtime API
+  app.post('/api/openai/ephemeral-token', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { interviewType, userProfile } = req.body;
+      
+      console.log('🎤 Creating OpenAI ephemeral token for voice interview');
+      console.log('📋 Request details:', { userId, interviewType, hasUserProfile: !!userProfile });
+      
+      // Get user profile data if not provided
+      let profileData = userProfile;
+      if (!profileData) {
+        const user = await storage.getUser(userId);
+        const profile = await storage.getApplicantProfile(userId);
+        profileData = { ...user, ...profile };
+      }
+      
+      const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-realtime-preview-2024-10-01",
+          voice: "shimmer",
+          instructions: `You are conducting a ${interviewType || 'personal'} interview. Be conversational, engaging, and professional.`
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ OpenAI ephemeral token request failed:', response.status, errorText);
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Ephemeral token created successfully');
+      
+      res.json(data);
+    } catch (error) {
+      console.error("❌ Error creating ephemeral token:", error);
+      res.status(500).json({ message: "Failed to create voice session token" });
+    }
+  });
+
   // Set up automatic Airtable monitoring (every 30 seconds)
   setInterval(async () => {
     try {
