@@ -195,10 +195,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       // Show welcome message first, then first question
       const messages = [];
       
-      if (welcomeMessageData?.welcomeMessage) {
+      if (welcomeMessageData && typeof welcomeMessageData === 'object' && 'welcomeMessage' in welcomeMessageData) {
         messages.push({
           type: 'question' as const,
-          content: welcomeMessageData.welcomeMessage,
+          content: (welcomeMessageData as any).welcomeMessage,
           timestamp: new Date()
         });
       }
@@ -249,7 +249,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           
           // Reset to interview types view to show all completed
           setMode('types');
-          setSelectedInterviewType(null);
+          setSelectedInterviewType();
         } else if (data.nextInterviewType) {
           // Continue to next interview type automatically
           toast({
@@ -260,7 +260,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           // Automatically start next interview
           setTimeout(() => {
             setSelectedInterviewType(data.nextInterviewType);
-            setMode('selection');
+            setMode('select');
           }, 1500);
         } else {
           // Individual interview complete with no next type
@@ -315,7 +315,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         
         // Reset to interview types view to show all completed
         setMode('types');
-        setSelectedInterviewType(null);
+        setSelectedInterviewType('');
       } else if (data.nextInterviewType) {
         // Continue to next interview type automatically
         toast({
@@ -326,7 +326,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         // Automatically start next interview
         setTimeout(() => {
           setSelectedInterviewType(data.nextInterviewType);
-          setMode('selection');
+          setMode('select');
         }, 1500);
       } else {
         // Individual interview complete with no next type
@@ -391,7 +391,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         // Automatically start next interview
         setTimeout(() => {
           setSelectedInterviewType(data.nextInterviewType);
-          setMode('selection');
+          setMode('select');
         }, 1500);
       } else {
         // Individual interview complete with no next type
@@ -402,7 +402,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         
         // Reset to interview types view
         setMode('types');
-        setSelectedInterviewType(null);
+        setSelectedInterviewType();
       }
     },
     onError: (error) => {
@@ -439,7 +439,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         const nextIndex = currentQuestionIndex + 1;
         const nextQuestion: InterviewMessage = {
           type: 'question',
-          content: questions[nextIndex],
+          content: typeof questions[nextIndex] === 'string' ? questions[nextIndex] : (questions[nextIndex] as any).question || (questions[nextIndex] as any).text || '',
           timestamp: new Date()
         };
         
@@ -451,7 +451,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           sessionData: {
             ...prev.sessionData!,
             currentQuestionIndex: nextIndex,
-            responses: [...(prev.sessionData?.responses || []), currentAnswer.trim()]
+            responses: [...(prev.sessionData?.responses || []), { 
+              question: typeof questions[currentQuestionIndex] === 'string' ? questions[currentQuestionIndex] : (questions[currentQuestionIndex] as any).question || (questions[currentQuestionIndex] as any).text || '',
+              answer: currentAnswer.trim() 
+            }]
           }
         } : null);
         
@@ -536,7 +539,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         // Automatically start next interview
         setTimeout(() => {
           setSelectedInterviewType(completionData.nextInterviewType);
-          setMode('selection');
+          setMode('select');
         }, 1500);
       } else {
         // Individual interview complete
@@ -845,7 +848,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               className={`cursor-pointer hover:bg-accent/50 transition-colors ${interview.completed ? 'border-green-300 bg-green-50' : ''}`}
               onClick={() => {
                 setSelectedInterviewType(interview.type);
-                setMode('selection');
+                setMode('select');
               }}
             >
               <CardContent className="flex items-center justify-between p-4">
@@ -1191,7 +1194,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                 } else {
                   // Just hang up
                   realtimeAPI.disconnect();
-                  setMode('selection');
+                  setMode('select');
                 }
               }}
               disabled={isProcessingInterview || processVoiceInterviewMutation.isPending}
