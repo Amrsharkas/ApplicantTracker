@@ -66,6 +66,24 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Reset interview state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setMode('types');
+      setSelectedInterviewType('');
+      setMessages([]);
+      setCurrentAnswer('');
+      setCurrentQuestionIndex(0);
+      setCurrentSession(null);
+      setVoiceTranscript('');
+      setConversationHistory([]);
+      setShowProfileDetails(false);
+      setIsInterviewConcluded(false);
+      setIsProcessingInterview(false);
+      setIsStartingInterview(false);
+    }
+  }, [isOpen]);
+
   // Fetch user profile data for personalized interview questions
   const { data: userProfile } = useQuery({
     queryKey: ["/api/candidate/profile"],
@@ -782,17 +800,33 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     }
   };
 
-  const handleClose = () => {
-    if (mode === 'voice') {
-      realtimeAPI.disconnect();
-    }
+  const resetInterview = () => {
     setMode('types');
     setSelectedInterviewType('');
     setMessages([]);
-    setCurrentAnswer("");
+    setCurrentAnswer('');
+    setCurrentQuestionIndex(0);
     setCurrentSession(null);
-    setIsInterviewConcluded(false);
+    setVoiceTranscript('');
     setConversationHistory([]);
+    setShowProfileDetails(false);
+    setIsInterviewConcluded(false);
+    setIsProcessingInterview(false);
+    setIsStartingInterview(false);
+  };
+
+  // Reset interview state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      resetInterview();
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    if (realtimeAPI.isConnected) {
+      realtimeAPI.disconnect();
+    }
+    resetInterview();
     onClose();
   };
 
@@ -1230,7 +1264,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         </DialogHeader>
         
         {mode === 'types' && renderInterviewTypes()}
-        {mode === 'selection' && renderModeSelection()}
+        {mode === 'select' && renderModeSelection()}
         {mode === 'text' && renderTextInterview()}
         {mode === 'voice' && renderVoiceInterview()}
       </DialogContent>
