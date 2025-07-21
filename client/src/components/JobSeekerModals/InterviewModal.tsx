@@ -1045,11 +1045,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             <div className="flex space-x-2">
               {isInterviewConcluded ? (
                 <Button 
-                  onClick={() => processTextInterviewMutation.mutate()}
-                  disabled={processTextInterviewMutation.isPending}
+                  onClick={() => processInterviewCompletion()}
+                  disabled={isProcessingInterview}
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  {processTextInterviewMutation.isPending ? 'Submitting...' : 'Submit Interview'}
+                  {isProcessingInterview ? 'Submitting...' : 'Submit Interview'}
                 </Button>
               ) : (
                 <Button 
