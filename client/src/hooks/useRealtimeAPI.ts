@@ -204,9 +204,13 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       websocketRef.current = ws;
       
       ws.onopen = () => {
-        console.log('🎉 Connected to OpenAI Realtime API successfully');
+        console.log('🎉 WebSocket opened successfully');
+        
         setIsConnecting(false);
         setIsConnected(true);
+        
+        // Start recording immediately when connected
+        startRecording();
         
         // Build enhanced instructions with user profile
         const profileContext = options.userProfile ? `

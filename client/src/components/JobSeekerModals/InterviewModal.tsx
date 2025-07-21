@@ -122,13 +122,16 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       }
     },
     onError: (error) => {
-      console.error('Voice interview error:', error);
+      console.error('🔥 Voice interview error:', error);
+      setIsStartingInterview(false);
+      
+      // Don't automatically switch to text mode, just show the error
       toast({
-        title: 'Voice Interview Error',
-        description: 'There was an issue with the voice interview. Please try text mode instead.',
-        variant: 'destructive'
+        title: "Voice Connection Issue",
+        description: error.message || "Voice interview encountered an issue",
+        variant: "destructive",
       });
-      setMode('text');
+
     }
   });
 
