@@ -176,23 +176,34 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       await initializeAudio();
       
       // Get ephemeral token from server
+      console.log('Requesting ephemeral token for voice interview...');
       const tokenResponse = await fetch('/api/realtime/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           interviewType: interviewParams?.interviewType,
           userProfile: options.userProfile
-        })
+        }),
+        credentials: 'include'
       });
       
       if (!tokenResponse.ok) {
-        throw new Error(`Failed to get ephemeral token: ${tokenResponse.status}`);
+        const errorText = await tokenResponse.text();
+        console.error('Failed to get ephemeral token:', tokenResponse.status, errorText);
+        throw new Error(`Failed to get ephemeral token: ${tokenResponse.status} - ${errorText}`);
       }
       
       const data = await tokenResponse.json();
+      console.log('Received ephemeral token data:', { hasToken: !!data.client_secret?.value });
+      
+      if (!data.client_secret?.value) {
+        throw new Error('No ephemeral token in response');
+      }
+      
       const ephemeralKey = data.client_secret.value;
       
       // Connect to OpenAI Realtime API via WebSocket
+      console.log('Connecting to OpenAI Realtime WebSocket...');
       const ws = new WebSocket(
         'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01',
         ['realtime', `openai-insecure-api-key.${ephemeralKey}`]
@@ -200,11 +211,22 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       
       websocketRef.current = ws;
       
+      // Connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (ws.readyState === WebSocket.CONNECTING) {
+          console.error('WebSocket connection timeout');
+          ws.close();
+          setIsConnected(false);
+          if (onError) {
+            onError(new Error('Connection timeout - please try again'));
+          }
+        }
+      }, 10000); // 10 second timeout
+      
       ws.onopen = () => {
-        console.log('WebSocket connected to OpenAI Realtime API');
-        
-        // Clear the connection timeout since we've connected successfully
+        console.log('WebSocket connected to OpenAI Realtime API successfully');
         clearTimeout(connectionTimeout);
+        setIsConnected(true);
         
         // Build enhanced instructions with user profile
         const profileContext = options.userProfile ? `
@@ -308,7 +330,7 @@ Begin by greeting the candidate warmly and asking your first question based on t
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
         clearTimeout(connectionTimeout);
-        options.onError?.(new Error('WebSocket connection failed'));
+        options.onError?.(new Error('Voice connection failed - please try text interview'));
         setIsConnecting(false);
         setIsConnected(false);
       };

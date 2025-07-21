@@ -456,19 +456,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         interviewSet: interviewSession.interviewSet
       });
       
-      // Wait a moment to ensure connection is established
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Only show success if actually connected
-      if (realtimeAPI.isConnected) {
-        setIsStartingInterview(false);
-        toast({
-          title: "Voice Interview Started",
-          description: "You can now speak naturally with the AI interviewer.",
-        });
-      } else {
-        throw new Error('Voice connection failed to establish');
-      }
+      setIsStartingInterview(false);
+      toast({
+        title: "Voice Interview Started",
+        description: "You can now speak naturally with the AI interviewer.",
+      });
     } catch (error) {
       setIsStartingInterview(false);
       console.error('Voice interview error:', error);
@@ -657,15 +649,26 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card 
-          className="opacity-60 cursor-not-allowed bg-gray-50"
-          title="Voice interviews are temporarily unavailable due to OpenAI API limitations"
+          className={`transition-colors ${
+            isStartingInterview 
+              ? 'opacity-50 cursor-not-allowed' 
+              : 'cursor-pointer hover:bg-accent/50'
+          }`} 
+          onClick={isStartingInterview ? undefined : startVoiceInterview}
         >
           <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
-            <MicOff className="h-8 w-8 text-gray-400" />
+            {isStartingInterview && mode === 'voice' ? (
+              <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Mic className="h-8 w-8 text-primary" />
+            )}
             <div className="text-center">
-              <h4 className="font-medium text-gray-600">Voice Interview</h4>
-              <p className="text-sm text-gray-500">
-                Currently unavailable - please use text interview
+              <h4 className="font-medium">Voice Interview</h4>
+              <p className="text-sm text-muted-foreground">
+                {isStartingInterview && mode === 'voice' 
+                  ? 'Starting voice interview...' 
+                  : 'Speak naturally with the AI interviewer'
+                }
               </p>
             </div>
           </CardContent>
