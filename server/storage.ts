@@ -30,7 +30,7 @@ export interface IStorage {
 
   // Applicant profile operations
   getApplicantProfile(userId: string): Promise<ApplicantProfile | undefined>;
-  upsertApplicantProfile(profile: InsertApplicantProfile): Promise<ApplicantProfile>;
+  upsertApplicantProfile(profile: any): Promise<ApplicantProfile>;
   updateProfileCompletion(userId: string): Promise<void>;
 
 
@@ -98,20 +98,33 @@ export class DatabaseStorage implements IStorage {
     return profile;
   }
 
-  async upsertApplicantProfile(profileData: InsertApplicantProfile): Promise<ApplicantProfile> {
+  async upsertApplicantProfile(profileData: any): Promise<ApplicantProfile> {
     const existing = await this.getApplicantProfile(profileData.userId);
     
     if (existing) {
+      // For updates, only update fields that are provided
+      const updateData = { ...profileData, updatedAt: new Date() };
+      delete updateData.id; // Don't try to update the ID
+      
       const [profile] = await db
         .update(applicantProfiles)
-        .set({ ...profileData, updatedAt: new Date() })
+        .set(updateData)
         .where(eq(applicantProfiles.userId, profileData.userId))
         .returning();
       return profile;
     } else {
+      // For new profiles, use defaults for missing fields
+      const insertData = {
+        userId: profileData.userId,
+        ...profileData,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      delete insertData.id; // Don't include ID for inserts
+      
       const [profile] = await db
         .insert(applicantProfiles)
-        .values(profileData)
+        .values(insertData)
         .returning();
       return profile;
     }

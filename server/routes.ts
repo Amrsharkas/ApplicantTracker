@@ -61,11 +61,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
+    // Ensure we always return JSON, even if there's an unexpected error
+    res.setHeader('Content-Type', 'application/json');
+    
     try {
       const userId = req.user.claims.sub;
       
       console.log('📝 Profile update request for user:', userId);
       console.log('📝 Request body:', JSON.stringify(req.body, null, 2));
+      
+      // Validate that we have required data
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
+      if (!req.body || typeof req.body !== 'object') {
+        return res.status(400).json({ message: "Invalid request body" });
+      }
       
       // Simple validation for basic profile form fields
       const allowedFields = [
@@ -87,16 +99,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('✅ Profile data prepared for update:', profileUpdates);
       
-      const profile = await storage.upsertApplicantProfile(profileUpdates);
-      await storage.updateProfileCompletion(userId);
+      // Wrap storage operations in try-catch to handle any database errors
+      let profile;
+      try {
+        profile = await storage.upsertApplicantProfile(profileUpdates);
+        await storage.updateProfileCompletion(userId);
+      } catch (storageError) {
+        console.error("❌ Storage error:", storageError);
+        return res.status(500).json({ 
+          message: "Database error", 
+          error: storageError instanceof Error ? storageError.message : 'Unknown storage error'
+        });
+      }
       
       console.log('✅ Profile updated successfully');
-      res.json(profile);
+      return res.status(200).json(profile);
     } catch (error) {
       console.error("❌ Error updating profile:", error);
       
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      res.status(500).json({ message: "Failed to update profile", error: errorMessage });
+      return res.status(500).json({ message: "Failed to update profile", error: errorMessage });
     }
   });
 
