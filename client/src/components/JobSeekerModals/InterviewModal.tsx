@@ -1,20 +1,21 @@
 import { useState, useRef, useEffect, memo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { toast } from '@/hooks/use-toast';
-import { User, MessageCircle, Mic, MicOff, PhoneOff, CheckCircle, ArrowRight } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Mic, MicOff, MessageCircle, Phone, PhoneOff, Users, Briefcase, Target, User, CheckCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { useRealtimeAPI } from '@/hooks/useRealtimeAPI';
+import { apiRequest } from '@/lib/queryClient';
+import { isUnauthorizedError } from '@/lib/authUtils';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
-interface InterviewModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  interviewType?: 'personal' | 'professional' | 'technical';
+interface InterviewQuestion {
+  question: string;
+  context?: string;
 }
 
 interface InterviewMessage {
@@ -23,307 +24,645 @@ interface InterviewMessage {
   timestamp: Date;
 }
 
-interface InterviewSession {
-  sessionId: number;
-  interviewSet?: any;
-  questions?: string[];
-  isCompleted?: boolean;
+interface InterviewType {
+  type: string;
+  title: string;
+  description: string;
+  completed: boolean;
+  questions: number;
 }
 
-const INTERVIEW_CONFIGS = {
-  personal: {
-    title: 'Personal Background Interview',
-    description: 'Share your personal background, values, and motivations',
-    questionCount: 5,
-    color: 'blue'
-  },
-  professional: {
-    title: 'Professional Experience Interview',
-    description: 'Discuss your work experience and career journey',
-    questionCount: 7,
-    color: 'green'
-  },
-  technical: {
-    title: 'Technical Skills Interview',
-    description: 'Demonstrate your technical knowledge and problem-solving abilities',
-    questionCount: 11,
-    color: 'purple'
-  }
-};
+interface InterviewSession {
+  id: number;
+  sessionData: {
+    questions: InterviewQuestion[];
+    responses: Array<{ question: string; answer: string }>;
+    currentQuestionIndex: number;
+    isComplete?: boolean;
+  };
+  isCompleted: boolean;
+  generatedProfile?: any;
+}
 
-export const InterviewModal = memo(({ isOpen, onClose, interviewType: propInterviewType }: InterviewModalProps) => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const realtimeAPI = useRealtimeAPI();
+interface InterviewModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
-  // States
-  const [selectedInterviewType, setSelectedInterviewType] = useState<'personal' | 'professional' | 'technical'>(
-    propInterviewType || 'personal'
-  );
-  const [mode, setMode] = useState<'types' | 'selection' | 'text' | 'voice'>('types');
+export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
+  const [mode, setMode] = useState<'types' | 'select' | 'text' | 'voice'>('types');
+  const [selectedInterviewType, setSelectedInterviewType] = useState<string>('');
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
-  const [currentAnswer, setCurrentAnswer] = useState('');
-  const [currentInterviewSession, setCurrentInterviewSession] = useState<InterviewSession | null>(null);
+  const [currentAnswer, setCurrentAnswer] = useState("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [currentSession, setCurrentSession] = useState<InterviewSession | null>(null);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
+  const [showProfileDetails, setShowProfileDetails] = useState(false);
   const [isInterviewConcluded, setIsInterviewConcluded] = useState(false);
+  const [isProcessingInterview, setIsProcessingInterview] = useState(false);
+  const [isStartingInterview, setIsStartingInterview] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Query for user profile and completion status
+  // Fetch user profile data for personalized interview questions
   const { data: userProfile } = useQuery({
-    queryKey: ['/api/candidate/profile'],
-    enabled: isOpen && !!user
+    queryKey: ["/api/candidate/profile"],
+    enabled: isOpen,
+    retry: false,
   });
 
-  // Query for interview completion status
-  const { data: interviewStatus } = useQuery({
-    queryKey: ['/api/interview/status'],
-    enabled: isOpen && !!user
+  // Fetch interview types
+  const { data: interviewTypesData } = useQuery({
+    queryKey: ["/api/interview/types"],
+    enabled: isOpen,
+    retry: false,
   });
 
-  // Query for welcome message
+  // Fetch welcome message
   const { data: welcomeMessageData } = useQuery({
-    queryKey: ['/api/interview/welcome', selectedInterviewType],
-    enabled: isOpen && !!user && mode !== 'types'
+    queryKey: ["/api/interview/welcome"],
+    enabled: isOpen && mode !== 'select' && mode !== 'types',
+    retry: false,
   });
 
-  // Mutations
+  // Voice interview integration
+  const realtimeAPI = useRealtimeAPI({
+    userProfile,
+    onMessage: (event) => {
+      console.log('Realtime event:', event);
+      
+      if (event.type === 'response.audio_transcript.delta') {
+        // AI speaking
+        setVoiceTranscript(prev => prev + (event.delta || ''));
+      }
+      
+      if (event.type === 'response.audio_transcript.done') {
+        const aiText = event.transcript;
+        setVoiceTranscript("");
+        
+        // Add AI message to conversation history
+        setConversationHistory(prev => [...prev, { role: 'assistant', content: aiText }]);
+        
+        // Check if the AI is concluding the interview
+        if (aiText && aiText.toLowerCase().includes('conclude')) {
+          setIsInterviewConcluded(true);
+        }
+      }
+      
+      if (event.type === 'input_audio_buffer.speech_started') {
+        setVoiceTranscript("");
+      }
+      
+      if (event.type === 'conversation.item.input_audio_transcription.completed') {
+        const userText = event.transcript;
+        // Add user message to conversation history
+        setConversationHistory(prev => [...prev, { role: 'user', content: userText }]);
+      }
+    },
+    onError: (error) => {
+      console.error('Voice interview error:', error);
+      toast({
+        title: 'Voice Interview Error',
+        description: 'There was an issue with the voice interview. Please try text mode instead.',
+        variant: 'destructive'
+      });
+      setMode('text');
+    }
+  });
+
+  const { data: existingSession } = useQuery({
+    queryKey: ["/api/interview/session"],
+    enabled: isOpen,
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return false;
+      }
+      return failureCount < 3;
+    },
+  });
+
   const startInterviewMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest(`/api/interview/start/${selectedInterviewType}`, {
-        method: 'POST',
-        body: { interviewType: selectedInterviewType }
-      });
-      return response;
+      const endpoint = selectedInterviewType 
+        ? `/api/interview/start/${selectedInterviewType}`
+        : "/api/interview/start";
+      const response = await apiRequest("POST", endpoint, {});
+      return response.json();
     },
     onSuccess: (data) => {
-      setCurrentInterviewSession(data);
-      setMessages([]);
+      setIsStartingInterview(false);
+      
+      // Create session object from the response data
+      const session = {
+        id: data.sessionId,
+        sessionData: {
+          questions: data.questions || [],
+          responses: [],
+          currentQuestionIndex: 0
+        },
+        isCompleted: false
+      };
+      
+      setCurrentSession(session);
       setCurrentQuestionIndex(0);
       
-      // Add welcome message if available
+      // Show welcome message first, then first question
+      const messages = [];
+      
       if (welcomeMessageData?.welcomeMessage) {
-        setMessages(prev => [...prev, {
-          type: 'question',
+        messages.push({
+          type: 'question' as const,
           content: welcomeMessageData.welcomeMessage,
           timestamp: new Date()
-        }]);
+        });
       }
-
-      // Add first question
-      if (data.questions && data.questions.length > 0) {
-        setMessages(prev => [...prev, {
-          type: 'question',
-          content: data.questions[0],
+      
+      if (data.firstQuestion) {
+        messages.push({
+          type: 'question' as const,
+          content: data.firstQuestion,
           timestamp: new Date()
-        }]);
+        });
       }
+      
+      setMessages(messages);
     },
-    onError: (error: any) => {
+    onError: (error) => {
+      setIsStartingInterview(false);
+      console.error('Start interview error:', error);
       toast({
-        title: "Interview Start Failed",
-        description: error.message || "Failed to start interview. Please try again.",
+        title: "Error",
+        description: "Failed to start interview. Please try again.",
         variant: "destructive",
       });
-    }
+      setMode('select');
+    },
   });
 
   const respondMutation = useMutation({
     mutationFn: async (answer: string) => {
-      if (!currentInterviewSession) throw new Error("No active session");
-      
-      const response = await apiRequest(`/api/interview/${currentInterviewSession.sessionId}/respond`, {
-        method: 'POST',
-        body: { 
-          answer: answer.trim(),
-          currentQuestionIndex 
-        }
+      const response = await apiRequest("POST", "/api/interview/respond", {
+        sessionId: currentSession?.id,
+        answer,
+        questionIndex: currentQuestionIndex
       });
-      return response;
+      return response.json();
     },
     onSuccess: (data) => {
-      if (data.nextQuestion) {
-        setMessages(prev => [...prev, {
+      if (data.isComplete) {
+        setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
+        queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
+        
+        if (data.allInterviewsCompleted) {
+          // Final completion - show profile generation success
+          toast({
+            title: "All Interviews Complete!",
+            description: "Your comprehensive AI profile has been generated successfully.",
+          });
+          
+          // Reset to interview types view to show all completed
+          setMode('types');
+          setSelectedInterviewType(null);
+        } else if (data.nextInterviewType) {
+          // Continue to next interview type automatically
+          toast({
+            title: "Interview Section Complete",
+            description: `Moving to ${data.nextInterviewType} interview...`,
+          });
+          
+          // Automatically start next interview
+          setTimeout(() => {
+            setSelectedInterviewType(data.nextInterviewType);
+            setMode('selection');
+          }, 1500);
+        } else {
+          // Individual interview complete with no next type
+          toast({
+            title: "Interview Complete!",
+            description: "Your AI profile has been generated successfully.",
+          });
+        }
+      } else if (data.nextQuestion) {
+        const nextQuestion: InterviewMessage = {
           type: 'question',
           content: data.nextQuestion,
           timestamp: new Date()
-        }]);
+        };
+        setMessages(prev => [...prev, nextQuestion]);
         setCurrentQuestionIndex(prev => prev + 1);
+        
+        // Check if the question contains "conclude" to show submit button
+        if (data.nextQuestion.toLowerCase().includes('conclude')) {
+          setIsInterviewConcluded(true);
+        }
       }
-
-      if (data.isCompleted) {
-        setIsInterviewConcluded(true);
-      }
-    }
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to process your response",
+        variant: "destructive",
+      });
+    },
   });
 
   const processTextInterviewMutation = useMutation({
     mutationFn: async () => {
-      if (!currentInterviewSession) throw new Error("No active session");
-      
-      const response = await apiRequest(`/api/interview/${currentInterviewSession.sessionId}/process`, {
-        method: 'POST'
+      const response = await apiRequest("POST", "/api/interview/complete", {
+        sessionId: currentSession?.id,
+        interviewType: selectedInterviewType
       });
-      return response;
+      return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/interview/status'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/candidate/profile'] });
+    onSuccess: (data) => {
+      setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
       
+      if (data.allInterviewsCompleted) {
+        // Final completion - show profile generation success
+        toast({
+          title: "All Interviews Complete!",
+          description: "Your comprehensive AI profile has been generated successfully.",
+        });
+        
+        // Reset to interview types view to show all completed
+        setMode('types');
+        setSelectedInterviewType(null);
+      } else if (data.nextInterviewType) {
+        // Continue to next interview type automatically
+        toast({
+          title: "Interview Section Complete",
+          description: `Moving to ${data.nextInterviewType} interview...`,
+        });
+        
+        // Automatically start next interview
+        setTimeout(() => {
+          setSelectedInterviewType(data.nextInterviewType);
+          setMode('selection');
+        }, 1500);
+      } else {
+        // Individual interview complete with no next type
+        toast({
+          title: "Interview Complete!",
+          description: "Your interview has been submitted and processed successfully.",
+        });
+      }
+      
+      setIsInterviewConcluded(false);
+    },
+    onError: (error) => {
       toast({
-        title: "Interview Complete!",
-        description: "Your AI profile has been generated successfully.",
+        title: "Submission Failed",
+        description: "There was an issue submitting your interview. Please try again.",
+        variant: "destructive",
       });
-      
-      onClose();
-    }
+    },
   });
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  const processVoiceInterviewMutation = useMutation({
+    mutationFn: async () => {
+      setIsProcessingInterview(true);
+      
+      // Convert conversation history to the format expected by the API
+      const responses = conversationHistory
+        .filter((_, index) => index % 2 === 1) // Get only user responses (odd indices)
+        .map((item, index) => ({
+          question: conversationHistory[index * 2]?.content || `Question ${index + 1}`,
+          answer: item.content
+        }));
 
-  // Handle close
-  const handleClose = () => {
-    if (realtimeAPI.isConnected) {
+      const response = await apiRequest("POST", "/api/interview/complete-voice", {
+        conversationHistory: responses,
+        interviewType: selectedInterviewType
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setIsProcessingInterview(false);
+      setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
+      
       realtimeAPI.disconnect();
-    }
-    setMode('types');
-    setMessages([]);
-    setCurrentAnswer('');
-    setCurrentInterviewSession(null);
-    setCurrentQuestionIndex(0);
-    setIsInterviewConcluded(false);
-    onClose();
-  };
+      setIsInterviewConcluded(false);
+      
+      if (data.allInterviewsCompleted) {
+        // Final completion - show profile generation success and close modal
+        toast({
+          title: "All Interviews Complete!",
+          description: "Your comprehensive AI profile has been generated successfully.",
+        });
+        onClose();
+      } else if (data.nextInterviewType) {
+        // Continue to next interview type automatically
+        toast({
+          title: "Interview Section Complete",
+          description: `Moving to ${data.nextInterviewType} interview...`,
+        });
+        
+        // Automatically start next interview
+        setTimeout(() => {
+          setSelectedInterviewType(data.nextInterviewType);
+          setMode('selection');
+        }, 1500);
+      } else {
+        // Individual interview complete with no next type
+        toast({
+          title: "Interview Complete!",
+          description: "Your voice interview has been processed successfully.",
+        });
+        
+        // Reset to interview types view
+        setMode('types');
+        setSelectedInterviewType(null);
+      }
+    },
+    onError: (error) => {
+      setIsProcessingInterview(false);
+      toast({
+        title: "Processing Failed",
+        description: "There was an issue processing your interview. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleSubmitAnswer = () => {
-    if (!currentAnswer.trim()) return;
-    
-    // Add user's answer to messages
-    setMessages(prev => [...prev, {
+    if (!currentAnswer.trim() || !currentSession) return;
+
+    const answerMessage: InterviewMessage = {
       type: 'answer',
-      content: currentAnswer.trim(),
+      content: currentAnswer,
       timestamp: new Date()
-    }]);
-    
-    respondMutation.mutate(currentAnswer.trim());
+    };
+
+    setMessages(prev => [...prev, answerMessage]);
+    respondMutation.mutate(currentAnswer);
     setCurrentAnswer("");
   };
 
-  const getQuestionCount = (type: 'personal' | 'professional' | 'technical') => {
-    return INTERVIEW_CONFIGS[type].questionCount;
+  const startVoiceInterview = async () => {
+    setIsStartingInterview(true);
+    setMode('voice');
+    setMessages([]);
+    setIsInterviewConcluded(false);
+    setConversationHistory([]);
+    
+    // Show loading message
+    const loadingMessage: InterviewMessage = {
+      type: 'question',
+      content: 'Starting your voice interview... Please wait while I prepare your personalized questions.',
+      timestamp: new Date()
+    };
+    setMessages([loadingMessage]);
+    
+    try {
+      // Start an interview session to get the structured questions
+      const interviewSession = await startInterviewMutation.mutateAsync();
+      
+      // Update with welcome message
+      if (welcomeMessageData?.welcomeMessage) {
+        const welcomeMessage: InterviewMessage = {
+          type: 'question',
+          content: welcomeMessageData.welcomeMessage,
+          timestamp: new Date()
+        };
+        setMessages([welcomeMessage]);
+      }
+      
+      await realtimeAPI.connect({
+        interviewType: selectedInterviewType,
+        questions: interviewSession.questions,
+        interviewSet: interviewSession.interviewSet
+      });
+      
+      setIsStartingInterview(false);
+      toast({
+        title: "Voice Interview Started",
+        description: "You can now speak naturally with the AI interviewer.",
+      });
+    } catch (error) {
+      setIsStartingInterview(false);
+      console.error('Voice interview error:', error);
+      toast({
+        title: "Connection Failed",
+        description: "Could not start voice interview. Please try text mode.",
+        variant: "destructive",
+      });
+      setMode('select');
+    }
   };
 
-  const isInterviewCompleted = (type: 'personal' | 'professional' | 'technical') => {
-    return interviewStatus?.[type] || false;
+  const startTextInterview = () => {
+    setIsStartingInterview(true);
+    setMode('text');
+    setMessages([]);
+    
+    // Show loading message immediately
+    const loadingMessage: InterviewMessage = {
+      type: 'question',
+      content: 'Starting your text interview... Please wait while I prepare your personalized questions.',
+      timestamp: new Date()
+    };
+    setMessages([loadingMessage]);
+    
+    // Start the interview immediately
+    startInterviewMutation.mutate();
   };
 
-  // Render functions
-  const renderInterviewTypes = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <h3 className="text-lg font-semibold mb-2">Complete Your AI Interview</h3>
-        <p className="text-sm text-muted-foreground">
-          Complete all three interview types to generate your comprehensive AI profile
-        </p>
-      </div>
+  const getQuestionCount = (interviewType: string) => {
+    switch (interviewType) {
+      case 'personal': return 5;
+      case 'professional': return 7;
+      case 'technical': return 11;
+      default: return 7;
+    }
+  };
 
-      <div className="space-y-3">
-        {(Object.keys(INTERVIEW_CONFIGS) as Array<keyof typeof INTERVIEW_CONFIGS>).map((type) => {
-          const config = INTERVIEW_CONFIGS[type];
-          const completed = isInterviewCompleted(type);
-          
-          return (
+  const handleClose = () => {
+    if (mode === 'voice') {
+      realtimeAPI.disconnect();
+    }
+    setMode('types');
+    setSelectedInterviewType('');
+    setMessages([]);
+    setCurrentAnswer("");
+    setCurrentSession(null);
+    setIsInterviewConcluded(false);
+    setConversationHistory([]);
+    onClose();
+  };
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, voiceTranscript]);
+
+  useEffect(() => {
+    if (existingSession?.isCompleted && !currentSession) {
+      setCurrentSession(existingSession);
+    }
+  }, [existingSession, currentSession]);
+
+  const renderInterviewTypes = () => {
+    const interviewTypes = interviewTypesData?.interviewTypes || [
+      {
+        type: 'personal',
+        title: 'Personal Interview',
+        description: 'Understanding your personal self, background, and history',
+        completed: false,
+        questions: 5
+      },
+      {
+        type: 'professional',
+        title: 'Professional Interview',
+        description: 'Exploring your career background and professional experience',
+        completed: false,
+        questions: 7
+      },
+      {
+        type: 'technical',
+        title: 'Technical Interview',
+        description: 'Dynamic assessment based on your field - problem solving and IQ evaluation',
+        completed: false,
+        questions: 11
+      }
+    ];
+
+    return (
+      <div className="space-y-6">
+        <div className="text-center space-y-3">
+          <h3 className="text-lg font-semibold">Choose Your Interview</h3>
+          <p className="text-sm text-muted-foreground">
+            Complete all 3 interviews to generate your comprehensive AI profile
+          </p>
+        </div>
+        
+        <div className="space-y-4">
+          {interviewTypes.map((interview) => (
             <Card 
-              key={type}
-              className={`cursor-pointer transition-all hover:shadow-md ${
-                completed ? 'border-green-200 bg-green-50' : 'hover:border-blue-200'
-              }`}
+              key={interview.type}
+              id={`interview-${interview.type}-button`}
+              className={`cursor-pointer hover:bg-accent/50 transition-colors ${interview.completed ? 'border-green-300 bg-green-50' : ''}`}
               onClick={() => {
-                if (!completed) {
-                  setSelectedInterviewType(type);
-                  setMode('selection');
-                }
+                setSelectedInterviewType(interview.type);
+                setMode('selection');
               }}
             >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <h4 className="font-medium">{config.title}</h4>
-                      {completed && (
-                        <Badge variant="default" className="bg-green-600">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Completed
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {config.description}
-                    </p>
-                    <Badge variant="outline">
-                      {config.questionCount} questions
-                    </Badge>
+              <CardContent className="flex items-center justify-between p-4">
+                <div className="flex items-center space-x-4">
+                  <div className="flex-shrink-0">
+                    {interview.type === 'personal' && <User className="h-8 w-8 text-blue-600" />}
+                    {interview.type === 'professional' && <Briefcase className="h-8 w-8 text-green-600" />}
+                    {interview.type === 'technical' && <Target className="h-8 w-8 text-purple-600" />}
                   </div>
-                  {!completed && (
-                    <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex-1">
+                    <h4 className="font-medium flex items-center space-x-2">
+                      <span>{interview.title}</span>
+                      {interview.completed && <CheckCircle className="h-4 w-4 text-green-600" />}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      {interview.description}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {interview.questions} questions
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {interview.completed ? (
+                    <Badge variant="default" className="bg-green-100 text-green-700">
+                      Completed
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">
+                      Start
+                    </Badge>
                   )}
                 </div>
               </CardContent>
             </Card>
-          );
-        })}
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderModeSelection = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <h3 className="text-lg font-semibold mb-2">
-          {INTERVIEW_CONFIGS[selectedInterviewType].title}
-        </h3>
+    <div className="space-y-6">
+      <div className="text-center space-y-3">
+        <h3 className="text-lg font-semibold">Choose Your Interview Style</h3>
         <p className="text-sm text-muted-foreground">
-          Choose your preferred interview format
+          {selectedInterviewType.charAt(0).toUpperCase() + selectedInterviewType.slice(1)} Interview - Select how you'd like to experience your AI interview
         </p>
       </div>
-
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card 
-          className="cursor-pointer transition-all hover:shadow-md hover:border-blue-200"
-          onClick={() => {
-            setMode('text');
-            startInterviewMutation.mutate();
-          }}
+          className={`transition-colors ${
+            isStartingInterview 
+              ? 'opacity-50 cursor-not-allowed' 
+              : 'cursor-pointer hover:bg-accent/50'
+          }`} 
+          onClick={isStartingInterview ? undefined : startVoiceInterview}
         >
-          <CardContent className="p-6 text-center">
-            <MessageCircle className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-            <h4 className="font-medium mb-2">Text Interview</h4>
-            <p className="text-sm text-muted-foreground">
-              Type your responses in a chat-like interface
-            </p>
+          <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
+            {isStartingInterview && mode === 'voice' ? (
+              <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Mic className="h-8 w-8 text-primary" />
+            )}
+            <div className="text-center">
+              <h4 className="font-medium">Voice Interview</h4>
+              <p className="text-sm text-muted-foreground">
+                {isStartingInterview && mode === 'voice' 
+                  ? 'Starting voice interview...' 
+                  : 'Speak naturally with the AI interviewer'
+                }
+              </p>
+            </div>
           </CardContent>
         </Card>
-
+        
         <Card 
-          className="cursor-pointer transition-all hover:shadow-md hover:border-green-200"
-          onClick={() => {
-            setMode('voice');
-            startInterviewMutation.mutate();
-          }}
+          className={`transition-colors ${
+            isStartingInterview 
+              ? 'opacity-50 cursor-not-allowed' 
+              : 'cursor-pointer hover:bg-accent/50'
+          }`} 
+          onClick={isStartingInterview ? undefined : startTextInterview}
         >
-          <CardContent className="p-6 text-center">
-            <Mic className="h-12 w-12 text-green-600 mx-auto mb-4" />
-            <h4 className="font-medium mb-2">Voice Interview</h4>
-            <p className="text-sm text-muted-foreground">
-              Speak naturally with our AI interviewer
-            </p>
+          <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
+            {isStartingInterview && mode === 'text' ? (
+              <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <MessageCircle className="h-8 w-8 text-primary" />
+            )}
+            <div className="text-center">
+              <h4 className="font-medium">Text Interview</h4>
+              <p className="text-sm text-muted-foreground">
+                {isStartingInterview && mode === 'text' 
+                  ? 'Preparing interview questions...' 
+                  : 'Type your responses at your own pace'
+                }
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
-
-      <div className="text-center pt-4">
+      
+      <div className="flex justify-start">
         <Button variant="outline" onClick={() => setMode('types')}>
           ← Back to Interview Types
         </Button>
@@ -334,11 +673,9 @@ export const InterviewModal = memo(({ isOpen, onClose, interviewType: propInterv
   const renderTextInterview = () => (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">
-          {INTERVIEW_CONFIGS[selectedInterviewType].title}
-        </h3>
+        <h3 className="text-lg font-semibold">Text Interview</h3>
         <Badge variant="outline">
-          Question {currentQuestionIndex + 1} of {getQuestionCount(selectedInterviewType)}
+          Question {currentQuestionIndex + 1} of {currentSession?.sessionData?.questions?.length || getQuestionCount(selectedInterviewType)}
         </Badge>
       </div>
       
@@ -368,6 +705,7 @@ export const InterviewModal = memo(({ isOpen, onClose, interviewType: propInterv
           </div>
         ))}
         
+        {/* Loading indicator when processing responses */}
         {(respondMutation.isPending || startInterviewMutation.isPending) && (
           <div className="p-3 rounded-lg bg-gray-50 border-l-4 border-gray-400">
             <div className="flex items-start space-x-2">
@@ -384,7 +722,7 @@ export const InterviewModal = memo(({ isOpen, onClose, interviewType: propInterv
         <div ref={messagesEndRef} />
       </div>
 
-      {currentInterviewSession?.isCompleted || isInterviewConcluded ? (
+      {currentSession?.isCompleted ? (
         <div className="space-y-4">
           <Card className="border-green-200 bg-green-50">
             <CardContent className="p-4">
@@ -393,23 +731,10 @@ export const InterviewModal = memo(({ isOpen, onClose, interviewType: propInterv
                 <span className="text-sm font-medium text-green-700">Interview Complete!</span>
               </div>
               <p className="text-sm text-green-600 mt-1">
-                Your AI profile has been generated successfully. You can now explore job opportunities.
+                Your AI profile has been generated successfully. You can now explore job opportunities and apply to positions.
               </p>
             </CardContent>
           </Card>
-          
-          <div className="flex justify-between">
-            <Button variant="outline" onClick={() => setMode('types')}>
-              ← Back to Interview Types
-            </Button>
-            <Button 
-              onClick={() => processTextInterviewMutation.mutate()}
-              disabled={processTextInterviewMutation.isPending}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {processTextInterviewMutation.isPending ? 'Submitting...' : 'Complete Interview'}
-            </Button>
-          </div>
         </div>
       ) : (
         <div className="space-y-3">
@@ -430,12 +755,22 @@ export const InterviewModal = memo(({ isOpen, onClose, interviewType: propInterv
               ← Back to Interview Types
             </Button>
             <div className="flex space-x-2">
-              <Button 
-                onClick={handleSubmitAnswer}
-                disabled={!currentAnswer.trim() || respondMutation.isPending}
-              >
-                {respondMutation.isPending ? 'Processing...' : 'Submit Answer'}
-              </Button>
+              {isInterviewConcluded ? (
+                <Button 
+                  onClick={() => processTextInterviewMutation.mutate()}
+                  disabled={processTextInterviewMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {processTextInterviewMutation.isPending ? 'Submitting...' : 'Submit Interview'}
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleSubmitAnswer}
+                  disabled={!currentAnswer.trim() || respondMutation.isPending}
+                >
+                  {respondMutation.isPending ? 'Processing...' : 'Submit Answer'}
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -447,63 +782,86 @@ export const InterviewModal = memo(({ isOpen, onClose, interviewType: propInterv
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Voice Interview</h3>
-        <Badge variant="outline">
-          {getQuestionCount(selectedInterviewType)} questions
-        </Badge>
+        <div className="flex items-center space-x-2">
+          {realtimeAPI.isConnected && (
+            <Badge variant="default" className="flex items-center space-x-1">
+              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+              <span>Live</span>
+            </Badge>
+          )}
+        </div>
       </div>
 
-      {/* Connection Status */}
       <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
         <CardContent className="p-6">
           <div className="text-center space-y-4">
-            <div className={`h-20 w-20 mx-auto rounded-full border-4 flex items-center justify-center transition-all duration-300 ${
-              realtimeAPI.isConnected 
-                ? 'border-green-500 bg-green-100' 
-                : 'border-gray-300 bg-gray-100'
-            }`}>
-              {realtimeAPI.isConnected ? (
-                <Mic className="h-8 w-8 text-green-600" />
-              ) : (
-                <MicOff className="h-8 w-8 text-gray-600" />
+            <div className="relative">
+              <div className={`h-20 w-20 mx-auto rounded-full border-4 flex items-center justify-center transition-all duration-300 ${
+                realtimeAPI.isConnected 
+                  ? 'border-green-500 bg-green-100 animate-pulse' 
+                  : 'border-gray-300 bg-gray-100'
+              }`}>
+                {realtimeAPI.isConnected ? (
+                  <Mic className="h-8 w-8 text-green-600" />
+                ) : (
+                  <MicOff className="h-8 w-8 text-gray-600" />
+                )}
+              </div>
+              {realtimeAPI.isConnected && (
+                <div className="absolute inset-0 h-20 w-20 mx-auto rounded-full border-4 border-green-500 animate-ping opacity-30" />
               )}
             </div>
             
             <div className="space-y-2">
               <p className="font-medium">
-                {realtimeAPI.isConnected ? 'Voice Interview Active' : 
-                 realtimeAPI.isConnecting ? 'Connecting...' : 
-                 'Ready to Connect'}
+                {isStartingInterview ? 'Starting Interview...' : realtimeAPI.isConnected ? 'AI Interview Active' : 'Connecting...'}
               </p>
               <p className="text-sm text-muted-foreground">
-                {realtimeAPI.isConnected ? 'Speak naturally with the AI interviewer' :
-                 realtimeAPI.isConnecting ? 'Setting up your voice interview...' :
-                 'Click connect to start your voice interview'}
+                {isStartingInterview 
+                  ? 'Preparing your personalized questions...'
+                  : realtimeAPI.isConnected 
+                    ? `Speak naturally - the AI will guide you through ${getQuestionCount(selectedInterviewType)} ${selectedInterviewType} questions`
+                    : 'Setting up your voice interview...'
+                }
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Conversation History */}
+      {voiceTranscript && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-2">
+              <User className="h-4 w-4 mt-1 text-blue-600" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-blue-800">AI Interviewer</p>
+                <p className="text-sm text-blue-700">{voiceTranscript}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="h-48 overflow-y-auto space-y-2 p-2 border rounded-lg bg-gray-50">
-        {realtimeAPI.conversation.map((item, index) => (
+        {conversationHistory.slice(-4).map((item, index) => (
           <Card key={index} className={`${
-            item.type === 'assistant' 
+            item.role === 'assistant' 
               ? 'border-blue-200 bg-blue-50' 
               : 'border-green-200 bg-green-50 ml-8'
           }`}>
             <CardContent className="p-3">
               <div className="flex items-start space-x-2">
-                {item.type === 'assistant' ? (
+                {item.role === 'assistant' ? (
                   <User className="h-4 w-4 mt-1 text-blue-600" />
                 ) : (
                   <MessageCircle className="h-4 w-4 mt-1 text-green-600" />
                 )}
                 <div className="flex-1">
-                  <p className={`text-sm font-medium ${item.type === 'assistant' ? 'text-blue-800' : 'text-green-800'}`}>
-                    {item.type === 'assistant' ? 'AI Interviewer' : 'You'}
+                  <p className={`text-sm font-medium ${item.role === 'assistant' ? 'text-blue-800' : 'text-green-800'}`}>
+                    {item.role === 'assistant' ? 'AI Interviewer' : 'You'}
                   </p>
-                  <p className={`text-sm ${item.type === 'assistant' ? 'text-blue-700' : 'text-green-700'}`}>
+                  <p className={`text-sm ${item.role === 'assistant' ? 'text-blue-700' : 'text-green-700'}`}>
                     {item.content}
                   </p>
                 </div>
@@ -513,47 +871,59 @@ export const InterviewModal = memo(({ isOpen, onClose, interviewType: propInterv
         ))}
       </div>
 
-      {/* Controls */}
+      {currentSession?.isCompleted && (
+        <div className="space-y-4">
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <div className="h-2 w-2 bg-green-500 rounded-full" />
+                <span className="text-sm font-medium text-green-700">Voice Interview Complete!</span>
+              </div>
+              <p className="text-sm text-green-600 mt-1">
+                Your AI profile has been generated successfully.
+              </p>
+            </CardContent>
+          </Card>
+
+
+        </div>
+      )}
+
       <div className="flex justify-between">
         <Button variant="outline" onClick={() => setMode('types')}>
           ← Back to Interview Types
         </Button>
         <div className="space-x-2">
-          {!realtimeAPI.isConnected && !realtimeAPI.isConnecting ? (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setMode('text');
-                  setMessages([]);
-                }}
-              >
-                Switch to Text
-              </Button>
-              <Button
-                onClick={() => {
-                  if (currentInterviewSession) {
-                    realtimeAPI.connect({
-                      interviewType: selectedInterviewType,
-                      questions: currentInterviewSession.questions || [],
-                      interviewSet: currentInterviewSession.interviewSet
-                    });
-                  }
-                }}
-                disabled={!currentInterviewSession || startInterviewMutation.isPending}
-              >
-                {startInterviewMutation.isPending ? 'Starting...' : 'Connect Voice Interview'}
-              </Button>
-            </>
-          ) : (
+          {realtimeAPI.isConnected && (
             <Button
-              variant="destructive"
+              variant={isInterviewConcluded ? "default" : "destructive"}
               onClick={() => {
-                realtimeAPI.disconnect();
+                if (isInterviewConcluded) {
+                  processVoiceInterviewMutation.mutate();
+                } else {
+                  // Just hang up
+                  realtimeAPI.disconnect();
+                  setMode('selection');
+                }
               }}
+              disabled={isProcessingInterview || processVoiceInterviewMutation.isPending}
             >
-              <PhoneOff className="h-4 w-4 mr-2" />
-              Hang Up
+              {isProcessingInterview || processVoiceInterviewMutation.isPending ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Processing Interview...
+                </>
+              ) : isInterviewConcluded ? (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Submit Interview
+                </>
+              ) : (
+                <>
+                  <PhoneOff className="h-4 w-4 mr-2" />
+                  Hang Up
+                </>
+              )}
             </Button>
           )}
         </div>
@@ -575,6 +945,4 @@ export const InterviewModal = memo(({ isOpen, onClose, interviewType: propInterv
       </DialogContent>
     </Dialog>
   );
-});
-
-InterviewModal.displayName = 'InterviewModal';
+}

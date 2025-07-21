@@ -267,10 +267,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
-      return await apiRequest("/api/candidate/profile", {
-        method: "PUT",
-        body: JSON.stringify(data)
-      });
+      return await apiRequest("PUT", "/api/candidate/profile", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
@@ -281,31 +278,17 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
       onClose();
     },
     onError: (error: Error) => {
-      console.error('Profile update error:', error);
-      
-      // Check for authentication errors or JSON parsing errors (often means session expired)
-      if (isUnauthorizedError(error) || error.message.includes('Unexpected token') || error.message.includes('DOCTYPE')) {
+      if (isUnauthorizedError(error)) {
         toast({
-          title: "Session Expired",
-          description: "Your session has expired. Please log in again...",
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
         setTimeout(() => {
           window.location.href = "/api/login";
-        }, 1000);
+        }, 500);
         return;
       }
-      
-      // Handle validation errors
-      if (error.message.includes('Validation failed') || error.message.includes('validation')) {
-        toast({
-          title: "Validation Error",
-          description: "Please check all required fields and try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
       toast({
         title: "Error updating profile",
         description: error.message,

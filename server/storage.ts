@@ -30,7 +30,7 @@ export interface IStorage {
 
   // Applicant profile operations
   getApplicantProfile(userId: string): Promise<ApplicantProfile | undefined>;
-  upsertApplicantProfile(profile: any): Promise<ApplicantProfile>;
+  upsertApplicantProfile(profile: InsertApplicantProfile): Promise<ApplicantProfile>;
   updateProfileCompletion(userId: string): Promise<void>;
 
 
@@ -50,7 +50,6 @@ export interface IStorage {
   // Interview operations
   createInterviewSession(session: InsertInterviewSession): Promise<InterviewSession>;
   getInterviewSession(userId: string, interviewType?: string): Promise<InterviewSession | undefined>;
-  getInterviewHistory(userId: string): Promise<InterviewSession[]>;
   updateInterviewSession(id: number, data: Partial<InterviewSession>): Promise<void>;
   updateInterviewCompletion(userId: string, interviewType: string): Promise<void>;
   getInterviewContext(userId: string, currentInterviewType: string): Promise<any>;
@@ -99,33 +98,20 @@ export class DatabaseStorage implements IStorage {
     return profile;
   }
 
-  async upsertApplicantProfile(profileData: any): Promise<ApplicantProfile> {
+  async upsertApplicantProfile(profileData: InsertApplicantProfile): Promise<ApplicantProfile> {
     const existing = await this.getApplicantProfile(profileData.userId);
     
     if (existing) {
-      // For updates, only update fields that are provided
-      const updateData = { ...profileData, updatedAt: new Date() };
-      delete updateData.id; // Don't try to update the ID
-      
       const [profile] = await db
         .update(applicantProfiles)
-        .set(updateData)
+        .set({ ...profileData, updatedAt: new Date() })
         .where(eq(applicantProfiles.userId, profileData.userId))
         .returning();
       return profile;
     } else {
-      // For new profiles, use defaults for missing fields
-      const insertData = {
-        userId: profileData.userId,
-        ...profileData,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      delete insertData.id; // Don't include ID for inserts
-      
       const [profile] = await db
         .insert(applicantProfiles)
-        .values(insertData)
+        .values(profileData)
         .returning();
       return profile;
     }
@@ -344,15 +330,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(interviewSessions.createdAt))
       .limit(1);
     return session;
-  }
-
-  async getInterviewHistory(userId: string): Promise<InterviewSession[]> {
-    const sessions = await db
-      .select()
-      .from(interviewSessions)
-      .where(eq(interviewSessions.userId, userId))
-      .orderBy(interviewSessions.createdAt);
-    return sessions;
   }
 
   async updateInterviewSession(id: number, data: Partial<InterviewSession>): Promise<void> {

@@ -14,43 +14,6 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
-// Fallback questions in case AI generation fails
-function getFallbackQuestions(interviewType: string): { question: string }[] {
-  const fallbackQuestionSets: Record<string, { question: string }[]> = {
-    personal: [
-      { question: "Tell me about your background and what led you to your current career path." },
-      { question: "What are your core values and how do they influence your work?" },
-      { question: "Describe a significant challenge you've overcome in your personal or professional life." },
-      { question: "What motivates you to get up and work each day?" },
-      { question: "How do you handle stress and maintain work-life balance?" }
-    ],
-    professional: [
-      { question: "Walk me through your current role and key responsibilities." },
-      { question: "What has been your greatest professional achievement so far?" },
-      { question: "Describe a time when you had to work with a difficult team member or client." },
-      { question: "How do you stay current with industry trends and developments?" },
-      { question: "What are your career goals for the next 3-5 years?" },
-      { question: "Tell me about a project you led from start to finish." },
-      { question: "How do you prioritize tasks when everything seems urgent?" }
-    ],
-    technical: [
-      { question: "Describe your approach to problem-solving when faced with a complex challenge." },
-      { question: "How do you ensure the quality and reliability of your work?" },
-      { question: "Tell me about a time when you had to learn a new technology or skill quickly." },
-      { question: "Explain a technical concept you're familiar with to someone without a technical background." },
-      { question: "How do you handle debugging when something isn't working as expected?" },
-      { question: "Describe your process for staying organized and managing multiple projects." },
-      { question: "What tools and methods do you use to collaborate with others?" },
-      { question: "How do you approach testing and validation in your work?" },
-      { question: "Tell me about a time when you had to make a decision with incomplete information." },
-      { question: "How do you balance speed and accuracy in your work?" },
-      { question: "Describe a situation where you had to explain a complex idea to stakeholders." }
-    ]
-  };
-  
-  return fallbackQuestionSets[interviewType] || fallbackQuestionSets.personal;
-}
-
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -98,64 +61,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put('/api/candidate/profile', isAuthenticated, async (req: any, res) => {
-    // Ensure we always return JSON, even if there's an unexpected error
-    res.setHeader('Content-Type', 'application/json');
-    
     try {
       const userId = req.user.claims.sub;
       
-      console.log('📝 Profile update request for user:', userId);
-      console.log('📝 Request body:', JSON.stringify(req.body, null, 2));
+      // Preprocess the data to handle empty date fields
+      const processedBody = { ...req.body };
       
-      // Validate that we have required data
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-      
-      if (!req.body || typeof req.body !== 'object') {
-        return res.status(400).json({ message: "Invalid request body" });
-      }
-      
-      // Simple validation for basic profile form fields
-      const allowedFields = [
-        'age', 'education', 'university', 'degree', 'location', 
-        'currentRole', 'company', 'yearsOfExperience', 'summary'
-      ];
-      
-      const profileUpdates: any = { userId };
-      
-      // Only include allowed fields and convert undefined/empty values properly
-      Object.keys(req.body).forEach(key => {
-        if (allowedFields.includes(key)) {
-          const value = req.body[key];
-          if (value !== undefined && value !== '') {
-            profileUpdates[key] = value;
-          }
+      // Convert empty date strings to null
+      const dateFields = ['birthdate'];
+      dateFields.forEach(field => {
+        if (processedBody[field] === '') {
+          processedBody[field] = null;
         }
       });
+      
+      // Convert empty arrays to null where appropriate
+      const arrayFields = ['jobTypes', 'jobTitles', 'jobCategories', 'preferredWorkCountries', 'workExperiences', 'languages', 'degrees', 'highSchools', 'certifications', 'trainingCourses', 'otherUrls'];
+      arrayFields.forEach(field => {
+        if (Array.isArray(processedBody[field]) && processedBody[field].length === 0) {
+          processedBody[field] = null;
+        }
+      });
+      
+      const profileData = insertApplicantProfileSchema.parse({
+        ...processedBody,
+        userId
+      });
 
-      console.log('✅ Profile data prepared for update:', profileUpdates);
+      const profile = await storage.upsertApplicantProfile(profileData);
+      await storage.updateProfileCompletion(userId);
       
-      // Wrap storage operations in try-catch to handle any database errors
-      let profile;
-      try {
-        profile = await storage.upsertApplicantProfile(profileUpdates);
-        await storage.updateProfileCompletion(userId);
-      } catch (storageError) {
-        console.error("❌ Storage error:", storageError);
-        return res.status(500).json({ 
-          message: "Database error", 
-          error: storageError instanceof Error ? storageError.message : 'Unknown storage error'
-        });
-      }
-      
-      console.log('✅ Profile updated successfully');
-      return res.status(200).json(profile);
+      res.json(profile);
     } catch (error) {
-      console.error("❌ Error updating profile:", error);
-      
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      return res.status(500).json({ message: "Failed to update profile", error: errorMessage });
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
     }
   });
 
@@ -256,21 +195,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create ephemeral token for Realtime API
-  app.post("/api/realtime/session", isAuthenticated, async (req: any, res) => {
+  app.post("/api/realtime/session", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const { interviewType, userProfile } = req.body;
-      
-      console.log(`Creating realtime session for user ${userId}, interview type: ${interviewType}`);
-      
-      // Get user profile data if not provided
-      let profileData = userProfile;
-      if (!profileData) {
-        const user = await storage.getUser(userId);
-        const profile = await storage.getApplicantProfile(userId);
-        profileData = { ...user, ...profile };
-      }
-      
       const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
         method: "POST",
         headers: {
@@ -279,31 +205,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         body: JSON.stringify({
           model: "gpt-4o-realtime-preview-2024-10-01",
-          voice: "shimmer", // Changed to shimmer voice as requested by user
-          modalities: ["text", "audio"],
-          instructions: `You are conducting a ${interviewType || 'personal'} interview. Use the candidate's profile information to ask personalized questions.`,
+          voice: "alloy",
         }),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`OpenAI API error: ${response.status} - ${errorText}`);
         throw new Error(`OpenAI API error: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('Realtime session created successfully');
-      
-      res.json({
-        ...data,
-        userProfile: profileData
-      });
+      res.json(data);
     } catch (error) {
       console.error("Error creating realtime session:", error);
-      res.status(500).json({ 
-        message: "Failed to create realtime session",
-        error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
-      });
+      res.status(500).json({ message: "Failed to create realtime session" });
     }
   });
 
@@ -368,13 +282,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const interviewType = req.params.type;
-      
-      console.log(`Starting ${interviewType} interview for user ${userId}`);
-      
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
-      
-      console.log('User data retrieved:', { userId, hasProfile: !!profile });
 
       // Validate interview type
       if (!['personal', 'professional', 'technical'].includes(interviewType)) {
@@ -383,53 +292,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get resume content from profile
       const resumeContent = profile?.resumeContent || null;
-      console.log('Resume content available:', !!resumeContent);
 
       // Get context from previous interviews to maintain continuity
-      console.log('Getting interview context...');
       const interviewContext = await storage.getInterviewContext(userId, interviewType);
-      console.log('Interview context retrieved:', { hasContext: !!interviewContext });
 
       // Generate the specific interview set with context
-      console.log(`Generating ${interviewType} interview questions...`);
       let currentSet;
-      try {
-        if (interviewType === 'personal') {
-          currentSet = await aiInterviewService.generatePersonalInterview({
-            ...user,
-            ...profile
-          }, resumeContent || undefined);
-        } else if (interviewType === 'professional') {
-          currentSet = await aiInterviewService.generateProfessionalInterview({
-            ...user,
-            ...profile
-          }, resumeContent || undefined, interviewContext);
-        } else if (interviewType === 'technical') {
-          currentSet = await aiInterviewService.generateTechnicalInterview({
-            ...user,
-            ...profile
-          }, resumeContent || undefined, interviewContext);
-        }
-      } catch (aiError) {
-        console.warn(`AI interview generation failed for ${interviewType}:`, aiError);
-        currentSet = null; // Will trigger fallback
+      if (interviewType === 'personal') {
+        currentSet = await aiInterviewService.generatePersonalInterview({
+          ...user,
+          ...profile
+        }, resumeContent);
+      } else if (interviewType === 'professional') {
+        currentSet = await aiInterviewService.generateProfessionalInterview({
+          ...user,
+          ...profile
+        }, resumeContent, interviewContext);
+      } else if (interviewType === 'technical') {
+        currentSet = await aiInterviewService.generateTechnicalInterview({
+          ...user,
+          ...profile
+        }, resumeContent, interviewContext);
       }
-      
-      console.log('Interview set generated:', { hasSet: !!currentSet, questionCount: currentSet?.questions?.length || 0 });
 
       if (!currentSet) {
-        console.log(`No interview set generated for ${interviewType}, creating fallback questions`);
-        // Create fallback questions if AI generation fails
-        const fallbackQuestions = getFallbackQuestions(interviewType);
-        currentSet = {
-          questions: fallbackQuestions,
-          insights: "Generated using fallback questions due to AI service unavailability",
-          conversationStyle: "Professional and straightforward",
-          keyThemes: ["General background questions"]
-        };
+        throw new Error(`Interview set not found for type: ${interviewType}`);
       }
 
-      console.log('Creating interview session...');
       const session = await storage.createInterviewSession({
         userId,
         interviewType,
@@ -442,8 +331,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         isCompleted: false
       });
-      
-      console.log('Interview session created:', { sessionId: session.id });
 
       // Return the first question for text interview
       const firstQuestion = currentSet.questions[0]?.question || "Let's begin this interview.";
@@ -455,12 +342,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstQuestion 
       });
     } catch (error) {
-      console.error("Error starting typed interview:", error);
-      console.error("Error details:", (error as Error).message, (error as Error).stack);
-      res.status(500).json({ 
-        message: "Failed to start interview",
-        error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
-      });
+      console.error("Error starting interview:", error);
+      res.status(500).json({ message: "Failed to start interview" });
     }
   });
 
@@ -475,17 +358,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const resumeContent = profile?.resumeContent || null;
 
       // Use AI Agent 1 to generate personalized interview questions (legacy personal interview)
-      let questions;
-      try {
-        questions = await aiInterviewService.generateInitialQuestions({
-          ...user,
-          ...profile
-        }, resumeContent || undefined);
-      } catch (aiError) {
-        console.warn('AI question generation failed, using fallback questions:', aiError);
-        // Use fallback questions if AI service fails
-        questions = getFallbackQuestions('personal');
-      }
+      const questions = await aiInterviewService.generateInitialQuestions({
+        ...user,
+        ...profile
+      }, resumeContent);
 
       const session = await storage.createInterviewSession({
         userId,
@@ -503,12 +379,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstQuestion 
       });
     } catch (error) {
-      console.error("Error starting legacy interview:", error);
-      console.error("Error details:", (error as Error).message, (error as Error).stack);
-      res.status(500).json({ 
-        message: "Failed to start interview",
-        error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
-      });
+      console.error("Error starting interview:", error);
+      res.status(500).json({ message: "Failed to start interview" });
     }
   });
 
@@ -1772,52 +1644,6 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     } catch (error) {
       console.error('Error clearing tracking:', error);
       res.status(500).json({ message: 'Failed to clear tracking' });
-    }
-  });
-
-  // OpenAI ephemeral token endpoint for Realtime API
-  app.post('/api/openai/ephemeral-token', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const { interviewType, userProfile } = req.body;
-      
-      console.log('🎤 Creating OpenAI ephemeral token for voice interview');
-      console.log('📋 Request details:', { userId, interviewType, hasUserProfile: !!userProfile });
-      
-      // Get user profile data if not provided
-      let profileData = userProfile;
-      if (!profileData) {
-        const user = await storage.getUser(userId);
-        const profile = await storage.getApplicantProfile(userId);
-        profileData = { ...user, ...profile };
-      }
-      
-      const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-realtime-preview-2024-10-01",
-          voice: "shimmer",
-          instructions: `You are conducting a ${interviewType || 'personal'} interview. Be conversational, engaging, and professional.`
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ OpenAI ephemeral token request failed:', response.status, errorText);
-        throw new Error(`OpenAI API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('✅ Ephemeral token created successfully');
-      
-      res.json(data);
-    } catch (error) {
-      console.error("❌ Error creating ephemeral token:", error);
-      res.status(500).json({ message: "Failed to create voice session token" });
     }
   });
 
