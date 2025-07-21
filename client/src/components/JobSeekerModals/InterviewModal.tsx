@@ -456,12 +456,42 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     } catch (error) {
       setIsStartingInterview(false);
       console.error('Voice interview error:', error);
+      
+      // Provide more specific error messaging
+      let errorMessage = "Could not start voice interview. Please try text mode.";
+      if (error?.message?.includes('OpenAI API error')) {
+        errorMessage = "OpenAI voice services are temporarily unavailable. Please use text interview.";
+      } else if (error?.message?.includes('Failed to get ephemeral token')) {
+        errorMessage = "Voice interview setup failed. Please try the text interview instead.";
+      }
+      
       toast({
-        title: "Connection Failed",
-        description: "Could not start voice interview. Please try text mode.",
+        title: "Voice Interview Unavailable",
+        description: errorMessage,
         variant: "destructive",
       });
-      setMode('select');
+      
+      // Automatically start text interview instead
+      toast({
+        title: "Starting Text Interview",
+        description: "We've switched you to text mode so you can continue.",
+      });
+      
+      setMode('text');
+      setMessages([]);
+      setIsInterviewConcluded(false);
+      setConversationHistory([]);
+      
+      // Show loading message for text interview
+      const loadingMessage: InterviewMessage = {
+        type: 'question',
+        content: 'Starting your text interview... Please wait while I prepare your personalized questions.',
+        timestamp: new Date()
+      };
+      setMessages([loadingMessage]);
+      
+      // Start text interview automatically
+      startInterviewMutation.mutate();
     }
   };
 

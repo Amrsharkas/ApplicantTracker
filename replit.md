@@ -149,6 +149,7 @@ Changelog:
 - July 19, 2025. Removed congratulations message from dashboard and replaced with one-time toast notification that appears only when users first complete their interview and reach the dashboard. Uses localStorage to prevent showing the same message on subsequent visits, improving user experience by reducing repetitive messaging
 - July 19, 2025. Updated Applications modal to use direct "Status" field from "platojobapplications" Airtable table instead of calculating status through cross-table lookups. System now reads status directly from Airtable with smart normalization (accepted/approved/hired → accepted, pending/under review → pending, denied/rejected → denied, closed/cancelled → closed) providing more accurate and manageable application status tracking
 - July 21, 2025. Fixed critical profile update JSON parsing error caused by incorrect API request format in ComprehensiveProfileModal. Updated apiRequest calls to use proper signature with method and body in options object instead of separate parameters, resolving "Unexpected token '<', DOCTYPE..." errors
+- July 21, 2025. Enhanced voice interview error handling with automatic fallback to text mode. When voice interview connection fails (due to OpenAI realtime API limitations), system now provides better error messages and seamlessly switches users to text interview mode to ensure interview completion
 ```
 
 ## User Preferences
