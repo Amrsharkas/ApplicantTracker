@@ -809,15 +809,15 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     </div>
   );
 
-  const renderVoiceInterview = () => {
-    // Auto-start voice interview when entering voice mode
-    useEffect(() => {
-      if (!realtimeAPI.isConnecting && !realtimeAPI.isConnected && !isStartingInterview) {
-        console.log('🚀 Auto-starting voice interview on mode entry...');
-        startVoiceInterview();
-      }
-    }, []);
+  // Auto-start voice interview when entering voice mode
+  useEffect(() => {
+    if (mode === 'voice' && !realtimeAPI.isConnecting && !realtimeAPI.isConnected && !isStartingInterview) {
+      console.log('🚀 Auto-starting voice interview on mode entry...');
+      startVoiceInterview();
+    }
+  }, [mode, realtimeAPI.isConnecting, realtimeAPI.isConnected, isStartingInterview]);
 
+  const renderVoiceInterview = () => {
     return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
