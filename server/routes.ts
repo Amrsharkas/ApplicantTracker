@@ -14,6 +14,43 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
+// Fallback questions in case AI generation fails
+function getFallbackQuestions(interviewType: string) {
+  const fallbackQuestionSets = {
+    personal: [
+      { question: "Tell me about your background and what led you to your current career path." },
+      { question: "What are your core values and how do they influence your work?" },
+      { question: "Describe a significant challenge you've overcome in your personal or professional life." },
+      { question: "What motivates you to get up and work each day?" },
+      { question: "How do you handle stress and maintain work-life balance?" }
+    ],
+    professional: [
+      { question: "Walk me through your current role and key responsibilities." },
+      { question: "What has been your greatest professional achievement so far?" },
+      { question: "Describe a time when you had to work with a difficult team member or client." },
+      { question: "How do you stay current with industry trends and developments?" },
+      { question: "What are your career goals for the next 3-5 years?" },
+      { question: "Tell me about a project you led from start to finish." },
+      { question: "How do you prioritize tasks when everything seems urgent?" }
+    ],
+    technical: [
+      { question: "Describe your approach to problem-solving when faced with a complex challenge." },
+      { question: "How do you ensure the quality and reliability of your work?" },
+      { question: "Tell me about a time when you had to learn a new technology or skill quickly." },
+      { question: "Explain a technical concept you're familiar with to someone without a technical background." },
+      { question: "How do you handle debugging when something isn't working as expected?" },
+      { question: "Describe your process for staying organized and managing multiple projects." },
+      { question: "What tools and methods do you use to collaborate with others?" },
+      { question: "How do you approach testing and validation in your work?" },
+      { question: "Tell me about a time when you had to make a decision with incomplete information." },
+      { question: "How do you balance speed and accuracy in your work?" },
+      { question: "Describe a situation where you had to explain a complex idea to stakeholders." }
+    ]
+  };
+  
+  return fallbackQuestionSets[interviewType] || fallbackQuestionSets.personal;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -306,8 +343,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const interviewType = req.params.type;
+      
+      console.log(`Starting ${interviewType} interview for user ${userId}`);
+      
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
+      
+      console.log('User data retrieved:', { userId, hasProfile: !!profile });
 
       // Validate interview type
       if (!['personal', 'professional', 'technical'].includes(interviewType)) {
@@ -316,11 +358,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get resume content from profile
       const resumeContent = profile?.resumeContent || null;
+      console.log('Resume content available:', !!resumeContent);
 
       // Get context from previous interviews to maintain continuity
+      console.log('Getting interview context...');
       const interviewContext = await storage.getInterviewContext(userId, interviewType);
+      console.log('Interview context retrieved:', { hasContext: !!interviewContext });
 
       // Generate the specific interview set with context
+      console.log(`Generating ${interviewType} interview questions...`);
       let currentSet;
       if (interviewType === 'personal') {
         currentSet = await aiInterviewService.generatePersonalInterview({
@@ -338,11 +384,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...profile
         }, resumeContent, interviewContext);
       }
+      
+      console.log('Interview set generated:', { hasSet: !!currentSet, questionCount: currentSet?.questions?.length || 0 });
 
       if (!currentSet) {
-        throw new Error(`Interview set not found for type: ${interviewType}`);
+        console.log(`No interview set generated for ${interviewType}, creating fallback questions`);
+        // Create fallback questions if AI generation fails
+        const fallbackQuestions = getFallbackQuestions(interviewType);
+        currentSet = {
+          questions: fallbackQuestions,
+          insights: "Generated using fallback questions due to AI service unavailability",
+          conversationStyle: "Professional and straightforward",
+          keyThemes: ["General background questions"]
+        };
       }
 
+      console.log('Creating interview session...');
       const session = await storage.createInterviewSession({
         userId,
         interviewType,
@@ -355,6 +412,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         isCompleted: false
       });
+      
+      console.log('Interview session created:', { sessionId: session.id });
 
       // Return the first question for text interview
       const firstQuestion = currentSet.questions[0]?.question || "Let's begin this interview.";
@@ -366,8 +425,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstQuestion 
       });
     } catch (error) {
-      console.error("Error starting interview:", error);
-      res.status(500).json({ message: "Failed to start interview" });
+      console.error("Error starting typed interview:", error);
+      console.error("Error details:", error.message, error.stack);
+      res.status(500).json({ 
+        message: "Failed to start interview",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 
@@ -403,8 +466,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstQuestion 
       });
     } catch (error) {
-      console.error("Error starting interview:", error);
-      res.status(500).json({ message: "Failed to start interview" });
+      console.error("Error starting legacy interview:", error);
+      console.error("Error details:", error.message, error.stack);
+      res.status(500).json({ 
+        message: "Failed to start interview",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 
