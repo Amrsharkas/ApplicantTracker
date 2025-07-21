@@ -163,6 +163,15 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
     
     setIsConnecting(true);
     
+    // Set a timeout for the connection attempt
+    const connectionTimeout = setTimeout(() => {
+      if (isConnecting) {
+        console.error('Voice connection timeout after 10 seconds');
+        setIsConnecting(false);
+        options.onError?.(new Error('Voice connection timeout - OpenAI Realtime API may be unavailable'));
+      }
+    }, 10000); // 10 second timeout
+    
     try {
       await initializeAudio();
       
@@ -193,6 +202,9 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       
       ws.onopen = () => {
         console.log('WebSocket connected to OpenAI Realtime API');
+        
+        // Clear the connection timeout since we've connected successfully
+        clearTimeout(connectionTimeout);
         
         // Build enhanced instructions with user profile
         const profileContext = options.userProfile ? `
@@ -295,6 +307,7 @@ Begin by greeting the candidate warmly and asking your first question based on t
       
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        clearTimeout(connectionTimeout);
         options.onError?.(new Error('WebSocket connection failed'));
         setIsConnecting(false);
         setIsConnected(false);
@@ -302,12 +315,14 @@ Begin by greeting the candidate warmly and asking your first question based on t
       
       ws.onclose = () => {
         console.log('WebSocket connection closed');
+        clearTimeout(connectionTimeout);
         setIsConnected(false);
         stopRecording();
       };
       
     } catch (error) {
       console.error('Error connecting to OpenAI Realtime API:', error);
+      clearTimeout(connectionTimeout);
       setIsConnecting(false);
       options.onError?.(error as Error);
     }

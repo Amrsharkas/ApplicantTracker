@@ -932,6 +932,29 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           ← Back to Interview Types
         </Button>
         <div className="space-x-2">
+          {!realtimeAPI.isConnected && !isStartingInterview && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                realtimeAPI.disconnect();
+                setMode('text');
+                setMessages([]);
+                setIsInterviewConcluded(false);
+                setConversationHistory([]);
+                
+                const loadingMessage: InterviewMessage = {
+                  type: 'question',
+                  content: 'Starting your text interview... Please wait while I prepare your personalized questions.',
+                  timestamp: new Date()
+                };
+                setMessages([loadingMessage]);
+                
+                startInterviewMutation.mutate();
+              }}
+            >
+              Try Text Interview Instead
+            </Button>
+          )}
           {realtimeAPI.isConnected && (
             <Button
               variant={isInterviewConcluded ? "default" : "destructive"}
