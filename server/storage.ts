@@ -440,7 +440,12 @@ export class DatabaseStorage implements IStorage {
     if (!firstInterview?.sessionData?.responses) return '';
     
     const responses = firstInterview.sessionData.responses || [];
-    const sampleResponse = responses[0]?.answer || '';
+    const sampleResponseRaw = responses[0]?.answer;
+    
+    // Ensure sampleResponse is a string
+    const sampleResponse = typeof sampleResponseRaw === 'string' ? sampleResponseRaw : '';
+    
+    if (!sampleResponse) return ''; // Skip if no valid response
     
     // Analyze tone and style
     let style = 'CONVERSATION STYLE: ';
@@ -470,7 +475,11 @@ export class DatabaseStorage implements IStorage {
       if (session.sessionData?.responses) {
         const responses = session.sessionData.responses || [];
         responses.forEach((response: any) => {
-          const answer = response.answer || '';
+          // Ensure answer is a string before calling .includes()
+          const answer = typeof response?.answer === 'string' ? response.answer.toLowerCase() : '';
+          
+          if (!answer) return; // Skip if no valid answer
+          
           // Extract key themes from responses
           if (answer.includes('team') || answer.includes('collaboration')) {
             themes.push('teamwork');
