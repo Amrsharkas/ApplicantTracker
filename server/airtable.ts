@@ -1173,6 +1173,33 @@ export class AirtableService {
     }
   }
 
+  // Withdraw job application by updating status in Airtable
+  async withdrawJobApplication(recordId: string): Promise<void> {
+    if (!jobApplicationsBase) {
+      console.warn('Job applications base not configured, skipping withdrawal');
+      throw new Error('Job applications base not configured');
+    }
+
+    try {
+      console.log(`📝 Withdrawing job application with record ID: ${recordId}`);
+      
+      // Update the status field to 'withdrawn'
+      await jobApplicationsBase(JOB_APPLICATIONS_TABLE).update([
+        {
+          id: recordId,
+          fields: {
+            'Status': 'withdrawn'
+          }
+        }
+      ]);
+
+      console.log(`✅ Successfully withdrew job application ${recordId}`);
+    } catch (error) {
+      console.error('Error withdrawing job application in Airtable:', error);
+      throw new Error('Failed to withdraw job application in Airtable');
+    }
+  }
+
   async getUpcomingInterviews(userId: string): Promise<AirtableJobMatch[]> {
     if (!jobMatchesBase) {
       console.warn('🔍 Job matches base not configured, returning empty interviews');

@@ -1209,7 +1209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status = 'pending';
           } else if (['denied', 'rejected', 'declined'].includes(normalizedStatus)) {
             status = 'denied';
-          } else if (['closed', 'cancelled', 'expired'].includes(normalizedStatus)) {
+          } else if (['closed', 'cancelled', 'expired', 'withdrawn'].includes(normalizedStatus)) {
             status = 'closed';
           } else {
             status = normalizedStatus; // Use as-is if it's already a valid status
@@ -1233,6 +1233,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching applications:", error);
       res.status(500).json({ message: "Failed to fetch applications" });
+    }
+  });
+
+  // Withdraw job application
+  app.post('/api/applications/:recordId/withdraw', isAuthenticated, async (req: any, res) => {
+    try {
+      const { recordId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      console.log(`📝 Withdraw request for application ${recordId} by user ${userId}`);
+      
+      if (!recordId) {
+        return res.status(400).json({ message: 'Record ID is required' });
+      }
+
+      // Verify the application belongs to the current user by fetching their applications
+      const userApplications = await airtableService.getUserApplications(userId);
+      const applicationExists = userApplications.find(app => app.recordId === recordId);
+      
+      if (!applicationExists) {
+        return res.status(404).json({ message: 'Application not found or does not belong to you' });
+      }
+
+      // Check if application is still pending
+      if (applicationExists.status && !['pending', 'under review', 'reviewing'].includes(applicationExists.status.toLowerCase())) {
+        return res.status(400).json({ 
+          message: 'Only pending applications can be withdrawn' 
+        });
+      }
+
+      // Withdraw the application in Airtable
+      await airtableService.withdrawJobApplication(recordId);
+      
+      console.log(`✅ Successfully withdrew application ${recordId} for user ${userId}`);
+      res.json({ 
+        message: 'Application withdrawn successfully',
+        recordId,
+        status: 'withdrawn'
+      });
+    } catch (error) {
+      console.error('Error withdrawing application:', error);
+      res.status(500).json({ message: 'Failed to withdraw application' });
     }
   });
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Calendar, 
   Building, 
@@ -58,6 +59,49 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
       }
     },
   });
+
+  // Withdraw application mutation
+  const withdrawMutation = useMutation({
+    mutationFn: async (recordId: string) => {
+      return await apiRequest(`/api/applications/${recordId}/withdraw`, 'POST');
+    },
+    onSuccess: (data, recordId) => {
+      toast({
+        title: "Application Withdrawn",
+        description: "Your application has been successfully withdrawn.",
+        variant: "default",
+      });
+      
+      // Invalidate and refetch applications to update the UI
+      queryClient.invalidateQueries(["/api/applications"]);
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      
+      toast({
+        title: "Error",
+        description: error.message || "Failed to withdraw application. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleWithdraw = (recordId: string, jobTitle: string) => {
+    // Show confirmation before withdrawing
+    if (window.confirm(`Are you sure you want to withdraw your application for "${jobTitle}"? This action cannot be undone.`)) {
+      withdrawMutation.mutate(recordId);
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -259,9 +303,15 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
                   {/* Action Buttons */}
                   <div className="flex items-center gap-2">
                     {application.status === 'pending' && (
-                      <Button variant="outline" size="sm" className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex items-center gap-2"
+                        onClick={() => handleWithdraw(application.recordId, application.jobTitle)}
+                        disabled={withdrawMutation.isPending}
+                      >
                         <XCircle className="w-4 h-4" />
-                        Withdraw
+                        {withdrawMutation.isPending ? 'Withdrawing...' : 'Withdraw'}
                       </Button>
                     )}
                     <Button 
