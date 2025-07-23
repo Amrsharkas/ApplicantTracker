@@ -63,7 +63,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
   // Withdraw application mutation
   const withdrawMutation = useMutation({
     mutationFn: async (recordId: string) => {
-      return await apiRequest(`/api/applications/${recordId}/withdraw`, 'POST');
+      return await apiRequest('POST', `/api/applications/${recordId}/withdraw`);
     },
     onSuccess: (data, recordId) => {
       toast({
