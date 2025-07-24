@@ -62,8 +62,74 @@ export class AIJobFilteringService {
     };
   }
   
+  private hasActiveFilters(filters: JobFilters): boolean {
+    return !!(
+      filters.jobType ||
+      (filters.workplace && filters.workplace.length > 0) ||
+      filters.country ||
+      filters.city ||
+      filters.careerLevel ||
+      filters.jobCategory ||
+      filters.datePosted ||
+      filters.searchQuery
+    );
+  }
+  
   private checkExactFilterMatch(job: JobPosting, filters: JobFilters): boolean {
     // Check all applied filters for exact matches
+    
+    // Check job type first (hard filter in exact matching)
+    if (filters.jobType) {
+      const jobTypeKeywords: Record<string, string[]> = {
+        'full-time': ['full-time', 'full time', 'fulltime', 'permanent', 'ft'],
+        'part-time': ['part-time', 'part time', 'parttime', 'pt'],
+        'contract': ['contract', 'contractor', 'freelance', 'temp', 'temporary'],
+        'internship': ['intern', 'internship', 'student', 'trainee']
+      };
+      
+      const selectedType = filters.jobType.toLowerCase();
+      const jobText = (job.employmentType || '' + job.jobDescription || '').toLowerCase();
+      const selectedKeywords = jobTypeKeywords[selectedType] || [];
+      
+      // If no employment type is specified, check job description for keywords
+      const hasSelectedTypeKeywords = selectedKeywords.some(keyword => 
+        jobText.includes(keyword.toLowerCase())
+      );
+      
+      // If the job doesn't mention the selected job type, it's not an exact match
+      if (!hasSelectedTypeKeywords) {
+        return false;
+      }
+    }
+    
+    // Check workplace filter
+    if (filters.workplace && filters.workplace.length > 0) {
+      const workplaceKeywords: Record<string, string[]> = {
+        'remote': ['remote', 'work from home', 'wfh', 'distributed', 'virtual'],
+        'on-site': ['on-site', 'onsite', 'office', 'in-person', 'on site'],
+        'hybrid': ['hybrid', 'flexible', 'mixed', 'combination']
+      };
+      
+      const jobText = (job.location || '' + job.jobDescription || '').toLowerCase();
+      const hasMatchingWorkplace = filters.workplace.some(selectedWorkplace => {
+        const keywords = workplaceKeywords[selectedWorkplace.toLowerCase()] || [];
+        return keywords.some(keyword => jobText.includes(keyword.toLowerCase()));
+      });
+      
+      if (!hasMatchingWorkplace) {
+        return false;
+      }
+    }
+    
+    // Check country filter
+    if (filters.country) {
+      const jobLocation = (job.location || '').toLowerCase();
+      const selectedCountry = filters.country.toLowerCase();
+      
+      if (!jobLocation.includes(selectedCountry)) {
+        return false;
+      }
+    }
     
     // Check city filter (soft - case insensitive substring match)
     if (filters.city) {
@@ -175,21 +241,25 @@ export class AIJobFilteringService {
       const jobText = (job.employmentType || '' + job.jobDescription || '').toLowerCase();
       const selectedKeywords = jobTypeKeywords[selectedType] || [];
       
-      // Check if job contains keywords for the selected type
-      const hasSelectedTypeKeywords = selectedKeywords.some((keyword: string) => 
-        jobText.includes(keyword.toLowerCase())
-      );
-      
-      // Check if job contains keywords for other types
-      const otherTypes = Object.keys(jobTypeKeywords).filter(type => type !== selectedType);
-      const hasOtherTypeKeywords = otherTypes.some(otherType => 
-        (jobTypeKeywords[otherType] || []).some((keyword: string) => 
+      // For hard filter violations, we only care if the job explicitly contradicts the selected type
+      // If no employment type is specified, we don't reject (since it's missing metadata)
+      if (job.employmentType) {
+        // Check if job contains keywords for the selected type
+        const hasSelectedTypeKeywords = selectedKeywords.some((keyword: string) => 
           jobText.includes(keyword.toLowerCase())
-        )
-      );
-      
-      if (hasOtherTypeKeywords && !hasSelectedTypeKeywords) {
-        violations.push(`Job type mismatch: looking for ${selectedType} but job appears to be different type`);
+        );
+        
+        // Check if job contains keywords for other types
+        const otherTypes = Object.keys(jobTypeKeywords).filter(type => type !== selectedType);
+        const hasOtherTypeKeywords = otherTypes.some(otherType => 
+          (jobTypeKeywords[otherType] || []).some((keyword: string) => 
+            jobText.includes(keyword.toLowerCase())
+          )
+        );
+        
+        if (hasOtherTypeKeywords && !hasSelectedTypeKeywords) {
+          violations.push(`Job type mismatch: looking for ${selectedType} but job appears to be different type`);
+        }
       }
     }
     
@@ -333,22 +403,17 @@ Respond in JSON format:
   }
 
   async intelligentJobFiltering(jobs: JobPosting[], filters: JobFilters): Promise<FilterAnalysisResult> {
-    console.log(`🤖 Starting AI job filtering for ${jobs.length} jobs`);
-    
-    const hardFilters = this.getHardFilters(filters);
-    const softFilters = this.getSoftFilters(filters);
+    console.log(`🤖 Starting strict job filtering for ${jobs.length} jobs`);
     
     // Check if any filters are applied
-    const hasHardFilters = hardFilters.workplace || hardFilters.country || hardFilters.jobType;
-    const hasSoftFilters = softFilters.city || softFilters.careerLevel || softFilters.jobCategory || 
-                          softFilters.datePosted || softFilters.searchQuery;
+    const hasAnyFilters = this.hasActiveFilters(filters);
     
-    if (!hasHardFilters && !hasSoftFilters) {
-      // No filters applied, return all jobs with basic scoring
+    if (!hasAnyFilters) {
+      // No filters applied, return all jobs
       const jobsWithScores = jobs.map(job => ({
         ...job,
-        aiFilterScore: 75, // Default score when no filters
-        aiReasons: ['No specific filters applied'],
+        aiFilterScore: 75,
+        aiReasons: ['No filters applied'],
         aiFlags: []
       }));
       
@@ -359,129 +424,54 @@ Respond in JSON format:
       };
     }
 
-    // First pass: Strict enforcement of hard filters
-    console.log(`🔒 Applying strict hard filters: ${hasHardFilters ? 'Yes' : 'No'}`);
-    const hardFilteredJobs = jobs.filter(job => {
-      const violations = this.checkHardFilterViolations(job, hardFilters);
-      return violations.length === 0; // Only include jobs with NO hard filter violations
+    // Apply STRICT filtering - jobs must match ALL selected filters exactly
+    console.log(`🔒 Applying STRICT filtering for all selected filters`);
+    
+    const strictMatchedJobs = jobs.filter(job => {
+      // First check hard filters (these are non-negotiable)
+      const hardFilters = this.getHardFilters(filters);
+      const hardFilterViolations = this.checkHardFilterViolations(job, hardFilters);
+      
+      if (hardFilterViolations.length > 0) {
+        console.log(`❌ Job "${job.jobTitle}" rejected due to hard filter violations:`, hardFilterViolations);
+        return false; // Hard filter violation = immediate rejection
+      }
+      
+      // Then check if job matches ALL applied filters exactly
+      const exactMatch = this.checkExactFilterMatch(job, filters);
+      console.log(`🔍 Job "${job.jobTitle}" exact match check:`, exactMatch);
+      
+      return exactMatch;
     });
 
-    console.log(`🔒 Hard filter results: ${hardFilteredJobs.length} jobs passed strict filters (filtered out ${jobs.length - hardFilteredJobs.length})`);
+    console.log(`🔒 Strict filtering results: ${strictMatchedJobs.length} jobs match ALL selected filters exactly`);
 
-    // If hard filters eliminated all jobs, return empty with explanation
-    if (hasHardFilters && hardFilteredJobs.length === 0) {
-      return {
-        jobs: [],
-        filterMessage: 'No jobs match your selected preferences. Try adjusting your job type, workplace, or location filters.',
-        hasExpandedSearch: false
-      };
-    }
-
-    // Second pass: Check for exact matches on all filters
-    const jobsToAnalyze = hasHardFilters ? hardFilteredJobs : jobs;
-    
-    // Check for exact matches first (before AI analysis)
-    const exactMatchJobs = jobsToAnalyze.filter(job => 
-      this.checkExactFilterMatch(job, filters)
-    );
-    
-    if (exactMatchJobs.length > 0) {
-      // We have exact matches - return them without any "Smart Filtering" message
-      const exactJobsWithScores = exactMatchJobs.map(job => ({
+    if (strictMatchedJobs.length > 0) {
+      // We have exact matches - return them with no message
+      const exactJobsWithScores = strictMatchedJobs.map(job => ({
         ...job,
-        aiFilterScore: 95, // High score for exact matches
-        aiReasons: ['Exact match for all your filter criteria'],
+        aiFilterScore: 95,
+        aiReasons: ['Exact match for all selected filters'],
         aiFlags: []
       }));
       
-      console.log(`✅ Found ${exactMatchJobs.length} exact matches for all filters`);
+      console.log(`✅ Returning ${strictMatchedJobs.length} jobs that match ALL filters exactly`);
       
       return {
         jobs: exactJobsWithScores,
-        filterMessage: '', // No message for exact matches
+        filterMessage: '', // No message when showing exact matches
         hasExpandedSearch: false
       };
-    }
-    
-    if (!hasSoftFilters) {
-      // Only hard filters applied, return all jobs that passed hard filters
-      const jobsWithScores = jobsToAnalyze.map(job => ({
-        ...job,
-        aiFilterScore: 80, // High score since they passed hard filters
-        aiReasons: ['Matches your strict filter requirements'],
-        aiFlags: []
-      }));
+    } else {
+      // No exact matches found - return empty with explanation
+      console.log(`❌ No jobs match ALL selected filters exactly`);
       
       return {
-        jobs: jobsWithScores,
-        filterMessage: hasHardFilters ? '' : '', // No message when only showing hard filter matches
+        jobs: [],
+        filterMessage: 'No jobs match your selected preferences. Try adjusting your filters.',
         hasExpandedSearch: false
       };
     }
-
-    // Apply AI analysis for soft filters
-    console.log(`🤖 Applying AI analysis for soft filters on ${jobsToAnalyze.length} jobs`);
-    const analysisPromises = jobsToAnalyze.map(async (job) => {
-      const analysis = await this.analyzeJobWithFilters(job, filters);
-      return {
-        ...job,
-        aiFilterScore: analysis.score,
-        aiReasons: analysis.matchReasons,
-        aiFlags: analysis.flaggedIssues
-      };
-    });
-
-    const analyzedJobs = await Promise.all(analysisPromises);
-    
-    // Sort by AI score (highest first)
-    const sortedJobs = analyzedJobs.sort((a, b) => b.aiFilterScore - a.aiFilterScore);
-    
-    // Check for exact matches first - jobs that score 90+ are considered exact matches
-    const exactMatches = sortedJobs.filter(job => job.aiFilterScore >= 90);
-    const veryGoodMatches = sortedJobs.filter(job => job.aiFilterScore >= 75);
-    const goodMatches = sortedJobs.filter(job => job.aiFilterScore >= 60);
-    const decentMatches = sortedJobs.filter(job => job.aiFilterScore >= 40);
-    
-    let finalJobs = sortedJobs;
-    let filterMessage = '';
-    let hasExpandedSearch = false;
-    
-    if (exactMatches.length > 0) {
-      // We have exact matches - no smart filtering message needed
-      finalJobs = exactMatches;
-      filterMessage = ''; // No message when we have exact matches
-      hasExpandedSearch = false;
-    } else if (veryGoodMatches.length > 0) {
-      // Very good matches - minor expansion
-      finalJobs = veryGoodMatches;
-      filterMessage = 'Found jobs with minor variations from your exact preferences';
-      hasExpandedSearch = true;
-    } else if (goodMatches.length > 0) {
-      // Good matches with moderate expansion
-      finalJobs = goodMatches;
-      filterMessage = 'Expanded search to include jobs that closely match your preferences';
-      hasExpandedSearch = true;
-    } else if (decentMatches.length > 0) {
-      // Decent matches with broader expansion
-      finalJobs = decentMatches;
-      filterMessage = 'Expanded search significantly to include potentially relevant jobs';
-      hasExpandedSearch = true;
-    } else {
-      // Show all remaining jobs as last resort
-      finalJobs = sortedJobs;
-      filterMessage = jobsToAnalyze.length > 0 ? 
-        'Showing all available jobs ranked by relevance to your preferences' :
-        'No jobs match your selected preferences. Try adjusting your filters.';
-      hasExpandedSearch = true;
-    }
-    
-    console.log(`🎯 AI filtering complete: ${finalJobs.length} jobs selected from ${jobs.length} total`);
-    
-    return {
-      jobs: finalJobs,
-      filterMessage,
-      hasExpandedSearch
-    };
   }
 
   private hasActiveFilters(filters: JobFilters): boolean {
