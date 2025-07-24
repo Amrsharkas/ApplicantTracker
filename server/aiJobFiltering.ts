@@ -62,18 +62,7 @@ export class AIJobFilteringService {
     };
   }
   
-  private hasActiveFilters(filters: JobFilters): boolean {
-    return !!(
-      filters.jobType ||
-      (filters.workplace && filters.workplace.length > 0) ||
-      filters.country ||
-      filters.city ||
-      filters.careerLevel ||
-      filters.jobCategory ||
-      filters.datePosted ||
-      filters.searchQuery
-    );
-  }
+
   
   private checkExactFilterMatch(job: JobPosting, filters: JobFilters): boolean {
     // Check all applied filters for exact matches
@@ -241,25 +230,14 @@ export class AIJobFilteringService {
       const jobText = (job.employmentType || '' + job.jobDescription || '').toLowerCase();
       const selectedKeywords = jobTypeKeywords[selectedType] || [];
       
-      // For hard filter violations, we only care if the job explicitly contradicts the selected type
-      // If no employment type is specified, we don't reject (since it's missing metadata)
-      if (job.employmentType) {
-        // Check if job contains keywords for the selected type
-        const hasSelectedTypeKeywords = selectedKeywords.some((keyword: string) => 
-          jobText.includes(keyword.toLowerCase())
-        );
-        
-        // Check if job contains keywords for other types
-        const otherTypes = Object.keys(jobTypeKeywords).filter(type => type !== selectedType);
-        const hasOtherTypeKeywords = otherTypes.some(otherType => 
-          (jobTypeKeywords[otherType] || []).some((keyword: string) => 
-            jobText.includes(keyword.toLowerCase())
-          )
-        );
-        
-        if (hasOtherTypeKeywords && !hasSelectedTypeKeywords) {
-          violations.push(`Job type mismatch: looking for ${selectedType} but job appears to be different type`);
-        }
+      // Check if job contains keywords for the selected type
+      const hasSelectedTypeKeywords = selectedKeywords.some((keyword: string) => 
+        jobText.includes(keyword.toLowerCase())
+      );
+      
+      // STRICT ENFORCEMENT: If job doesn't contain keywords for the selected type, it's a violation
+      if (!hasSelectedTypeKeywords) {
+        violations.push(`Job type mismatch: looking for ${selectedType} but job doesn't contain matching keywords`);
       }
     }
     
@@ -277,17 +255,9 @@ export class AIJobFilteringService {
         return keywords.some((keyword: string) => jobText.includes(keyword.toLowerCase()));
       });
       
-      // If job explicitly mentions a different workplace type, it's a violation
-      const allWorkplaceTypes = Object.keys(workplaceKeywords);
-      const mentionedTypes = allWorkplaceTypes.filter(type => {
-        if (hardFilters.workplace && hardFilters.workplace.includes(type)) return false;
-        return (workplaceKeywords[type] || []).some((keyword: string) => 
-          jobText.includes(keyword.toLowerCase())
-        );
-      });
-      
-      if (mentionedTypes.length > 0 && !hasMatchingWorkplace) {
-        violations.push(`Workplace type mismatch: looking for ${hardFilters.workplace.join('/')} but job mentions ${mentionedTypes.join('/')}`);
+      // STRICT ENFORCEMENT: If job doesn't contain keywords for the selected workplace, it's a violation
+      if (!hasMatchingWorkplace) {
+        violations.push(`Workplace type mismatch: looking for ${hardFilters.workplace.join('/')} but job doesn't contain matching keywords`);
       }
     }
     
@@ -406,7 +376,16 @@ Respond in JSON format:
     console.log(`🤖 Starting strict job filtering for ${jobs.length} jobs`);
     
     // Check if any filters are applied
-    const hasAnyFilters = this.hasActiveFilters(filters);
+    const hasAnyFilters = !!(
+      filters.jobType ||
+      (filters.workplace && filters.workplace.length > 0) ||
+      filters.country ||
+      filters.city ||
+      filters.careerLevel ||
+      filters.jobCategory ||
+      filters.datePosted ||
+      filters.searchQuery
+    );
     
     if (!hasAnyFilters) {
       // No filters applied, return all jobs
