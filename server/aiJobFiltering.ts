@@ -373,60 +373,187 @@ Respond in JSON format:
   }
 
   async intelligentJobFiltering(jobs: JobPosting[], filters: JobFilters): Promise<FilterAnalysisResult> {
-    console.log(`🤖 Starting strict job filtering for ${jobs.length} jobs`);
+    console.log(`🔒 Starting STRICT job filtering for ${jobs.length} jobs with filters:`, filters);
     
-    // Check if any filters are applied
-    const hasAnyFilters = !!(
-      filters.jobType ||
-      (filters.workplace && filters.workplace.length > 0) ||
-      filters.country ||
-      filters.city ||
-      filters.careerLevel ||
-      filters.jobCategory ||
-      filters.datePosted ||
-      filters.searchQuery
-    );
-    
-    if (!hasAnyFilters) {
-      // No filters applied, return all jobs
-      const jobsWithScores = jobs.map(job => ({
-        ...job,
-        aiFilterScore: 75,
-        aiReasons: ['No filters applied'],
-        aiFlags: []
-      }));
-      
-      return {
-        jobs: jobsWithScores,
-        filterMessage: '',
-        hasExpandedSearch: false
-      };
-    }
-
-    // Apply STRICT filtering - jobs must match ALL selected filters exactly
-    console.log(`🔒 Applying STRICT filtering for all selected filters`);
-    
+    // Apply 100% strict filtering - each job must match ALL selected filters exactly
     const strictMatchedJobs = jobs.filter(job => {
-      // First check hard filters (these are non-negotiable)
-      const hardFilters = this.getHardFilters(filters);
-      const hardFilterViolations = this.checkHardFilterViolations(job, hardFilters);
+      console.log(`\n🔍 Checking job: "${job.jobTitle}"`);
       
-      if (hardFilterViolations.length > 0) {
-        console.log(`❌ Job "${job.jobTitle}" rejected due to hard filter violations:`, hardFilterViolations);
-        return false; // Hard filter violation = immediate rejection
+      // Check job type filter (only if specified)
+      if (filters.jobType) {
+        console.log(`  📋 Checking job type filter: "${filters.jobType}"`);
+        const jobTypeKeywords: Record<string, string[]> = {
+          'full-time': ['full-time', 'full time', 'fulltime', 'permanent', 'ft'],
+          'part-time': ['part-time', 'part time', 'parttime', 'pt'],
+          'contract': ['contract', 'contractor', 'freelance', 'temp', 'temporary'],
+          'internship': ['intern', 'internship', 'student', 'trainee']
+        };
+        
+        const selectedType = filters.jobType.toLowerCase();
+        const jobText = (job.employmentType + ' ' + job.jobDescription).toLowerCase();
+        const selectedKeywords = jobTypeKeywords[selectedType] || [selectedType];
+        
+        const hasSelectedTypeKeywords = selectedKeywords.some(keyword => 
+          jobText.includes(keyword.toLowerCase())
+        );
+        
+        if (!hasSelectedTypeKeywords) {
+          console.log(`  ❌ Job type mismatch: looking for "${filters.jobType}" but not found in job`);
+          return false;
+        }
+        console.log(`  ✅ Job type matches: "${filters.jobType}"`);
       }
       
-      // Then check if job matches ALL applied filters exactly
-      const exactMatch = this.checkExactFilterMatch(job, filters);
-      console.log(`🔍 Job "${job.jobTitle}" exact match check:`, exactMatch);
+      // Check workplace filter (only if specified)
+      if (filters.workplace && filters.workplace.length > 0) {
+        console.log(`  📋 Checking workplace filter:`, filters.workplace);
+        const workplaceKeywords: Record<string, string[]> = {
+          'remote': ['remote', 'work from home', 'wfh', 'distributed', 'virtual'],
+          'on-site': ['on-site', 'onsite', 'office', 'in-person', 'on site'],
+          'hybrid': ['hybrid', 'flexible', 'mixed', 'combination']
+        };
+        
+        const jobText = (job.location + ' ' + job.jobDescription).toLowerCase();
+        const hasMatchingWorkplace = filters.workplace.some(selectedWorkplace => {
+          const keywords = workplaceKeywords[selectedWorkplace.toLowerCase()] || [selectedWorkplace.toLowerCase()];
+          return keywords.some(keyword => jobText.includes(keyword.toLowerCase()));
+        });
+        
+        if (!hasMatchingWorkplace) {
+          console.log(`  ❌ Workplace mismatch: looking for ${filters.workplace.join('/')} but not found in job`);
+          return false;
+        }
+        console.log(`  ✅ Workplace matches:`, filters.workplace);
+      }
       
-      return exactMatch;
+      // Check country filter (only if specified)
+      if (filters.country) {
+        console.log(`  📋 Checking country filter: "${filters.country}"`);
+        const jobLocation = (job.location || '').toLowerCase();
+        const selectedCountry = filters.country.toLowerCase();
+        
+        if (!jobLocation.includes(selectedCountry)) {
+          console.log(`  ❌ Country mismatch: looking for "${filters.country}" but job location is "${job.location}"`);
+          return false;
+        }
+        console.log(`  ✅ Country matches: "${filters.country}"`);
+      }
+      
+      // Check city filter (only if specified)
+      if (filters.city) {
+        console.log(`  📋 Checking city filter: "${filters.city}"`);
+        const jobLocation = (job.location || '').toLowerCase();
+        const cityFilter = filters.city.toLowerCase();
+        
+        if (!jobLocation.includes(cityFilter)) {
+          console.log(`  ❌ City mismatch: looking for "${filters.city}" but not found in job location`);
+          return false;
+        }
+        console.log(`  ✅ City matches: "${filters.city}"`);
+      }
+      
+      // Check career level filter (only if specified)
+      if (filters.careerLevel) {
+        console.log(`  📋 Checking career level filter: "${filters.careerLevel}"`);
+        const careerLevelKeywords: Record<string, string[]> = {
+          'entry': ['entry', 'junior', 'beginner', 'graduate', 'trainee', 'intern', 'associate'],
+          'junior': ['junior', 'associate', 'entry level', 'graduate'],
+          'mid': ['mid', 'intermediate', 'experienced', 'senior associate'],
+          'senior': ['senior', 'lead', 'principal', 'expert', 'manager'],
+          'executive': ['executive', 'director', 'vp', 'vice president', 'chief', 'head of']
+        };
+        
+        const jobText = (job.jobTitle + ' ' + job.jobDescription + ' ' + (job.experienceLevel || '')).toLowerCase();
+        const levelKeywords = careerLevelKeywords[filters.careerLevel.toLowerCase()] || [filters.careerLevel.toLowerCase()];
+        
+        const hasMatch = levelKeywords.some(keyword => 
+          jobText.includes(keyword.toLowerCase())
+        );
+        
+        if (!hasMatch) {
+          console.log(`  ❌ Career level mismatch: looking for "${filters.careerLevel}" but not found in job`);
+          return false;
+        }
+        console.log(`  ✅ Career level matches: "${filters.careerLevel}"`);
+      }
+      
+      // Check job category filter (only if specified)
+      if (filters.jobCategory) {
+        console.log(`  📋 Checking job category filter: "${filters.jobCategory}"`);
+        const categoryKeywords: Record<string, string[]> = {
+          'technology': ['tech', 'software', 'developer', 'engineer', 'programming', 'coding', 'it', 'data', 'ai', 'machine learning'],
+          'marketing': ['marketing', 'advertisement', 'promotion', 'brand', 'digital marketing', 'content', 'social media'],
+          'sales': ['sales', 'business development', 'account', 'revenue', 'customer', 'client'],
+          'finance': ['finance', 'accounting', 'financial', 'analyst', 'investment', 'banking'],
+          'healthcare': ['health', 'medical', 'doctor', 'nurse', 'healthcare', 'clinical', 'pharmaceutical'],
+          'education': ['teacher', 'education', 'instructor', 'professor', 'tutor', 'academic', 'school'],
+          'design': ['design', 'creative', 'graphic', 'ui', 'ux', 'visual', 'artist'],
+          'operations': ['operations', 'logistics', 'supply chain', 'project management', 'coordination'],
+          'hr': ['human resources', 'hr', 'recruitment', 'talent', 'people', 'hiring'],
+          'sports': ['sports', 'fitness', 'coach', 'athletic', 'trainer', 'physical']
+        };
+        
+        const jobText = (job.jobTitle + ' ' + job.jobDescription).toLowerCase();
+        const categoryTerms = categoryKeywords[filters.jobCategory.toLowerCase()] || [filters.jobCategory.toLowerCase()];
+        
+        const hasMatch = categoryTerms.some(term => 
+          jobText.includes(term)
+        );
+        
+        if (!hasMatch) {
+          console.log(`  ❌ Job category mismatch: looking for "${filters.jobCategory}" but not found in job`);
+          return false;
+        }
+        console.log(`  ✅ Job category matches: "${filters.jobCategory}"`);
+      }
+      
+      // Check search query filter (only if specified)
+      if (filters.searchQuery) {
+        console.log(`  📋 Checking search query filter: "${filters.searchQuery}"`);
+        const jobText = (job.jobTitle + ' ' + job.jobDescription + ' ' + job.companyName).toLowerCase();
+        const queryTerms = filters.searchQuery.toLowerCase().split(' ').filter(term => term.length > 2);
+        
+        const hasMatch = queryTerms.some(term => 
+          jobText.includes(term)
+        );
+        
+        if (!hasMatch) {
+          console.log(`  ❌ Search query mismatch: looking for "${filters.searchQuery}" but not found in job`);
+          return false;
+        }
+        console.log(`  ✅ Search query matches: "${filters.searchQuery}"`);
+      }
+      
+      // Check date posted filter (only if specified)
+      if (filters.datePosted && job.postedDate) {
+        console.log(`  📋 Checking date posted filter: "${filters.datePosted}"`);
+        const now = new Date();
+        const jobDate = new Date(job.postedDate);
+        const daysDiff = Math.floor((now.getTime() - jobDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        const dateRanges: Record<string, number> = {
+          'today': 1,
+          'week': 7,
+          'month': 30,
+          '3months': 90
+        };
+        
+        const maxDays = dateRanges[filters.datePosted] || 365;
+        if (daysDiff > maxDays) {
+          console.log(`  ❌ Date posted mismatch: job is ${daysDiff} days old, max allowed is ${maxDays}`);
+          return false;
+        }
+        console.log(`  ✅ Date posted matches: "${filters.datePosted}"`);
+      }
+      
+      console.log(`  ✅ Job "${job.jobTitle}" matches ALL applied filters`);
+      return true; // Job passes all applied filters
     });
 
-    console.log(`🔒 Strict filtering results: ${strictMatchedJobs.length} jobs match ALL selected filters exactly`);
+    console.log(`\n🔒 STRICT filtering results: ${strictMatchedJobs.length} out of ${jobs.length} jobs match ALL selected filters exactly`);
 
     if (strictMatchedJobs.length > 0) {
-      // We have exact matches - return them with no message
+      // Return matched jobs with no message
       const exactJobsWithScores = strictMatchedJobs.map(job => ({
         ...job,
         aiFilterScore: 95,
@@ -434,17 +561,13 @@ Respond in JSON format:
         aiFlags: []
       }));
       
-      console.log(`✅ Returning ${strictMatchedJobs.length} jobs that match ALL filters exactly`);
-      
       return {
         jobs: exactJobsWithScores,
         filterMessage: '', // No message when showing exact matches
         hasExpandedSearch: false
       };
     } else {
-      // No exact matches found - return empty with explanation
-      console.log(`❌ No jobs match ALL selected filters exactly`);
-      
+      // No matches found - return empty with explanation
       return {
         jobs: [],
         filterMessage: 'No jobs match your selected preferences. Try adjusting your filters.',
