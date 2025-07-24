@@ -542,8 +542,21 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     return isNaN(finalScore) ? 50 : finalScore; // Fallback to 50 if NaN
   };
 
-  // Use AI-filtered jobs if available, otherwise use all jobs
-  const displayedJobs = filteredJobs.length > 0 ? filteredJobs : jobPostings;
+  // Check if any filters are applied
+  const hasActiveFilters = !!(
+    filters.jobType ||
+    (filters.workplace && filters.workplace.length > 0) ||
+    filters.country ||
+    filters.city ||
+    filters.careerLevel ||
+    filters.jobCategory ||
+    filters.datePosted ||
+    searchQuery
+  );
+
+  // STRICT FILTERING: If filters are applied, ONLY show filtered results (even if empty)
+  // If no filters are applied, show all jobs
+  const displayedJobs = hasActiveFilters ? filteredJobs : jobPostings;
   const showingRelatedJobs = hasExpandedSearch;
 
   // Helper functions
@@ -1034,11 +1047,14 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                       </Button>
                     </div>
                   ) : (
-                    <div className="text-center py-8">
-                      <div className="text-4xl mb-4">🔍</div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No matches found</h3>
-                      <p className="text-gray-600">Try adjusting your filters or search terms</p>
-                    </div>
+                    // SILENT FILTERING: When filters are applied but no jobs match, show nothing
+                    hasActiveFilters ? null : (
+                      <div className="text-center py-8">
+                        <div className="text-4xl mb-4">🔍</div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No matches found</h3>
+                        <p className="text-gray-600">Try adjusting your filters or search terms</p>
+                      </div>
+                    )
                   )}
                 </div>
               ) : (

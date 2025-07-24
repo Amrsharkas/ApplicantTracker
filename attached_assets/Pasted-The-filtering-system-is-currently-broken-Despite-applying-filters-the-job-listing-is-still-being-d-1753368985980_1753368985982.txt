@@ -1,0 +1,83 @@
+The filtering system is currently broken. Despite applying filters, the job listing is still being displayed even when it does not match any of the selected filters, and no message appears. This is incorrect behavior.
+
+Please strictly enforce the following functionality across all filters on the employee/user side of the application:
+
+✅ OBJECTIVE:
+Only show jobs that match every active filter.
+
+Completely hide all jobs that do not match the selected filters.
+
+Do not display any fallback message (e.g., "Smart Filtering Applied" or "No jobs match…").
+
+🎯 FUNCTIONAL REQUIREMENTS:
+Filter Matching Must Be Exact
+For each of the following filters:
+
+Country
+
+City
+
+Job Type (Full-Time, Part-Time, etc.)
+
+Workplace (Remote, On-Site, Hybrid)
+
+Career Level
+
+Job Category
+
+Date Posted
+
+→ A job must fully match all selected values to appear in the results list.
+
+If a Job Does NOT Match the Filters
+
+It should be completely removed from the visible list.
+
+It should not be rendered in the DOM at all.
+
+It should not be accessible via scrolling, hidden containers, or expandable areas.
+
+If NO Jobs Match:
+
+Show nothing.
+
+Do not display any UI message, alert, banner, fallback suggestions, or similar.
+
+The job results section should remain blank/silent until the user changes filters.
+
+No Exceptions or Smart Matching:
+
+Do not attempt to show approximate or partially matched jobs.
+
+Do not loosen the filter rules.
+
+Filters must act as strict constraints — not suggestions.
+
+Performance Note:
+
+Filter logic must apply client-side only to jobs already received OR should query the backend only for jobs that meet the selected filters.
+
+If backend filtering is being used, ensure the frontend does not “re-fill” jobs by re-pulling cached or all jobs.
+
+✅ Example Behavior Scenarios:
+User selects:
+
+Country: Mexico
+
+Job Type: Part-Time
+
+Remote: Yes
+
+→ If a job is posted in Egypt, for Full-Time, and On-Site, it must not appear.
+
+User selects:
+
+Job Type: Full-Time
+
+→ If the job is also listed as Full-Time, it may appear. Otherwise, it must not.
+
+User selects:
+
+City: Berlin, Job Category: Marketing
+
+→ Only jobs in Berlin AND in Marketing should show.
