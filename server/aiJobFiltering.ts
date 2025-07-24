@@ -62,6 +62,103 @@ export class AIJobFilteringService {
     };
   }
   
+  private checkExactFilterMatch(job: JobPosting, filters: JobFilters): boolean {
+    // Check all applied filters for exact matches
+    
+    // Check city filter (soft - case insensitive substring match)
+    if (filters.city) {
+      const jobLocation = (job.location || '').toLowerCase();
+      const cityFilter = filters.city.toLowerCase();
+      if (!jobLocation.includes(cityFilter)) {
+        return false;
+      }
+    }
+    
+    // Check career level (soft - keyword matching)
+    if (filters.careerLevel) {
+      const careerLevelKeywords: Record<string, string[]> = {
+        'entry': ['entry', 'junior', 'beginner', 'graduate', 'trainee', 'intern', 'associate'],
+        'junior': ['junior', 'associate', 'entry level', 'graduate'],
+        'mid': ['mid', 'intermediate', 'experienced', 'senior associate'],
+        'senior': ['senior', 'lead', 'principal', 'expert', 'manager'],
+        'executive': ['executive', 'director', 'vp', 'vice president', 'chief', 'head of']
+      };
+      
+      const jobText = (job.jobTitle + ' ' + job.jobDescription + ' ' + (job.experienceLevel || '')).toLowerCase();
+      const levelKeywords = careerLevelKeywords[filters.careerLevel.toLowerCase()] || [];
+      
+      const hasMatch = levelKeywords.some(keyword => 
+        jobText.includes(keyword.toLowerCase())
+      );
+      
+      if (!hasMatch) {
+        return false;
+      }
+    }
+    
+    // Check job category (soft - keyword/industry matching)
+    if (filters.jobCategory) {
+      const categoryKeywords: Record<string, string[]> = {
+        'technology': ['tech', 'software', 'developer', 'engineer', 'programming', 'coding', 'it', 'data', 'ai', 'machine learning'],
+        'marketing': ['marketing', 'advertisement', 'promotion', 'brand', 'digital marketing', 'content', 'social media'],
+        'sales': ['sales', 'business development', 'account', 'revenue', 'customer', 'client'],
+        'finance': ['finance', 'accounting', 'financial', 'analyst', 'investment', 'banking'],
+        'healthcare': ['health', 'medical', 'doctor', 'nurse', 'healthcare', 'clinical', 'pharmaceutical'],
+        'education': ['teacher', 'education', 'instructor', 'professor', 'tutor', 'academic', 'school'],
+        'design': ['design', 'creative', 'graphic', 'ui', 'ux', 'visual', 'artist'],
+        'operations': ['operations', 'logistics', 'supply chain', 'project management', 'coordination'],
+        'hr': ['human resources', 'hr', 'recruitment', 'talent', 'people', 'hiring'],
+        'sports': ['sports', 'fitness', 'coach', 'athletic', 'trainer', 'physical']
+      };
+      
+      const jobText = (job.jobTitle + ' ' + job.jobDescription).toLowerCase();
+      const categoryTerms = categoryKeywords[filters.jobCategory.toLowerCase()] || [filters.jobCategory.toLowerCase()];
+      
+      const hasMatch = categoryTerms.some(term => 
+        jobText.includes(term)
+      );
+      
+      if (!hasMatch) {
+        return false;
+      }
+    }
+    
+    // Check search query (soft - keyword matching)
+    if (filters.searchQuery) {
+      const jobText = (job.jobTitle + ' ' + job.jobDescription + ' ' + job.companyName).toLowerCase();
+      const queryTerms = filters.searchQuery.toLowerCase().split(' ').filter(term => term.length > 2);
+      
+      const hasMatch = queryTerms.some(term => 
+        jobText.includes(term)
+      );
+      
+      if (!hasMatch) {
+        return false;
+      }
+    }
+    
+    // Check date posted (soft - within range)
+    if (filters.datePosted && job.postedDate) {
+      const now = new Date();
+      const jobDate = new Date(job.postedDate);
+      const daysDiff = Math.floor((now.getTime() - jobDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      const dateRanges: Record<string, number> = {
+        'today': 1,
+        'week': 7,
+        'month': 30,
+        '3months': 90
+      };
+      
+      const maxDays = dateRanges[filters.datePosted] || 365;
+      if (daysDiff > maxDays) {
+        return false;
+      }
+    }
+    
+    return true; // All applied filters match
+  }
+  
   private checkHardFilterViolations(job: JobPosting, hardFilters: { workplace: string[] | null; country: string | null; jobType: string | null }): string[] {
     const violations: string[] = [];
     
@@ -280,8 +377,31 @@ Respond in JSON format:
       };
     }
 
-    // Second pass: AI analysis of soft filters on remaining jobs
+    // Second pass: Check for exact matches on all filters
     const jobsToAnalyze = hasHardFilters ? hardFilteredJobs : jobs;
+    
+    // Check for exact matches first (before AI analysis)
+    const exactMatchJobs = jobsToAnalyze.filter(job => 
+      this.checkExactFilterMatch(job, filters)
+    );
+    
+    if (exactMatchJobs.length > 0) {
+      // We have exact matches - return them without any "Smart Filtering" message
+      const exactJobsWithScores = exactMatchJobs.map(job => ({
+        ...job,
+        aiFilterScore: 95, // High score for exact matches
+        aiReasons: ['Exact match for all your filter criteria'],
+        aiFlags: []
+      }));
+      
+      console.log(`✅ Found ${exactMatchJobs.length} exact matches for all filters`);
+      
+      return {
+        jobs: exactJobsWithScores,
+        filterMessage: '', // No message for exact matches
+        hasExpandedSearch: false
+      };
+    }
     
     if (!hasSoftFilters) {
       // Only hard filters applied, return all jobs that passed hard filters
@@ -294,7 +414,7 @@ Respond in JSON format:
       
       return {
         jobs: jobsWithScores,
-        filterMessage: hasHardFilters ? 'Showing jobs that match your selected requirements' : '',
+        filterMessage: hasHardFilters ? '' : '', // No message when only showing hard filter matches
         hasExpandedSearch: false
       };
     }
@@ -316,8 +436,9 @@ Respond in JSON format:
     // Sort by AI score (highest first)
     const sortedJobs = analyzedJobs.sort((a, b) => b.aiFilterScore - a.aiFilterScore);
     
-    // Determine smart expansion strategy for soft filters only
-    const perfectMatches = sortedJobs.filter(job => job.aiFilterScore >= 85);
+    // Check for exact matches first - jobs that score 90+ are considered exact matches
+    const exactMatches = sortedJobs.filter(job => job.aiFilterScore >= 90);
+    const veryGoodMatches = sortedJobs.filter(job => job.aiFilterScore >= 75);
     const goodMatches = sortedJobs.filter(job => job.aiFilterScore >= 60);
     const decentMatches = sortedJobs.filter(job => job.aiFilterScore >= 40);
     
@@ -325,26 +446,32 @@ Respond in JSON format:
     let filterMessage = '';
     let hasExpandedSearch = false;
     
-    if (perfectMatches.length >= 2) {
-      // Show perfect matches
-      finalJobs = perfectMatches;
-      filterMessage = hasHardFilters ? 'Found jobs matching your requirements' : 'Found jobs matching your preferences';
-    } else if (goodMatches.length >= 2) {
-      // Show good matches with soft expansion
-      finalJobs = goodMatches;
-      filterMessage = 'Showing jobs with flexible interpretation of your preferences';
+    if (exactMatches.length > 0) {
+      // We have exact matches - no smart filtering message needed
+      finalJobs = exactMatches;
+      filterMessage = ''; // No message when we have exact matches
+      hasExpandedSearch = false;
+    } else if (veryGoodMatches.length > 0) {
+      // Very good matches - minor expansion
+      finalJobs = veryGoodMatches;
+      filterMessage = 'Found jobs with minor variations from your exact preferences';
       hasExpandedSearch = true;
-    } else if (decentMatches.length >= 1) {
-      // Show decent matches with broader soft expansion
+    } else if (goodMatches.length > 0) {
+      // Good matches with moderate expansion
+      finalJobs = goodMatches;
+      filterMessage = 'Expanded search to include jobs that closely match your preferences';
+      hasExpandedSearch = true;
+    } else if (decentMatches.length > 0) {
+      // Decent matches with broader expansion
       finalJobs = decentMatches;
-      filterMessage = 'Expanded search to include jobs that partially match your preferences';
+      filterMessage = 'Expanded search significantly to include potentially relevant jobs';
       hasExpandedSearch = true;
     } else {
-      // Show all remaining jobs
+      // Show all remaining jobs as last resort
       finalJobs = sortedJobs;
-      filterMessage = hasHardFilters ? 
-        'Showing all jobs that match your strict requirements, ranked by relevance' :
-        'Expanded search significantly to find potentially relevant opportunities';
+      filterMessage = jobsToAnalyze.length > 0 ? 
+        'Showing all available jobs ranked by relevance to your preferences' :
+        'No jobs match your selected preferences. Try adjusting your filters.';
       hasExpandedSearch = true;
     }
     
