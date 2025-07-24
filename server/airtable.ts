@@ -1181,22 +1181,15 @@ export class AirtableService {
     }
 
     try {
-      console.log(`📝 Withdrawing job application with record ID: ${recordId}`);
+      console.log(`📝 Deleting job application with record ID: ${recordId} from Airtable`);
       
-      // Update the status field to 'withdrawn'
-      await jobApplicationsBase(JOB_APPLICATIONS_TABLE).update([
-        {
-          id: recordId,
-          fields: {
-            'Status': 'withdrawn'
-          }
-        }
-      ]);
+      // Delete the record completely from Airtable
+      await jobApplicationsBase(JOB_APPLICATIONS_TABLE).destroy([recordId]);
 
-      console.log(`✅ Successfully withdrew job application ${recordId}`);
+      console.log(`✅ Successfully deleted job application ${recordId} from Airtable`);
     } catch (error) {
-      console.error('Error withdrawing job application in Airtable:', error);
-      throw new Error('Failed to withdraw job application in Airtable');
+      console.error('Error deleting job application from Airtable:', error);
+      throw new Error('Failed to delete job application from Airtable');
     }
   }
 

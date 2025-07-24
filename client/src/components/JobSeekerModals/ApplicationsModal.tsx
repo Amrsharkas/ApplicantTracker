@@ -67,8 +67,8 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
     },
     onSuccess: (data, recordId) => {
       toast({
-        title: "Application Updated",
-        description: "Your application has been successfully updated.",
+        title: "Application Removed",
+        description: "Your application has been successfully removed.",
         variant: "default",
       });
       
