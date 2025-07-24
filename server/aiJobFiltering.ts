@@ -552,28 +552,19 @@ Respond in JSON format:
 
     console.log(`\n🔒 STRICT filtering results: ${strictMatchedJobs.length} out of ${jobs.length} jobs match ALL selected filters exactly`);
 
-    if (strictMatchedJobs.length > 0) {
-      // Return matched jobs with no message
-      const exactJobsWithScores = strictMatchedJobs.map(job => ({
-        ...job,
-        aiFilterScore: 95,
-        aiReasons: ['Exact match for all selected filters'],
-        aiFlags: []
-      }));
-      
-      return {
-        jobs: exactJobsWithScores,
-        filterMessage: '', // No message when showing exact matches
-        hasExpandedSearch: false
-      };
-    } else {
-      // No matches found - return empty with explanation
-      return {
-        jobs: [],
-        filterMessage: 'No jobs match your selected preferences. Try adjusting your filters.',
-        hasExpandedSearch: false
-      };
-    }
+    // Always return results with no messages - either show matching jobs or show nothing
+    const jobsWithScores = strictMatchedJobs.map(job => ({
+      ...job,
+      aiFilterScore: 95,
+      aiReasons: ['Exact match for all selected filters'],
+      aiFlags: []
+    }));
+    
+    return {
+      jobs: jobsWithScores,
+      filterMessage: '', // Never show any messages
+      hasExpandedSearch: false
+    };
   }
 
   private hasActiveFilters(filters: JobFilters): boolean {

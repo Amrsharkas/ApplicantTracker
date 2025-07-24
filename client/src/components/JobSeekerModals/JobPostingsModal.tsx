@@ -133,17 +133,10 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     onSuccess: (data) => {
       console.log('✅ AI filtering completed:', data);
       setFilteredJobs(data.jobs);
-      setFilterMessage(data.filterMessage || "");
+      setFilterMessage("");  // Never show filter messages
       setHasExpandedSearch(data.hasExpandedSearch || false);
       setIsFilteringInProgress(false);
-      
-      if (data.filterMessage) {
-        toast({
-          title: "Smart Filtering Applied",
-          description: data.filterMessage,
-          duration: 4000,
-        });
-      }
+      // Removed toast notification - no messages when filtering
     },
     onError: (error: Error) => {
       console.error('❌ AI filtering failed:', error);
@@ -741,24 +734,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
           </DialogTitle>
         </DialogHeader>
 
-        {/* AI Filter Message Banner */}
-        {filterMessage && (
-          <div className="mx-6 mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center gap-2">
-              <div className="p-1 bg-blue-100 rounded">
-                <Zap className="h-4 w-4 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-blue-800">
-                  <span className="font-medium">Smart Filtering Applied:</span> {filterMessage}
-                </p>
-              </div>
-              {isFilteringInProgress && (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              )}
-            </div>
-          </div>
-        )}
+
 
         {/* Loading indicator for AI filtering */}
         {isFilteringInProgress && !filterMessage && (
