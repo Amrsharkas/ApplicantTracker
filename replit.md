@@ -151,6 +151,7 @@ Changelog:
 - July 21, 2025. Fixed voice interview system with dedicated API route - created /api/interview/start-voice endpoint with proper JSON responses and error handling, resolved authentication issues by adding credentials to realtime session calls, enhanced frontend error handling with detailed logging and graceful fallback to text mode
 - July 21, 2025. Completely fixed profile update API - resolved TypeScript compilation errors causing HTML responses instead of JSON, added missing POST route to /api/candidate/profile, enhanced apiRequest function with proper method overloading to handle different parameter signatures, improved error handling with detailed server-side logging
 - July 21, 2025. Unified text and voice interview systems - both interview modes now use identical backend flow through /api/interview/start-voice endpoint, share same question sets, progress through questions automatically, and use unified completion processing. Fixed React runtime errors and removed deprecated mutation calls for seamless interview experience
+- July 24, 2025. Implemented two-tier AI filtering system with strict hard filters vs intelligent soft filters - job type, workplace, and country selections are now non-negotiable and never overridden by AI, while city, career level, and job category can be intelligently expanded. System first applies strict enforcement of user-selected preferences, then uses AI analysis only for contextual understanding of missing metadata and soft criteria
 ```
 
 ## User Preferences
