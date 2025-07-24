@@ -67,8 +67,8 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
     },
     onSuccess: (data, recordId) => {
       toast({
-        title: "Application Removed",
-        description: "Your application has been successfully removed.",
+        title: "Application Withdrawn",
+        description: "Your application has been successfully withdrawn and removed.",
         variant: "default",
       });
       
@@ -97,11 +97,8 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
   });
 
   const handleWithdraw = (recordId: string, jobTitle: string, status: string) => {
-    // Show confirmation before withdrawing/removing
-    const action = status === 'closed' ? 'remove' : 'withdraw';
-    const message = status === 'closed' 
-      ? `Are you sure you want to remove your application for "${jobTitle}" from your list?`
-      : `Are you sure you want to withdraw your application for "${jobTitle}"? This action cannot be undone.`;
+    // Show confirmation before withdrawing
+    const message = `Are you sure you want to withdraw your application for "${jobTitle}"? This will permanently remove it from your applications and cannot be undone.`;
     
     if (window.confirm(message)) {
       withdrawMutation.mutate(recordId);
@@ -316,8 +313,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
                         disabled={withdrawMutation.isPending}
                       >
                         <XCircle className="w-4 h-4" />
-                        {withdrawMutation.isPending ? 'Withdrawing...' : 
-                         application.status === 'closed' ? 'Remove' : 'Withdraw'}
+                        {withdrawMutation.isPending ? 'Withdrawing...' : 'Withdraw'}
                       </Button>
                     )}
                     <Button 

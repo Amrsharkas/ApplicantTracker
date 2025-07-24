@@ -1173,7 +1173,7 @@ export class AirtableService {
     }
   }
 
-  // Withdraw job application by updating status in Airtable
+  // Withdraw job application by deleting record from Airtable
   async withdrawJobApplication(recordId: string): Promise<void> {
     if (!jobApplicationsBase) {
       console.warn('Job applications base not configured, skipping withdrawal');
