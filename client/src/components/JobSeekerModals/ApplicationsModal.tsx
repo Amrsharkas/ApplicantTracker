@@ -67,8 +67,8 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
     },
     onSuccess: (data, recordId) => {
       toast({
-        title: "Application Withdrawn",
-        description: "Your application has been successfully withdrawn.",
+        title: "Application Updated",
+        description: "Your application has been successfully updated.",
         variant: "default",
       });
       
@@ -96,9 +96,14 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
     },
   });
 
-  const handleWithdraw = (recordId: string, jobTitle: string) => {
-    // Show confirmation before withdrawing
-    if (window.confirm(`Are you sure you want to withdraw your application for "${jobTitle}"? This action cannot be undone.`)) {
+  const handleWithdraw = (recordId: string, jobTitle: string, status: string) => {
+    // Show confirmation before withdrawing/removing
+    const action = status === 'closed' ? 'remove' : 'withdraw';
+    const message = status === 'closed' 
+      ? `Are you sure you want to remove your application for "${jobTitle}" from your list?`
+      : `Are you sure you want to withdraw your application for "${jobTitle}"? This action cannot be undone.`;
+    
+    if (window.confirm(message)) {
       withdrawMutation.mutate(recordId);
     }
   };
@@ -302,16 +307,17 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-2">
-                    {application.status === 'pending' && (
+                    {(application.status === 'pending' || application.status === 'closed') && (
                       <Button 
                         variant="outline" 
                         size="sm" 
                         className="flex items-center gap-2"
-                        onClick={() => handleWithdraw(application.recordId, application.jobTitle)}
+                        onClick={() => handleWithdraw(application.recordId, application.jobTitle, application.status)}
                         disabled={withdrawMutation.isPending}
                       >
                         <XCircle className="w-4 h-4" />
-                        {withdrawMutation.isPending ? 'Withdrawing...' : 'Withdraw'}
+                        {withdrawMutation.isPending ? 'Withdrawing...' : 
+                         application.status === 'closed' ? 'Remove' : 'Withdraw'}
                       </Button>
                     )}
                     <Button 

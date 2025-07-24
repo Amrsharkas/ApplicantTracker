@@ -1257,10 +1257,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Application not found or does not belong to you' });
       }
 
-      // Check if application is still pending
-      if (applicationExists.status && !['pending', 'under review', 'reviewing'].includes(applicationExists.status.toLowerCase())) {
+      // Check if application can be withdrawn/removed
+      // Allow withdrawal for pending applications or removal for closed applications
+      const status = applicationExists.status?.toLowerCase() || '';
+      const canWithdraw = ['pending', 'under review', 'reviewing'].includes(status);
+      const canRemove = ['closed', 'cancelled', 'expired', 'withdrawn'].includes(status);
+      
+      if (!canWithdraw && !canRemove) {
         return res.status(400).json({ 
-          message: 'Only pending applications can be withdrawn' 
+          message: 'Only pending applications can be withdrawn and closed applications can be removed' 
         });
       }
 
