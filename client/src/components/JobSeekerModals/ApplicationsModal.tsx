@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ interface ApplicationsModalProps {
 
 export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: ApplicationsModalProps) {
   const [statusFilter, setStatusFilter] = useState("all");
+  const [withdrawConfirm, setWithdrawConfirm] = useState<{isOpen: boolean, recordId: string, jobTitle: string} | null>(null);
   const { toast } = useToast();
 
   const { data: applications = [], isLoading, refetch } = useQuery({
@@ -97,12 +98,19 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
   });
 
   const handleWithdraw = (recordId: string, jobTitle: string, status: string) => {
-    // Show confirmation before withdrawing
-    const message = `Are you sure you want to withdraw your application for "${jobTitle}"? This will permanently remove it from your applications and cannot be undone.`;
-    
-    if (window.confirm(message)) {
-      withdrawMutation.mutate(recordId);
+    // Show custom confirmation modal
+    setWithdrawConfirm({ isOpen: true, recordId, jobTitle });
+  };
+
+  const confirmWithdraw = () => {
+    if (withdrawConfirm) {
+      withdrawMutation.mutate(withdrawConfirm.recordId);
+      setWithdrawConfirm(null);
     }
+  };
+
+  const cancelWithdraw = () => {
+    setWithdrawConfirm(null);
   };
 
   const getStatusIcon = (status: string) => {
@@ -335,6 +343,40 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
           </div>
         </div>
       </DialogContent>
+
+      {/* Withdraw Confirmation Modal */}
+      <Dialog open={withdrawConfirm?.isOpen || false} onOpenChange={() => setWithdrawConfirm(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              Withdraw Application
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to withdraw your application for "{withdrawConfirm?.jobTitle}"? 
+              This will permanently remove it from your applications and cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-6">
+            <Button
+              variant="outline"
+              onClick={cancelWithdraw}
+              disabled={withdrawMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmWithdraw}
+              disabled={withdrawMutation.isPending}
+              className="flex items-center gap-2"
+            >
+              <XCircle className="w-4 h-4" />
+              {withdrawMutation.isPending ? 'Withdrawing...' : 'Withdraw Application'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
