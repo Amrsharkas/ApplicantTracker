@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { aiInterviewService, aiProfileAnalysisAgent, aiInterviewAgent } from "./openai";
 import { airtableService } from "./airtable";
+import { aiJobFilteringService } from "./aiJobFiltering";
 import { employerQuestionService } from "./employerQuestions";
 import multer from "multer";
 import { z } from "zod";
@@ -1356,6 +1357,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching job postings:", error);
       res.status(500).json({ message: "Failed to fetch job postings" });
+    }
+  });
+
+  // AI-powered job filtering endpoint
+  app.post('/api/job-postings/filter', isAuthenticated, async (req: any, res) => {
+    try {
+      console.log('🤖 Processing AI-powered job filtering request');
+      const { filters } = req.body;
+      
+      // Get all job postings
+      const allJobPostings = await airtableService.getAllJobPostings();
+      console.log(`📋 Filtering ${allJobPostings.length} job postings with AI`);
+      
+      // Apply AI-powered filtering
+      const filterResult = await aiJobFilteringService.intelligentJobFiltering(allJobPostings, filters);
+      
+      console.log(`✅ AI filtering complete: ${filterResult.jobs.length} jobs selected, message: "${filterResult.filterMessage}"`);
+      
+      res.json({
+        jobs: filterResult.jobs,
+        filterMessage: filterResult.filterMessage,
+        hasExpandedSearch: filterResult.hasExpandedSearch,
+        totalOriginal: allJobPostings.length,
+        totalFiltered: filterResult.jobs.length
+      });
+    } catch (error) {
+      console.error('Error in AI job filtering:', error);
+      res.status(500).json({ message: 'Failed to filter job postings' });
     }
   });
 

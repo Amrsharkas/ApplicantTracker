@@ -113,7 +113,65 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     jobType: false,
     datePosted: false
   });
+  const [filteredJobs, setFilteredJobs] = useState<JobPosting[]>([]);
+  const [filterMessage, setFilterMessage] = useState("");
+  const [hasExpandedSearch, setHasExpandedSearch] = useState(false);
+  const [isFilteringInProgress, setIsFilteringInProgress] = useState(false);
   const { toast } = useToast();
+
+  // AI-powered filtering mutation
+  const aiFilterMutation = useMutation({
+    mutationFn: async (filters: any) => {
+      setIsFilteringInProgress(true);
+      console.log('🤖 Requesting AI-powered job filtering with filters:', filters);
+      const response = await apiRequest("/api/job-postings/filter", {
+        method: "POST", 
+        body: JSON.stringify({ filters: { ...filters, searchQuery } }),
+      });
+      return response;
+    },
+    onSuccess: (data) => {
+      console.log('✅ AI filtering completed:', data);
+      setFilteredJobs(data.jobs);
+      setFilterMessage(data.filterMessage || "");
+      setHasExpandedSearch(data.hasExpandedSearch || false);
+      setIsFilteringInProgress(false);
+      
+      if (data.filterMessage) {
+        toast({
+          title: "Smart Filtering Applied",
+          description: data.filterMessage,
+          duration: 4000,
+        });
+      }
+    },
+    onError: (error: Error) => {
+      console.error('❌ AI filtering failed:', error);
+      setIsFilteringInProgress(false);
+      // Fallback to original job list
+      setFilteredJobs(jobPostings);
+      setFilterMessage("");
+      setHasExpandedSearch(false);
+      
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      
+      toast({
+        title: "Filtering Error",
+        description: "AI filtering failed. Showing all jobs.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // New application mutation for the updated endpoint
   const newApplicationMutation = useMutation({
@@ -233,8 +291,38 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
   useEffect(() => {
     if (!isOpen) {
       setSelectedJob(null);
+      setFilteredJobs([]);
+      setFilterMessage("");
+      setHasExpandedSearch(false);
     }
   }, [isOpen]);
+
+  // Trigger AI filtering when filters or search query change
+  useEffect(() => {
+    if (isOpen && jobPostings.length > 0) {
+      // Check if any filters are active
+      const hasActiveFilters = (
+        filters.workplace.length > 0 ||
+        filters.country !== "" ||
+        filters.city !== "" ||
+        filters.careerLevel !== "" ||
+        filters.jobCategory !== "" ||
+        filters.jobType !== "" ||
+        filters.datePosted !== "" ||
+        searchQuery !== ""
+      );
+
+      if (hasActiveFilters) {
+        // Apply AI filtering
+        aiFilterMutation.mutate(filters);
+      } else {
+        // No filters active, show all jobs
+        setFilteredJobs([]);
+        setFilterMessage("");
+        setHasExpandedSearch(false);
+      }
+    }
+  }, [filters, searchQuery, jobPostings, isOpen]);
 
   // Calculate active filters count
   const activeFiltersCount = Object.values(filters).filter(value => 
@@ -461,7 +549,9 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     return isNaN(finalScore) ? 50 : finalScore; // Fallback to 50 if NaN
   };
 
-  const { jobs: filteredJobs, isRelated: showingRelatedJobs } = getFilteredJobs();
+  // Use AI-filtered jobs if available, otherwise use all jobs
+  const displayedJobs = filteredJobs.length > 0 ? filteredJobs : jobPostings;
+  const showingRelatedJobs = hasExpandedSearch;
 
   // Helper functions
   const toggleFilter = (filterType: keyof typeof expandedFilters) => {
@@ -613,7 +703,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Briefcase className="h-5 w-5 text-blue-600" />
-              Intelligent Job Discovery ({filteredJobs.length} matches)
+              Intelligent Job Discovery ({displayedJobs.length} matches)
             </div>
             <div className="flex items-center gap-2">
               {activeFiltersCount > 0 && (
@@ -650,6 +740,35 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
             </div>
           </DialogTitle>
         </DialogHeader>
+
+        {/* AI Filter Message Banner */}
+        {filterMessage && (
+          <div className="mx-6 mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="p-1 bg-blue-100 rounded">
+                <Zap className="h-4 w-4 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-blue-800">
+                  <span className="font-medium">Smart Filtering Applied:</span> {filterMessage}
+                </p>
+              </div>
+              {isFilteringInProgress && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Loading indicator for AI filtering */}
+        {isFilteringInProgress && !filterMessage && (
+          <div className="mx-6 mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+              <p className="text-sm text-gray-700">AI is analyzing jobs based on your filters...</p>
+            </div>
+          </div>
+        )}
 
         <div className="flex h-[calc(95vh-120px)]">
           {/* Smart Filters Sidebar */}
@@ -915,7 +1034,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                   <div className="text-red-500 mb-2">Failed to load job postings</div>
                   <p className="text-gray-600">Please try again later</p>
                 </div>
-              ) : filteredJobs.length === 0 ? (
+              ) : displayedJobs.length === 0 ? (
                 <div className="text-center py-12">
                   {jobPostings.length === 0 ? (
                     <div className="max-w-md mx-auto">
@@ -948,7 +1067,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {filteredJobs.map((job: JobPosting, index: number) => {
+                  {displayedJobs.map((job: JobPosting, index: number) => {
                     const matchScore = calculateAIMatchScore(job);
                     const jobTags = getJobTags(job);
                     
