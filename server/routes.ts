@@ -31,6 +31,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint for authentication issues
+  app.get('/api/auth/debug', (req: any, res) => {
+    const authInfo = {
+      isAuthenticated: req.isAuthenticated(),
+      hasUser: !!req.user,
+      sessionID: req.sessionID,
+      hostname: req.hostname,
+      userAgent: req.get('User-Agent'),
+      cookies: req.cookies,
+      user: req.user ? {
+        hasExpires: !!req.user.expires_at,
+        expiresAt: req.user.expires_at,
+        currentTime: Math.floor(Date.now() / 1000)
+      } : null
+    };
+    console.log('🔍 Auth debug info:', authInfo);
+    res.json(authInfo);
+  });
+
   app.put('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

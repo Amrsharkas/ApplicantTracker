@@ -35,11 +35,12 @@ export function getSession() {
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true, // Changed to true to help with OIDC flow
     cookie: {
       httpOnly: true,
       secure: true,
       maxAge: sessionTtl,
+      sameSite: 'lax' // Added for better OIDC compatibility
     },
   });
 }
@@ -78,10 +79,17 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
+    try {
+      console.log('✅ Authentication successful, processing tokens...');
+      const user = {};
+      updateUserSession(user, tokens);
+      await upsertUser(tokens.claims());
+      console.log('✅ User session created and stored');
+      verified(null, user);
+    } catch (error) {
+      console.error('❌ Authentication verification failed:', error instanceof Error ? error.message : String(error));
+      verified(error instanceof Error ? error : new Error('Authentication failed'), false);
+    }
   };
 
   for (const domain of process.env
@@ -102,16 +110,21 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
+    console.log(`🔐 Login attempt for hostname: ${req.hostname}`);
     passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
+      prompt: "consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
+    console.log(`🔄 Callback received for hostname: ${req.hostname}`);
+    console.log(`🔍 Query params:`, req.query);
+    
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
+      failureFlash: false
     })(req, res, next);
   });
 
@@ -159,7 +172,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     console.log('✅ Token refreshed successfully');
     return next();
   } catch (error) {
-    console.log('❌ Token refresh failed:', error.message);
+    console.log('❌ Token refresh failed:', error instanceof Error ? error.message : String(error));
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
