@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Upload, User, FileText } from "lucide-react";
+import type { ApplicantProfile, User as UserType } from "@shared/schema";
 
 const profileFormSchema = z.object({
   age: z.number().min(16).max(100).optional(),
@@ -39,12 +40,12 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: profile, isLoading } = useQuery({
+  const { data: profile, isLoading } = useQuery<ApplicantProfile>({
     queryKey: ["/api/candidate/profile"],
     enabled: isOpen,
   });
 
-  const { data: user } = useQuery({
+  const { data: user } = useQuery<UserType>({
     queryKey: ["/api/auth/user"],
     enabled: isOpen,
   });
@@ -65,7 +66,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   });
 
   // Update form when profile data loads
-  useState(() => {
+  useEffect(() => {
     if (profile) {
       form.reset({
         age: profile.age || undefined,
@@ -93,7 +94,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/job-matches"] });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -161,10 +162,12 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       
       let errorMessage = "Failed to upload resume. Please try again.";
       
-      if (error.name === 'AbortError') {
-        errorMessage = "Upload timed out. The file may be too large or your connection is slow. Please try again.";
-      } else if (error.message) {
-        errorMessage = error.message;
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = "Upload timed out. The file may be too large or your connection is slow. Please try again.";
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
       }
       
       toast({
@@ -218,7 +221,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
               <div className="mt-2 space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="secondary" className="bg-green-100 text-green-700">
-                    {profile?.completionPercentage || 0}% Complete
+                    {profile?.completionPercentage ?? 0}% Complete
                   </Badge>
                   <span className="text-xs text-gray-500">
                     {profile?.completionPercentage >= 80 ? "Ready for AI Interview!" : "Fill out more to reach 80%"}
@@ -227,7 +230,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
                     className="bg-green-600 h-2 rounded-full transition-all duration-300" 
-                    style={{ width: `${profile?.completionPercentage || 0}%` }}
+                    style={{ width: `${profile?.completionPercentage ?? 0}%` }}
                   ></div>
                 </div>
               </div>
@@ -454,7 +457,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
               />
 
               {/* AI Profile Display */}
-              {profile?.aiProfile && (
+              {profile?.aiProfile && typeof profile.aiProfile === 'object' && (
                 <Card className="glass-card bg-gradient-to-r from-blue-50 to-purple-50">
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
@@ -462,22 +465,22 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                       AI-Generated Profile Insights
                     </h4>
                     <div className="space-y-2 text-sm">
-                      {profile.aiProfile.skills && (
+                      {(profile.aiProfile as any)?.skills && Array.isArray((profile.aiProfile as any).skills) && (
                         <div>
                           <span className="font-medium text-slate-700">Skills: </span>
-                          <span className="text-slate-600">{profile.aiProfile.skills.join(', ')}</span>
+                          <span className="text-slate-600">{((profile.aiProfile as any).skills as string[]).join(', ')}</span>
                         </div>
                       )}
-                      {profile.aiProfile.personality && (
+                      {(profile.aiProfile as any)?.personality && (
                         <div>
                           <span className="font-medium text-slate-700">Personality: </span>
-                          <span className="text-slate-600">{profile.aiProfile.personality}</span>
+                          <span className="text-slate-600">{(profile.aiProfile as any).personality}</span>
                         </div>
                       )}
-                      {profile.aiProfile.workStyle && (
+                      {(profile.aiProfile as any)?.workStyle && (
                         <div>
                           <span className="font-medium text-slate-700">Work Style: </span>
-                          <span className="text-slate-600">{profile.aiProfile.workStyle}</span>
+                          <span className="text-slate-600">{(profile.aiProfile as any).workStyle}</span>
                         </div>
                       )}
                     </div>

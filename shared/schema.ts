@@ -255,8 +255,11 @@ export const insertInterviewSessionSchema = createInsertSchema(interviewSessions
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
-export type InsertApplicantProfile = z.infer<typeof insertApplicantProfileSchema>;
+
+// Applicant Profile types
 export type ApplicantProfile = typeof applicantProfiles.$inferSelect;
+export type InsertApplicantProfile = typeof applicantProfiles.$inferInsert;
+export type UpdateApplicantProfile = Partial<InsertApplicantProfile>;
 export type InsertJob = z.infer<typeof insertJobSchema>;
 export type Job = typeof jobs.$inferSelect;
 export type InsertJobMatch = z.infer<typeof insertJobMatchSchema>;
