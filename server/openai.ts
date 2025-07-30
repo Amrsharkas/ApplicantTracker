@@ -760,8 +760,8 @@ Be blunt and factual. No generic praise. Focus on what was actually demonstrated
         strengths: comprehensiveProfile.strengths,
         careerGoals: comprehensiveProfile.workPreferences.careerGoals,
         workStyle: comprehensiveProfile.workPreferences.workMode,
-        // Add the comprehensive profile for employers
-        comprehensiveProfile
+        // Add additional comprehensive data
+        additionalInsights: comprehensiveProfile
       };
     } catch (error) {
       console.error("Error generating comprehensive profile:", error);
