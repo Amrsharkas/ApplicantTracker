@@ -92,11 +92,7 @@ export function useLogout() {
     },
     onSuccess: () => {
       queryClient.clear();
-      toast({
-        title: "Logged Out",
-        description: "You have been logged out successfully.",
-      });
-      // Redirect to home page after logout
+      // Immediate redirect without toast to prevent any UI interruptions
       window.location.href = "/";
     },
     onError: (error: Error) => {
