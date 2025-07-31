@@ -96,6 +96,8 @@ export function useLogout() {
         title: "Logged Out",
         description: "You have been logged out successfully.",
       });
+      // Redirect to home page after logout
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast({
