@@ -31,19 +31,7 @@ export default function Dashboard() {
     queryKey: ["/api/candidate/profile"],
     retry: false,
     refetchOnWindowFocus: false,
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-    },
+
   });
 
   const { data: matches = [] } = useQuery({
@@ -90,16 +78,16 @@ export default function Dashboard() {
     setActiveModal('jobPostings');
   };
 
-  const profileProgress = profile?.completionPercentage || 0;
-  const hasEssentialInfo = !!(profile?.name || profile?.email || profile?.phone || profile?.location || profile?.age);
-  const hasCompletedInterview = profile?.aiProfileGenerated;
+  const profileProgress = (profile as any)?.completionPercentage || 0;
+  const hasEssentialInfo = !!((profile as any)?.name || (profile as any)?.email || (profile as any)?.phone || (profile as any)?.location || (profile as any)?.age);
+  const hasCompletedInterview = (profile as any)?.aiProfileGenerated;
   
   // Show full dashboard only when BOTH essential info is complete AND AI interview is done
   const showFullDashboard = hasEssentialInfo && hasCompletedInterview;
 
   // Show welcome toast only once after completing interview
   useEffect(() => {
-    if (showFullDashboard && profile?.aiProfileGenerated) {
+    if (showFullDashboard && (profile as any)?.aiProfileGenerated) {
       // Check if we've already shown this toast
       const hasShownWelcomeToast = localStorage.getItem(`welcomeToast_${user?.id}`);
       
@@ -114,7 +102,7 @@ export default function Dashboard() {
         localStorage.setItem(`welcomeToast_${user?.id}`, 'shown');
       }
     }
-  }, [showFullDashboard, profile?.aiProfileGenerated, user?.id, toast]);
+  }, [showFullDashboard, (profile as any)?.aiProfileGenerated, user?.id, toast]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -146,7 +134,11 @@ export default function Dashboard() {
                 </span>
               </button>
               <button
-                onClick={() => window.location.href = '/api/logout'}
+                onClick={() => {
+                  fetch('/api/logout', { method: 'POST', credentials: 'include' })
+                    .then(() => window.location.href = '/auth')
+                    .catch(() => window.location.href = '/auth');
+                }}
                 className="text-sm text-gray-600 hover:text-gray-800"
               >
                 Sign Out
@@ -325,8 +317,8 @@ export default function Dashboard() {
                     <div className="text-left">
                       <h4 className="text-xl font-bold">Upcoming Interviews</h4>
                       <p className="text-blue-100">
-                        {upcomingInterviews.length > 0 
-                          ? `${upcomingInterviews.length} interview${upcomingInterviews.length > 1 ? 's' : ''} scheduled`
+                        {(upcomingInterviews as any[]).length > 0 
+                          ? `${(upcomingInterviews as any[]).length} interview${(upcomingInterviews as any[]).length > 1 ? 's' : ''} scheduled`
                           : "Check your interview schedule"
                         }
                       </p>
@@ -362,12 +354,12 @@ export default function Dashboard() {
                   <div className="flex items-center space-x-2">
                     <Target className="h-3 w-3 text-green-600" />
                     <span className="text-gray-600">Job Matches:</span>
-                    <span className="font-medium text-gray-900">{matches.length}</span>
+                    <span className="font-medium text-gray-900">{(matches as any[]).length}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <FileText className="h-3 w-3 text-purple-600" />
                     <span className="text-gray-600">Applications:</span>
-                    <span className="font-medium text-gray-900">{applications.length}</span>
+                    <span className="font-medium text-gray-900">{(applications as any[]).length}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <User className="h-3 w-3 text-blue-600" />

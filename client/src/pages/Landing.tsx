@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Brain, Target, Zap, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "wouter";
 
 // Import company logos
 import moderatorLogo from "@assets/image_1752003560205.png";
@@ -140,7 +141,7 @@ function CompanyCarousel() {
 
 export default function Landing() {
   const handleLogin = () => {
-    window.location.href = "/api/login";
+    window.location.href = "/auth";
   };
 
   return (
@@ -167,12 +168,13 @@ export default function Landing() {
               Plato
             </motion.div>
             
-            <Button 
-              onClick={handleLogin}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-xl font-medium"
-            >
-              Sign In
-            </Button>
+            <Link href="/auth">
+              <Button 
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-xl font-medium"
+              >
+                Sign In
+              </Button>
+            </Link>
           </div>
         </motion.header>
 
@@ -219,13 +221,14 @@ export default function Landing() {
                 transition={{ delay: 0.5 }}
                 className="flex flex-col sm:flex-row gap-4"
               >
-                <Button 
-                  onClick={handleLogin}
-                  size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  Get Started
-                </Button>
+                <Link href="/auth">
+                  <Button 
+                    size="lg"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    Get Started
+                  </Button>
+                </Link>
                 
                 <Button 
                   variant="outline" 
