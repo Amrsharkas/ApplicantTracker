@@ -32,7 +32,7 @@ export default function Dashboard() {
     queryKey: ["/api/candidate/profile"],
     retry: false,
     refetchOnWindowFocus: false,
-
+    enabled: !!user, // Only run query if user is authenticated
   });
 
   const { data: matches = [] } = useQuery({
@@ -40,12 +40,14 @@ export default function Dashboard() {
     retry: false,
     refetchOnWindowFocus: false,
     refetchInterval: 30000, // Refresh every 30 seconds to sync with Airtable monitoring
+    enabled: !!user, // Only run query if user is authenticated
   });
 
   const { data: applications = [] } = useQuery({
     queryKey: ["/api/applications"],
     retry: false,
     refetchOnWindowFocus: false,
+    enabled: !!user, // Only run query if user is authenticated
   });
 
   const { data: upcomingInterviews = [] } = useQuery({
@@ -53,6 +55,7 @@ export default function Dashboard() {
     retry: false,
     refetchOnWindowFocus: false,
     refetchInterval: 30000, // Refresh every 30 seconds to sync with Airtable monitoring
+    enabled: !!user, // Only run query if user is authenticated
   });
 
   if (isLoading) {
@@ -61,6 +64,11 @@ export default function Dashboard() {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
+  }
+
+  // If user is not authenticated, don't render dashboard (redirect will happen)
+  if (!user) {
+    return null;
   }
 
   const openModal = (modalName: string) => {
