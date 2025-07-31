@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { 
   User, 
@@ -23,6 +23,7 @@ import { JobPostingsModal } from "@/components/JobSeekerModals/JobPostingsModal"
 
 export default function Dashboard() {
   const { user, isLoading } = useAuth();
+  const logout = useLogout();
   const { toast } = useToast();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedJobDetails, setSelectedJobDetails] = useState<{title: string, id: string} | null>(null);
@@ -134,14 +135,11 @@ export default function Dashboard() {
                 </span>
               </button>
               <button
-                onClick={() => {
-                  fetch('/api/logout', { method: 'POST', credentials: 'include' })
-                    .then(() => window.location.href = '/auth')
-                    .catch(() => window.location.href = '/auth');
-                }}
+                onClick={() => logout.mutate()}
+                disabled={logout.isPending}
                 className="text-sm text-gray-600 hover:text-gray-800"
               >
-                Sign Out
+                {logout.isPending ? 'Signing Out...' : 'Sign Out'}
               </button>
             </div>
           </div>
