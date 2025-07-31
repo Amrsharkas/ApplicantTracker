@@ -384,12 +384,37 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       setIsProcessingInterview(true);
       
       // Convert conversation history to the format expected by the API
-      const responses = conversationHistory
-        .filter((_, index) => index % 2 === 1) // Get only user responses (odd indices)
-        .map((item, index) => ({
-          question: conversationHistory[index * 2]?.content || `Question ${index + 1}`,
-          answer: item.content
-        }));
+      // Group conversation by pairs of AI question and user response
+      const responses = [];
+      for (let i = 0; i < conversationHistory.length; i += 2) {
+        const aiMessage = conversationHistory[i];
+        const userMessage = conversationHistory[i + 1];
+        
+        if (aiMessage?.role === 'assistant' && userMessage?.role === 'user') {
+          responses.push({
+            question: aiMessage.content,
+            answer: userMessage.content
+          });
+        }
+      }
+
+      // If no proper pairs found, try alternative approach
+      if (responses.length === 0) {
+        const aiMessages = conversationHistory.filter(msg => msg.role === 'assistant');
+        const userMessages = conversationHistory.filter(msg => msg.role === 'user');
+        
+        for (let i = 0; i < Math.min(aiMessages.length, userMessages.length); i++) {
+          responses.push({
+            question: aiMessages[i]?.content || `Question ${i + 1}`,
+            answer: userMessages[i]?.content || ''
+          });
+        }
+      }
+
+      console.log('Sending voice interview data:', { 
+        conversationHistory: responses, 
+        interviewType: selectedInterviewType 
+      });
 
       const response = await apiRequest("POST", "/api/interview/complete-voice", {
         conversationHistory: responses,
@@ -439,9 +464,12 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     },
     onError: (error) => {
       setIsProcessingInterview(false);
+      console.error('Voice interview processing error:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
         title: "Processing Failed",
-        description: "There was an issue processing your interview. Please try again.",
+        description: `There was an issue processing your interview: ${errorMessage}`,
         variant: "destructive",
       });
     },
