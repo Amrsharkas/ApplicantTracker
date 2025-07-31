@@ -156,8 +156,8 @@ export class DatabaseStorage implements IStorage {
     };
 
     // Essential Information (required for dashboard unlock) - 30 points
-    // Name, email, phone, location basics
-    if (profile.name || profile.email || profile.phone || profile.location || profile.age) {
+    // Name, email, phone, location, AND age - all must be present
+    if (profile.name && profile.email && profile.phone && profile.location && profile.age) {
       score += 30;
       details.essentialInfo = true;
     }

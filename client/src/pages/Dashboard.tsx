@@ -88,8 +88,11 @@ export default function Dashboard() {
   };
 
   const profileProgress = (profile as any)?.completionPercentage || 0;
-  const hasEssentialInfo = !!((profile as any)?.name || (profile as any)?.email || (profile as any)?.phone || (profile as any)?.location || (profile as any)?.age);
+  // Essential info requires name, email, phone, location, AND age - all must be present
+  const hasEssentialInfo = !!((profile as any)?.name && (profile as any)?.email && (profile as any)?.phone && (profile as any)?.location && (profile as any)?.age);
   const hasCompletedInterview = (profile as any)?.aiProfileGenerated;
+  
+
   
   // Show full dashboard only when BOTH essential info is complete AND AI interview is done
   const showFullDashboard = hasEssentialInfo && hasCompletedInterview;

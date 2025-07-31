@@ -98,11 +98,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...processedBody
       };
 
-      console.log("Attempting to upsert profile with data:", profileData);
       const profile = await storage.upsertApplicantProfile(profileData);
       await storage.updateProfileCompletion(userId);
-      
-      console.log("Profile update successful:", profile.id);
       res.json(profile);
     } catch (error) {
       console.error("Error updating profile:", error);
