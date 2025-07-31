@@ -6,43 +6,19 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
-import { useState, useEffect } from "react";
 
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   // Only show loading state if we're actually loading (not during logout)
-  // Add timeout to prevent infinite loading - after 10 seconds, show the landing page
-  const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
-  
-  useEffect(() => {
-    if (isLoading) {
-      const timeout = setTimeout(() => {
-        setShowTimeoutMessage(true);
-      }, 10000); // 10 second timeout
-      
-      return () => clearTimeout(timeout);
-    } else {
-      setShowTimeoutMessage(false);
-    }
-  }, [isLoading]);
-
-  if (isLoading && isAuthenticated !== false && !showTimeoutMessage) {
+  if (isLoading && isAuthenticated !== false) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your account...</p>
-        </div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
-  }
-
-  // If loading timed out or authentication failed, redirect to landing
-  if (showTimeoutMessage || (isLoading && !user)) {
-    return <Landing />;
   }
 
   return (
