@@ -1,17 +1,29 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
+
+// Global logout state
+let globalLoggingOut = false;
 
 export function useAuth() {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  
   const { data: user, isLoading } = useQuery({
     queryKey: ["/api/user"],
     retry: false,
+    enabled: !globalLoggingOut && !isLoggingOut,
   });
 
+  // Sync with global logout state
+  useEffect(() => {
+    setIsLoggingOut(globalLoggingOut);
+  }, []);
+
   return {
-    user: user ?? null,
-    isLoading,
-    isAuthenticated: !!user,
+    user: (globalLoggingOut || isLoggingOut) ? null : (user ?? null),
+    isLoading: (globalLoggingOut || isLoggingOut) ? false : isLoading,
+    isAuthenticated: (globalLoggingOut || isLoggingOut) ? false : !!user,
   };
 }
 
@@ -91,9 +103,15 @@ export function useLogout() {
       });
     },
     onSuccess: () => {
+      // Set global logout state to prevent any component rendering
+      globalLoggingOut = true;
+      
+      // Clear all queries and immediately redirect
       queryClient.clear();
-      // Immediate redirect without toast to prevent any UI interruptions
-      window.location.href = "/";
+      queryClient.cancelQueries();
+      
+      // Immediate redirect with no delay
+      window.location.replace("/");
     },
     onError: (error: Error) => {
       toast({
