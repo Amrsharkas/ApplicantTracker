@@ -1,10 +1,8 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Brain, Target, Zap, CheckCircle, LogIn, UserPlus } from "lucide-react";
+import { Brain, Target, Zap, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { AuthModal } from "@/components/AuthModal";
 
 // Import company logos
 import moderatorLogo from "@assets/image_1752003560205.png";
@@ -141,24 +139,8 @@ function CompanyCarousel() {
 }
 
 export default function Landing() {
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalTab, setAuthModalTab] = useState<"login" | "register">("login");
-  const { user } = useAuth();
-
-  // Redirect if already authenticated
-  if (user) {
-    window.location.href = "/dashboard";
-    return null;
-  }
-
-  const handleSignIn = () => {
-    setAuthModalTab("login");
-    setAuthModalOpen(true);
-  };
-
-  const handleSignUp = () => {
-    setAuthModalTab("register");
-    setAuthModalOpen(true);
+  const handleLogin = () => {
+    window.location.href = "/api/login";
   };
 
   return (
@@ -185,23 +167,12 @@ export default function Landing() {
               Plato
             </motion.div>
             
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="outline"
-                onClick={handleSignIn}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl font-medium"
-              >
-                <LogIn className="h-4 w-4" />
-                Sign In
-              </Button>
-              <Button 
-                onClick={handleSignUp}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2"
-              >
-                <UserPlus className="h-4 w-4" />
-                Sign Up
-              </Button>
-            </div>
+            <Button 
+              onClick={handleLogin}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-xl font-medium"
+            >
+              Sign In
+            </Button>
           </div>
         </motion.header>
 
@@ -249,7 +220,7 @@ export default function Landing() {
                 className="flex flex-col sm:flex-row gap-4"
               >
                 <Button 
-                  onClick={handleSignUp}
+                  onClick={handleLogin}
                   size="lg"
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
                 >
@@ -379,7 +350,7 @@ export default function Landing() {
               Join thousands of professionals who've discovered their dream careers with AI-powered job matching.
             </p>
             <Button 
-              onClick={handleSignUp}
+              onClick={handleLogin}
               size="lg"
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-12 py-4 rounded-xl font-semibold text-xl shadow-lg hover:shadow-xl transition-all duration-300"
             >
@@ -388,13 +359,6 @@ export default function Landing() {
           </motion.div>
         </main>
       </div>
-
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        defaultTab={authModalTab}
-      />
     </div>
   );
 }

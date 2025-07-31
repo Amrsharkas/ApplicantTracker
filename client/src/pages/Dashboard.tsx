@@ -7,12 +7,10 @@ import {
   FileText, 
   TrendingUp,
   MessageCircle,
-  Briefcase,
-  LogOut
+  Briefcase
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { Button } from "@/components/ui/button";
 
 import { MatchesModal } from "@/components/JobSeekerModals/MatchesModal";
 import { ComprehensiveProfileModal } from "@/components/JobSeekerModals/ComprehensiveProfileModal";
@@ -24,7 +22,7 @@ import { UpcomingInterviewModal } from "@/components/JobSeekerModals/UpcomingInt
 import { JobPostingsModal } from "@/components/JobSeekerModals/JobPostingsModal";
 
 export default function Dashboard() {
-  const { user, isLoading, logoutMutation } = useAuth();
+  const { user, isLoading } = useAuth();
   const { toast } = useToast();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedJobDetails, setSelectedJobDetails] = useState<{title: string, id: string} | null>(null);
@@ -41,7 +39,7 @@ export default function Dashboard() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/";
+          window.location.href = "/api/login";
         }, 500);
         return;
       }
@@ -147,16 +145,12 @@ export default function Dashboard() {
                   {user?.firstName || 'Job Seeker'}
                 </span>
               </button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => logoutMutation.mutate()}
-                disabled={logoutMutation.isPending}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+              <button
+                onClick={() => window.location.href = '/api/logout'}
+                className="text-sm text-gray-600 hover:text-gray-800"
               >
-                <LogOut className="h-4 w-4" />
-                {logoutMutation.isPending ? "Signing Out..." : "Sign Out"}
-              </Button>
+                Sign Out
+              </button>
             </div>
           </div>
         </div>
