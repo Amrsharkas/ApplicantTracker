@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext } from "react";
+import React, { createContext, ReactNode, useContext } from "react";
 import {
   useQuery,
   useMutation,
@@ -134,6 +134,3 @@ export function useAuth() {
   }
   return context;
 }
-
-// Explicit export of AuthProvider
-export { AuthProvider };
