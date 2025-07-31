@@ -26,15 +26,17 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table (mandatory for Replit Auth)
+// User storage table - updated for local authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().notNull(),
-  email: varchar("email").unique(),
+  email: varchar("email").unique().notNull(),
+  password: varchar("password"), // Added for local auth - nullable for migration
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   displayName: varchar("display_name"), // Keep existing column to avoid data loss
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").default("applicant"),
+  isEmailVerified: boolean("is_email_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
