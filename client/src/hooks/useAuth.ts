@@ -21,7 +21,11 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string }) => {
-      return await apiRequest("POST", "/api/login", credentials);
+      return await apiRequest("/api/login", {
+        method: "POST",
+        body: JSON.stringify(credentials),
+        headers: { "Content-Type": "application/json" }
+      });
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
@@ -52,7 +56,11 @@ export function useRegister() {
       lastName: string;
       username?: string;
     }) => {
-      return await apiRequest("POST", "/api/register", userData);
+      return await apiRequest("/api/register", {
+        method: "POST",
+        body: JSON.stringify(userData),
+        headers: { "Content-Type": "application/json" }
+      });
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
@@ -77,7 +85,10 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: async () => {
-      return await apiRequest("POST", "/api/logout", {});
+      return await apiRequest("/api/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
     },
     onSuccess: () => {
       queryClient.clear();
