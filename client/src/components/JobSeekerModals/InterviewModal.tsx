@@ -62,6 +62,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const [isInterviewConcluded, setIsInterviewConcluded] = useState(false);
   const [isProcessingInterview, setIsProcessingInterview] = useState(false);
   const [isStartingInterview, setIsStartingInterview] = useState(false);
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [lastAiResponse, setLastAiResponse] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -81,6 +83,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       setIsInterviewConcluded(false);
       setIsProcessingInterview(false);
       setIsStartingInterview(false);
+      setIsAiSpeaking(false);
+      setLastAiResponse('');
     }
   }, [isOpen]);
 
@@ -111,8 +115,18 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     onMessage: (event) => {
       console.log('Realtime event:', event);
       
+      if (event.type === 'response.audio.delta') {
+        // AI started speaking - set speaking state
+        setIsAiSpeaking(true);
+      }
+      
+      if (event.type === 'response.audio.done' || event.type === 'response.done') {
+        // AI finished speaking - clear speaking state
+        setIsAiSpeaking(false);
+      }
+      
       if (event.type === 'response.audio_transcript.delta') {
-        // AI speaking - clear any previous assistant message being built
+        // AI speaking - build transcript
         setVoiceTranscript(prev => prev + (event.delta || ''));
       }
       
@@ -120,33 +134,57 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         const aiText = event.transcript;
         setVoiceTranscript("");
         
-        // Replace the last assistant message or add new one to prevent duplicates
-        setConversationHistory(prev => {
-          const lastMessage = prev[prev.length - 1];
-          if (lastMessage && lastMessage.role === 'assistant') {
-            // Replace the last assistant message to prevent overlapping voices
-            return [...prev.slice(0, -1), { role: 'assistant', content: aiText }];
-          } else {
-            // Add new assistant message
+        // Prevent duplicate responses - only add if different from last response
+        if (aiText && aiText !== lastAiResponse) {
+          setLastAiResponse(aiText);
+          
+          // Add unique assistant message to conversation history
+          setConversationHistory(prev => {
+            // Check if this exact message already exists
+            const isDuplicate = prev.some(msg => 
+              msg.role === 'assistant' && msg.content === aiText
+            );
+            
+            if (isDuplicate) {
+              return prev; // Don't add duplicate
+            }
+            
+            // Add new unique message
             return [...prev, { role: 'assistant', content: aiText }];
+          });
+          
+          // Check if the AI is concluding the interview
+          if (aiText.toLowerCase().includes('conclude')) {
+            setIsInterviewConcluded(true);
           }
-        });
-        
-        // Check if the AI is concluding the interview
-        if (aiText && aiText.toLowerCase().includes('conclude')) {
-          setIsInterviewConcluded(true);
         }
       }
       
       if (event.type === 'input_audio_buffer.speech_started') {
         setVoiceTranscript("");
-        // User started speaking - don't interrupt, but prepare for clean conversation flow
+        // User started speaking - interrupt AI if needed
+        if (isAiSpeaking) {
+          setIsAiSpeaking(false);
+        }
       }
       
       if (event.type === 'conversation.item.input_audio_transcription.completed') {
         const userText = event.transcript;
-        // Add user message to conversation history
-        setConversationHistory(prev => [...prev, { role: 'user', content: userText }]);
+        
+        // Add user message to conversation history - prevent duplicates
+        if (userText) {
+          setConversationHistory(prev => {
+            const isDuplicate = prev.some(msg => 
+              msg.role === 'user' && msg.content === userText
+            );
+            
+            if (isDuplicate) {
+              return prev; // Don't add duplicate
+            }
+            
+            return [...prev, { role: 'user', content: userText }];
+          });
+        }
       }
     },
     onError: (error) => {
@@ -866,6 +904,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     setIsInterviewConcluded(false);
     setIsProcessingInterview(false);
     setIsStartingInterview(false);
+    setIsAiSpeaking(false);
+    setLastAiResponse('');
   };
 
   // Reset interview state when modal opens
@@ -876,6 +916,16 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   }, [isOpen]);
 
   const handleClose = () => {
+    // Prevent closing during active AI speech or processing
+    if (isAiSpeaking || isProcessingInterview || isStartingInterview) {
+      toast({
+        title: "Interview in Progress",
+        description: "Please wait for the current interaction to complete before closing.",
+        variant: "default",
+      });
+      return;
+    }
+    
     if (realtimeAPI.isConnected) {
       realtimeAPI.disconnect();
     }
@@ -1198,14 +1248,23 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             
             <div className="space-y-2">
               <p className="font-medium">
-                {isStartingInterview ? 'Starting Interview...' : realtimeAPI.isConnected ? 'AI Interview Active' : 'Connecting...'}
+                {isStartingInterview 
+                  ? 'Starting Interview...' 
+                  : isAiSpeaking 
+                    ? 'AI is Speaking...' 
+                    : realtimeAPI.isConnected 
+                      ? 'AI Interview Active' 
+                      : 'Connecting...'
+                }
               </p>
               <p className="text-sm text-muted-foreground">
                 {isStartingInterview 
                   ? 'Preparing your personalized questions...'
-                  : realtimeAPI.isConnected 
-                    ? `Speak naturally - the AI will guide you through ${getQuestionCount(selectedInterviewType)} ${selectedInterviewType} questions`
-                    : 'Setting up your voice interview...'
+                  : isAiSpeaking 
+                    ? 'Please wait for the AI to finish speaking before responding'
+                    : realtimeAPI.isConnected 
+                      ? `Speak naturally - the AI will guide you through ${getQuestionCount(selectedInterviewType)} ${selectedInterviewType} questions`
+                      : 'Setting up your voice interview...'
                 }
               </p>
             </div>
@@ -1229,22 +1288,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
       <div className="h-48 overflow-y-auto space-y-2 p-2 border rounded-lg bg-gray-50">
         {conversationHistory
-          .reduce((filtered, item, index, array) => {
-            // For AI responses, only keep the most recent one to prevent overlapping voices
-            if (item.role === 'assistant') {
-              const lastAssistantIndex = array.map((x, i) => x.role === 'assistant' ? i : -1).filter(i => i !== -1).pop();
-              if (index === lastAssistantIndex) {
-                filtered.push(item);
-              }
-            } else {
-              // Keep all user messages
-              filtered.push(item);
-            }
-            return filtered;
-          }, [] as typeof conversationHistory)
-          .slice(-4)
+          .slice(-6) // Show last 6 messages for better context
           .map((item, index) => (
-          <Card key={`${item.role}-${index}-${item.content.substring(0, 10)}`} className={`${
+          <Card key={`${item.role}-${index}-${item.content.substring(0, 20)}`} className={`${
             item.role === 'assistant' 
               ? 'border-blue-200 bg-blue-50' 
               : 'border-green-200 bg-green-50 ml-8'
@@ -1268,6 +1314,21 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             </CardContent>
           </Card>
         ))}
+        
+        {/* Show AI speaking indicator */}
+        {isAiSpeaking && (
+          <Card className="border-orange-200 bg-orange-50">
+            <CardContent className="p-3">
+              <div className="flex items-start space-x-2">
+                <div className="h-4 w-4 mt-1 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-orange-800">AI Interviewer</p>
+                  <p className="text-sm text-orange-700">Speaking...</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {currentSession?.isCompleted && (
