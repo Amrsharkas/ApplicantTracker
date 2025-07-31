@@ -225,21 +225,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       
       console.log('Starting interview with endpoint:', endpoint);
       const response = await apiRequest("POST", endpoint, {});
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Interview start failed:', response.status, errorText);
-        throw new Error(`Interview API returned error: ${response.status}`);
-      }
-      
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const htmlContent = await response.text();
-        console.error('Expected JSON but got:', contentType, htmlContent.substring(0, 200));
-        throw new Error('Server returned HTML instead of JSON');
-      }
-      
-      return response.json();
+      return response;
     },
     onSuccess: (data) => {
       setIsStartingInterview(false);
@@ -302,7 +288,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         answer,
         questionIndex: currentQuestionIndex
       });
-      return response.json();
+      return response;
     },
     onSuccess: (data) => {
       if (data.isComplete) {
@@ -369,7 +355,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         sessionId: currentSession?.id,
         interviewType: selectedInterviewType
       });
-      return response.json();
+      return response;
     },
     onSuccess: (data) => {
       setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
@@ -458,7 +444,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         conversationHistory: responses,
         interviewType: selectedInterviewType
       });
-      return response.json();
+      return response;
     },
     onSuccess: (data) => {
       setIsProcessingInterview(false);
