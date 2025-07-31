@@ -153,6 +153,9 @@ Changelog:
 - July 21, 2025. Unified text and voice interview systems - both interview modes now use identical backend flow through /api/interview/start-voice endpoint, share same question sets, progress through questions automatically, and use unified completion processing. Fixed React runtime errors and removed deprecated mutation calls for seamless interview experience
 - July 24, 2025. Implemented two-tier AI filtering system with strict hard filters vs intelligent soft filters - job type, workplace, and country selections are now non-negotiable and never overridden by AI, while city, career level, and job category can be intelligently expanded. System first applies strict enforcement of user-selected preferences, then uses AI analysis only for contextual understanding of missing metadata and soft criteria
 - July 24, 2025. Completely rebuilt filtering system to enforce 100% strict matching - removed all AI expansion, smart filtering, and permissive logic. Jobs must explicitly contain keywords for ALL selected filters or they are rejected. No exceptions or soft matches allowed. Only shows "No jobs match your selected preferences" message when results are truly empty
+- July 31, 2025. Successfully transitioned from Replit Auth to custom email/password authentication system with modal-based interface - users can now sign up and sign in through beautiful modal overlays on the landing page
+- July 31, 2025. Fixed profile display issues by correcting React hooks (useState to useEffect) and ensuring user registration automatically creates basic profile data for immediate display in profile modals
+- July 31, 2025. Cleared all test data (users, profiles, jobs, applications, interviews) for production launch - platform ready for deployment with clean database
 ```
 
 ## User Preferences
