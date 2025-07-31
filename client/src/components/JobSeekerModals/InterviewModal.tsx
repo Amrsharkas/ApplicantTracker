@@ -112,7 +112,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       console.log('Realtime event:', event);
       
       if (event.type === 'response.audio_transcript.delta') {
-        // AI speaking
+        // AI speaking - clear any previous assistant message being built
         setVoiceTranscript(prev => prev + (event.delta || ''));
       }
       
@@ -120,8 +120,17 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         const aiText = event.transcript;
         setVoiceTranscript("");
         
-        // Add AI message to conversation history
-        setConversationHistory(prev => [...prev, { role: 'assistant', content: aiText }]);
+        // Replace the last assistant message or add new one to prevent duplicates
+        setConversationHistory(prev => {
+          const lastMessage = prev[prev.length - 1];
+          if (lastMessage && lastMessage.role === 'assistant') {
+            // Replace the last assistant message to prevent overlapping voices
+            return [...prev.slice(0, -1), { role: 'assistant', content: aiText }];
+          } else {
+            // Add new assistant message
+            return [...prev, { role: 'assistant', content: aiText }];
+          }
+        });
         
         // Check if the AI is concluding the interview
         if (aiText && aiText.toLowerCase().includes('conclude')) {
@@ -131,6 +140,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       
       if (event.type === 'input_audio_buffer.speech_started') {
         setVoiceTranscript("");
+        // User started speaking - don't interrupt, but prepare for clean conversation flow
       }
       
       if (event.type === 'conversation.item.input_audio_transcription.completed') {
@@ -1199,8 +1209,23 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       )}
 
       <div className="h-48 overflow-y-auto space-y-2 p-2 border rounded-lg bg-gray-50">
-        {conversationHistory.slice(-4).map((item, index) => (
-          <Card key={index} className={`${
+        {conversationHistory
+          .reduce((filtered, item, index, array) => {
+            // For AI responses, only keep the most recent one to prevent overlapping voices
+            if (item.role === 'assistant') {
+              const lastAssistantIndex = array.map((x, i) => x.role === 'assistant' ? i : -1).filter(i => i !== -1).pop();
+              if (index === lastAssistantIndex) {
+                filtered.push(item);
+              }
+            } else {
+              // Keep all user messages
+              filtered.push(item);
+            }
+            return filtered;
+          }, [] as typeof conversationHistory)
+          .slice(-4)
+          .map((item, index) => (
+          <Card key={`${item.role}-${index}-${item.content.substring(0, 10)}`} className={`${
             item.role === 'assistant' 
               ? 'border-blue-200 bg-blue-50' 
               : 'border-green-200 bg-green-50 ml-8'
