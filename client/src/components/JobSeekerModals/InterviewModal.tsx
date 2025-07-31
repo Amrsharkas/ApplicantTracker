@@ -281,7 +281,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           
           // Reset to interview types view to show all completed
           setMode('types');
-          setSelectedInterviewType();
+          setSelectedInterviewType('');
         } else if (data.nextInterviewType) {
           // Continue to next interview type automatically
           toast({
@@ -459,7 +459,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         
         // Reset to interview types view
         setMode('types');
-        setSelectedInterviewType();
+        setSelectedInterviewType('');
       }
     },
     onError: (error) => {
@@ -687,9 +687,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         sessionData: {
           questions: interviewData.questions || [],
           responses: [],
-          currentQuestionIndex: 0,
-          interviewSet: interviewData.interviewSet,
-          userProfile: interviewData.userProfile
+          currentQuestionIndex: 0
         },
         isCompleted: false
       });
@@ -707,9 +705,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       // Connect to realtime API with the interview data
       await realtimeAPI.connect({
         interviewType: selectedInterviewType,
-        questions: interviewData.questions,
-        interviewSet: interviewData.interviewSet,
-        userProfile: interviewData.userProfile
+        questions: interviewData.questions
       });
       
       setIsStartingInterview(false);
@@ -784,9 +780,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         sessionData: {
           questions: interviewData.questions || [],
           responses: [],
-          currentQuestionIndex: 0,
-          interviewSet: interviewData.interviewSet,
-          context: {}
+          currentQuestionIndex: 0
         },
         isCompleted: false
       });
@@ -894,13 +888,14 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   }, [messages, voiceTranscript]);
 
   useEffect(() => {
-    if (existingSession?.isCompleted && !currentSession) {
-      setCurrentSession(existingSession);
+    if (existingSession && typeof existingSession === 'object' && 'isCompleted' in existingSession && existingSession.isCompleted && !currentSession) {
+      setCurrentSession(existingSession as InterviewSession);
     }
   }, [existingSession, currentSession]);
 
   const renderInterviewTypes = () => {
-    const interviewTypes = interviewTypesData?.interviewTypes || [
+    const interviewTypes = (interviewTypesData && typeof interviewTypesData === 'object' && 'interviewTypes' in interviewTypesData) 
+      ? (interviewTypesData as any).interviewTypes || [] : [
       {
         type: 'personal',
         title: 'Personal Interview',
@@ -1083,13 +1078,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                 <p className="text-sm">
                   {typeof message.content === 'string' 
                     ? message.content 
-                    : message.content?.question || message.content?.text || 'Question content not available'
+                    : 'Question content not available'
                   }
                 </p>
-                {/* Show context if available for question objects */}
-                {typeof message.content === 'object' && message.content?.context && (
-                  <p className="text-xs text-muted-foreground mt-1">{message.content.context}</p>
-                )}
                 <span className="text-xs text-muted-foreground">
                   {message.timestamp.toLocaleTimeString()}
                 </span>
