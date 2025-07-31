@@ -32,7 +32,7 @@ type RegisterData = {
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }): React.JSX.Element {
   const { toast } = useToast();
   
   const {
