@@ -112,6 +112,18 @@ export async function setupAuth(app: Express) {
         role: 'applicant'
       });
 
+      // Create basic applicant profile
+      try {
+        await storage.upsertApplicantProfile({
+          userId: user.id,
+          name: `${firstName} ${lastName}`,
+          email: email,
+        });
+      } catch (profileError) {
+        console.warn('Failed to create initial profile:', profileError);
+        // Continue with registration even if profile creation fails
+      }
+
       // Create session
       req.session.userId = user.id;
 
