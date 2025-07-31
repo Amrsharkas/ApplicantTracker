@@ -636,74 +636,80 @@ export class AIProfileAnalysisAgent {
       `Q: ${qa.question}\nA: ${qa.answer}`
     ).join('\n\n');
 
-    const prompt = `You are a fact-based professional analyst creating an employer-facing profile. This profile will be visible to employers and must serve as a truthful, professional, and complete portrait of the candidate's real capabilities, verified skills, work style, and experience.
+    const prompt = `You are a brutally honest professional analyst creating an employer-facing candidate profile. Your role is to be a tough, fair recruiter who has just completed an in-depth interview. You MUST be critical, evidence-based, and blunt—no promotional fluff.
 
-CRITICAL REQUIREMENTS:
-- Base everything on facts and evidence from interviews
-- Be blunt, neutral, and professional - no praise or flattery
-- Flag discrepancies between claimed abilities and demonstrated knowledge
-- Only acknowledge strengths that are clearly proven
-- Use phrases like "Demonstrated ability to...", "Unable to provide clear examples of...", "Profile suggests... but interview answers lacked..."
+🧩 CRITICAL ANALYSIS RULES:
+- Be brutally honest and grounded in evidence
+- Every strength MUST be followed by a "but" that points out what's lacking
+- Call out vague answers, contradictions, and unsupported claims
+- No sugarcoating or generic praise
+- Focus solely on what the candidate actually demonstrated vs. claimed
 
-CANDIDATE PROFILE DATA:
+📊 CANDIDATE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
+${userData?.email ? `Email: ${userData.email}` : ''}
 ${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
-${userData?.totalYearsOfExperience ? `Experience: ${userData.totalYearsOfExperience} years` : ''}
+${userData?.totalYearsOfExperience ? `Claimed Experience: ${userData.totalYearsOfExperience} years` : ''}
 ${userData?.currentEducationLevel ? `Education: ${userData.currentEducationLevel}` : ''}
 ${userData?.skillsList ? `Self-Reported Skills: ${Array.isArray(userData.skillsList) ? userData.skillsList.join(', ') : userData.skillsList}` : ''}
 ${userData?.location ? `Location: ${userData.location}` : ''}
-${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
-${userData?.workplaceSettings ? `Work Preference: ${userData.workplaceSettings}` : ''}
-${userData?.willingToRelocate ? `Willing to Relocate: ${userData.willingToRelocate}` : ''}
+${userData?.age ? `Age: ${userData.age}` : ''}
 
-${resumeContent ? `RESUME CONTENT:
+${resumeContent ? `📄 RESUME CONTENT:
 ${resumeContent}
 
-` : ''}INTERVIEW RESPONSES:
+` : ''}🎤 INTERVIEW RESPONSES (3 interviews: Background/Soft Skills, Professional/Experience, Technical/Problem Solving):
 ${conversationHistory}
 
-ANALYSIS INSTRUCTIONS:
-1. Compare every claimed skill against interview performance
-2. Flag skills that were claimed but not demonstrated
-3. Look for vague, uncertain, or contradictory answers
-4. Note specific examples that support or contradict profile claims
-5. Be brutally honest about gaps and weaknesses
-
-Generate a fact-based employer profile in JSON format:
+📘 GENERATE BRUTALLY HONEST PROFILE IN JSON:
 {
-  "summaryOverview": "3-5 line factual summary of level, role type, industry focus, and communication style",
-  "verifiedSkills": [
+  "candidateSummary": "Max 3-5 lines: Honest overview evaluating their claims vs actual demonstration. Do NOT repeat what they said—evaluate it critically.",
+  "keyStrengths": [
     {
-      "skill": "skill name",
-      "status": "verified" | "claimed-not-demonstrated" | "basic-understanding",
-      "evidence": "specific evidence or lack thereof from interviews"
+      "strength": "Specific strength clearly demonstrated",
+      "butCritique": "What's still lacking or unclear about this strength"
     }
   ],
-  "interviewInsights": {
-    "backgroundExperience": "Honest summary of what they actually said about their background",
-    "workplaceBehavior": "Actual responses about work style and preferences",
-    "professionalCommunication": "Assessment of how they expressed themselves",
-    "technicalKnowledge": "Factual assessment of technical understanding demonstrated"
+  "weaknessesAndGaps": [
+    "Direct weaknesses: missing skills, vague answers, inconsistencies, overstatements"
+  ],
+  "softSkillsReview": {
+    "communicationClarity": "Critical assessment of how clearly they expressed ideas",
+    "evidenceQuality": "Assessment of whether they provided real examples or just buzzwords",
+    "emotionalIntelligence": "Based on tone and responses about teamwork/conflict",
+    "overallTone": "Confident/hesitant/unclear/defensive assessment"
   },
-  "strengths": ["only strengths clearly demonstrated with real examples"],
-  "weaknessesOrGaps": ["specific mismatches between claims and interview performance"],
-  "workPreferences": {
-    "workMode": "Remote/On-site/Hybrid based on actual statements",
-    "teamStyle": "Team vs individual preference from interviews",
-    "relocation": "Actual willingness to relocate",
-    "careerGoals": "Stated career goals from interviews"
+  "technicalKnowledge": {
+    "claimedVsActual": "Skills they claimed vs what they could actually demonstrate",
+    "gapsIdentified": "Technical areas where knowledge was clearly lacking",
+    "problemSolvingApproach": "Assessment of logical thinking in technical scenarios"
   },
-  "experience": [
-    {
-      "role": "Position Title",
-      "company": "Company Name", 
-      "duration": "Time period",
-      "description": "Responsibilities verified through interview responses"
-    }
-  ]
+  "problemSolvingCriticalThinking": {
+    "approachClarity": "How well-structured was their thinking process",
+    "realismFactoring": "Did they consider practical constraints and real-world factors",
+    "logicalConsistency": "Were their solutions logical and well-reasoned"
+  },
+  "unverifiedClaims": [
+    "Things they stated with no supporting evidence or examples"
+  ],
+  "communicationScore": 7,
+  "credibilityScore": 6,
+  "consistencyScore": 8,
+  "readinessAssessment": {
+    "faceToFaceReady": true,
+    "areasToClarity": ["Specific areas that need clarification in face-to-face interview"],
+    "recommendation": "Clear statement on interview readiness with specific focus areas"
+  }
 }
 
-Be blunt and factual. No generic praise. Focus on what was actually demonstrated versus what was claimed.`;
+❌ DO NOT:
+- Fill gaps with assumptions
+- Give praise for vague statements  
+- Sound optimistic or promotional
+- Use generic career advice language
+
+✅ WRITE LIKE:
+A tough, fair recruiter who just finished an in-depth interview—credible, nuanced, trustworthy, with no marketing fluff.`;
 
     try {
       const response = await openai.chat.completions.create({
@@ -725,43 +731,57 @@ Be blunt and factual. No generic praise. Focus on what was actually demonstrated
 
       const profile = JSON.parse(response.choices[0].message.content || '{}');
       
-      // Store the full comprehensive profile for employers
+      // Store the brutally honest comprehensive profile for employers
       const comprehensiveProfile = {
-        summaryOverview: profile.summaryOverview || "Professional candidate with demonstrated experience.",
-        verifiedSkills: profile.verifiedSkills || [],
-        interviewInsights: profile.interviewInsights || {
-          backgroundExperience: "Background experience not fully assessed",
-          workplaceBehavior: "Workplace behavior not detailed",
-          professionalCommunication: "Communication style not specified",
-          technicalKnowledge: "Technical knowledge not clearly demonstrated"
+        candidateSummary: profile.candidateSummary || "Candidate assessment could not be completed.",
+        keyStrengths: profile.keyStrengths || [],
+        weaknessesAndGaps: profile.weaknessesAndGaps || [],
+        softSkillsReview: profile.softSkillsReview || {
+          communicationClarity: "Communication assessment not available",
+          evidenceQuality: "Evidence quality not assessed",
+          emotionalIntelligence: "Emotional intelligence not evaluated",
+          overallTone: "Overall tone not determined"
         },
-        strengths: profile.strengths || [],
-        weaknessesOrGaps: profile.weaknessesOrGaps || [],
-        workPreferences: profile.workPreferences || {
-          workMode: "Not specified",
-          teamStyle: "Not specified",
-          relocation: "Not specified",
-          careerGoals: "Not specified"
+        technicalKnowledge: profile.technicalKnowledge || {
+          claimedVsActual: "Technical claims not verified",
+          gapsIdentified: "Technical gaps not identified",
+          problemSolvingApproach: "Problem-solving approach not assessed"
         },
-        experience: profile.experience || []
+        problemSolvingCriticalThinking: profile.problemSolvingCriticalThinking || {
+          approachClarity: "Approach clarity not assessed",
+          realismFactoring: "Realism factoring not evaluated", 
+          logicalConsistency: "Logical consistency not determined"
+        },
+        unverifiedClaims: profile.unverifiedClaims || [],
+        communicationScore: profile.communicationScore || 5,
+        credibilityScore: profile.credibilityScore || 5,
+        consistencyScore: profile.consistencyScore || 5,
+        readinessAssessment: profile.readinessAssessment || {
+          faceToFaceReady: false,
+          areasToClarity: ["Assessment incomplete"],
+          recommendation: "Further assessment required"
+        }
       };
 
-      // Extract simple skills list for backward compatibility
-      const simpleSkills = comprehensiveProfile.verifiedSkills.map((skill: any) => 
-        typeof skill === 'string' ? skill : skill.skill
+      // Extract basic info for backward compatibility
+      const legacySkills = comprehensiveProfile.keyStrengths.map((item: any) => 
+        typeof item === 'object' && item.strength ? item.strength : 'Not specified'
       );
 
-      // Return legacy format for backward compatibility
+      // Return legacy format for backward compatibility with new comprehensive data
       return {
-        summary: comprehensiveProfile.summaryOverview,
-        skills: simpleSkills,
-        personality: comprehensiveProfile.interviewInsights.professionalCommunication,
-        experience: comprehensiveProfile.experience,
-        strengths: comprehensiveProfile.strengths,
-        careerGoals: comprehensiveProfile.workPreferences.careerGoals,
-        workStyle: comprehensiveProfile.workPreferences.workMode,
-        // Add additional comprehensive data
-        additionalInsights: comprehensiveProfile
+        summary: comprehensiveProfile.candidateSummary,
+        skills: legacySkills,
+        personality: comprehensiveProfile.softSkillsReview.overallTone,
+        experience: [], // Will be populated from existing profile data
+        strengths: comprehensiveProfile.keyStrengths.map((item: any) => 
+          typeof item === 'object' && item.strength ? 
+          `${item.strength} - but ${item.butCritique}` : item
+        ),
+        careerGoals: "Assessment from interview responses",
+        workStyle: comprehensiveProfile.softSkillsReview.communicationClarity,
+        // Store the full brutally honest profile for employer access
+        brutallyHonestProfile: comprehensiveProfile
       };
     } catch (error) {
       console.error("Error generating comprehensive profile:", error);

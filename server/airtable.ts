@@ -99,137 +99,188 @@ export interface AirtableJobApplication {
 
 export class AirtableService {
   private formatProfileForDisplay(profileData: any): string {
+    if (!profileData) {
+      return 'No profile data available';
+    }
+
     const profile = typeof profileData === 'string' ? JSON.parse(profileData) : profileData;
     
-    let formatted = '';
-    
-    // Header with name if available
-    formatted += '# 📋 **COMPREHENSIVE CANDIDATE PROFILE**\n\n';
-    
-    // Summary Overview
-    if (profile.comprehensiveProfile?.summaryOverview || profile.summary) {
-      formatted += '## 📊 **SUMMARY OVERVIEW**\n';
-      formatted += `${profile.comprehensiveProfile?.summaryOverview || profile.summary}\n\n`;
+    // Check if this is a brutally honest profile with the new structure
+    if (profile.brutallyHonestProfile) {
+      return this.formatBrutallyHonestProfile(profile.brutallyHonestProfile);
     }
-    
-    // Verified Skills with Evidence Status
-    if (profile.comprehensiveProfile?.verifiedSkills?.length > 0) {
-      formatted += '## ✅ **VERIFIED SKILLS**\n';
-      formatted += '_Skills assessment based on interview performance_\n\n';
-      
-      profile.comprehensiveProfile.verifiedSkills.forEach((skill: any) => {
-        if (typeof skill === 'string') {
-          formatted += `• **${skill}** - Verified\n`;
-        } else {
-          const statusIcon = skill.status === 'verified' ? '✅' : 
-                           skill.status === 'basic-understanding' ? '⚠️' : '❌';
-          formatted += `• **${skill.skill}** ${statusIcon} ${skill.status}\n`;
-          if (skill.evidence) {
-            formatted += `  _${skill.evidence}_\n`;
-          }
+
+    // Fallback to legacy formatting for old profiles
+    return this.formatLegacyProfile(profile);
+  }
+
+  private formatBrutallyHonestProfile(profile: any): string {
+    let formatted = '';
+
+    // Header
+    formatted += '# 🔍 **BRUTALLY HONEST CANDIDATE ASSESSMENT**\n\n';
+
+    // 1. Candidate Summary (Max 3-5 lines)
+    if (profile.candidateSummary) {
+      formatted += `## 📋 **CANDIDATE SUMMARY**\n${profile.candidateSummary}\n\n`;
+    }
+
+    // 2. Key Strengths (Every strength with a "but")
+    if (profile.keyStrengths && Array.isArray(profile.keyStrengths) && profile.keyStrengths.length > 0) {
+      formatted += `## 💪 **KEY STRENGTHS**\n`;
+      profile.keyStrengths.forEach((strength: any) => {
+        if (typeof strength === 'object' && strength.strength && strength.butCritique) {
+          formatted += `• **${strength.strength}** - but ${strength.butCritique}\n`;
+        } else if (typeof strength === 'string') {
+          formatted += `• ${strength}\n`;
         }
       });
       formatted += '\n';
     }
-    
-    // Interview Insights (Categorized)
-    if (profile.comprehensiveProfile?.interviewInsights) {
-      formatted += '## 💬 **INTERVIEW INSIGHTS**\n';
-      formatted += '_Factual assessment based on interview responses_\n\n';
-      
-      const insights = profile.comprehensiveProfile.interviewInsights;
-      if (insights.backgroundExperience) {
-        formatted += '### 📋 Background & Experience\n';
-        formatted += `${insights.backgroundExperience}\n\n`;
-      }
-      
-      if (insights.workplaceBehavior) {
-        formatted += '### 🏢 Workplace Behavior & Preferences\n';
-        formatted += `${insights.workplaceBehavior}\n\n`;
-      }
-      
-      if (insights.professionalCommunication) {
-        formatted += '### 💼 Professional Communication\n';
-        formatted += `${insights.professionalCommunication}\n\n`;
-      }
-      
-      if (insights.technicalKnowledge) {
-        formatted += '### 🔧 Technical Knowledge\n';
-        formatted += `${insights.technicalKnowledge}\n\n`;
-      }
-    }
-    
-    // Strengths (Only if Proven)
-    if (profile.comprehensiveProfile?.strengths?.length > 0) {
-      formatted += '## 💪 **STRENGTHS (PROVEN)**\n';
-      formatted += '_Strengths clearly demonstrated through interview responses_\n\n';
-      profile.comprehensiveProfile.strengths.forEach((strength: string) => {
-        formatted += `• ${strength}\n`;
-      });
-      formatted += '\n';
-    }
-    
-    // Weaknesses or Gaps (Critical Information)
-    if (profile.comprehensiveProfile?.weaknessesOrGaps?.length > 0) {
-      formatted += '## ⚠️ **WEAKNESSES OR GAPS**\n';
-      formatted += '_Areas where profile claims weren\'t backed up by interview performance_\n\n';
-      profile.comprehensiveProfile.weaknessesOrGaps.forEach((weakness: string) => {
+
+    // 3. Weaknesses and Gaps
+    if (profile.weaknessesAndGaps && Array.isArray(profile.weaknessesAndGaps) && profile.weaknessesAndGaps.length > 0) {
+      formatted += `## ⚠️ **WEAKNESSES AND GAPS**\n`;
+      profile.weaknessesAndGaps.forEach((weakness: string) => {
         formatted += `• ${weakness}\n`;
       });
       formatted += '\n';
     }
-    
-    // Experience Section
-    if (profile.experience && profile.experience.length > 0) {
-      formatted += '## 💼 **PROFESSIONAL EXPERIENCE**\n';
-      profile.experience.forEach((exp: any, index: number) => {
-        formatted += `### ${exp.role}\n`;
-        formatted += `**Company:** ${exp.company}\n`;
-        formatted += `**Duration:** ${exp.duration}\n`;
-        formatted += `**Description:** ${exp.description}\n\n`;
-      });
-    }
-    
-    // Work Preferences
-    if (profile.comprehensiveProfile?.workPreferences) {
-      formatted += '## 🏢 **WORK PREFERENCES**\n';
-      formatted += '_Stated preferences from profile and interviews_\n\n';
-      const prefs = profile.comprehensiveProfile.workPreferences;
-      formatted += `**Work Mode:** ${prefs.workMode}\n`;
-      formatted += `**Team Style:** ${prefs.teamStyle}\n`;
-      formatted += `**Relocation:** ${prefs.relocation}\n`;
-      formatted += `**Career Goals:** ${prefs.careerGoals}\n\n`;
-    }
-    
-    // Legacy Skills (fallback)
-    if (profile.skills && profile.skills.length > 0 && !profile.comprehensiveProfile?.verifiedSkills?.length) {
-      formatted += '## 🛠️ **REPORTED SKILLS**\n';
-      formatted += '_Self-reported skills (not yet verified through interviews)_\n\n';
-      const skillsPerRow = 3;
-      for (let i = 0; i < profile.skills.length; i += skillsPerRow) {
-        const skillsRow = profile.skills.slice(i, i + skillsPerRow);
-        formatted += skillsRow.map((skill: string) => `• **${skill}**`).join(' | ') + '\n';
+
+    // 4. Soft Skills Review
+    if (profile.softSkillsReview) {
+      const soft = profile.softSkillsReview;
+      formatted += `## 🗣️ **SOFT SKILLS REVIEW**\n`;
+      if (soft.communicationClarity) {
+        formatted += `• **Communication Clarity:** ${soft.communicationClarity}\n`;
+      }
+      if (soft.evidenceQuality) {
+        formatted += `• **Evidence Quality:** ${soft.evidenceQuality}\n`;
+      }
+      if (soft.emotionalIntelligence) {
+        formatted += `• **Emotional Intelligence:** ${soft.emotionalIntelligence}\n`;
+      }
+      if (soft.overallTone) {
+        formatted += `• **Overall Tone:** ${soft.overallTone}\n`;
       }
       formatted += '\n';
     }
-    
-    // Career Goals Section
-    if (profile.careerGoals) {
-      formatted += '## 🚀 **CAREER ASPIRATIONS**\n';
-      formatted += `${profile.careerGoals}\n\n`;
+
+    // 5. Technical Knowledge
+    if (profile.technicalKnowledge) {
+      const tech = profile.technicalKnowledge;
+      formatted += `## 🔧 **TECHNICAL KNOWLEDGE**\n`;
+      if (tech.claimedVsActual) {
+        formatted += `• **Claimed vs Actual:** ${tech.claimedVsActual}\n`;
+      }
+      if (tech.gapsIdentified) {
+        formatted += `• **Gaps Identified:** ${tech.gapsIdentified}\n`;
+      }
+      if (tech.problemSolvingApproach) {
+        formatted += `• **Problem Solving:** ${tech.problemSolvingApproach}\n`;
+      }
+      formatted += '\n';
     }
-    
-    // Personality Section
-    if (profile.personality) {
-      formatted += '## 🧠 **PERSONALITY & BEHAVIORAL INSIGHTS**\n';
-      formatted += `${profile.personality}\n\n`;
+
+    // 6. Problem Solving / Critical Thinking
+    if (profile.problemSolvingCriticalThinking) {
+      const problem = profile.problemSolvingCriticalThinking;
+      formatted += `## 🧠 **PROBLEM SOLVING & CRITICAL THINKING**\n`;
+      if (problem.approachClarity) {
+        formatted += `• **Approach Clarity:** ${problem.approachClarity}\n`;
+      }
+      if (problem.realismFactoring) {
+        formatted += `• **Realism Factoring:** ${problem.realismFactoring}\n`;
+      }
+      if (problem.logicalConsistency) {
+        formatted += `• **Logical Consistency:** ${problem.logicalConsistency}\n`;
+      }
+      formatted += '\n';
     }
-    
+
+    // 7. Unverified Claims
+    if (profile.unverifiedClaims && Array.isArray(profile.unverifiedClaims) && profile.unverifiedClaims.length > 0) {
+      formatted += `## ❓ **UNVERIFIED CLAIMS**\n`;
+      profile.unverifiedClaims.forEach((claim: string) => {
+        formatted += `• ${claim}\n`;
+      });
+      formatted += '\n';
+    }
+
+    // 8-10. Scores
+    formatted += `## 📊 **ASSESSMENT SCORES**\n`;
+    formatted += `• **Communication Score:** ${profile.communicationScore || 5}/10\n`;
+    formatted += `• **Credibility Score:** ${profile.credibilityScore || 5}/10\n`;
+    formatted += `• **Consistency Score:** ${profile.consistencyScore || 5}/10\n\n`;
+
+    // 11. Readiness for Face-to-Face
+    if (profile.readinessAssessment) {
+      const readiness = profile.readinessAssessment;
+      formatted += `## 🎯 **READINESS FOR FACE-TO-FACE INTERVIEW**\n`;
+      formatted += `• **Ready to Proceed:** ${readiness.faceToFaceReady ? 'Yes' : 'No'}\n`;
+      if (readiness.areasToClarity && Array.isArray(readiness.areasToClarity)) {
+        formatted += `• **Areas to Clarify:** ${readiness.areasToClarity.join(', ')}\n`;
+      }
+      if (readiness.recommendation) {
+        formatted += `• **Recommendation:** ${readiness.recommendation}\n`;
+      }
+      formatted += '\n';
+    }
+
     // Footer
     formatted += '---\n';
-    formatted += '*Profile generated through AI-powered interview analysis*';
+    formatted += '*Brutally honest assessment based on AI-powered interview analysis*';
+
+    return formatted.trim();
+  }
+
+  private formatLegacyProfile(profile: any): string {
+    let formatted = '';
+
+    // Legacy formatting for backward compatibility
+    formatted += '# 📋 **COMPREHENSIVE CANDIDATE PROFILE**\n\n';
     
-    return formatted;
+    if (profile.summary) {
+      formatted += `## 📊 **PROFESSIONAL SUMMARY**\n${profile.summary}\n\n`;
+    }
+
+    if (profile.skills && Array.isArray(profile.skills) && profile.skills.length > 0) {
+      formatted += `## 🔧 **CORE SKILLS & EXPERTISE**\n`;
+      profile.skills.forEach((skill: string) => {
+        formatted += `• ${skill}\n`;
+      });
+      formatted += '\n';
+    }
+
+    if (profile.strengths && Array.isArray(profile.strengths) && profile.strengths.length > 0) {
+      formatted += `## 💪 **KEY STRENGTHS**\n`;
+      profile.strengths.forEach((strength: string) => {
+        formatted += `• ${strength}\n`;
+      });
+      formatted += '\n';
+    }
+
+    if (profile.workStyle || profile.personality) {
+      formatted += `## 🏢 **WORK STYLE & APPROACH**\n`;
+      if (profile.workStyle) {
+        formatted += `• **Work Style:** ${profile.workStyle}\n`;
+      }
+      if (profile.personality) {
+        formatted += `• **Professional Personality:** ${profile.personality}\n`;
+      }
+      formatted += '\n';
+    }
+
+    if (profile.careerGoals) {
+      formatted += `## 🎯 **CAREER OBJECTIVES**\n${profile.careerGoals}\n\n`;
+    }
+
+    // Fallback for raw JSON if no structured data
+    if (!formatted.trim()) {
+      formatted = `## 📊 **CANDIDATE PROFILE DATA**\n\`\`\`json\n${JSON.stringify(profile, null, 2)}\n\`\`\``;
+    }
+
+    return formatted.trim();
   }
 
   async getEmployerJobId(jobRecordId: string): Promise<string> {

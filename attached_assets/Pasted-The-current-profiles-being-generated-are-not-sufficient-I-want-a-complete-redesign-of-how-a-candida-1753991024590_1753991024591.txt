@@ -1,0 +1,96 @@
+The current profiles being generated are not sufficient. I want a complete redesign of how a candidate’s profile is created after completing:
+
+Their manually filled-out profile
+
+The three AI interviews:
+
+Background / Soft Skills
+
+Professional / Experience
+
+Technical / Problem Solving
+
+🧩 The Profile Must Be:
+Brutally honest — no sugarcoating or generic praise
+
+Blunt and grounded in evidence — every claim must be backed by something the candidate actually said
+
+Critical — even when a candidate shows strength, include a “but” to point out what’s still lacking or unclear
+
+Structured and analyzable — no fluff, just clear sections and takeaways
+
+Focused solely on the candidate side — do not reference employers or hiring decisions
+
+📘 Profile Structure
+1. Candidate Summary (Max 3–5 lines):
+Write a short, honest overview of the person based on their answers and input. Do not repeat what they said — evaluate it. Example:
+
+"Candidate presents as confident and experienced in frontend development, but failed to clearly support claims with examples or projects."
+
+2. Key Strengths (Every strength must be followed by a “but”):
+Example:
+
+"Shows strong communication ability but lacked specificity when discussing team leadership challenges."
+"Understands basic data analysis but couldn’t apply concepts to real-world problems when asked."
+
+3. Weaknesses and Gaps:
+Be direct. Highlight missing skills, vague or incorrect answers, inconsistencies, lack of proof, or overstatements.
+
+4. Soft Skills Review (from Interview 1):
+Critique tone, clarity, logic, emotional intelligence, and examples used.
+Example:
+
+"Candidate appears confident but often resorted to buzzwords instead of real examples."
+
+5. Technical Knowledge (from Interview 2):
+Example:
+
+"Claimed Python experience, but failed to discuss any use cases or projects involving the language."
+"Explained API integration decently, but lacked understanding of error handling."
+
+6. Problem Solving / Critical Thinking (from Interview 3):
+Evaluate clarity, logic, structure, realism.
+Example:
+
+"Candidate showed logical thinking in approaching product design issues, but didn’t factor in user feedback or testing."
+
+7. Unverified Claims:
+Highlight things the candidate stated with no support.
+
+"Mentioned leading a team but offered no examples or measurable outcomes."
+"Said they are proficient in Excel, but gave no scenarios or projects where it was used."
+
+8. Communication Score: (1–10)
+Based on clarity, relevance, tone, and conciseness.
+
+9. Credibility Score: (1–10)
+Reflects how well-supported their statements are.
+
+10. Consistency Score: (1–10)
+Do their answers align across all interviews?
+
+11. Readiness for Face-to-Face:
+State clearly whether the candidate seems ready to move to a face-to-face interview based on profile + interview performance. Include:
+
+“Candidate may proceed to face-to-face, but interview should clarify areas like technical depth and project ownership.”
+
+📌 Profile Analysis Behavior Rules
+Analyze every answer critically — no surface-level restating.
+
+Every strength must come with a "but" — balance the praise.
+
+Every vague answer, contradiction, or unsupported claim must be called out.
+
+If they said something good, but execution or details were weak, highlight it.
+
+If they mentioned certifications or skills they did not show, clearly flag the need for proof.
+
+❌ Do Not:
+Do not fill in gaps with assumed skills or knowledge.
+
+Do not offer praise for vague statements.
+
+Do not create profiles that sound optimistic or promotional.
+
+✅ Goal:
+The profile must read like it was written by a tough, fair recruiter after an in-depth interview—not like marketing fluff. It should feel credible, nuanced, and trustworthy to anyone reviewing it.
