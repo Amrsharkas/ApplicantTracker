@@ -776,10 +776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         combinedNotes = employerQuestionAnswers + '\n\n--- Skills Analysis ---\n' + skillsNotesString;
       }
 
-      // Get complete applicant profile for comprehensive data capture
-      const applicantProfile = await storage.getApplicantProfile(userId);
-      
-      // Prepare application data with complete profile from Airtable and additional metadata
+      // Prepare application data with complete profile from Airtable
       const applicationData = {
         jobTitle: job.jobTitle,
         jobId: job.recordId,
@@ -788,73 +785,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         applicantName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email || `User ${userId}`,
         applicantId: userId,
         aiProfile: userProfileData, // Use complete profile from Airtable
-        notes: combinedNotes,
-        // Additional comprehensive data for complete Airtable recording
-        userEmail: user.email,
-        userPhone: applicantProfile?.phone,
-        currentRole: applicantProfile?.currentRole,
-        yearsOfExperience: applicantProfile?.yearsOfExperience,
-        location: applicantProfile?.location,
-        resumeAvailable: !!applicantProfile?.resumeContent,
-        interviewsCompleted: {
-          personal: applicantProfile?.personalInterviewCompleted || false,
-          professional: applicantProfile?.professionalInterviewCompleted || false,
-          technical: applicantProfile?.technicalInterviewCompleted || false
-        },
-        profileGenerated: applicantProfile?.aiProfileGenerated || false,
-        skillsAnalysis: {
-          userSkills,
-          jobSkills,
-          matchedSkills,
-          missingSkills,
-          totalSkills
-        }
+        notes: combinedNotes
       };
 
-      // CRITICAL: Submit to Airtable with comprehensive logging and error handling
-      console.log('📤 MANDATORY AIRTABLE SUBMISSION - Starting application record creation:', {
+      // Submit to Airtable
+      console.log('📤 Submitting to Airtable:', {
         jobTitle: applicationData.jobTitle,
         applicantName: applicationData.applicantName,
-        applicantId: applicationData.applicantId,
-        jobId: applicationData.jobId,
-        companyName: applicationData.companyName,
         totalSkills,
         matchedSkills,
-        missingSkillsCount: missingSkills.length,
-        timestamp: new Date().toISOString()
+        missingSkillsCount: missingSkills.length
       });
       
-      // Ensure EVERY application gets recorded - no exceptions
-      let airtableSubmissionSuccessful = false;
-      let airtableError = null;
-      
-      try {
-        await airtableService.submitJobApplication(applicationData);
-        airtableSubmissionSuccessful = true;
-        console.log('✅ MANDATORY AIRTABLE SUBMISSION SUCCESSFUL:', {
-          jobTitle: applicationData.jobTitle,
-          applicantName: applicationData.applicantName,
-          recordedAt: new Date().toISOString()
-        });
-      } catch (airtableSubmissionError) {
-        airtableError = airtableSubmissionError;
-        console.error('❌ CRITICAL: AIRTABLE SUBMISSION FAILED - APPLICATION NOT RECORDED:', {
-          error: airtableSubmissionError.message,
-          jobTitle: applicationData.jobTitle,
-          applicantName: applicationData.applicantName,
-          failedAt: new Date().toISOString()
-        });
-        
-        // Still allow the application to proceed but mark the issue
-        console.log('⚠️ Proceeding with application but AIRTABLE RECORD MISSING');
-      }
-      
-      // Log final application processing status
-      console.log('📋 APPLICATION PROCESSING COMPLETE:', {
-        airtableRecorded: airtableSubmissionSuccessful,
-        error: airtableError?.message || null,
-        finalStatus: airtableSubmissionSuccessful ? 'FULLY_RECORDED' : 'AIRTABLE_MISSING'
-      });
+      await airtableService.submitJobApplication(applicationData);
+
+      console.log('✅ Application submitted successfully to Airtable');
 
       res.json({
         success: true,
