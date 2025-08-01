@@ -364,7 +364,7 @@ export class AirtableService {
         return null;
       }
 
-      const employerQuestions = record.fields?.["Employer Questions"] || null;
+      const employerQuestions = record.fields?.["Employer Questions"] as string || null;
       
       console.log(`✅ Retrieved employer questions:`, employerQuestions ? 'Present' : 'None');
       
@@ -458,7 +458,11 @@ export class AirtableService {
       // Use the complete notes field (employer answers + AI analysis) from applicationData
       const notesString = applicationData.notes || "No additional notes";
 
-      // Use exact field names matching Airtable base with employer Job ID
+      // Get additional user data for complete application record
+      const user = await storage.getUser(applicationData.applicantId);
+      const applicantProfile = await storage.getApplicantProfile(applicationData.applicantId);
+      
+      // Use exact field names matching Airtable base with employer Job ID and ALL possible fields
       const payload = {
         fields: {
           "Job title": applicationData.jobTitle,
@@ -468,7 +472,23 @@ export class AirtableService {
           "Applicant Name": applicationData.applicantName,
           "Applicant User ID": applicationData.applicantId,
           "User profile": userProfileForApplication,
-          "Notes": notesString
+          "Notes": notesString,
+          // Additional comprehensive fields to ensure complete data capture
+          "Email": user?.email || "No email provided",
+          "Phone": applicantProfile?.phone || "Not provided",
+          "Current Role": applicantProfile?.currentRole || "Not specified",
+          "Experience Level": applicantProfile?.yearsOfExperience?.toString() || "Not specified",
+          "Location": applicantProfile?.location || "Not specified", 
+          "Status": "Submitted",
+          "Application Date": new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+          "Application Time": new Date().toTimeString().split(' ')[0], // HH:MM:SS format
+          "Skills Summary": this.extractSkillsSummary(userProfileForApplication),
+          "Resume Available": applicantProfile?.resumeContent ? "Yes" : "No",
+          "All Interviews Completed": (applicantProfile?.personalInterviewCompleted && applicantProfile?.professionalInterviewCompleted && applicantProfile?.technicalInterviewCompleted) ? "Yes" : "No",
+          "Profile Generated": applicantProfile?.aiProfileGenerated ? "Yes" : "No",
+          "Internal Record ID": applicationData.jobId, // Keep internal reference
+          "Score": this.calculateApplicationScore(applicationData, userProfileForApplication),
+          "Source": "Plato Platform"
         }
       };
 
@@ -574,7 +594,7 @@ export class AirtableService {
       try {
         await base!(TABLE_NAME).create([{ fields }]);
         console.log(`Successfully stored profile for ${name} (ID: ${userId}, Email: ${email || 'N/A'}) in Airtable`);
-      } catch (userIdError) {
+      } catch (userIdError: any) {
         // If some fields don't exist, try with minimal fields
         console.warn('Some fields not found, trying with minimal fields:', userIdError.message);
         await base!(TABLE_NAME).create([
@@ -1093,6 +1113,54 @@ export class AirtableService {
     } catch (error) {
       console.error('Error generating AI match:', error);
       return this.calculateBasicMatch(userProfile, job);
+    }
+  }
+
+  private extractSkillsSummary(userProfile: string): string {
+    if (!userProfile) return "No skills data available";
+    
+    try {
+      // Extract skills from the brutally honest profile format
+      const skillsMatches = userProfile.match(/## (?:✅|🔧|💪) \*\*[^*]+\*\*[\s\S]*?(?=##|$)/g);
+      const skills: string[] = [];
+      
+      if (skillsMatches) {
+        skillsMatches.forEach(section => {
+          const skillLines = section.match(/• \*\*([^*]+)\*\*/g);
+          if (skillLines) {
+            skillLines.forEach(line => {
+              const skill = line.replace(/• \*\*([^*]+)\*\*.*/, '$1').trim();
+              if (skill && !skills.includes(skill)) {
+                skills.push(skill);
+              }
+            });
+          }
+        });
+      }
+      
+      return skills.length > 0 ? skills.slice(0, 10).join(', ') : "Skills assessment pending";
+    } catch (error) {
+      console.error('Error extracting skills summary:', error);
+      return "Skills data processing error";
+    }
+  }
+  
+  private calculateApplicationScore(applicationData: any, userProfile: string): number {
+    let score = 50; // Base score
+    
+    try {
+      // Add points for complete profile
+      if (userProfile && userProfile.length > 100) score += 20;
+      
+      // Add points for comprehensive notes/answers
+      if (applicationData.notes && applicationData.notes.length > 50) score += 15;
+      
+      // Add points for brutally honest profile structure
+      if (userProfile.includes('BRUTALLY HONEST CANDIDATE ASSESSMENT')) score += 15;
+      
+      return Math.min(100, Math.max(0, score));
+    } catch (error) {
+      return 50; // Default score if calculation fails
     }
   }
 
