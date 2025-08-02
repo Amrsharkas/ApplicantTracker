@@ -93,8 +93,8 @@ export default function Dashboard() {
   };
 
   const profileProgress = (profile as any)?.completionPercentage || 0;
-  // Essential info requires name, email, phone, location, AND age - all must be present
-  const hasEssentialInfo = !!((profile as any)?.name && (profile as any)?.email && (profile as any)?.phone && (profile as any)?.location && (profile as any)?.age);
+  // Essential info requires name, email, phone, location (country or city), AND age - all must be present
+  const hasEssentialInfo = !!((profile as any)?.name && (profile as any)?.email && (profile as any)?.phone && ((profile as any)?.country || (profile as any)?.city) && (profile as any)?.age);
   const hasCompletedInterview = (profile as any)?.aiProfileGenerated;
   
   // Show full dashboard only when ALL three steps are complete: essential info, resume, AND AI interview
@@ -104,7 +104,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (showFullDashboard && (profile as any)?.aiProfileGenerated) {
       // Check if we've already shown this toast
-      const hasShownWelcomeToast = localStorage.getItem(`welcomeToast_${user?.id}`);
+      const hasShownWelcomeToast = localStorage.getItem(`welcomeToast_${(user as any)?.id}`);
       
       if (!hasShownWelcomeToast) {
         toast({
@@ -114,10 +114,10 @@ export default function Dashboard() {
         });
         
         // Mark that we've shown the toast for this user
-        localStorage.setItem(`welcomeToast_${user?.id}`, 'shown');
+        localStorage.setItem(`welcomeToast_${(user as any)?.id}`, 'shown');
       }
     }
-  }, [showFullDashboard, (profile as any)?.aiProfileGenerated, user?.id, toast]);
+  }, [showFullDashboard, (profile as any)?.aiProfileGenerated, (user as any)?.id, toast]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -145,7 +145,7 @@ export default function Dashboard() {
                   <User className="h-4 w-4 text-white" />
                 </div>
                 <span className="text-sm font-medium text-gray-900">
-                  {user?.firstName || 'Job Seeker'}
+                  {(user as any)?.firstName || 'Job Seeker'}
                 </span>
               </button>
               <button
@@ -489,7 +489,12 @@ export default function Dashboard() {
       />
       <ResumeRequiredModal 
         isOpen={activeModal === 'resumeRequired'} 
-        onClose={closeModal} 
+        onClose={closeModal}
+        onResumeUploaded={() => {
+          closeModal();
+          // Trigger a refetch of the resume check to update hasResume
+          window.location.reload();
+        }}
       />
 
       <MatchesModal 
