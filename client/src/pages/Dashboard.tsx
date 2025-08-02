@@ -10,6 +10,7 @@ import {
   Briefcase
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useResumeRequirement } from "@/hooks/useResumeRequirement";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 import { MatchesModal } from "@/components/JobSeekerModals/MatchesModal";
@@ -18,6 +19,7 @@ import { UserProfileModal } from "@/components/JobSeekerModals/UserProfileModal"
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
 import { InterviewModal } from "@/components/JobSeekerModals/InterviewModal";
 import { UpcomingInterviewModal } from "@/components/JobSeekerModals/UpcomingInterviewModal";
+import { ResumeRequiredModal } from "@/components/ResumeRequiredModal";
 
 import { JobPostingsModal } from "@/components/JobSeekerModals/JobPostingsModal";
 
@@ -58,6 +60,9 @@ export default function Dashboard() {
     enabled: !!user, // Only run query if user is authenticated
   });
 
+  // Check resume requirement
+  const { hasResume } = useResumeRequirement();
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -92,10 +97,8 @@ export default function Dashboard() {
   const hasEssentialInfo = !!((profile as any)?.name && (profile as any)?.email && (profile as any)?.phone && (profile as any)?.location && (profile as any)?.age);
   const hasCompletedInterview = (profile as any)?.aiProfileGenerated;
   
-
-  
-  // Show full dashboard only when BOTH essential info is complete AND AI interview is done
-  const showFullDashboard = hasEssentialInfo && hasCompletedInterview;
+  // Show full dashboard only when ALL three steps are complete: essential info, resume, AND AI interview
+  const showFullDashboard = hasEssentialInfo && hasResume && hasCompletedInterview;
 
   // Show welcome toast only once after completing interview
   useEffect(() => {
@@ -171,7 +174,7 @@ export default function Dashboard() {
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Plato!</h2>
               <p className="text-gray-600 mb-6">
-                Complete both steps below to unlock personalized job matching and access your full dashboard:
+                Complete all steps below to unlock personalized job matching and access your full dashboard:
               </p>
               
               <div className="space-y-4">
@@ -217,11 +220,11 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Step 2: AI Interview */}
+                {/* Step 2: Upload Resume */}
                 <div className={`bg-white rounded-lg p-6 border-2 transition-all ${
                   !hasEssentialInfo 
                     ? 'border-gray-200 opacity-60' 
-                    : hasCompletedInterview 
+                    : hasResume 
                       ? 'border-green-200 bg-green-50' 
                       : 'border-orange-200 shadow-md'
                 }`}>
@@ -230,33 +233,82 @@ export default function Dashboard() {
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
                         !hasEssentialInfo 
                           ? 'bg-gray-400' 
-                          : hasCompletedInterview 
+                          : hasResume 
                             ? 'bg-green-600' 
                             : 'bg-orange-600'
                       }`}>
-                        {hasCompletedInterview ? '✓' : '2'}
+                        {!hasEssentialInfo ? '2' : hasResume ? '✓' : '2'}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Upload Your Resume</h3>
+                        <p className="text-gray-600">
+                          {!hasEssentialInfo 
+                            ? 'Complete your essential information first to unlock resume upload.'
+                            : hasResume 
+                              ? 'Great! Your resume has been uploaded and analyzed.' 
+                              : 'Upload your resume so the AI can personalize your interview questions.'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <button
+                        onClick={() => openModal('resumeRequired')}
+                        disabled={!hasEssentialInfo}
+                        className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                          !hasEssentialInfo 
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                            : hasResume 
+                              ? 'bg-green-600 text-white hover:bg-green-700' 
+                              : 'bg-orange-600 text-white hover:bg-orange-700'
+                        }`}
+                      >
+                        {hasResume ? 'Update Resume' : 'Upload Resume'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 3: AI Interview */}
+                <div className={`bg-white rounded-lg p-6 border-2 transition-all ${
+                  !hasEssentialInfo || !hasResume
+                    ? 'border-gray-200 opacity-60' 
+                    : hasCompletedInterview 
+                      ? 'border-green-200 bg-green-50' 
+                      : 'border-purple-200 shadow-md'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
+                        !hasEssentialInfo || !hasResume
+                          ? 'bg-gray-400' 
+                          : hasCompletedInterview 
+                            ? 'bg-green-600' 
+                            : 'bg-purple-600'
+                      }`}>
+                        {hasCompletedInterview ? '✓' : '3'}
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">Take AI Interview</h3>
                         <p className="text-gray-600">
-                          {!hasEssentialInfo 
-                            ? 'Complete your essential information first to unlock the AI interview.' 
+                          {!hasEssentialInfo || !hasResume
+                            ? 'Complete your essential information and upload your resume first to unlock the AI interview.' 
                             : hasCompletedInterview 
                               ? 'Excellent! Your AI interview is complete.' 
-                              : 'Chat with our AI to create your comprehensive professional profile.'
+                              : 'Chat with our AI to create your comprehensive professional profile based on your resume.'
                           }
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={() => openModal('interview')}
-                      disabled={!hasEssentialInfo}
+                      disabled={!hasEssentialInfo || !hasResume}
                       className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                        !hasEssentialInfo 
+                        !hasEssentialInfo || !hasResume
                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                           : hasCompletedInterview 
                             ? 'bg-green-600 text-white hover:bg-green-700' 
-                            : 'bg-orange-600 text-white hover:bg-orange-700'
+                            : 'bg-purple-600 text-white hover:bg-purple-700'
                       }`}
                     >
                       {hasCompletedInterview ? 'Review Interview' : 'Start Interview'}
@@ -435,7 +487,10 @@ export default function Dashboard() {
         isOpen={activeModal === 'interview'} 
         onClose={closeModal} 
       />
-
+      <ResumeRequiredModal 
+        isOpen={activeModal === 'resumeRequired'} 
+        onClose={closeModal} 
+      />
 
       <MatchesModal 
         isOpen={activeModal === 'matches'} 
