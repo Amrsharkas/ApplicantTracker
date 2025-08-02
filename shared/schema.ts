@@ -165,6 +165,21 @@ export const applications = pgTable("applications", {
   notes: text("notes"),
 });
 
+// Resume uploads table
+export const resumeUploads = pgTable("resume_uploads", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  filename: varchar("filename").notNull(),
+  originalName: varchar("original_name").notNull(),
+  filePath: varchar("file_path").notNull(), // Object storage path
+  fileSize: integer("file_size").notNull(),
+  mimeType: varchar("mime_type").notNull(),
+  extractedText: text("extracted_text"), // PDF text extraction
+  aiAnalysis: jsonb("ai_analysis"), // AI analysis of the resume
+  isActive: boolean("is_active").default(true), // Allow multiple uploads, mark latest as active
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+});
+
 // Interview sessions table
 export const interviewSessions = pgTable("interview_sessions", {
   id: serial("id").primaryKey(),
@@ -173,6 +188,7 @@ export const interviewSessions = pgTable("interview_sessions", {
   sessionData: jsonb("session_data").notNull(), // Q&A pairs, progress
   isCompleted: boolean("is_completed").default(false),
   generatedProfile: jsonb("generated_profile"),
+  resumeContext: jsonb("resume_context"), // Resume analysis context for the interview
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
 });
@@ -186,6 +202,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   matches: many(jobMatches),
   applications: many(applications),
   interviews: many(interviewSessions),
+  resumes: many(resumeUploads),
 }));
 
 export const applicantProfilesRelations = relations(applicantProfiles, ({ one }) => ({
@@ -222,6 +239,13 @@ export const applicationsRelations = relations(applications, ({ one }) => ({
   }),
 }));
 
+export const resumeUploadsRelations = relations(resumeUploads, ({ one }) => ({
+  user: one(users, {
+    fields: [resumeUploads.userId],
+    references: [users.id],
+  }),
+}));
+
 export const interviewSessionsRelations = relations(interviewSessions, ({ one }) => ({
   user: one(users, {
     fields: [interviewSessions.userId],
@@ -253,6 +277,10 @@ export const insertInterviewSessionSchema = createInsertSchema(interviewSessions
   createdAt: true,
   completedAt: true,
 });
+export const insertResumeUploadSchema = createInsertSchema(resumeUploads).omit({
+  id: true,
+  uploadedAt: true,
+});
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -270,3 +298,5 @@ export type InsertApplication = z.infer<typeof insertApplicationSchema>;
 export type Application = typeof applications.$inferSelect;
 export type InsertInterviewSession = z.infer<typeof insertInterviewSessionSchema>;
 export type InterviewSession = typeof interviewSessions.$inferSelect;
+export type InsertResumeUpload = z.infer<typeof insertResumeUploadSchema>;
+export type ResumeUpload = typeof resumeUploads.$inferSelect;

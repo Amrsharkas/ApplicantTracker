@@ -9,12 +9,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Mic, MicOff, MessageCircle, Phone, PhoneOff, Users, Briefcase, Target, User, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRealtimeAPI } from '@/hooks/useRealtimeAPI';
+import { useResumeRequirement } from '@/hooks/useResumeRequirement';
 import { apiRequest } from '@/lib/queryClient';
 import { isUnauthorizedError } from '@/lib/authUtils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { ResumeRequiredModal } from '@/components/ResumeRequiredModal';
 
 interface InterviewQuestion {
   question: string;
+  text?: string; // Alternative property for question text
   context?: string;
 }
 
@@ -64,9 +67,13 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const [isStartingInterview, setIsStartingInterview] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [lastAiResponse, setLastAiResponse] = useState<string>('');
+  const [showResumeModal, setShowResumeModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Check resume requirement
+  const { hasResume, requiresResume, isLoading: isLoadingResume } = useResumeRequirement();
 
   // Reset interview state when modal opens
   useEffect(() => {
@@ -269,9 +276,28 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       
       setMessages(messages);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       setIsStartingInterview(false);
       console.error('Start interview error:', error);
+      
+      // Check if the error is due to missing resume
+      if (error?.message?.includes("Resume required") || error?.message?.includes("requiresResume")) {
+        setShowResumeModal(true);
+        return;
+      }
+      
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized", 
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      
       toast({
         title: "Error",
         description: "Failed to start interview. Please try again.",
@@ -965,7 +991,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         </div>
         
         <div className="space-y-4">
-          {interviewTypes.map((interview) => (
+          {interviewTypes.map((interview: InterviewType) => (
             <Card 
               key={interview.type}
               id={`interview-${interview.type}-button`}
@@ -1378,17 +1404,34 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   );
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>AI Interview</DialogTitle>
-        </DialogHeader>
-        
-        {mode === 'types' && renderInterviewTypes()}
-        {mode === 'select' && renderModeSelection()}
-        {mode === 'text' && renderTextInterview()}
-        {mode === 'voice' && renderVoiceInterview()}
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>AI Interview</DialogTitle>
+          </DialogHeader>
+          
+          {mode === 'types' && renderInterviewTypes()}
+          {mode === 'select' && renderModeSelection()}
+          {mode === 'text' && renderTextInterview()}
+          {mode === 'voice' && renderVoiceInterview()}
+        </DialogContent>
+      </Dialog>
+
+      <ResumeRequiredModal 
+        isOpen={showResumeModal}
+        onClose={() => setShowResumeModal(false)}
+        onResumeUploaded={() => {
+          setShowResumeModal(false);
+          queryClient.invalidateQueries({ queryKey: ['/api/interview/resume-check'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/interview/types'] });
+          toast({
+            title: "Success",
+            description: "Resume uploaded successfully! You can now start interviews.",
+            variant: "default",
+          });
+        }}
+      />
+    </>
   );
 }

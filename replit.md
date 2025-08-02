@@ -29,6 +29,11 @@ Preferred communication style: Simple, everyday language.
 - **ORM**: Drizzle ORM
 - **Schema Management**: Drizzle Kit
 
+### File Storage
+- **Object Storage**: Google Cloud Storage via Replit Object Storage
+- **Resume Processing**: PDF parsing with pdf-parse and AI analysis
+- **File Uploads**: Uppy components with presigned URLs for direct-to-cloud uploads
+
 ### Authentication
 - **Provider**: Custom email/password authentication
 - **Strategy**: Modal-based sign-up/sign-in
@@ -37,7 +42,8 @@ Preferred communication style: Simple, everyday language.
 
 ### Core Features
 - **User Management**: Authentication, profile creation, session handling.
-- **AI Interview System**: OpenAI-powered conversational interviews with a two-AI system (Interview Conductor, Profile Analyzer).
+- **Resume Management**: Required resume upload system with Google Cloud Storage, PDF parsing, and AI analysis before interview access.
+- **AI Interview System**: OpenAI-powered conversational interviews with a two-AI system (Interview Conductor, Profile Analyzer) that incorporates resume content as context.
 - **Profile Generation**: Brutally honest, evidence-based profile creation from interview responses. AI generates critical analysis profiles with verified skills, weaknesses/gaps, and factual assessments instead of promotional content (hidden from applicants, visible to employers via Airtable).
 - **Job Matching**: Intelligent job matching based on stringent filter requirements and employer-selected matches via Airtable.
 - **Application Tracking**: Job application management and status tracking via Airtable, with skill-based submission logic.

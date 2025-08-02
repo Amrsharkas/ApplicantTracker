@@ -5,6 +5,7 @@ import {
   jobMatches,
   applications,
   interviewSessions,
+  resumeUploads,
   type User,
   type UpsertUser,
   type InsertApplicantProfile,
@@ -17,6 +18,8 @@ import {
   type Application,
   type InsertInterviewSession,
   type InterviewSession,
+  type InsertResumeUpload,
+  type ResumeUpload,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -56,6 +59,13 @@ export interface IStorage {
   updateInterviewSession(id: number, data: Partial<InterviewSession>): Promise<void>;
   updateInterviewCompletion(userId: string, interviewType: string): Promise<void>;
   getInterviewContext(userId: string, currentInterviewType: string): Promise<any>;
+
+  // Resume operations
+  createResumeUpload(resumeData: InsertResumeUpload): Promise<ResumeUpload>;
+  getActiveResume(userId: string): Promise<ResumeUpload | undefined>;
+  getAllResumes(userId: string): Promise<ResumeUpload[]>;
+  updateResumeAnalysis(id: number, analysis: any): Promise<void>;
+  setActiveResume(userId: string, resumeId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -519,7 +529,7 @@ export class DatabaseStorage implements IStorage {
       }
     });
     
-    return [...new Set(themes)]; // Remove duplicates
+    return Array.from(new Set(themes)); // Remove duplicates
   }
 
   private extractAllPreviousQuestions(completedInterviews: any[]): string[] {
@@ -537,6 +547,54 @@ export class DatabaseStorage implements IStorage {
     });
     
     return questions;
+  }
+
+  // Resume operations
+  async createResumeUpload(resumeData: InsertResumeUpload): Promise<ResumeUpload> {
+    const [resume] = await db.insert(resumeUploads).values(resumeData).returning();
+    return resume;
+  }
+
+  async getActiveResume(userId: string): Promise<ResumeUpload | undefined> {
+    const [resume] = await db
+      .select()
+      .from(resumeUploads)
+      .where(and(eq(resumeUploads.userId, userId), eq(resumeUploads.isActive, true)))
+      .orderBy(desc(resumeUploads.uploadedAt))
+      .limit(1);
+    return resume;
+  }
+
+  async getAllResumes(userId: string): Promise<ResumeUpload[]> {
+    return await db
+      .select()
+      .from(resumeUploads)
+      .where(eq(resumeUploads.userId, userId))
+      .orderBy(desc(resumeUploads.uploadedAt));
+  }
+
+  async updateResumeAnalysis(id: number, analysis: any): Promise<void> {
+    await db
+      .update(resumeUploads)
+      .set({ 
+        aiAnalysis: analysis,
+        extractedText: analysis.extractedText || null 
+      })
+      .where(eq(resumeUploads.id, id));
+  }
+
+  async setActiveResume(userId: string, resumeId: number): Promise<void> {
+    // First, deactivate all resumes for the user
+    await db
+      .update(resumeUploads)
+      .set({ isActive: false })
+      .where(eq(resumeUploads.userId, userId));
+
+    // Then activate the specified resume
+    await db
+      .update(resumeUploads)
+      .set({ isActive: true })
+      .where(and(eq(resumeUploads.id, resumeId), eq(resumeUploads.userId, userId)));
   }
 }
 

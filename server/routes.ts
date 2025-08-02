@@ -6,14 +6,18 @@ import { aiInterviewService, aiProfileAnalysisAgent, aiInterviewAgent } from "./
 import { airtableService } from "./airtable";
 import { aiJobFilteringService } from "./aiJobFiltering";
 import { employerQuestionService } from "./employerQuestions";
+import { ObjectStorageService } from "./objectStorage";
+import { ResumeService } from "./resumeService";
 import multer from "multer";
 import { z } from "zod";
-import { insertApplicantProfileSchema, insertApplicationSchema } from "@shared/schema";
+import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema } from "@shared/schema";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
+
+const resumeService = new ResumeService();
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -113,6 +117,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/candidate/profile', requireAuth, handleProfileUpdate);
   app.post('/api/candidate/profile', requireAuth, handleProfileUpdate);
+
+  // Resume upload endpoints
+  const objectStorageService = new ObjectStorageService();
+  const resumeService = new ResumeService();
+
+  // Get upload URL for resume
+  app.post('/api/resume/upload-url', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { uploadURL, filePath } = await objectStorageService.getResumeUploadURL(userId);
+      res.json({ uploadURL, filePath });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ message: "Failed to get upload URL" });
+    }
+  });
+
+  // Process uploaded resume
+  app.post('/api/resume/process', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { filename, uploadURL, fileSize, mimeType } = req.body;
+
+      if (!filename || !uploadURL) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Extract file path from upload URL
+      const urlObj = new URL(uploadURL);
+      const filePath = urlObj.pathname.replace(/^\/[^\/]+/, ''); // Remove bucket name from path
+
+      // Create resume record
+      const resumeData = {
+        userId,
+        filename: `${Date.now()}_${filename}`,
+        originalName: filename,
+        filePath: filePath,
+        fileSize: fileSize || 0,
+        mimeType: mimeType || 'application/octet-stream'
+      };
+
+      const resumeRecord = await storage.createResumeUpload(resumeData);
+
+      // Extract text and analyze in background
+      try {
+        let extractedText = '';
+        
+        if (mimeType === 'application/pdf') {
+          extractedText = await resumeService.extractTextFromPDF(filePath);
+        }
+
+        if (extractedText) {
+          const analysis = await resumeService.analyzeResume(extractedText);
+          await storage.updateResumeAnalysis(resumeRecord.id, {
+            ...analysis,
+            extractedText
+          });
+        }
+
+        // Set as active resume
+        await storage.setActiveResume(userId, resumeRecord.id);
+
+      } catch (analysisError) {
+        console.error("Error analyzing resume:", analysisError);
+        // Don't fail the request if analysis fails
+      }
+
+      res.json({ 
+        message: "Resume uploaded and processed successfully",
+        resumeId: resumeRecord.id 
+      });
+    } catch (error) {
+      console.error("Error processing resume:", error);
+      res.status(500).json({ message: "Failed to process resume" });
+    }
+  });
+
+  // Get user's resumes
+  app.get('/api/resume', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const resumes = await storage.getAllResumes(userId);
+      res.json(resumes);
+    } catch (error) {
+      console.error("Error fetching resumes:", error);
+      res.status(500).json({ message: "Failed to fetch resumes" });
+    }
+  });
+
+  // Get active resume
+  app.get('/api/resume/active', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const activeResume = await storage.getActiveResume(userId);
+      res.json(activeResume || null);
+    } catch (error) {
+      console.error("Error fetching active resume:", error);
+      res.status(500).json({ message: "Failed to fetch active resume" });
+    }
+  });
+
+  // Download resume file
+  app.get('/api/resume/:id/download', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const resumeId = parseInt(req.params.id);
+      
+      const resumes = await storage.getAllResumes(userId);
+      const resume = resumes.find(r => r.id === resumeId);
+      
+      if (!resume) {
+        return res.status(404).json({ message: "Resume not found" });
+      }
+
+      const file = await objectStorageService.getResumeFile(resume.filePath);
+      await objectStorageService.downloadObject(file, res);
+    } catch (error) {
+      console.error("Error downloading resume:", error);
+      res.status(500).json({ message: "Failed to download resume" });
+    }
+  });
 
   // Resume upload route
   app.post('/api/candidate/resume', requireAuth, upload.single('resume'), async (req: any, res) => {
@@ -361,11 +486,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check if user has uploaded resume (required for interviews)
+  app.get('/api/interview/resume-check', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const activeResume = await storage.getActiveResume(userId);
+      
+      res.json({ 
+        hasResume: !!activeResume,
+        resume: activeResume ? {
+          id: activeResume.id,
+          originalName: activeResume.originalName,
+          uploadedAt: activeResume.uploadedAt
+        } : null
+      });
+    } catch (error) {
+      console.error("Error checking resume:", error);
+      res.status(500).json({ message: "Failed to check resume status" });
+    }
+  });
+
   // Get available interview types for a user
   app.get('/api/interview/types', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const profile = await storage.getApplicantProfile(userId);
+      
+      // Check if user has uploaded a resume (required for interviews)
+      const activeResume = await storage.getActiveResume(userId);
+      if (!activeResume) {
+        return res.status(400).json({ 
+          message: "Resume required before starting interviews",
+          requiresResume: true
+        });
+      }
 
       const types = [
         {
@@ -402,16 +556,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const interviewType = req.params.type;
-      const user = await storage.getUser(userId);
-      const profile = await storage.getApplicantProfile(userId);
-
+      
       // Validate interview type
       if (!['personal', 'professional', 'technical'].includes(interviewType)) {
         return res.status(400).json({ message: "Invalid interview type" });
       }
 
-      // Get resume content from profile
-      const resumeContent = profile?.resumeContent || null;
+      // Check if user has uploaded a resume (required for interviews)
+      const activeResume = await storage.getActiveResume(userId);
+      if (!activeResume) {
+        return res.status(400).json({ 
+          message: "Resume required before starting interviews",
+          requiresResume: true
+        });
+      }
+
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+
+      // Get resume content and analysis from active resume
+      let resumeContent = profile?.resumeContent || null;
+      let resumeContext = null;
+      
+      if (activeResume?.aiAnalysis) {
+        resumeContext = await resumeService.generateInterviewContext(activeResume.aiAnalysis);
+        resumeContent = activeResume.extractedText || resumeContent;
+      }
 
       // Get context from previous interviews to maintain continuity
       const interviewContext = await storage.getInterviewContext(userId, interviewType);
@@ -449,6 +619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           interviewSet: currentSet,
           context: interviewContext
         },
+        resumeContext: resumeContext,
         isCompleted: false
       });
 
@@ -471,11 +642,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/interview/start', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      
+      // Check if user has uploaded a resume (required for interviews)
+      const activeResume = await storage.getActiveResume(userId);
+      if (!activeResume) {
+        return res.status(400).json({ 
+          message: "Resume required before starting interviews",
+          requiresResume: true
+        });
+      }
+
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
-      // Get resume content from profile
-      const resumeContent = profile?.resumeContent || null;
+      // Get resume content from active resume
+      let resumeContent = profile?.resumeContent || null;
+      let resumeContext = null;
+      
+      if (activeResume?.aiAnalysis) {
+        resumeContext = await resumeService.generateInterviewContext(activeResume.aiAnalysis);
+        resumeContent = activeResume.extractedText || resumeContent;
+      }
 
       // Use AI Agent 1 to generate personalized interview questions (legacy personal interview)
       const questions = await aiInterviewService.generateInitialQuestions({
@@ -487,6 +674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         interviewType: 'personal',
         sessionData: { questions, responses: [], currentQuestionIndex: 0 },
+        resumeContext: resumeContext,
         isCompleted: false
       });
 
