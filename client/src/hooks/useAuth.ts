@@ -13,18 +13,23 @@ export function useAuth() {
     queryKey: ["/api/user"],
     retry: false,
     enabled: !globalLoggingOut && !isLoggingOut,
+    staleTime: 0, // Always refetch when invalidated
     queryFn: async () => {
       try {
+        console.log("🔍 Auth check: Fetching user data");
         const response = await fetch("/api/user", {
           credentials: "include",
         });
         if (response.status === 401) {
+          console.log("🔍 Auth check: User not authenticated (401)");
           return null; // Not authenticated, but not an error
         }
         if (!response.ok) {
           throw new Error(`${response.status}: ${response.statusText}`);
         }
-        return await response.json();
+        const userData = await response.json();
+        console.log("🔍 Auth check: User authenticated", userData);
+        return userData;
       } catch (error) {
         console.error("Auth check error:", error);
         return null;
@@ -95,6 +100,7 @@ export function useRegister() {
       });
     },
     onSuccess: (data) => {
+      console.log("🎉 Registration successful:", data.user);
       // Set the user data directly in the cache for immediate effect
       queryClient.setQueryData(["/api/user"], data.user);
       // Force refetch to ensure fresh data

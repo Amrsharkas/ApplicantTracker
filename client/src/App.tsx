@@ -13,8 +13,11 @@ import NotFound from "@/pages/not-found";
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
+  console.log("🔄 Router state:", { isAuthenticated, isLoading, hasUser: !!user });
+
   // Show loading only for initial load when we don't know auth state yet
   if (isLoading && user === undefined) {
+    console.log("🔄 Router: Showing loading state");
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -28,7 +31,17 @@ function Router() {
   return (
     <Switch>
       <Route path="/">
-        {isAuthenticated ? <Redirect to="/dashboard" /> : <Landing />}
+        {isAuthenticated ? (
+          <>
+            {console.log("🔄 Router: Redirecting authenticated user to dashboard")}
+            <Redirect to="/dashboard" />
+          </>
+        ) : (
+          <>
+            {console.log("🔄 Router: Showing landing page for unauthenticated user")}
+            <Landing />
+          </>
+        )}
       </Route>
 
       <Route path="/dashboard">

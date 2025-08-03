@@ -65,8 +65,13 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const onLoginSubmit = (data: LoginFormData) => {
     loginMutation.mutate(data, {
       onSuccess: () => {
+        console.log("🎉 Login mutation successful, closing modal");
         onClose();
-        // The auth hook will automatically handle routing after cache invalidation
+        // Force a full page refresh to ensure cookies are properly set
+        setTimeout(() => {
+          console.log("🔄 Refreshing page to ensure auth state");
+          window.location.reload();
+        }, 500);
       },
     });
   };
@@ -74,8 +79,13 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const onRegisterSubmit = (data: RegisterFormData) => {
     registerMutation.mutate(data, {
       onSuccess: () => {
+        console.log("🎉 Registration mutation successful, closing modal");
         onClose();
-        // The auth hook will automatically handle routing after cache invalidation
+        // Force a full page refresh to ensure cookies are properly set
+        setTimeout(() => {
+          console.log("🔄 Refreshing page to ensure auth state");
+          window.location.reload();
+        }, 500);
       },
     });
   };
