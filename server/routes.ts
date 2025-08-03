@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
-import { aiInterviewService, aiProfileAnalysisAgent, aiInterviewAgent } from "./openai";
+import { aiInterviewAgent, aiProfileAnalyzer } from "./openai";
 import { airtableService } from "./airtable";
 import { aiJobFilteringService } from "./aiJobFiltering";
 import { employerQuestionService } from "./employerQuestions";
@@ -296,7 +296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let parsedData = {};
       try {
         // Add timeout to prevent hanging
-        const parsePromise = aiInterviewService.parseResume(resumeContent);
+        // Resume parsing will be handled in profile generation phase
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('AI parsing timeout')), 10000)
         );
@@ -394,24 +394,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get context from previous interviews to maintain continuity
       const interviewContext = await storage.getInterviewContext(userId, interviewType);
 
-      // Generate the specific interview set with context
-      let currentSet;
-      if (interviewType === 'personal') {
-        currentSet = await aiInterviewService.generatePersonalInterview({
-          ...user,
-          ...profile
-        }, resumeContent || undefined);
-      } else if (interviewType === 'professional') {
-        currentSet = await aiInterviewService.generateProfessionalInterview({
-          ...user,
-          ...profile
-        }, resumeContent || undefined, interviewContext);
-      } else if (interviewType === 'technical') {
-        currentSet = await aiInterviewService.generateTechnicalInterview({
-          ...user,
-          ...profile
-        }, resumeContent || undefined, interviewContext);
-      }
+      // Map interviewType to new system types
+      const interviewTypeMap = { 'personal': 'background', 'professional': 'professional', 'technical': 'technical' };
+      const mappedType = interviewTypeMap[interviewType] || 'background';
+      
+      // Generate questions using new AI agent
+      const questions = await aiInterviewAgent.generateInterviewQuestions(
+        mappedType, 
+        { ...user, ...profile },
+        resumeContent || undefined,
+        interviewContext ? [interviewContext] : []
+      );
+      
+      const currentSet = {
+        type: mappedType,
+        title: `${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} Interview`,
+        description: `Comprehensive ${interviewType} assessment`,
+        questions: questions
+      };
 
       if (!currentSet) {
         return res.status(500).json({
@@ -435,7 +435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Generate welcome message
-      const welcomeMessage = await aiInterviewService.generateWelcomeMessage({
+      const welcomeMessage = await aiInterviewAgent.generateWelcomeMessage({
         ...user,
         ...profile
       });
@@ -474,7 +474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const profile = await storage.getApplicantProfile(userId);
 
       // Generate personalized welcome message
-      const welcomeMessage = await aiInterviewService.generateWelcomeMessage({
+      const welcomeMessage = await aiInterviewAgent.generateWelcomeMessage({
         ...user,
         ...profile
       });
@@ -586,24 +586,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get context from previous interviews to maintain continuity
       const interviewContext = await storage.getInterviewContext(userId, interviewType);
 
-      // Generate the specific interview set with context
-      let currentSet;
-      if (interviewType === 'personal') {
-        currentSet = await aiInterviewService.generatePersonalInterview({
-          ...user,
-          ...profile
-        }, resumeContent || undefined);
-      } else if (interviewType === 'professional') {
-        currentSet = await aiInterviewService.generateProfessionalInterview({
-          ...user,
-          ...profile
-        }, resumeContent || undefined, interviewContext);
-      } else if (interviewType === 'technical') {
-        currentSet = await aiInterviewService.generateTechnicalInterview({
-          ...user,
-          ...profile
-        }, resumeContent || undefined, interviewContext);
-      }
+      // Map interviewType to new system types
+      const interviewTypeMap = { 'personal': 'background', 'professional': 'professional', 'technical': 'technical' };
+      const mappedType = interviewTypeMap[interviewType] || 'background';
+      
+      // Generate questions using new AI agent
+      const questions = await aiInterviewAgent.generateInterviewQuestions(
+        mappedType, 
+        { ...user, ...profile },
+        resumeContent || undefined,
+        interviewContext ? [interviewContext] : []
+      );
+      
+      const currentSet = {
+        type: mappedType,
+        title: `${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} Interview`,
+        description: `Comprehensive ${interviewType} assessment`,
+        questions: questions
+      };
 
       if (!currentSet) {
         throw new Error(`Interview set not found for type: ${interviewType}`);
@@ -665,7 +665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Use AI Agent 1 to generate personalized interview questions (legacy personal interview)
-      const questions = await aiInterviewService.generateInitialQuestions({
+      const questions = await aiInterviewAgent.generateInterviewQuestions('background', {
         ...user,
         ...profile
       }, resumeContent);
@@ -749,7 +749,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const resumeContent = updatedProfile?.resumeContent || null;
 
           // Use AI Agent 2 to generate comprehensive profile from ALL interviews
-          const generatedProfile = await aiInterviewService.generateProfile(
+          const generatedProfile = await aiProfileAnalyzer.generateComprehensiveFinalProfile(
             { ...user, ...updatedProfile },
             resumeContent,
             allResponses
@@ -1058,7 +1058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const resumeContent = updatedProfile?.resumeContent || null;
 
         // Use AI Agent 2 to generate comprehensive profile from ALL interviews
-        const generatedProfile = await aiInterviewService.generateProfile(
+        const generatedProfile = await aiProfileAnalyzer.generateComprehensiveFinalProfile(
           { ...user, ...updatedProfile },
           resumeContent,
           allResponses
@@ -1262,9 +1262,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Use AI Agent 2 to generate comprehensive profile from resume, profile, and interview responses
-      const generatedProfile = await aiInterviewService.generateProfile(
+      const generatedProfile = await aiProfileAnalyzer.generateComprehensiveFinalProfile(
         { ...user, ...profile },
-        resumeContent,
+        resumeContent || '',
         responses
       );
 
