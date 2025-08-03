@@ -22,6 +22,26 @@ export interface ResumeAnalysis {
   areas_for_improvement: string[];
   career_level: string;
   total_experience_years: number;
+  
+  // Enhanced analysis for interview context
+  interview_notes: {
+    red_flags: string[];
+    impressive_achievements: string[];
+    skill_gaps: string[];
+    experience_inconsistencies: string[];
+    career_progression_notes: string[];
+    verification_points: string[];
+    potential_interview_topics: string[];
+  };
+  
+  // Raw data for deep analysis
+  raw_analysis: {
+    education_analysis: string;
+    experience_analysis: string;
+    skills_assessment: string;
+    overall_impression: string;
+    credibility_assessment: string;
+  };
 }
 
 export class ResumeService {
@@ -48,37 +68,67 @@ export class ResumeService {
     }
   }
 
-  // Analyze resume content using AI
+  // Analyze resume content using AI with brutal honesty and comprehensive notes
   async analyzeResume(resumeText: string): Promise<ResumeAnalysis> {
     try {
-      const prompt = `Analyze this resume and extract key information. Provide a comprehensive analysis in JSON format with the following structure:
+      const prompt = `You are a brutally honest resume analyst for a hiring platform. Analyze this resume with complete honesty and provide deep insights that will be used during AI interviews. Be fair but critical, giving credit where due while identifying real weaknesses.
+
+RESUME CONTENT:
+${resumeText}
+
+Provide a comprehensive analysis in JSON format with the following structure:
 
 {
-  "skills": ["skill1", "skill2", ...],
+  "skills": ["actual verified skills based on experience", ...],
   "experience": [
     {
       "company": "Company Name",
-      "position": "Job Title",
+      "position": "Job Title", 
       "duration": "Start Date - End Date",
-      "responsibilities": ["responsibility1", "responsibility2", ...]
+      "responsibilities": ["actual responsibilities mentioned", ...]
     }
   ],
   "education": [
     {
       "institution": "University/School Name",
       "degree": "Degree Type",
-      "field": "Field of Study",
+      "field": "Field of Study", 
       "year": "Graduation Year (if available)"
     }
   ],
-  "summary": "Brief professional summary",
-  "strengths": ["strength1", "strength2", ...],
-  "areas_for_improvement": ["area1", "area2", ...],
+  "summary": "Honest professional summary highlighting both strengths and gaps",
+  "strengths": ["real, demonstrable strengths based on evidence", ...],
+  "areas_for_improvement": ["specific gaps and weaknesses identified", ...],
   "career_level": "entry_level|mid_level|senior_level|executive",
-  "total_experience_years": number
+  "total_experience_years": number,
+  
+  "interview_notes": {
+    "red_flags": ["concerning patterns, gaps, inconsistencies", ...],
+    "impressive_achievements": ["standout accomplishments worth exploring", ...],
+    "skill_gaps": ["missing skills for claimed level", ...],
+    "experience_inconsistencies": ["timeline gaps, unusual career moves", ...],
+    "career_progression_notes": ["pattern analysis, growth trajectory", ...],
+    "verification_points": ["claims that need verification during interview", ...],
+    "potential_interview_topics": ["areas to probe deeper", ...]
+  },
+  
+  "raw_analysis": {
+    "education_analysis": "Detailed assessment of educational background and relevance",
+    "experience_analysis": "Critical evaluation of work history and responsibilities",
+    "skills_assessment": "Honest evaluation of claimed vs demonstrated skills",
+    "overall_impression": "Holistic view of the candidate's profile",
+    "credibility_assessment": "Assessment of resume authenticity and claims"
+  }
 }
 
-Be thorough and accurate. Extract all relevant technical and soft skills. Identify the candidate's career progression and current level. Be honest about areas for improvement.
+ANALYSIS GUIDELINES:
+- Be brutally honest but fair
+- Flag any inconsistencies or red flags
+- Identify impressive achievements that deserve credit
+- Note skill gaps relative to claimed experience level
+- Assess career progression realistically
+- Identify areas that need verification during interviews
+- Provide specific, actionable insights for interview preparation
 
 Resume text:
 ${resumeText}`;

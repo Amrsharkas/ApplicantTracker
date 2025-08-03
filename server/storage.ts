@@ -37,6 +37,7 @@ export interface IStorage {
   // Applicant profile operations
   getApplicantProfile(userId: string): Promise<ApplicantProfile | undefined>;
   upsertApplicantProfile(profile: InsertApplicantProfile): Promise<ApplicantProfile>;
+  updateApplicantProfile(userId: string, data: Partial<ApplicantProfile>): Promise<void>;
   updateProfileCompletion(userId: string): Promise<void>;
 
 
@@ -64,6 +65,7 @@ export interface IStorage {
   createResumeUpload(resumeData: InsertResumeUpload): Promise<ResumeUpload>;
   getActiveResume(userId: string): Promise<ResumeUpload | undefined>;
   getAllResumes(userId: string): Promise<ResumeUpload[]>;
+  getResumeUpload(userId: string): Promise<ResumeUpload | undefined>;
   updateResumeAnalysis(id: number, analysis: any): Promise<void>;
   setActiveResume(userId: string, resumeId: number): Promise<void>;
 }
@@ -147,6 +149,13 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return profile;
     }
+  }
+
+  async updateApplicantProfile(userId: string, data: Partial<ApplicantProfile>): Promise<void> {
+    await db
+      .update(applicantProfiles)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(applicantProfiles.userId, userId));
   }
 
   async updateProfileCompletion(userId: string): Promise<void> {
@@ -564,6 +573,11 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(resumeUploads.uploadedAt))
       .limit(1);
     return resume;
+  }
+
+  async getResumeUpload(userId: string): Promise<ResumeUpload | undefined> {
+    // Return the active resume for the user
+    return this.getActiveResume(userId);
   }
 
   async getAllResumes(userId: string): Promise<ResumeUpload[]> {

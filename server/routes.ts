@@ -388,29 +388,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
-      // Get resume content from profile
+      // Get resume content and analysis from profile
       const resumeContent = profile?.resumeContent || null;
+      let resumeAnalysis = null;
+      
+      if (userId) {
+        try {
+          const resumeUpload = await storage.getActiveResume(userId);
+          resumeAnalysis = resumeUpload?.aiAnalysis;
+        } catch (error) {
+          console.log("No resume analysis found:", error);
+        }
+      }
 
       // Get context from previous interviews to maintain continuity
       const interviewContext = await storage.getInterviewContext(userId, interviewType);
 
-      // Generate the specific interview set with context
+      // Generate the specific interview set with context and resume analysis
       let currentSet;
       if (interviewType === 'personal') {
         currentSet = await aiInterviewService.generatePersonalInterview({
           ...user,
           ...profile
-        }, resumeContent || undefined);
+        }, resumeContent || undefined, resumeAnalysis);
       } else if (interviewType === 'professional') {
         currentSet = await aiInterviewService.generateProfessionalInterview({
           ...user,
           ...profile
-        }, resumeContent || undefined, interviewContext);
+        }, resumeContent || undefined, interviewContext, resumeAnalysis);
       } else if (interviewType === 'technical') {
         currentSet = await aiInterviewService.generateTechnicalInterview({
           ...user,
           ...profile
-        }, resumeContent || undefined, interviewContext);
+        }, resumeContent || undefined, interviewContext, resumeAnalysis);
       }
 
       if (!currentSet) {
@@ -586,23 +596,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get context from previous interviews to maintain continuity
       const interviewContext = await storage.getInterviewContext(userId, interviewType);
 
-      // Generate the specific interview set with context
+      // Generate the specific interview set with context and resume analysis
       let currentSet;
       if (interviewType === 'personal') {
         currentSet = await aiInterviewService.generatePersonalInterview({
           ...user,
           ...profile
-        }, resumeContent || undefined);
+        }, resumeContent || undefined, activeResume?.aiAnalysis);
       } else if (interviewType === 'professional') {
         currentSet = await aiInterviewService.generateProfessionalInterview({
           ...user,
           ...profile
-        }, resumeContent || undefined, interviewContext);
+        }, resumeContent || undefined, interviewContext, activeResume?.aiAnalysis);
       } else if (interviewType === 'technical') {
         currentSet = await aiInterviewService.generateTechnicalInterview({
           ...user,
           ...profile
-        }, resumeContent || undefined, interviewContext);
+        }, resumeContent || undefined, interviewContext, activeResume?.aiAnalysis);
       }
 
       if (!currentSet) {
@@ -2058,6 +2068,88 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   }, 60000); // Check every 60 seconds (1 minute)
 
   console.log("🚀 Airtable job monitoring system started - checking every 60 seconds");
+
+  // Generate brutally honest profile for Airtable after all interviews completed
+  app.post('/api/profile/generate-honest-assessment', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // Get user data and profile
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+      
+      if (!user || !profile) {
+        return res.status(404).json({ message: "User or profile not found" });
+      }
+
+      // Check if all three interviews are completed
+      if (!profile.personalInterviewCompleted || !profile.professionalInterviewCompleted || !profile.technicalInterviewCompleted) {
+        return res.status(400).json({ 
+          message: "All three interviews must be completed before generating honest assessment",
+          completedInterviews: {
+            personal: profile.personalInterviewCompleted,
+            professional: profile.professionalInterviewCompleted,
+            technical: profile.technicalInterviewCompleted
+          }
+        });
+      }
+
+      // Get all completed interview responses
+      const completedInterviews = await db
+        .select()
+        .from(interviewSessions)
+        .where(and(
+          eq(interviewSessions.userId, userId),
+          eq(interviewSessions.isCompleted, true)
+        ))
+        .orderBy(interviewSessions.createdAt);
+
+      // Get resume analysis
+      const resumeUpload = await storage.getActiveResume(userId);
+      const resumeAnalysis = resumeUpload?.aiAnalysis;
+
+      if (!resumeAnalysis) {
+        return res.status(400).json({ 
+          message: "Resume analysis not found. Please upload and analyze a resume first."
+        });
+      }
+
+      // Compile all interview responses
+      const allInterviewResponses = completedInterviews.map(session => ({
+        type: session.interviewType,
+        responses: session.sessionData?.responses || [],
+        questions: session.sessionData?.questions || [],
+        completedAt: session.completedAt
+      }));
+
+      // Generate brutally honest profile using AI
+      const honestProfile = await aiInterviewService.generateBrutallyHonestProfile(
+        { ...user, ...profile },
+        allInterviewResponses,
+        resumeAnalysis
+      );
+
+      // Store the honest profile for Airtable integration
+      await storage.updateApplicantProfile(userId, {
+        honestProfileGenerated: true,
+        honestProfile: honestProfile as any,
+        profileGeneratedAt: new Date()
+      });
+
+      res.json({
+        message: "Brutally honest profile generated successfully",
+        profile: honestProfile,
+        readyForAirtable: true
+      });
+
+    } catch (error) {
+      console.error("Error generating honest profile:", error);
+      res.status(500).json({ 
+        message: "Failed to generate honest profile",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

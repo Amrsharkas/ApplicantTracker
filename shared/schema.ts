@@ -117,6 +117,9 @@ export const applicantProfiles = pgTable("applicant_profiles", {
   // System fields
   aiProfile: jsonb("ai_profile"), // Generated from AI interview
   aiProfileGenerated: boolean("ai_profile_generated").default(false),
+  honestProfile: jsonb("honest_profile"), // Brutally honest profile for employers
+  honestProfileGenerated: boolean("honest_profile_generated").default(false),
+  profileGeneratedAt: timestamp("profile_generated_at"),
   personalInterviewCompleted: boolean("personal_interview_completed").default(false),
   professionalInterviewCompleted: boolean("professional_interview_completed").default(false),
   technicalInterviewCompleted: boolean("technical_interview_completed").default(false),

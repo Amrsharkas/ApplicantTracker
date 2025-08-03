@@ -92,7 +92,7 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
     return [personalSet, professionalSet, technicalSet];
   }
 
-  async generatePersonalInterview(userData: any, resumeContent?: string): Promise<InterviewSet> {
+  async generatePersonalInterview(userData: any, resumeContent?: string, resumeAnalysis?: any): Promise<InterviewSet> {
     const prompt = `You are a continuous AI interviewer conducting the Background phase of a comprehensive interview process. 
 
 CRITICAL: You must first analyze the candidate's profile in full detail before asking any questions. You already know about this candidate and must reference their profile naturally in your questions.
@@ -125,6 +125,17 @@ ${userData?.availability ? `Availability: ${userData.availability}` : ''}
 ${userData?.remotePreference ? `Remote Preference: ${userData.remotePreference}` : ''}
 ${userData?.salaryExpectation ? `Salary Expectation: ${userData.salaryExpectation}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
+
+${resumeAnalysis ? `
+RESUME ANALYSIS - INTERVIEW GUIDANCE:
+Critical Areas to Explore: ${resumeAnalysis.interview_notes?.verification_points?.join(', ') || 'None identified'}
+Red Flags to Investigate: ${resumeAnalysis.interview_notes?.red_flags?.join(', ') || 'None identified'}
+Impressive Achievements to Validate: ${resumeAnalysis.interview_notes?.impressive_achievements?.join(', ') || 'None identified'}
+Skill Gaps to Probe: ${resumeAnalysis.interview_notes?.skill_gaps?.join(', ') || 'None identified'}
+Experience Inconsistencies: ${resumeAnalysis.interview_notes?.experience_inconsistencies?.join(', ') || 'None identified'}
+Career Progression Assessment: ${resumeAnalysis.interview_notes?.career_progression_notes?.join(', ') || 'Standard progression'}
+Overall Credibility: ${resumeAnalysis.raw_analysis?.credibility_assessment || 'Standard assessment'}
+` : ''}
 
 CRITICAL INSTRUCTIONS:
 1. You must analyze this profile fully before generating questions
@@ -197,7 +208,7 @@ Return ONLY JSON:
     }
   }
 
-  async generateProfessionalInterview(userData: any, resumeContent?: string, previousInterviewData?: any): Promise<InterviewSet> {
+  async generateProfessionalInterview(userData: any, resumeContent?: string, previousInterviewData?: any, resumeAnalysis?: any): Promise<InterviewSet> {
     const contextInsights = previousInterviewData?.insights || '';
     const conversationStyle = previousInterviewData?.conversationStyle || '';
     const keyThemes = previousInterviewData?.keyThemes || [];
@@ -225,6 +236,16 @@ ${userData?.previousCompany ? `Previous Company: ${userData.previousCompany}` : 
 ${userData?.achievements ? `Achievements: ${userData.achievements}` : ''}
 ${userData?.certifications ? `Certifications: ${userData.certifications}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
+
+${resumeAnalysis ? `
+RESUME ANALYSIS - INTERVIEW GUIDANCE:
+Critical Areas to Explore: ${resumeAnalysis.interview_notes?.verification_points?.join(', ') || 'None identified'}
+Red Flags to Investigate: ${resumeAnalysis.interview_notes?.red_flags?.join(', ') || 'None identified'}
+Impressive Achievements to Validate: ${resumeAnalysis.interview_notes?.impressive_achievements?.join(', ') || 'None identified'}
+Skill Gaps to Probe: ${resumeAnalysis.interview_notes?.skill_gaps?.join(', ') || 'None identified'}
+Experience Inconsistencies: ${resumeAnalysis.interview_notes?.experience_inconsistencies?.join(', ') || 'None identified'}
+Career Progression Assessment: ${resumeAnalysis.interview_notes?.career_progression_notes?.join(', ') || 'Standard progression'}
+` : ''}
 
 ${contextInsights}
 
@@ -309,7 +330,7 @@ Return ONLY JSON:
     }
   }
 
-  async generateTechnicalInterview(userData: any, resumeContent?: string, previousInterviewData?: any): Promise<InterviewSet> {
+  async generateTechnicalInterview(userData: any, resumeContent?: string, previousInterviewData?: any, resumeAnalysis?: any): Promise<InterviewSet> {
     const userRole = userData?.currentRole || 'professional';
     const userField = this.determineUserField(userData, resumeContent);
     const contextInsights = previousInterviewData?.insights || '';
@@ -337,6 +358,16 @@ ${userData?.previousRole ? `Previous Role: ${userData.previousRole}` : ''}
 ${userData?.achievements ? `Achievements: ${userData.achievements}` : ''}
 ${userData?.certifications ? `Certifications: ${userData.certifications}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
+
+${resumeAnalysis ? `
+RESUME ANALYSIS - INTERVIEW GUIDANCE:
+Critical Areas to Explore: ${resumeAnalysis.interview_notes?.verification_points?.join(', ') || 'None identified'}
+Red Flags to Investigate: ${resumeAnalysis.interview_notes?.red_flags?.join(', ') || 'None identified'}
+Impressive Achievements to Validate: ${resumeAnalysis.interview_notes?.impressive_achievements?.join(', ') || 'None identified'}
+Skill Gaps to Probe: ${resumeAnalysis.interview_notes?.skill_gaps?.join(', ') || 'None identified'}
+Experience Inconsistencies: ${resumeAnalysis.interview_notes?.experience_inconsistencies?.join(', ') || 'None identified'}
+Career Progression Assessment: ${resumeAnalysis.interview_notes?.career_progression_notes?.join(', ') || 'Standard progression'}
+` : ''}
 
 ${contextInsights}
 
@@ -562,6 +593,87 @@ Return ONLY JSON:
   private getFallbackQuestions(): InterviewQuestion[] {
     // Legacy fallback - returns personal questions for backward compatibility
     return this.getFallbackPersonalQuestions();
+  }
+
+  // Generate brutally honest candidate profile for Airtable
+  async generateBrutallyHonestProfile(userData: any, interviewResponses: any, resumeAnalysis: any): Promise<{
+    profileSummary: string;
+    strengths: string[];
+    criticalWeaknesses: string[];
+    skillAssessment: string;
+    experienceVerification: string;
+    redFlags: string[];
+    hirabilityScore: number;
+    recommendedRole: string;
+    salaryRange: string;
+    notes: string;
+  }> {
+    const prompt = `You are a brutally honest HR expert creating a candid assessment for employers. This profile will be used by hiring managers to make informed decisions. Be fair but unflinchingly honest about this candidate's actual capabilities, gaps, and potential.
+
+CANDIDATE DATA:
+${JSON.stringify(userData, null, 2)}
+
+RESUME ANALYSIS:
+${JSON.stringify(resumeAnalysis, null, 2)}
+
+INTERVIEW RESPONSES:
+${JSON.stringify(interviewResponses, null, 2)}
+
+ASSESSMENT GUIDELINES:
+- Be brutally honest but fair
+- Focus on EVIDENCE-BASED assessments
+- Highlight both genuine strengths AND real weaknesses
+- Call out any inconsistencies or red flags
+- Assess actual vs claimed experience levels
+- Provide realistic hiring recommendations
+- No sugar-coating, but remain professional
+
+SCORING SYSTEM (1-10):
+1-3: Not hireable for stated roles
+4-5: Significant gaps, proceed with caution  
+6-7: Solid candidate with some limitations
+8-9: Strong candidate with minor gaps
+10: Exceptional candidate
+
+Provide a comprehensive assessment in JSON format:
+{
+  "profileSummary": "Honest 2-3 sentence summary of this candidate",
+  "strengths": ["actual demonstrable strengths", ...],
+  "criticalWeaknesses": ["significant gaps and limitations", ...],
+  "skillAssessment": "Honest evaluation of claimed vs actual skills",
+  "experienceVerification": "Assessment of experience claims vs evidence",
+  "redFlags": ["concerning patterns, inconsistencies, or issues", ...],
+  "hirabilityScore": number_1_to_10,
+  "recommendedRole": "Most appropriate role level for this candidate",
+  "salaryRange": "Realistic salary range based on actual capabilities",
+  "notes": "Additional context for hiring managers"
+}
+
+Be thorough, honest, and evidence-based. This assessment will help employers make informed hiring decisions.`;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          {
+            role: "system",
+            content: "You are a brutally honest HR expert who provides evidence-based candidate assessments for employers. Your assessments are known for their accuracy and honesty."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2, // Lower temperature for consistent, honest assessments
+      });
+
+      const analysis = JSON.parse(response.choices[0].message.content || "{}");
+      return analysis;
+    } catch (error) {
+      console.error("Error generating honest profile:", error);
+      throw new Error("Failed to generate candidate profile");
+    }
   }
 
   // New method for job application scoring
