@@ -14,14 +14,14 @@ function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   // Only show loading state if we're actually loading (not during logout)
-  // Add timeout to prevent infinite loading - after 5 seconds, show the landing page
+  // Add timeout to prevent infinite loading - after 10 seconds, show the landing page
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
   
   useEffect(() => {
     if (isLoading) {
       const timeout = setTimeout(() => {
         setShowTimeoutMessage(true);
-      }, 5000); // 5 second timeout (reduced from 10)
+      }, 10000); // 10 second timeout
       
       return () => clearTimeout(timeout);
     } else {
@@ -29,8 +29,7 @@ function Router() {
     }
   }, [isLoading]);
 
-  // Show loading only for initial load, not when we have clear auth state
-  if (isLoading && !showTimeoutMessage && user === undefined) {
+  if (isLoading && isAuthenticated !== false && !showTimeoutMessage) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -39,6 +38,11 @@ function Router() {
         </div>
       </div>
     );
+  }
+
+  // If loading timed out or authentication failed, redirect to landing
+  if (showTimeoutMessage || (isLoading && !user)) {
+    return <Landing />;
   }
 
   return (

@@ -1,6 +1,6 @@
 import Airtable from 'airtable';
 import { storage } from './storage';
-import { aiProfileAnalyzer } from './openai';
+import { aiProfileAnalysisAgent } from './openai';
 
 // Configure Airtable
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
@@ -1073,7 +1073,7 @@ export class AirtableService {
         answer: JSON.stringify(parsedProfile)
       }];
 
-      const response = await aiProfileAnalyzer.generateComprehensiveFinalProfile(
+      const response = await aiProfileAnalysisAgent.generateComprehensiveProfile(
         mockResponses, 
         '', 
         parsedProfile

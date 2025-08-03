@@ -9,27 +9,10 @@ let globalLoggingOut = false;
 export function useAuth() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   
-  const { data: user, isLoading, isError } = useQuery({
+  const { data: user, isLoading } = useQuery({
     queryKey: ["/api/user"],
     retry: false,
     enabled: !globalLoggingOut && !isLoggingOut,
-    queryFn: async () => {
-      try {
-        const response = await fetch("/api/user", {
-          credentials: "include",
-        });
-        if (response.status === 401) {
-          return null; // Not authenticated, but not an error
-        }
-        if (!response.ok) {
-          throw new Error(`${response.status}: ${response.statusText}`);
-        }
-        return await response.json();
-      } catch (error) {
-        console.error("Auth check error:", error);
-        return null;
-      }
-    },
   });
 
   // Sync with global logout state
@@ -58,8 +41,6 @@ export function useLogin() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      // Also set the user data directly in the cache for immediate effect
-      queryClient.setQueryData(["/api/user"], data.user);
       toast({
         title: "Welcome back!",
         description: "You have successfully logged in.",
@@ -95,8 +76,6 @@ export function useRegister() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      // Also set the user data directly in the cache for immediate effect
-      queryClient.setQueryData(["/api/user"], data.user);
       toast({
         title: "Account Created!",
         description: "Welcome to Plato! Your account has been created successfully.",
