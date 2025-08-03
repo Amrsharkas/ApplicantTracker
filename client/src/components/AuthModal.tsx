@@ -66,7 +66,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     loginMutation.mutate(data, {
       onSuccess: () => {
         onClose();
-        window.location.reload(); // This will trigger the auth check and redirect to dashboard
+        // Force navigation to dashboard instead of just reloading
+        window.location.href = "/dashboard";
       },
     });
   };
@@ -75,7 +76,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     registerMutation.mutate(data, {
       onSuccess: () => {
         onClose();
-        window.location.reload(); // This will trigger the auth check and redirect to dashboard
+        // Force navigation to dashboard instead of just reloading
+        window.location.href = "/dashboard";
       },
     });
   };
