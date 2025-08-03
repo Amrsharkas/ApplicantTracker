@@ -26,11 +26,9 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false, // Disable secure for localhost development
+      secure: process.env.NODE_ENV === 'production', // Only secure in production
       maxAge: sessionTtl,
-      sameSite: 'lax',
-      domain: undefined, // Let browser set domain automatically
-      path: '/' // Ensure cookie is available for all paths
+      sameSite: 'lax'
     },
   });
 }
@@ -195,27 +193,15 @@ export async function setupAuth(app: Express) {
   // Get current user endpoint
   app.get('/api/user', async (req: any, res) => {
     try {
-      // Debug logging to see what's happening
-      console.log('🔍 /api/user request:', {
-        hasSession: !!req.session,
-        sessionId: req.sessionID,
-        userId: req.session?.userId,
-        cookies: req.headers.cookie,
-        userAgent: req.headers['user-agent']
-      });
-
       if (!req.session.userId) {
-        console.log('❌ No userId in session, returning 401');
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
       const user = await storage.getUser(req.session.userId);
       if (!user) {
-        console.log('❌ User not found in database, returning 401');
         return res.status(401).json({ error: 'User not found' });
       }
 
-      console.log('✅ User authenticated successfully:', user.email);
       // Return user without password
       const { password: _, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);

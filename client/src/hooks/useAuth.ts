@@ -13,24 +13,18 @@ export function useAuth() {
     queryKey: ["/api/user"],
     retry: false,
     enabled: !globalLoggingOut && !isLoggingOut,
-    staleTime: 0, // Always refetch when invalidated
     queryFn: async () => {
       try {
-        console.log("🔍 Auth check: Fetching user data");
         const response = await fetch("/api/user", {
           credentials: "include",
-          cache: "no-cache", // Prevent caching issues
         });
         if (response.status === 401) {
-          console.log("🔍 Auth check: User not authenticated (401)");
           return null; // Not authenticated, but not an error
         }
         if (!response.ok) {
           throw new Error(`${response.status}: ${response.statusText}`);
         }
-        const userData = await response.json();
-        console.log("🔍 Auth check: User authenticated", userData);
-        return userData;
+        return await response.json();
       } catch (error) {
         console.error("Auth check error:", error);
         return null;
@@ -63,13 +57,9 @@ export function useLogin() {
       });
     },
     onSuccess: (data) => {
-      console.log("🎉 Login successful:", data.user);
-      // Clear all queries first
-      queryClient.clear();
-      // Set the user data directly in the cache
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      // Also set the user data directly in the cache for immediate effect
       queryClient.setQueryData(["/api/user"], data.user);
-      // Force an immediate refetch
-      queryClient.refetchQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Welcome back!",
         description: "You have successfully logged in.",
@@ -104,13 +94,9 @@ export function useRegister() {
       });
     },
     onSuccess: (data) => {
-      console.log("🎉 Registration successful:", data.user);
-      // Clear all queries first
-      queryClient.clear();
-      // Set the user data directly in the cache
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      // Also set the user data directly in the cache for immediate effect
       queryClient.setQueryData(["/api/user"], data.user);
-      // Force an immediate refetch
-      queryClient.refetchQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Account Created!",
         description: "Welcome to Plato! Your account has been created successfully.",

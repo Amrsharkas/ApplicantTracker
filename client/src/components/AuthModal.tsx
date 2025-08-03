@@ -65,9 +65,11 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const onLoginSubmit = (data: LoginFormData) => {
     loginMutation.mutate(data, {
       onSuccess: () => {
-        console.log("🎉 Login mutation successful, closing modal");
         onClose();
-        // Wait for the auth query to refetch and redirect naturally
+        // Wait a moment for the session to be established, then redirect
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 100);
       },
     });
   };
@@ -75,9 +77,11 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const onRegisterSubmit = (data: RegisterFormData) => {
     registerMutation.mutate(data, {
       onSuccess: () => {
-        console.log("🎉 Registration mutation successful, closing modal");
         onClose();
-        // Wait for the auth query to refetch and redirect naturally
+        // Wait a moment for the session to be established, then redirect
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 100);
       },
     });
   };
