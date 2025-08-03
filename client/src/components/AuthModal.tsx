@@ -66,8 +66,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     loginMutation.mutate(data, {
       onSuccess: () => {
         onClose();
-        // Force navigation to dashboard instead of just reloading
-        window.location.href = "/dashboard";
+        // Wait a moment for the session to be established, then redirect
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 100);
       },
     });
   };
@@ -76,8 +78,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     registerMutation.mutate(data, {
       onSuccess: () => {
         onClose();
-        // Force navigation to dashboard instead of just reloading
-        window.location.href = "/dashboard";
+        // Wait a moment for the session to be established, then redirect
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 100);
       },
     });
   };
