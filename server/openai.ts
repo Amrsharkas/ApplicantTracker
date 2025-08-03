@@ -11,11 +11,10 @@ export interface InterviewQuestion {
 }
 
 export interface InterviewSet {
-  type: 'background' | 'professional' | 'technical';
+  type: 'personal' | 'professional' | 'technical';
   title: string;
   description: string;
   questions: InterviewQuestion[];
-  evaluationCriteria: string[];
 }
 
 export interface InterviewResponse {
@@ -24,42 +23,19 @@ export interface InterviewResponse {
   followUp?: string;
 }
 
-// Comprehensive final profile structure based on all 3 interviews
-export interface ComprehensiveFinalProfile {
-  candidateSummary: string; // Role-focused snapshot with "but" statements
-  softSkillsOverview: {
-    strengths: string[];
-    gaps: string[];
-    communicationAbility: string;
-    emotionalIntelligence: string;
-    leadership: string;
-  };
-  technicalSkillsEvaluation: {
-    authenticSkills: string[];
-    claimedButUnverified: string[];
-    depthAssessment: string;
-    practicalUnderstanding: string;
-  };
-  certifications: {
-    verified: string[];
-    claimed: string[];
-    needsVerification: string[];
-  };
-  gapsAndConcerns: string[];
-  finalRecommendation: {
-    shouldShortlist: boolean;
-    reasoning: string;
-    employerQuestions: string[];
-  };
-  overallScore: number; // 0-100
-}
-
-// Cross-validation findings
-export interface CrossValidationResult {
-  cvProfileAlignment: string[];
-  timelineConsistency: string[];
-  skillClaimsVerification: string[];
-  inconsistencies: string[];
+export interface GeneratedProfile {
+  skills: string[];
+  personality: string;
+  experience: {
+    role: string;
+    company: string;
+    duration: string;
+    description: string;
+  }[];
+  strengths: string[];
+  careerGoals: string;
+  workStyle: string;
+  summary: string;
 }
 
 // AI Agent 1: Interview Conductor - analyzes resume/profile and conducts personalized interviews
@@ -103,43 +79,7 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
 
   private getFallbackWelcomeMessage(firstName?: string): string {
     const name = firstName ? `, ${firstName}` : '';
-    return `Welcome to Plato${name}. I'll be conducting a comprehensive interview process with you today. We'll proceed through three connected phases - background, professional, and technical - to understand your background and capabilities. I'll maintain continuity throughout all phases to build a complete profile.`;
-  }
-
-  private getFallbackBackgroundQuestions(): InterviewQuestion[] {
-    return [
-      { question: "Walk me through your current role and what your typical day looks like." },
-      { question: "What led you to your current career path and what transitions have you made?" },
-      { question: "Tell me about a professional achievement you're particularly proud of and its impact." },
-      { question: "What originally attracted you to your field and how has that motivation evolved?" },
-      { question: "Describe the different work environments you've experienced - startups, large companies, etc." },
-      { question: "How do you typically approach learning new skills or adapting to change?" },
-      { question: "What aspects of your background do you feel best prepare you for your target role?" }
-    ];
-  }
-
-  private getFallbackProfessionalQuestions(): InterviewQuestion[] {
-    return [
-      { question: "Tell me about a time you faced conflict in a team. How did you resolve it?" },
-      { question: "What's your approach to time management in high-pressure situations?" },
-      { question: "Describe your leadership style. Can you give an example from your past role?" },
-      { question: "What kind of work culture do you thrive in?" },
-      { question: "Tell me about difficult feedback you received and how you reacted." },
-      { question: "How do you handle competing priorities and deadlines?" },
-      { question: "Describe a situation where you had to adapt quickly to change." }
-    ];
-  }
-
-  private getFallbackTechnicalQuestions(): InterviewQuestion[] {
-    return [
-      { question: "Explain how you approach problem-solving in your technical work." },
-      { question: "Tell me about a challenging technical project and how you handled it." },
-      { question: "How do you stay current with developments in your field?" },
-      { question: "Describe your experience with the tools and technologies relevant to your role." },
-      { question: "Walk me through your process for learning new technical skills." },
-      { question: "Tell me about a time you had to troubleshoot a complex technical issue." },
-      { question: "How do you ensure the quality and reliability of your work?" }
-    ];
+    return `Welcome to Plato${name}. I'll be conducting a comprehensive interview process with you today. We'll proceed through three connected phases - personal, professional, and technical - to understand your background and capabilities. I'll maintain continuity throughout all phases to build a complete profile.`;
   }
 
   async generateComprehensiveInterviewSets(userData: any, resumeContent?: string): Promise<InterviewSet[]> {
@@ -152,11 +92,12 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
     return [personalSet, professionalSet, technicalSet];
   }
 
-  // Stage 1: Background Interview - Education, work history, achievements, motivations, career trajectory
-  async generateBackgroundInterview(userData: any, resumeContent?: string): Promise<InterviewSet> {
-    const prompt = `You are conducting Stage 1: Background Interview. This evaluates education, work history, achievements, motivations, and career trajectory through cross-analysis of CV and profile data.
+  async generatePersonalInterview(userData: any, resumeContent?: string): Promise<InterviewSet> {
+    const prompt = `You are a continuous AI interviewer conducting the Background phase of a comprehensive interview process. 
 
-COMPLETE CANDIDATE DATA FOR CROSS-ANALYSIS:
+CRITICAL: You must first analyze the candidate's profile in full detail before asking any questions. You already know about this candidate and must reference their profile naturally in your questions.
+
+CANDIDATE PROFILE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
 ${userData?.email ? `Email: ${userData.email}` : ''}
 ${userData?.phone ? `Phone: ${userData.phone}` : ''}
@@ -167,49 +108,66 @@ ${userData?.yearsOfExperience ? `Years of Experience: ${userData.yearsOfExperien
 ${userData?.education ? `Education: ${userData.education}${userData.university ? ` from ${userData.university}` : ''}` : ''}
 ${userData?.skills ? `Skills: ${userData.skills.join(', ')}` : ''}
 ${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
+${userData?.linkedinUrl ? `LinkedIn: ${userData.linkedinUrl}` : ''}
+${userData?.githubUrl ? `GitHub: ${userData.githubUrl}` : ''}
+${userData?.portfolioUrl ? `Portfolio: ${userData.portfolioUrl}` : ''}
 ${userData?.careerGoals ? `Career Goals: ${userData.careerGoals}` : ''}
 ${userData?.targetRole ? `Target Role: ${userData.targetRole}` : ''}
 ${userData?.targetCompany ? `Target Company: ${userData.targetCompany}` : ''}
+${userData?.targetSalary ? `Target Salary: ${userData.targetSalary}` : ''}
 ${userData?.workStyle ? `Work Style: ${userData.workStyle}` : ''}
 ${userData?.previousRole ? `Previous Role: ${userData.previousRole}` : ''}
 ${userData?.previousCompany ? `Previous Company: ${userData.previousCompany}` : ''}
 ${userData?.achievements ? `Achievements: ${userData.achievements}` : ''}
 ${userData?.certifications ? `Certifications: ${userData.certifications}` : ''}
+${userData?.languages ? `Languages: ${userData.languages.join(', ')}` : ''}
+${userData?.availability ? `Availability: ${userData.availability}` : ''}
+${userData?.remotePreference ? `Remote Preference: ${userData.remotePreference}` : ''}
+${userData?.salaryExpectation ? `Salary Expectation: ${userData.salaryExpectation}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
 
-BACKGROUND INTERVIEW OBJECTIVES:
-✅ Cross-validate CV dates, roles, and timeline consistency
-✅ Understand educational path and career entry point  
-✅ Assess ability to articulate growth and reflection
-✅ Identify career transitions and reasoning
-✅ Evaluate storytelling clarity and engagement
-✅ Check alignment between CV claims and described responsibilities
+CRITICAL INSTRUCTIONS:
+1. You must analyze this profile fully before generating questions
+2. Your questions must reference what you already know about them - use phrases like "I see from your profile that..." or "Based on your ${userData?.currentRole || 'background'}..."
+3. DO NOT ask for information already provided in the profile
+4. Ask questions that build on their existing profile data
+5. Establish your conversational tone to match their profile style
+6. Remember: this is the foundation for Professional and Technical interviews
 
-REQUIRED QUESTION STRUCTURE:
-1. "Walk me through your most recent role as [specific title from CV/profile]. What were your daily tasks?"
-2. "Why did you transition from [previous role from CV] to [current role from CV]?"
-3. "Tell me about a time you felt proud of your work. What was the impact?"
-4. "What prompted you to enter [their field based on education/experience]?"
-5. "What kind of environments have you worked in — startups, corporates, freelance?" (Reference their actual companies)
-6. Ask about specific achievements mentioned in CV but probe for details
-7. Address any timeline gaps or transitions visible in their background
+QUESTION QUALITY STANDARDS:
+- Ask human, high-quality questions - avoid templates and clichés
+- Be sharp, contextual, and judgment-based
+- Prioritize clarity, depth, and specificity
+- Make every question purposeful and custom to this person
+- Focus on gaps, clarity, and reflection
+- Push for concrete examples, logic, outcomes, and learning
 
-EVALUATION CRITERIA TO ASSESS:
-- Timeline consistency between roles and dates
-- Alignment between job titles and described responsibilities  
-- Depth of explanation and ability to reflect on growth
-- Storytelling clarity, engagement, and relevance
+Create 5 background questions that demonstrate you've analyzed their profile:
+1. Reference their educational background or career path in context - ask about specific decisions or transitions
+2. Build on their stated career goals or work style - explore the reasoning behind their choices
+3. Connect their current role to their personal values - dig into what drives their professional decisions
+4. Explore motivations behind their career choices - ask about specific resistance or challenges they faced
+5. Understand what drives them beyond what's already stated - focus on judgment calls and learning
+
+RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
+- Respond professionally - never overly positive or flattering
+- Use real interviewer language - neutral, grounded, professionally curious
+- Never provide emotional reactions or value judgments
+- Don't evaluate how "good" an answer was - ask the next smart question
+- Maintain a calm, consistent tone - focused, observant, and neutral
+- Examples of good responses: "Thank you. Could you clarify how you prioritized tasks in that situation?" or "Got it. What was the biggest trade-off you had to make?"
+- Avoid: "That's amazing!" "Fantastic answer!" "Wow, that really shows how great you are!"
+
+IMPORTANT: Every question must show you've reviewed their profile. Never ask blindly. Focus on WHY they made specific choices, not just WHAT they did.
 
 Return ONLY JSON:
 {
   "questions": [
-    "Walk me through your most recent role as [specific title]. What were your daily tasks?",
-    "Why did you transition from [previous role] to [current role]?", 
-    "Tell me about a time you felt proud of your work. What was the impact?",
-    "What prompted you to enter [their field]?",
-    "What kind of environments have you worked in — startups, corporates, freelance?",
-    "Specific question about achievements from CV/profile",
-    "Question addressing timeline gaps or transitions"
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."}
   ]
 }`;
 
@@ -223,35 +181,22 @@ Return ONLY JSON:
 
       const result = JSON.parse(response.choices[0].message.content || '{}');
       return {
-        type: 'background',
-        title: 'Background Interview',
-        description: 'Understanding your education, work history, and career trajectory',
-        questions: result.questions?.map((q: any) => typeof q === 'string' ? { question: q } : q) || this.getFallbackBackgroundQuestions(),
-        evaluationCriteria: [
-          'Timeline consistency between roles and dates',
-          'Alignment between job titles and described responsibilities',
-          'Depth of explanation and ability to reflect on growth',
-          'Storytelling clarity, engagement, and relevance'
-        ]
+        type: 'personal',
+        title: 'Personal Interview',
+        description: 'Understanding your background, values, and personal journey',
+        questions: result.questions || this.getFallbackPersonalQuestions()
       };
     } catch (error) {
-      console.error("Error generating background interview:", error);
+      console.error("Error generating personal interview:", error);
       return {
-        type: 'background',
-        title: 'Background Interview',
-        description: 'Understanding your education, work history, and career trajectory',
-        questions: this.getFallbackBackgroundQuestions(),
-        evaluationCriteria: [
-          'Timeline consistency between roles and dates',
-          'Alignment between job titles and described responsibilities',
-          'Depth of explanation and ability to reflect on growth',
-          'Storytelling clarity, engagement, and relevance'
-        ]
+        type: 'personal',
+        title: 'Personal Interview',
+        description: 'Understanding your background, values, and personal journey',
+        questions: this.getFallbackPersonalQuestions()
       };
     }
   }
 
-  // Stage 2: Professional Interview - Soft skills, behavioral fit, conflict resolution, leadership
   async generateProfessionalInterview(userData: any, resumeContent?: string, previousInterviewData?: any): Promise<InterviewSet> {
     const contextInsights = previousInterviewData?.insights || '';
     const conversationStyle = previousInterviewData?.conversationStyle || '';
@@ -349,29 +294,17 @@ Return ONLY JSON:
       const result = JSON.parse(response.choices[0].message.content || '{}');
       return {
         type: 'professional',
-        title: 'Professional Interview (Soft Skills)',
-        description: 'Assessing behavioral fit, communication, and leadership abilities',
-        questions: result.questions?.map((q: any) => typeof q === 'string' ? { question: q } : q) || this.getFallbackProfessionalQuestions(),
-        evaluationCriteria: [
-          'Specificity vs generality in answers',
-          'Communication ability and emotional intelligence',
-          'Alignment between declared personality traits and examples',
-          'Leadership, collaboration, adaptability, and maturity indicators'
-        ]
+        title: 'Professional Interview',
+        description: 'Exploring your career journey, achievements, and professional expertise',
+        questions: result.questions || this.getFallbackProfessionalQuestions()
       };
     } catch (error) {
       console.error("Error generating professional interview:", error);
       return {
         type: 'professional',
-        title: 'Professional Interview (Soft Skills)',
-        description: 'Assessing behavioral fit, communication, and leadership abilities',
-        questions: this.getFallbackProfessionalQuestions(),
-        evaluationCriteria: [
-          'Specificity vs generality in answers',
-          'Communication ability and emotional intelligence',
-          'Alignment between declared personality traits and examples',
-          'Leadership, collaboration, adaptability, and maturity indicators'
-        ]
+        title: 'Professional Interview',
+        description: 'Exploring your career journey, achievements, and professional expertise',
+        questions: this.getFallbackProfessionalQuestions()
       };
     }
   }
@@ -629,100 +562,6 @@ Return ONLY JSON:
   private getFallbackQuestions(): InterviewQuestion[] {
     // Legacy fallback - returns personal questions for backward compatibility
     return this.getFallbackPersonalQuestions();
-  }
-
-  // Method to generate comprehensive final profile after all 3 interviews
-  async generateComprehensiveFinalProfile(
-    userData: any, 
-    resumeContent: string, 
-    backgroundInterview: any, 
-    professionalInterview: any, 
-    technicalInterview: any
-  ): Promise<any> {
-    const prompt = `You are conducting the FINAL EVALUATION after completing all three comprehensive interviews. Your task is to generate a single, honest, comprehensive, and reliable final profile by cross-analyzing CV, profile data, and ALL interview responses.
-
-COMPLETE CANDIDATE DATA:
-${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
-${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
-${userData?.yearsOfExperience ? `Years of Experience: ${userData.yearsOfExperience}` : ''}
-${userData?.education ? `Education: ${userData.education}${userData.university ? ` from ${userData.university}` : ''}` : ''}
-${userData?.skills ? `Skills: ${userData.skills.join(', ')}` : ''}
-${userData?.certifications ? `Certifications: ${userData.certifications}` : ''}
-${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
-
-INTERVIEW RESPONSES TO ANALYZE:
-Stage 1 - Background Interview: ${JSON.stringify(backgroundInterview)}
-Stage 2 - Professional Interview: ${JSON.stringify(professionalInterview)}  
-Stage 3 - Technical Interview: ${JSON.stringify(technicalInterview)}
-
-CRITICAL EVALUATION REQUIREMENTS:
-✅ Cross-validate CV, profile, and interview responses for inconsistencies
-✅ Assess timeline consistency and role/responsibility alignment
-✅ Evaluate depth vs surface-level understanding
-✅ Check for authentic examples vs vague/generic answers
-✅ Identify claimed skills/certifications lacking verification
-✅ Note gaps, red flags, and unsupported claims
-
-FINAL PROFILE STRUCTURE - BE BRUTALLY HONEST:
-1. Candidate Summary: Role-focused snapshot with "but" statements (e.g., "Strong project experience, but lacked detail in communication examples")
-2. Soft Skills: Strengths AND gaps - avoid promotional language
-3. Technical Skills: Authentic skills vs claimed but unverified vs buzzword dropping
-4. Certifications: Verified vs claimed vs needs verification
-5. Gaps & Concerns: Red flags, vague answers, timeline gaps, unsupported claims
-6. Final Recommendation: Should they be shortlisted? What should employer ask face-to-face?
-7. Overall Score: 0-100 based on all evidence
-
-ASSESSMENT STANDARDS:
-- Never be overly positive - provide balanced, critical analysis
-- Always include "but" statements highlighting weaknesses
-- Flag discrepancies between claimed skills and demonstrated knowledge
-- Note when answers were vague, generic, or lacked specificity
-- Cross-reference claimed certifications with actual evidence
-- Highlight timeline inconsistencies or gaps
-
-Return ONLY JSON:
-{
-  "candidateSummary": "Honest role-focused snapshot with 'but' statements",
-  "softSkillsOverview": {
-    "strengths": ["verified strength 1", "verified strength 2"],
-    "gaps": ["identified gap 1", "identified gap 2"],
-    "communicationAbility": "assessment with specifics",
-    "emotionalIntelligence": "assessment with evidence",
-    "leadership": "assessment with concrete examples or lack thereof"
-  },
-  "technicalSkillsEvaluation": {
-    "authenticSkills": ["skills with demonstrated competency"],
-    "claimedButUnverified": ["skills mentioned but not validated"],
-    "depthAssessment": "surface-level vs deep understanding analysis",
-    "practicalUnderstanding": "evidence of hands-on experience vs theoretical"
-  },
-  "certifications": {
-    "verified": ["certifications with evidence"],
-    "claimed": ["mentioned but unverified"],
-    "needsVerification": ["require document verification"]
-  },
-  "gapsAndConcerns": ["red flag 1", "vague answer pattern", "timeline gap", "unsupported claim"],
-  "finalRecommendation": {
-    "shouldShortlist": true/false,
-    "reasoning": "honest assessment based on all evidence",
-    "employerQuestions": ["what employer should ask to probe deeper"]
-  },
-  "overallScore": 85
-}`;
-
-    try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        temperature: 0.3 // Lower temperature for more consistent evaluation
-      });
-
-      return JSON.parse(response.choices[0].message.content || '{}');
-    } catch (error) {
-      console.error("Error generating comprehensive final profile:", error);
-      throw new Error("Failed to generate comprehensive final profile");
-    }
   }
 
   // New method for job application scoring
@@ -1010,13 +849,10 @@ export const aiProfileAnalysisAgent = new AIProfileAnalysisAgent();
 export const aiInterviewService = {
   generateWelcomeMessage: aiInterviewAgent.generateWelcomeMessage.bind(aiInterviewAgent),
   generateInterviewSets: aiInterviewAgent.generateComprehensiveInterviewSets.bind(aiInterviewAgent),
-  generateBackgroundInterview: aiInterviewAgent.generateBackgroundInterview.bind(aiInterviewAgent),
+  generateInitialQuestions: aiInterviewAgent.generatePersonalizedQuestions.bind(aiInterviewAgent),
+  generatePersonalInterview: aiInterviewAgent.generatePersonalInterview.bind(aiInterviewAgent),
   generateProfessionalInterview: aiInterviewAgent.generateProfessionalInterview.bind(aiInterviewAgent),
   generateTechnicalInterview: aiInterviewAgent.generateTechnicalInterview.bind(aiInterviewAgent),
-  generateComprehensiveFinalProfile: aiInterviewAgent.generateComprehensiveFinalProfile.bind(aiInterviewAgent),
   generateProfile: aiProfileAnalysisAgent.generateComprehensiveProfile.bind(aiProfileAnalysisAgent),
-  parseResume: aiProfileAnalysisAgent.parseResume.bind(aiProfileAnalysisAgent),
-  analyzeJobApplication: aiInterviewAgent.analyzeJobApplication.bind(aiInterviewAgent),
-  // For backward compatibility - alias personal interview to background interview
-  generatePersonalInterview: aiInterviewAgent.generateBackgroundInterview.bind(aiInterviewAgent)
+  parseResume: aiProfileAnalysisAgent.parseResume.bind(aiProfileAnalysisAgent)
 };
