@@ -180,17 +180,35 @@ export const resumeUploads = pgTable("resume_uploads", {
   uploadedAt: timestamp("uploaded_at").defaultNow(),
 });
 
-// Interview sessions table
+// Interview sessions table - Enhanced for comprehensive evaluation
 export const interviewSessions = pgTable("interview_sessions", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id),
-  interviewType: varchar("interview_type").notNull(), // 'personal', 'professional', 'technical'
-  sessionData: jsonb("session_data").notNull(), // Q&A pairs, progress
+  interviewType: varchar("interview_type").notNull(), // 'background', 'professional', 'technical'
+  sessionData: jsonb("session_data").notNull(), // Q&A pairs, progress, insights
   isCompleted: boolean("is_completed").default(false),
-  generatedProfile: jsonb("generated_profile"),
+  inconsistencies: jsonb("inconsistencies"), // Cross-validation findings
+  behavioralInsights: jsonb("behavioral_insights"), // Personality traits, communication style
+  technicalAssessment: jsonb("technical_assessment"), // Technical depth and authenticity
   resumeContext: jsonb("resume_context"), // Resume analysis context for the interview
+  previousInterviewsContext: jsonb("previous_interviews_context"), // Context from prior interviews
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
+});
+
+// Final comprehensive profile - Only generated after all 3 interviews
+export const finalProfiles = pgTable("final_profiles", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  candidateSummary: text("candidate_summary").notNull(), // Role-focused snapshot with "but" statements
+  softSkillsOverview: jsonb("soft_skills_overview").notNull(), // Strengths and gaps
+  technicalSkillsEvaluation: jsonb("technical_skills_evaluation").notNull(), // Technical assessment with specifics
+  certifications: jsonb("certifications"), // Verified vs claimed certifications
+  gapsAndConcerns: jsonb("gaps_and_concerns"), // Red flags, vague answers, unsupported claims
+  finalRecommendation: text("final_recommendation").notNull(), // Should they be shortlisted?
+  employerQuestions: jsonb("employer_questions"), // What should employer ask in face-to-face?
+  overallScore: integer("overall_score").notNull(), // 0-100 based on all interviews
+  generatedAt: timestamp("generated_at").defaultNow(),
 });
 
 // Relations
@@ -253,6 +271,13 @@ export const interviewSessionsRelations = relations(interviewSessions, ({ one })
   }),
 }));
 
+export const finalProfilesRelations = relations(finalProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [finalProfiles.userId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users);
 export const insertApplicantProfileSchema = createInsertSchema(applicantProfiles).omit({
@@ -281,6 +306,10 @@ export const insertResumeUploadSchema = createInsertSchema(resumeUploads).omit({
   id: true,
   uploadedAt: true,
 });
+export const insertFinalProfileSchema = createInsertSchema(finalProfiles).omit({
+  id: true,
+  generatedAt: true,
+});
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -300,3 +329,5 @@ export type InsertInterviewSession = z.infer<typeof insertInterviewSessionSchema
 export type InterviewSession = typeof interviewSessions.$inferSelect;
 export type InsertResumeUpload = z.infer<typeof insertResumeUploadSchema>;
 export type ResumeUpload = typeof resumeUploads.$inferSelect;
+export type InsertFinalProfile = z.infer<typeof insertFinalProfileSchema>;
+export type FinalProfile = typeof finalProfiles.$inferSelect;

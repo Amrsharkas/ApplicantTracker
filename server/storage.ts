@@ -278,19 +278,17 @@ export class DatabaseStorage implements IStorage {
     const [job] = await db
       .insert(jobs)
       .values({
-        title: jobData.title, // Fixed: use correct field name
+        title: jobData.title,
         description: jobData.description,
         company: jobData.company,
         location: jobData.location || 'Remote',
-        salaryRange: jobData.salaryRange || null,
-        employmentType: jobData.employmentType || 'Full-time',
+        salaryMin: jobData.salaryMin || null,
+        salaryMax: jobData.salaryMax || null,
         experienceLevel: jobData.experienceLevel || 'Mid-level',
         skills: jobData.skills || [],
-        postedDate: new Date(),
-        requirements: [],
-        benefits: [],
-        remote: true,
-        applicationCount: 0,
+        jobType: jobData.jobType || 'remote',
+        requirements: jobData.requirements || null,
+        benefits: jobData.benefits || null,
         isActive: true
       })
       .returning();

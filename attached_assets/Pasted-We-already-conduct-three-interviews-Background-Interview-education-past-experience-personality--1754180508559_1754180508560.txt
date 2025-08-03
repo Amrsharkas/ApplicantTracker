@@ -1,0 +1,115 @@
+We already conduct three interviews:
+
+Background Interview (education, past experience, personality)
+
+Professional Interview (soft skills, leadership, decision-making, workplace behavior)
+
+Technical Interview (tools, software, hard skills based on role)
+
+Each interview currently lacks depth and analytical feedback. I want to upgrade the interview engine to ensure it:
+
+Asks the right questions based on the role
+
+Evaluates each answer with critical reasoning
+
+Flags inconsistencies
+
+Gives a score per interview (internally, for profile analysis)
+
+Saves all reasoning for the final profile generation
+
+🎯 General Goals Across All Interviews
+Ask specific, contextual questions tailored to the candidate’s current or most recent job title (already parsed from CV or filled manually).
+
+Every answer must be evaluated with:
+
+Clarity
+
+Credibility
+
+Evidence or examples provided
+
+Gaps or fluff detected
+
+If an answer is vague or generic, it should automatically trigger a follow-up question or be marked as "weak response."
+
+✅ Background Interview Improvements
+Sample Prompts:
+
+“Walk me through your most recent role as [job title]. What were your daily responsibilities and biggest achievements?”
+
+“Which past role taught you the most and why?”
+
+“Tell me about a challenge you faced early in your career and how you overcame it.”
+
+Evaluation Rules:
+
+If they list duties without outcomes → flag “no impact shown.”
+
+If they mention achievements → check if results or tools were mentioned.
+
+If they speak only about one job → flag as “limited experience coverage.”
+
+✅ Professional Interview Improvements
+Sample Prompts:
+
+“Describe a time you had to make a difficult decision with limited information.”
+
+“How do you handle disagreements on a team?”
+
+“What type of work environment brings out your best?”
+
+Evaluation Rules:
+
+Rate soft skills based on structure and insight in the answer.
+
+If answers are full of buzzwords (teamwork, leadership) but lack stories or examples → flag.
+
+If they mention a situation but avoid saying what they personally did → flag as low ownership.
+
+✅ Technical Interview Improvements
+Sample Prompts:
+
+“What tools or software do you use most in your role as [job title]?”
+
+“Give me a real example of when you used [tool or method] to solve a problem.”
+
+“What would you do if [scenario] occurred during a project?”
+
+Evaluation Rules:
+
+Match tools mentioned with industry standard.
+
+Flag “surface-level” answers: if the candidate names software but doesn’t explain how/why they used it.
+
+Ask for metrics, processes, or context.
+
+🔍 Additional Requirements
+Add role-based dynamic questions: e.g., if the candidate is a UI designer, ask about design systems and Figma.
+
+Ensure follow-up questions are automatic when:
+
+Candidate gives vague answers
+
+Candidate claims something impressive but provides no context
+
+If a certification, award, or major skill is mentioned, flag it for proof verification in the final profile.
+
+📊 Internal Scoring System (Invisible to Users)
+Each answer should get an internal score (out of 10) based on:
+
+Specificity (2 pts)
+
+Clarity (2 pts)
+
+Proof/example (3 pts)
+
+Relevance to role (3 pts)
+
+These scores will:
+
+Inform the final AI-generated profile
+
+Help assess strengths/weaknesses
+
+Influence face-to-face interview recommendation

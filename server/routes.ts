@@ -377,11 +377,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const { interviewType } = req.body;
       
-      // Validate interview type
-      if (!['personal', 'professional', 'technical'].includes(interviewType)) {
+      // Validate interview type - updated to support new three-stage system
+      if (!['background', 'professional', 'technical', 'personal'].includes(interviewType)) {
         return res.status(400).json({ 
           error: "Invalid interview type",
-          details: "Must be personal, professional, or technical"
+          details: "Must be background, professional, or technical"
         });
       }
 
@@ -396,11 +396,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate the specific interview set with context
       let currentSet;
-      if (interviewType === 'personal') {
-        currentSet = await aiInterviewService.generatePersonalInterview({
+      if (interviewType === 'background' || interviewType === 'personal') {
+        currentSet = await aiInterviewService.generateBackgroundInterview({
           ...user,
           ...profile
-        }, resumeContent || undefined);
+        }, resumeContent || undefined, interviewContext);
       } else if (interviewType === 'professional') {
         currentSet = await aiInterviewService.generateProfessionalInterview({
           ...user,
@@ -558,7 +558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const interviewType = req.params.type;
       
       // Validate interview type
-      if (!['personal', 'professional', 'technical'].includes(interviewType)) {
+      if (!['background', 'professional', 'technical', 'personal'].includes(interviewType)) {
         return res.status(400).json({ message: "Invalid interview type" });
       }
 
@@ -588,11 +588,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate the specific interview set with context
       let currentSet;
-      if (interviewType === 'personal') {
-        currentSet = await aiInterviewService.generatePersonalInterview({
+      if (interviewType === 'background' || interviewType === 'personal') {
+        currentSet = await aiInterviewService.generateBackgroundInterview({
           ...user,
           ...profile
-        }, resumeContent || undefined);
+        }, resumeContent || undefined, interviewContext);
       } else if (interviewType === 'professional') {
         currentSet = await aiInterviewService.generateProfessionalInterview({
           ...user,
