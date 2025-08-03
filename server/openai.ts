@@ -374,8 +374,8 @@ ${resumeContent || 'No resume provided'}
 
 COMPLETED INTERVIEWS:
 ${allInterviews.map(interview => `
-${interview.interviewType.toUpperCase()} INTERVIEW:
-${JSON.stringify(interview.sessionData, null, 2)}
+${(interview.interviewType || interview.question || 'INTERVIEW').toUpperCase()} INTERVIEW:
+${JSON.stringify(interview.sessionData || interview, null, 2)}
 `).join('\n')}
 
 COMPREHENSIVE ANALYSIS REQUIREMENTS:

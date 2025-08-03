@@ -388,8 +388,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
-      // Get resume content from profile
-      const resumeContent = profile?.resumeContent || null;
+      // CRITICAL: Get resume content for proper CV analysis
+      let resumeContent = profile?.resumeContent || null;
+      
+      // Try to get actual resume text from uploaded resume
+      try {
+        const activeResume = await storage.getActiveResume(userId);
+        if (activeResume?.extractedText) {
+          resumeContent = activeResume.extractedText;
+        }
+      } catch (error) {
+        console.warn("Could not fetch active resume:", error);
+      }
 
       // Get context from previous interviews to maintain continuity
       const interviewContext = await storage.getInterviewContext(userId, interviewType);
@@ -398,7 +408,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const interviewTypeMap = { 'personal': 'background', 'professional': 'professional', 'technical': 'technical' };
       const mappedType = interviewTypeMap[interviewType] || 'background';
       
-      // Generate questions using new AI agent
+      console.log(`🎯 CV Analysis Debug - ${mappedType} interview:`, {
+        hasResumeContent: !!resumeContent,
+        resumeLength: resumeContent?.length || 0,
+        hasProfile: !!profile,
+        hasContext: !!interviewContext
+      });
+      
+      // Generate questions using new AI agent with proper CV analysis
       const questions = await aiInterviewAgent.generateInterviewQuestions(
         mappedType, 
         { ...user, ...profile },
@@ -574,23 +591,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
-      // Get resume content and analysis from active resume
+      // Get resume content and analysis from active resume - CRITICAL FOR CV ANALYSIS
       let resumeContent = profile?.resumeContent || null;
       let resumeContext = null;
       
       if (activeResume?.aiAnalysis) {
         resumeContext = await resumeService.generateInterviewContext(activeResume.aiAnalysis);
         resumeContent = activeResume.extractedText || resumeContent;
+      } else if (activeResume?.extractedText) {
+        // Use extracted text directly if available
+        resumeContent = activeResume.extractedText;
       }
 
-      // Get context from previous interviews to maintain continuity
+      // Get context from previous interviews to maintain continuity  
       const interviewContext = await storage.getInterviewContext(userId, interviewType);
 
       // Map interviewType to new system types
       const interviewTypeMap = { 'personal': 'background', 'professional': 'professional', 'technical': 'technical' };
       const mappedType = interviewTypeMap[interviewType] || 'background';
       
-      // Generate questions using new AI agent
+      console.log(`🎯 Generating ${mappedType} interview questions with CV analysis:`, {
+        hasResumeContent: !!resumeContent,
+        resumeLength: resumeContent?.length || 0,
+        hasContext: !!interviewContext,
+        userProfile: { ...user, ...profile }
+      });
+      
+      // Generate questions using new AI agent with FULL CV analysis
       const questions = await aiInterviewAgent.generateInterviewQuestions(
         mappedType, 
         { ...user, ...profile },
@@ -664,11 +691,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         resumeContent = activeResume.extractedText || resumeContent;
       }
 
-      // Use AI Agent 1 to generate personalized interview questions (legacy personal interview)
+      // Get previous interviews for cross-analysis
+      const previousInterviews = []; // TODO: Implement if needed for initial interview
+      
+      // Use AI Agent 1 to generate personalized interview questions with CV analysis
       const questions = await aiInterviewAgent.generateInterviewQuestions('background', {
         ...user,
         ...profile
-      }, resumeContent);
+      }, resumeContent || undefined, previousInterviews);
 
       const session = await storage.createInterviewSession({
         userId,
@@ -1122,19 +1152,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const profile = await storage.getApplicantProfile(userId);
 
       // Get resume content if available
-      let resumeContent = null;
-      if (profile?.resumeUrl) {
+      let resumeContent = profile?.resumeContent || null;
+      if (!resumeContent && profile?.resumeUrl) {
         try {
-          resumeContent = null; // TODO: Implement resume fetching
+          // Try to get resume content from storage or file system
+          const resumeData = await storage.getResumeByUserId(userId);
+          resumeContent = resumeData?.extractedText || null;
         } catch (error) {
           console.warn("Could not fetch resume content:", error);
         }
       }
 
       // Use AI Agent 2 to generate comprehensive profile
-      const generatedProfile = await aiProfileAnalysisAgent.generateComprehensiveProfile(
+      const generatedProfile = await aiProfileAnalyzer.generateComprehensiveFinalProfile(
         { ...user, ...profile },
-        resumeContent,
+        resumeContent || '',
         conversationHistory
       );
 
