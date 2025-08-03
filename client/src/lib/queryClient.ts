@@ -62,7 +62,8 @@ export async function apiRequest(
       ...headers,
     },
     body,
-    credentials: "include",
+    credentials: "include", // Always include cookies
+    cache: "no-cache", // Prevent caching issues
   });
 
   await throwIfResNotOk(res);

@@ -67,11 +67,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       onSuccess: () => {
         console.log("🎉 Login mutation successful, closing modal");
         onClose();
-        // Force a full page refresh to ensure cookies are properly set
-        setTimeout(() => {
-          console.log("🔄 Refreshing page to ensure auth state");
-          window.location.reload();
-        }, 500);
+        // Wait for the auth query to refetch and redirect naturally
       },
     });
   };
@@ -81,11 +77,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       onSuccess: () => {
         console.log("🎉 Registration mutation successful, closing modal");
         onClose();
-        // Force a full page refresh to ensure cookies are properly set
-        setTimeout(() => {
-          console.log("🔄 Refreshing page to ensure auth state");
-          window.location.reload();
-        }, 500);
+        // Wait for the auth query to refetch and redirect naturally
       },
     });
   };

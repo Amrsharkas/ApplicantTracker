@@ -19,6 +19,7 @@ export function useAuth() {
         console.log("🔍 Auth check: Fetching user data");
         const response = await fetch("/api/user", {
           credentials: "include",
+          cache: "no-cache", // Prevent caching issues
         });
         if (response.status === 401) {
           console.log("🔍 Auth check: User not authenticated (401)");
@@ -62,10 +63,13 @@ export function useLogin() {
       });
     },
     onSuccess: (data) => {
-      // Set the user data directly in the cache for immediate effect
+      console.log("🎉 Login successful:", data.user);
+      // Clear all queries first
+      queryClient.clear();
+      // Set the user data directly in the cache
       queryClient.setQueryData(["/api/user"], data.user);
-      // Force refetch to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      // Force an immediate refetch
+      queryClient.refetchQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Welcome back!",
         description: "You have successfully logged in.",
@@ -101,10 +105,12 @@ export function useRegister() {
     },
     onSuccess: (data) => {
       console.log("🎉 Registration successful:", data.user);
-      // Set the user data directly in the cache for immediate effect
+      // Clear all queries first
+      queryClient.clear();
+      // Set the user data directly in the cache
       queryClient.setQueryData(["/api/user"], data.user);
-      // Force refetch to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      // Force an immediate refetch
+      queryClient.refetchQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Account Created!",
         description: "Welcome to Plato! Your account has been created successfully.",
