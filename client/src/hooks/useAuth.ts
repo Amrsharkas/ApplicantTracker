@@ -57,9 +57,10 @@ export function useLogin() {
       });
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      // Also set the user data directly in the cache for immediate effect
+      // Set the user data directly in the cache for immediate effect
       queryClient.setQueryData(["/api/user"], data.user);
+      // Force refetch to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Welcome back!",
         description: "You have successfully logged in.",
@@ -94,9 +95,10 @@ export function useRegister() {
       });
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      // Also set the user data directly in the cache for immediate effect
+      // Set the user data directly in the cache for immediate effect
       queryClient.setQueryData(["/api/user"], data.user);
+      // Force refetch to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Account Created!",
         description: "Welcome to Plato! Your account has been created successfully.",

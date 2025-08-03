@@ -6,31 +6,15 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
-import { useState, useEffect } from "react";
+
 
 import NotFound from "@/pages/not-found";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  // Only show loading state if we're actually loading (not during logout)
-  // Add timeout to prevent infinite loading - after 5 seconds, show the landing page
-  const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
-  
-  useEffect(() => {
-    if (isLoading) {
-      const timeout = setTimeout(() => {
-        setShowTimeoutMessage(true);
-      }, 5000); // 5 second timeout (reduced from 10)
-      
-      return () => clearTimeout(timeout);
-    } else {
-      setShowTimeoutMessage(false);
-    }
-  }, [isLoading]);
-
-  // Show loading only for initial load, not when we have clear auth state
-  if (isLoading && !showTimeoutMessage && user === undefined) {
+  // Show loading only for initial load when we don't know auth state yet
+  if (isLoading && user === undefined) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
