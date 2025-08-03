@@ -300,7 +300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('AI parsing timeout')), 10000)
         );
-        // parsedData = await Promise.race([parsePromise, timeoutPromise]); // Commented out until parsePromise is defined
+        parsedData = await Promise.race([parsePromise, timeoutPromise]);
       } catch (aiError) {
         console.warn("AI parsing failed, continuing with resume upload:", aiError);
         // Continue with upload even if AI parsing fails
@@ -733,7 +733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const user = await storage.getUser(userId);
           
           // Get all interview sessions for this user
-          const allSessions = await storage.getInterviewSessions(userId);
+          const allSessions = await storage.getInterviewHistory(userId);
           const completedSessions = allSessions.filter(s => s.isCompleted);
           
           // Combine all responses from all interview types
@@ -1042,7 +1042,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const user = await storage.getUser(userId);
         
         // Get all interview sessions for this user
-        const allSessions = await storage.getInterviewSessions(userId);
+        const allSessions = await storage.getInterviewHistory(userId);
         const completedSessions = allSessions.filter(s => s.isCompleted);
         
         // Combine all responses from all interview types
@@ -1132,9 +1132,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Use AI Agent 2 to generate comprehensive profile
-      const generatedProfile = await aiProfileAnalyzer.generateComprehensiveFinalProfile(
+      const generatedProfile = await aiProfileAnalysisAgent.generateComprehensiveProfile(
         { ...user, ...profile },
-        resumeContent || '',
+        resumeContent,
         conversationHistory
       );
 
@@ -1271,7 +1271,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create interview session
       const session = await storage.createInterviewSession({
         userId,
-        interviewType: 'comprehensive', // Final comprehensive interview
         sessionData: { 
           questions: responses.map((r: any) => ({ question: r.question })), 
           responses, 
@@ -1816,7 +1815,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user profile and interview data
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
-      const interviewHistory = await storage.getInterviewSessions(userId);
+      const interviewHistory = await storage.getInterviewHistory(userId);
 
       console.log('👤 User data:', { hasUser: !!user, hasProfile: !!profile, hasAiProfile: !!profile?.aiProfile });
 
