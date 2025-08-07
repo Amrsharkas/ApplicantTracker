@@ -1,0 +1,177 @@
+Single Source of Truth — “Build Profile” is the only place users enter CV details. Remove duplicates elsewhere.
+
+No regressions — Keep progress tracking and interview unlock logic intact.
+
+Autosave — Save on field blur and every 2–3 seconds while typing.
+
+Mobile-first & accessible — Arabic/English friendly.
+
+Structured + flexible — Dropdowns with “Other” option for write-ins.
+
+EGP default — All pay inputs in Egyptian Pounds.
+
+Proof flags — Any claim can be marked Verified only when a file/link is attached.
+
+B) Section Layout (order + fields)
+1) Personal Details
+Full name
+
+Preferred name (optional)
+
+Date of birth (optional)
+
+Nationality
+
+City, Country (current)
+
+Phone, Email
+
+Time zone
+
+2) Government ID Submission
+ID Type (dropdown: National ID, Passport, Driver’s License, Other)
+
+ID Number (optional)
+
+Upload ID File (PDF/JPG/PNG, max 10MB, virus scan placeholder)
+
+Verified status only after file successfully uploaded & saved.
+
+3) Links & Portfolio
+LinkedIn
+
+Personal website/portfolio
+
+GitHub/Behance/Dribbble/Medium (role dependent)
+
+Public resume link (optional)
+
+Other relevant URL(s)
+
+4) Work Eligibility & Preferences
+Work authorization (yes/no + countries)
+
+Willing to relocate? (yes/no, target locations)
+
+Work type: On-site / Hybrid / Remote
+
+Employment type: Full-time / Part-time / Contract / Internship
+
+Notice period (days)
+
+Earliest start date
+
+Desired salary (EGP): min / max (narrow band encouraged)
+
+Willing to travel (%, optional)
+
+5) Languages
+Multi-select language list
+
+Fluency per language: Basic / Intermediate / Fluent / Native
+
+Primary working language
+
+6) Skills
+Technical Skills
+
+Multi-select + “Add custom”
+
+Proficiency, Years of experience, Last used date
+
+Soft Skills
+
+Multi-select + “Add custom”
+
+Optional “example” text for 1–2 key soft skills
+
+7) Education (repeatable)
+Institution
+
+Degree / Program
+
+Field of study
+
+Start date / End date (+ “currently enrolled”)
+
+GPA (optional)
+
+Highlights/courses (optional)
+
+Attach credential (optional → Verified)
+
+8) Experience (repeatable)
+Company/Organization
+
+Job title
+
+Employment type
+
+Location (City, Country)
+
+Start date / End date (+ “currently working here”)
+
+Team size (optional)
+
+Manager/reference contact (optional)
+
+Responsibilities (3–6 bullet points)
+
+Key achievements (quantified if possible)
+
+Tools/tech used (multi-select + custom)
+
+Attach proof (optional → Verified)
+
+9) Certifications & Licenses (repeatable)
+Certification name
+
+Issuer
+
+Issue date / Expiry date (optional)
+
+Credential ID / URL (optional)
+
+Upload certificate (PDF/image) → sets Verified
+
+10) Awards & Achievements (repeatable)
+Title
+
+Issuer / Context
+
+Date
+
+Short description
+
+Link / proof (optional → Verified)
+
+11) Job Target & Fit
+Target role title(s)
+
+Target industries
+
+Target functions
+
+Preferred company size (Startup / SME / Enterprise)
+
+Work style preferences (Independent / Collaborative / Managerial track)
+
+Cultural notes (short textarea, optional)
+
+C) “Add Experience” Button — UX
+Adds a new empty card for Experience
+
+Required: Company, Job title, Start date
+
+End date required unless “currently working here” is on
+
+Warn on overlapping dates (don’t block)
+
+Reorder via drag & drop
+
+Autosave on blur
+
+D) De-duplication & Integrity
+Remove all duplicates from old Profile/CV forms
+
+Keep existing keys so interviews and progress tracking still work
