@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,70 +16,41 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { 
-  Upload, User, FileText, MapPin, Briefcase, GraduationCap, BookOpen,
-  Award, Globe, Trophy, Plus, X, Calendar, Phone, Mail
+  User, MapPin, GraduationCap, Briefcase, Award, Settings, Globe, FileText
 } from "lucide-react";
 
-// Define comprehensive profile schema (non-duplicate fields only)
+// Simplified comprehensive profile schema
 const profileFormSchema = z.object({
-  // Essential Information (age only - other contact info in CV form)
+  // Personal Information
+  name: z.string().min(2, "Full name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  phone: z.string().min(10, "Please enter a valid phone number"),
   age: z.number().min(16).max(100).optional(),
-
-  // General Information (personal, non-professional details)
-  birthdate: z.string().optional(),
-  gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say']).optional(),
-  maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed', 'other']).optional(),
-  dependents: z.number().min(0).max(10).optional(),
-  militaryStatus: z.enum(['never_served', 'served', 'currently_serving', 'reserved']).optional(),
-
-  // Location (general preferences only - specific location in CV form)
+  nationality: z.string().optional(),
+  
+  // Location
+  country: z.string().optional(),
+  city: z.string().optional(),
   willingToRelocate: z.boolean().optional(),
-
-  // Career Interests (high-level preferences only - detailed career info in CV form)
-  jobTitles: z.array(z.string()).optional(),
-  jobCategories: z.array(z.string()).optional(),
-  minimumSalary: z.number().min(0).optional(),
-  hideSalaryFromCompanies: z.boolean().optional(),
-  jobSearchStatus: z.enum(['actively_looking', 'happy_but_open', 'specific_opportunities', 'not_looking', 'immediate_hiring']).optional(),
-
-  // Experience (high-level summary only - detailed experience in CV form)
-  totalYearsOfExperience: z.number().min(0).max(50).optional(),
-
-  // Education (high school only - higher education in CV form)
+  
+  // Education
   currentEducationLevel: z.enum(['high_school', 'vocational', 'diploma', 'bachelors', 'masters', 'phd']).optional(),
-  highSchools: z.array(z.object({
-    schoolName: z.string(),
-    country: z.string(),
-    certificateName: z.string(),
-    languageOfStudy: z.string(),
-    graduationYear: z.number(),
-    grade: z.string().optional(),
-    additionalInfo: z.string().optional()
-  })).optional(),
-
-
+  
+  // Experience
+  totalYearsOfExperience: z.number().min(0).max(50).optional(),
+  
+  // Career Preferences
+  jobSearchStatus: z.enum(['actively_looking', 'happy_but_open', 'specific_opportunities', 'not_looking', 'immediate_hiring']).optional(),
+  workplaceSettings: z.enum(['onsite', 'remote', 'hybrid']).optional(),
+  
   // Online Presence
-  linkedinUrl: z.string().optional(),
-  facebookUrl: z.string().optional(),
-  twitterUrl: z.string().optional(),
-  instagramUrl: z.string().optional(),
-  githubUrl: z.string().optional(),
-  youtubeUrl: z.string().optional(),
-  websiteUrl: z.string().optional(),
-  otherUrls: z.array(z.string()).optional(),
-
-  // Achievements (personal achievements - professional achievements in CV form)
-  personalAchievements: z.string().optional(),
-
-  // Legacy fields (for backward compatibility)
-  education: z.string().optional(),
-  university: z.string().optional(),
-  degree: z.string().optional(),
-  location: z.string().optional(),
-  currentRole: z.string().optional(),
-  company: z.string().optional(),
-  yearsOfExperience: z.number().min(0).max(50).optional(),
+  linkedinUrl: z.string().url().optional().or(z.literal("")),
+  githubUrl: z.string().url().optional().or(z.literal("")),
+  websiteUrl: z.string().url().optional().or(z.literal("")),
+  
+  // Summary
   summary: z.string().optional(),
+  achievements: z.string().optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileFormSchema>;
@@ -91,116 +61,83 @@ interface ComprehensiveProfileModalProps {
 }
 
 export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProfileModalProps) {
-  const [isUploading, setIsUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState("essential");
+  const [activeTab, setActiveTab] = useState("personal");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: profile, isLoading } = useQuery({
-    queryKey: ["/api/candidate/profile"],
-    enabled: isOpen,
-  });
-
-  const { data: user } = useQuery({
-    queryKey: ["/api/auth/user"],
-    enabled: isOpen,
-  });
-
+  // Form initialization with default values
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      age: profile?.age || undefined,
-      birthdate: profile?.birthdate || "",
-      gender: profile?.gender || undefined,
-      maritalStatus: profile?.maritalStatus || undefined,
-      dependents: profile?.dependents || undefined,
-      militaryStatus: profile?.militaryStatus || undefined,
-      willingToRelocate: profile?.willingToRelocate || false,
-      jobTitles: profile?.jobTitles || [],
-      jobCategories: profile?.jobCategories || [],
-      minimumSalary: profile?.minimumSalary || undefined,
-      hideSalaryFromCompanies: profile?.hideSalaryFromCompanies || false,
-      jobSearchStatus: profile?.jobSearchStatus || undefined,
-      totalYearsOfExperience: profile?.totalYearsOfExperience || undefined,
-      currentEducationLevel: profile?.currentEducationLevel || undefined,
-      highSchools: profile?.highSchools || [],
-      linkedinUrl: profile?.linkedinUrl || "",
-      facebookUrl: profile?.facebookUrl || "",
-      twitterUrl: profile?.twitterUrl || "",
-      instagramUrl: profile?.instagramUrl || "",
-      githubUrl: profile?.githubUrl || "",
-      youtubeUrl: profile?.youtubeUrl || "",
-      websiteUrl: profile?.websiteUrl || "",
-      otherUrls: profile?.otherUrls || [],
-      personalAchievements: profile?.personalAchievements || "",
-      
-      // Legacy fields
-      education: profile?.education || "",
-      university: profile?.university || "",
-      degree: profile?.degree || "",
-      location: profile?.location || "",
-      currentRole: profile?.currentRole || "",
-      company: profile?.company || "",
-      yearsOfExperience: profile?.yearsOfExperience || undefined,
-      summary: profile?.summary || "",
+      name: "",
+      email: "",
+      phone: "",
+      age: undefined,
+      nationality: "",
+      country: "",
+      city: "",
+      willingToRelocate: false,
+      currentEducationLevel: undefined,
+      totalYearsOfExperience: undefined,
+      jobSearchStatus: undefined,
+      workplaceSettings: undefined,
+      linkedinUrl: "",
+      githubUrl: "",
+      websiteUrl: "",
+      summary: "",
+      achievements: "",
     },
   });
 
-  // Update form when profile data loads
+  // Query to fetch existing profile data
+  const { data: existingProfile, isLoading } = useQuery({
+    queryKey: ["/api/profile"],
+    retry: false,
+  });
+
+  // Update form with existing data when it loads
   useEffect(() => {
-    if (profile) {
+    if (existingProfile) {
       form.reset({
-        age: profile.age || undefined,
-        birthdate: profile.birthdate || "",
-        gender: profile.gender || undefined,
-        maritalStatus: profile.maritalStatus || undefined,
-        dependents: profile.dependents || undefined,
-        militaryStatus: profile.militaryStatus || undefined,
-        willingToRelocate: profile.willingToRelocate || false,
-        jobTitles: profile.jobTitles || [],
-        jobCategories: profile.jobCategories || [],
-        minimumSalary: profile.minimumSalary || undefined,
-        hideSalaryFromCompanies: profile.hideSalaryFromCompanies || false,
-        jobSearchStatus: profile.jobSearchStatus || undefined,
-        totalYearsOfExperience: profile.totalYearsOfExperience || undefined,
-        currentEducationLevel: profile.currentEducationLevel || undefined,
-        highSchools: profile.highSchools || [],
-        linkedinUrl: profile.linkedinUrl || "",
-        facebookUrl: profile.facebookUrl || "",
-        twitterUrl: profile.twitterUrl || "",
-        instagramUrl: profile.instagramUrl || "",
-        githubUrl: profile.githubUrl || "",
-        youtubeUrl: profile.youtubeUrl || "",
-        websiteUrl: profile.websiteUrl || "",
-        otherUrls: profile.otherUrls || [],
-        personalAchievements: profile.personalAchievements || "",
-        
-        // Legacy fields
-        education: profile.education || "",
-        university: profile.university || "",
-        degree: profile.degree || "",
-        location: profile.location || "",
-        currentRole: profile.currentRole || "",
-        company: profile.company || "",
-        yearsOfExperience: profile.yearsOfExperience || undefined,
-        summary: profile.summary || "",
+        name: existingProfile?.name || "",
+        email: existingProfile?.email || "",
+        phone: existingProfile?.phone || "",
+        age: existingProfile?.age || undefined,
+        nationality: existingProfile?.nationality || "",
+        country: existingProfile?.country || "",
+        city: existingProfile?.city || "",
+        willingToRelocate: existingProfile?.willingToRelocate || false,
+        currentEducationLevel: existingProfile?.currentEducationLevel || undefined,
+        totalYearsOfExperience: existingProfile?.totalYearsOfExperience || undefined,
+        jobSearchStatus: existingProfile?.jobSearchStatus || undefined,
+        workplaceSettings: existingProfile?.workplaceSettings || undefined,
+        linkedinUrl: existingProfile?.linkedinUrl || "",
+        githubUrl: existingProfile?.githubUrl || "",
+        websiteUrl: existingProfile?.websiteUrl || "",
+        summary: existingProfile?.summary || "",
+        achievements: existingProfile?.achievements || "",
       });
     }
-  }, [profile, user, form]);
+  }, [existingProfile, form]);
 
+  // Mutation to update profile
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
-      return await apiRequest("PUT", "/api/candidate/profile", data);
+      return await apiRequest("/api/profile", {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" },
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       toast({
-        title: "Profile updated successfully",
-        description: "Your profile information has been saved.",
+        title: "Profile updated successfully!",
+        description: "Your comprehensive profile has been saved.",
       });
       onClose();
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -242,31 +179,71 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <User className="h-5 w-5" />
-            <span>Complete Your Profile</span>
+            <span>Build Your Complete Profile</span>
           </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="essential">Essential</TabsTrigger>
-                <TabsTrigger value="general">General</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-6">
+                <TabsTrigger value="personal">Personal</TabsTrigger>
                 <TabsTrigger value="location">Location</TabsTrigger>
+                <TabsTrigger value="education">Education</TabsTrigger>
                 <TabsTrigger value="experience">Experience</TabsTrigger>
+                <TabsTrigger value="career">Career</TabsTrigger>
                 <TabsTrigger value="online">Online</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="essential" className="space-y-4">
+              <TabsContent value="personal" className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <User className="h-5 w-5" />
-                      <span>Essential Information</span>
+                      <span>Personal Information</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Full Name *</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Enter your full name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email *</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="email" placeholder="Enter your email" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone Number *</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Enter your phone number" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <FormField
                         control={form.control}
                         name="age"
@@ -286,117 +263,15 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           </FormItem>
                         )}
                       />
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="general" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>General Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="birthdate"
+                        name="nationality"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Date of Birth</FormLabel>
+                            <FormLabel>Nationality</FormLabel>
                             <FormControl>
-                              <Input {...field} type="date" />
+                              <Input {...field} placeholder="Enter your nationality" />
                             </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="gender"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Gender</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select gender" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="male">Male</SelectItem>
-                                <SelectItem value="female">Female</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
-                                <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="maritalStatus"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Marital Status</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select marital status" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="single">Single</SelectItem>
-                                <SelectItem value="married">Married</SelectItem>
-                                <SelectItem value="divorced">Divorced</SelectItem>
-                                <SelectItem value="widowed">Widowed</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="dependents"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Number of Dependents</FormLabel>
-                            <FormControl>
-                              <Input 
-                                {...field} 
-                                type="number" 
-                                placeholder="Enter number of dependents"
-                                value={field.value || ""}
-                                onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="militaryStatus"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Military Status</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select military status" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="never_served">Never served</SelectItem>
-                                <SelectItem value="served">Previously served</SelectItem>
-                                <SelectItem value="currently_serving">Currently serving</SelectItem>
-                                <SelectItem value="reserved">Reserved</SelectItem>
-                              </SelectContent>
-                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -418,12 +293,25 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="location"
+                        name="country"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Location (Legacy)</FormLabel>
+                            <FormLabel>Country</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Enter your location" />
+                              <Input {...field} placeholder="Enter your country" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="city"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>City</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Enter your city" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -442,10 +330,46 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
-                            <FormLabel>
-                              Willing to relocate for the right opportunity
-                            </FormLabel>
+                            <FormLabel>Willing to relocate for the right opportunity</FormLabel>
                           </div>
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="education" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <GraduationCap className="h-5 w-5" />
+                      <span>Education</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="currentEducationLevel"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Current Education Level</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select education level" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="high_school">High School</SelectItem>
+                              <SelectItem value="vocational">Vocational</SelectItem>
+                              <SelectItem value="diploma">Diploma</SelectItem>
+                              <SelectItem value="bachelors">Bachelor's Degree</SelectItem>
+                              <SelectItem value="masters">Master's Degree</SelectItem>
+                              <SelectItem value="phd">PhD</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -458,52 +382,24 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <Briefcase className="h-5 w-5" />
-                      <span>Experience Summary</span>
+                      <span>Work Experience</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="totalYearsOfExperience"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Total Years of Experience</FormLabel>
-                            <FormControl>
-                              <Input 
-                                {...field} 
-                                type="number" 
-                                placeholder="Enter total years of experience"
-                                value={field.value || ""}
-                                onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="currentRole"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Current Role (Legacy)</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Enter your current role" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
                     <FormField
                       control={form.control}
-                      name="summary"
+                      name="totalYearsOfExperience"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Professional Summary (Legacy)</FormLabel>
+                          <FormLabel>Total Years of Experience</FormLabel>
                           <FormControl>
-                            <Textarea {...field} rows={4} placeholder="Enter your professional summary" />
+                            <Input 
+                              {...field} 
+                              type="number" 
+                              placeholder="Total years of experience"
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -513,51 +409,58 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                 </Card>
               </TabsContent>
 
-              <TabsContent value="education" className="space-y-4">
+              <TabsContent value="career" className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
-                      <BookOpen className="h-5 w-5" />
-                      <span>Education (Legacy)</span>
+                      <Settings className="h-5 w-5" />
+                      <span>Career Preferences</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="university"
+                        name="jobSearchStatus"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>University</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Enter your university" />
-                            </FormControl>
+                            <FormLabel>Job Search Status</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="actively_looking">Actively Looking</SelectItem>
+                                <SelectItem value="happy_but_open">Happy but Open</SelectItem>
+                                <SelectItem value="specific_opportunities">Specific Opportunities</SelectItem>
+                                <SelectItem value="not_looking">Not Looking</SelectItem>
+                                <SelectItem value="immediate_hiring">Immediate Hiring</SelectItem>
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                       <FormField
                         control={form.control}
-                        name="degree"
+                        name="workplaceSettings"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Degree</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Enter your degree" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="education"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Education Details</FormLabel>
-                            <FormControl>
-                              <Textarea {...field} rows={3} placeholder="Enter education details" />
-                            </FormControl>
+                            <FormLabel>Workplace Preference</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select preference" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="onsite">On-site</SelectItem>
+                                <SelectItem value="remote">Remote</SelectItem>
+                                <SelectItem value="hybrid">Hybrid</SelectItem>
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -572,7 +475,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <Globe className="h-5 w-5" />
-                      <span>Online Presence</span>
+                      <span>Online Presence & Summary</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -616,55 +519,26 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={form.control}
-                        name="youtubeUrl"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>YouTube Channel</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="https://youtube.com/yourchannel" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="twitterUrl"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Twitter URL</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="https://twitter.com/yourusername" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="facebookUrl"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Facebook URL</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="https://facebook.com/yourprofile" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
                     </div>
+                    <FormField
+                      control={form.control}
+                      name="summary"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Professional Summary</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} rows={4} placeholder="Describe your professional background, goals, and what makes you unique..." />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={form.control}
                       name="achievements"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center space-x-2">
-                            <Trophy className="h-4 w-4" />
-                            <span>Achievements</span>
-                          </FormLabel>
+                          <FormLabel>Achievements</FormLabel>
                           <FormControl>
                             <Textarea {...field} rows={4} placeholder="Describe your achievements, awards, certifications, and notable accomplishments..." />
                           </FormControl>
