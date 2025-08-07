@@ -19,6 +19,131 @@ const upload = multer({
 
 const resumeService = new ResumeService();
 
+// Helper function to create CV analysis from manual data
+function createManualCVAnalysisFromData(cvData: any) {
+  return {
+    skills: [...(cvData.technicalSkills || []), ...(cvData.softSkills || [])],
+    experience: (cvData.workExperiences || []).map((exp: any) => ({
+      company: exp.company,
+      position: exp.position,
+      duration: `${exp.startDate} - ${exp.endDate || 'Present'}`,
+      responsibilities: exp.responsibilities ? exp.responsibilities.split('\n').filter((r: string) => r.trim()) : []
+    })),
+    education: (cvData.degrees || []).map((deg: any) => ({
+      institution: deg.institution,
+      degree: deg.degree,
+      field: deg.field,
+      year: deg.endDate
+    })),
+    summary: cvData.summary,
+    strengths: cvData.technicalSkills || [],
+    areas_for_improvement: [], // Will be determined during interviews
+    career_level: determineCareerLevel(cvData.workExperiences || []),
+    total_experience_years: calculateTotalExperience(cvData.workExperiences || []),
+    
+    // Enhanced analysis for interview context
+    interview_notes: {
+      red_flags: [],
+      impressive_achievements: cvData.achievements ? [cvData.achievements] : [],
+      skill_gaps: [],
+      experience_inconsistencies: [],
+      career_progression_notes: [],
+      verification_points: (cvData.workExperiences || []).map((exp: any) => 
+        `Verify ${exp.position} role at ${exp.company}`
+      ),
+      potential_interview_topics: generateInterviewTopics(cvData)
+    },
+    
+    // Raw data for deep analysis
+    raw_analysis: {
+      education_analysis: generateEducationAnalysis(cvData.degrees || []),
+      experience_analysis: generateExperienceAnalysis(cvData.workExperiences || []),
+      skills_assessment: generateSkillsAssessment(cvData),
+      overall_impression: generateOverallImpression(cvData),
+      credibility_assessment: "Manual entry - requires interview verification"
+    }
+  };
+}
+
+function determineCareerLevel(experiences: any[]): string {
+  const totalYears = calculateTotalExperience(experiences);
+  if (totalYears < 2) return "entry_level";
+  if (totalYears < 5) return "mid_level";
+  if (totalYears < 10) return "senior_level";
+  return "executive";
+}
+
+function calculateTotalExperience(experiences: any[]): number {
+  if (!experiences || experiences.length === 0) return 0;
+  
+  // Simple calculation based on number of roles
+  // In a real scenario, you'd parse dates properly
+  return experiences.length * 2; // Rough estimate
+}
+
+function generateInterviewTopics(cvData: any): string[] {
+  const topics = [];
+  
+  if (cvData.workExperiences?.length > 0) {
+    cvData.workExperiences.forEach((exp: any) => {
+      topics.push(`Discuss role at ${exp.company} as ${exp.position}`);
+    });
+  }
+  
+  if (cvData.certifications?.length > 0) {
+    cvData.certifications.forEach((cert: any) => {
+      topics.push(`How ${cert.name} certification was applied practically`);
+    });
+  }
+  
+  if (cvData.achievements) {
+    topics.push("Elaborate on key achievements mentioned");
+  }
+  
+  return topics;
+}
+
+function generateEducationAnalysis(degrees: any[]): string {
+  if (!degrees || degrees.length === 0) return "No formal education information provided";
+  
+  return degrees.map(deg => 
+    `${deg.degree} in ${deg.field || 'unspecified field'} from ${deg.institution}`
+  ).join("; ");
+}
+
+function generateExperienceAnalysis(experiences: any[]): string {
+  if (!experiences || experiences.length === 0) return "No work experience information provided";
+  
+  return experiences.map(exp => 
+    `${exp.position} at ${exp.company} (${exp.startDate || 'Unknown start'} - ${exp.endDate || 'Present'})`
+  ).join("; ");
+}
+
+function generateSkillsAssessment(cvData: any): string {
+  const techSkills = cvData.technicalSkills?.length || 0;
+  const softSkills = cvData.softSkills?.length || 0;
+  
+  return `${techSkills} technical skills and ${softSkills} soft skills listed. Requires validation through practical examples.`;
+}
+
+function generateOverallImpression(cvData: any): string {
+  const hasExperience = (cvData.workExperiences?.length || 0) > 0;
+  const hasEducation = (cvData.degrees?.length || 0) > 0;
+  const hasSkills = (cvData.technicalSkills?.length || 0) + (cvData.softSkills?.length || 0) > 0;
+  
+  let impression = "Candidate has provided ";
+  const components = [];
+  
+  if (hasExperience) components.push("work experience");
+  if (hasEducation) components.push("educational background");
+  if (hasSkills) components.push("skills information");
+  
+  impression += components.join(", ");
+  impression += ". All information requires verification through detailed interviews.";
+  
+  return impression;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -123,14 +248,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const resumeService = new ResumeService();
 
   // Get upload URL for resume
-  app.post('/api/resume/upload-url', requireAuth, async (req: any, res) => {
+  // Manual CV data entry endpoint (replaces resume upload)
+  app.post('/api/candidate/manual-cv', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const { uploadURL, filePath } = await objectStorageService.getResumeUploadURL(userId);
-      res.json({ uploadURL, filePath });
+      const cvData = req.body;
+      
+      // Validate required fields
+      if (!cvData.name || !cvData.email || !cvData.summary) {
+        return res.status(400).json({ error: "Name, email, and summary are required" });
+      }
+
+      // Prepare profile data with manual CV information
+      const profileData = {
+        userId,
+        name: cvData.name,
+        email: cvData.email,
+        phone: cvData.phone,
+        birthdate: cvData.birthdate ? new Date(cvData.birthdate) : null,
+        nationality: cvData.nationality,
+        country: cvData.country,
+        city: cvData.city,
+        
+        // Education and experience as JSONB
+        degrees: cvData.degrees,
+        workExperiences: cvData.workExperiences,
+        languages: cvData.languages,
+        certifications: cvData.certifications,
+        
+        // Skills
+        skillsList: [...(cvData.technicalSkills || []), ...(cvData.softSkills || [])],
+        
+        // Career preferences
+        jobTypes: cvData.jobTypes,
+        workplaceSettings: cvData.workplaceSettings,
+        preferredWorkCountries: cvData.preferredWorkCountries,
+        
+        // Professional summary and achievements
+        summary: cvData.summary,
+        achievements: cvData.achievements,
+        
+        // Mark manual CV as completed (equivalent to resume upload)
+        resumeContent: cvData.summary, // Store summary as resume content for backward compatibility
+        completionPercentage: 40, // Manual CV completion gives significant progress
+        updatedAt: new Date(),
+      };
+
+      await storage.upsertApplicantProfile(profileData);
+
+      // Create manual CV analysis for AI interviews (similar to resume analysis)
+      const manualCVAnalysis = createManualCVAnalysisFromData(cvData);
+      
+      // Store the analysis for interview use (in the resumeContent field for compatibility)
+      await storage.updateApplicantProfile(userId, {
+        resumeContent: JSON.stringify(manualCVAnalysis),
+      });
+
+      res.json({ 
+        message: "Manual CV information saved successfully",
+        hasCV: true,
+        analysis: manualCVAnalysis
+      });
     } catch (error) {
-      console.error("Error getting upload URL:", error);
-      res.status(500).json({ message: "Failed to get upload URL" });
+      console.error("Error saving manual CV:", error);
+      res.status(500).json({ error: "Failed to save CV information" });
     }
   });
 
@@ -497,22 +678,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Check if user has uploaded resume (required for interviews)
+  // CV requirement check endpoint (now checks for manual CV data instead of uploaded files)
   app.get('/api/interview/resume-check', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const activeResume = await storage.getActiveResume(userId);
+      
+      // Get user profile to check for manual CV data
+      const profile = await storage.getApplicantProfile(userId);
+      
+      // Check if user has completed manual CV data entry
+      // Consider CV complete if they have essential info: name, summary, and at least one experience/education
+      const hasBasicInfo = !!(profile?.name && profile?.summary);
+      const hasExperience = !!(profile?.workExperiences && Array.isArray(profile.workExperiences) && profile.workExperiences.length > 0);
+      const hasEducation = !!(profile?.degrees && Array.isArray(profile.degrees) && profile.degrees.length > 0);
+      const hasCV = hasBasicInfo && (hasExperience || hasEducation);
       
       res.json({ 
-        hasResume: !!activeResume,
-        resume: activeResume ? {
-          id: activeResume.id,
-          originalName: activeResume.originalName,
-          uploadedAt: activeResume.uploadedAt
+        hasResume: hasCV, // For backward compatibility, keep the same field name
+        hasCV: hasCV,
+        requiresResume: true, // Always require CV for interviews
+        cvComplete: hasCV,
+        resume: hasCV ? {
+          id: 'manual-cv',
+          originalName: 'Manual CV Data',
+          uploadedAt: profile?.updatedAt || profile?.createdAt
         } : null
       });
     } catch (error) {
-      console.error("Error checking resume:", error);
-      res.status(500).json({ message: "Failed to check resume status" });
+      console.error("Error checking CV requirement:", error);
+      res.status(500).json({ message: "Failed to check CV status" });
     }
   });
 

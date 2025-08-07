@@ -19,7 +19,7 @@ import { UserProfileModal } from "@/components/JobSeekerModals/UserProfileModal"
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
 import { InterviewModal } from "@/components/JobSeekerModals/InterviewModal";
 import { UpcomingInterviewModal } from "@/components/JobSeekerModals/UpcomingInterviewModal";
-import { ResumeRequiredModal } from "@/components/ResumeRequiredModal";
+import { ManualCVModal } from "@/components/ManualCVModal";
 
 import { JobPostingsModal } from "@/components/JobSeekerModals/JobPostingsModal";
 
@@ -60,8 +60,8 @@ export default function Dashboard() {
     enabled: !!user, // Only run query if user is authenticated
   });
 
-  // Check resume requirement
-  const { hasResume } = useResumeRequirement();
+  // Check CV requirement (renamed from resume for clarity)
+  const { hasResume: hasCV } = useResumeRequirement();
 
   if (isLoading) {
     return (
@@ -97,8 +97,8 @@ export default function Dashboard() {
   const hasEssentialInfo = !!((profile as any)?.name && (profile as any)?.email && (profile as any)?.phone && ((profile as any)?.country || (profile as any)?.city) && (profile as any)?.age);
   const hasCompletedInterview = (profile as any)?.aiProfileGenerated;
   
-  // Show full dashboard only when ALL three steps are complete: essential info, resume, AND AI interview
-  const showFullDashboard = hasEssentialInfo && hasResume && hasCompletedInterview;
+  // Show full dashboard only when ALL three steps are complete: essential info, CV, AND AI interview
+  const showFullDashboard = hasEssentialInfo && hasCV && hasCompletedInterview;
 
   // Show welcome toast only once after completing interview
   useEffect(() => {
@@ -224,7 +224,7 @@ export default function Dashboard() {
                 <div className={`bg-white rounded-lg p-6 border-2 transition-all ${
                   !hasEssentialInfo 
                     ? 'border-gray-200 opacity-60' 
-                    : hasResume 
+                    : hasCV 
                       ? 'border-green-200 bg-green-50' 
                       : 'border-orange-200 shadow-md'
                 }`}>
@@ -233,20 +233,20 @@ export default function Dashboard() {
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
                         !hasEssentialInfo 
                           ? 'bg-gray-400' 
-                          : hasResume 
+                          : hasCV 
                             ? 'bg-green-600' 
                             : 'bg-orange-600'
                       }`}>
-                        {!hasEssentialInfo ? '2' : hasResume ? '✓' : '2'}
+                        {!hasEssentialInfo ? '2' : hasCV ? '✓' : '2'}
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Upload Your Resume</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">Complete Your CV Information</h3>
                         <p className="text-gray-600">
                           {!hasEssentialInfo 
-                            ? 'Complete your essential information first to unlock resume upload.'
-                            : hasResume 
-                              ? 'Great! Your resume has been uploaded and analyzed.' 
-                              : 'Upload your resume so the AI can personalize your interview questions.'
+                            ? 'Complete your essential information first to unlock CV entry.'
+                            : hasCV 
+                              ? 'Great! Your CV information has been completed and analyzed.' 
+                              : 'Enter your professional details so the AI can personalize your interview questions.'
                           }
                         </p>
                       </div>
@@ -258,12 +258,12 @@ export default function Dashboard() {
                         className={`px-6 py-2 rounded-lg font-medium transition-colors ${
                           !hasEssentialInfo 
                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                            : hasResume 
+                            : hasCV 
                               ? 'bg-green-600 text-white hover:bg-green-700' 
                               : 'bg-orange-600 text-white hover:bg-orange-700'
                         }`}
                       >
-                        {hasResume ? 'Update Resume' : 'Upload Resume'}
+                        {hasCV ? 'Update CV' : 'Enter CV Details'}
                       </button>
                     </div>
                   </div>
@@ -271,7 +271,7 @@ export default function Dashboard() {
 
                 {/* Step 3: AI Interview */}
                 <div className={`bg-white rounded-lg p-6 border-2 transition-all ${
-                  !hasEssentialInfo || !hasResume
+                  !hasEssentialInfo || !hasCV
                     ? 'border-gray-200 opacity-60' 
                     : hasCompletedInterview 
                       ? 'border-green-200 bg-green-50' 
@@ -280,7 +280,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
-                        !hasEssentialInfo || !hasResume
+                        !hasEssentialInfo || !hasCV
                           ? 'bg-gray-400' 
                           : hasCompletedInterview 
                             ? 'bg-green-600' 
@@ -291,20 +291,20 @@ export default function Dashboard() {
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">Take AI Interview</h3>
                         <p className="text-gray-600">
-                          {!hasEssentialInfo || !hasResume
-                            ? 'Complete your essential information and upload your resume first to unlock the AI interview.' 
+                          {!hasEssentialInfo || !hasCV
+                            ? 'Complete your essential information and CV details first to unlock the AI interview.' 
                             : hasCompletedInterview 
                               ? 'Excellent! Your AI interview is complete.' 
-                              : 'Chat with our AI to create your comprehensive professional profile based on your resume.'
+                              : 'Chat with our AI to create your comprehensive professional profile based on your CV information.'
                           }
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={() => openModal('interview')}
-                      disabled={!hasEssentialInfo || !hasResume}
+                      disabled={!hasEssentialInfo || !hasCV}
                       className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                        !hasEssentialInfo || !hasResume
+                        !hasEssentialInfo || !hasCV
                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                           : hasCompletedInterview 
                             ? 'bg-green-600 text-white hover:bg-green-700' 
@@ -487,12 +487,12 @@ export default function Dashboard() {
         isOpen={activeModal === 'interview'} 
         onClose={closeModal} 
       />
-      <ResumeRequiredModal 
+      <ManualCVModal 
         isOpen={activeModal === 'resumeRequired'} 
         onClose={closeModal}
-        onResumeUploaded={() => {
+        onCVCompleted={() => {
           closeModal();
-          // Trigger a refetch of the resume check to update hasResume
+          // Trigger a refetch of the CV check to update hasCV
           window.location.reload();
         }}
       />

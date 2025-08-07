@@ -1,0 +1,59 @@
+I want to remove the “Upload CV” section entirely from the platform.
+
+Instead, I want manual data entry fields to collect the CV-related information from the applicant. These fields should include (but not be limited to):
+
+Full Name
+
+Date of Birth
+
+Nationality
+
+Educational Background (Institution, Degree, Start/End Dates)
+
+Work Experience (Company, Role, Duration, Responsibilities)
+
+Languages
+
+Certifications
+
+Skills (Soft & Technical)
+
+Preferred Work Type (Full-time, Part-time, Freelance, Internship)
+
+Location Preferences
+
+Career Interests
+
+Achievements
+
+Important requirements:
+
+✅ Preserve Current Saving Logic:
+These new fields must save data the same way existing profile fields are saved (i.e., linked to the user profile without breaking the structure or flow of existing records).
+⚠️ Do not alter or interfere with the logic that controls the profile progress or the unlocking of interview stages.
+
+🤖 AI Interview Customization Based on Manual CV:
+Once the user fills out their CV manually, the AI interviews (background, professional, technical) must generate and ask targeted questions based on the manually filled data.
+Example:
+
+If someone lists “Marketing Intern at Company X,” the background interview should ask:
+“Tell me more about your internship at Company X. What were your day-to-day tasks?”
+
+If someone lists a certification in Data Analysis, the technical interview should ask:
+“How did you apply the data analysis skills you learned from [Certification] in real-life situations?”
+
+📋 Profile Generation Must Reflect All Manually Entered CV Fields:
+After the interviews are done and the profile is generated, it must include both:
+
+The manually entered CV data
+
+The AI-analyzed insights from the interviews
+
+🔒 Ensure Field Consistency & No Conflicts:
+These added manual CV fields must:
+
+Save to the same database structure as other profile data
+
+Not affect the unlocking of interview stages or completion progress
+
+Be modular and cleanly structured to prevent conflicts with future features
