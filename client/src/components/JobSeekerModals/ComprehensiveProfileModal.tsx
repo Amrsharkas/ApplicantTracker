@@ -478,7 +478,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
   }, [existingProfile, form]);
 
   const onSubmit = (data: ComprehensiveProfileData) => {
-    console.log('Form submitted with data:', data);
+    console.log('Form submitted via onSubmit with data:', data);
     console.log('Form errors:', form.formState.errors);
     saveProfileMutation.mutate(data);
   };
@@ -2218,12 +2218,38 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                   {isAutoSaving ? "Saving..." : "Save Draft"}
                 </Button>
                 <Button 
-                  type="submit"
+                  type="button"
                   disabled={saveProfileMutation.isPending}
-                  onClick={() => {
-                    console.log('Complete Profile button clicked');
-                    console.log('Form is valid:', form.formState.isValid);
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('=== COMPLETE PROFILE BUTTON CLICKED ===');
+                    console.log('Event:', e);
+                    console.log('Button disabled?', saveProfileMutation.isPending);
+                    
+                    // Simple alert to test if click works at all
+                    alert('Button clicked! Check console for details.');
+                    
+                    console.log('Form state valid:', form.formState.isValid);
                     console.log('Form errors:', form.formState.errors);
+                    
+                    // Try to submit without validation first
+                    try {
+                      const formData = form.getValues();
+                      console.log('Form data to submit:', formData);
+                      
+                      console.log('Calling mutation...');
+                      saveProfileMutation.mutate(formData);
+                      console.log('Mutation called successfully');
+                    } catch (error) {
+                      console.error('Error during submission:', error);
+                      toast({
+                        title: "Submission Error",
+                        description: "There was an error submitting the form. Check console for details.",
+                        variant: "destructive",
+                      });
+                    }
                   }}
                 >
                   {saveProfileMutation.isPending ? "Saving..." : "Complete Profile"}
