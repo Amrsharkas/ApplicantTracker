@@ -2681,8 +2681,12 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   // Helper function to calculate completion percentage based on detailed breakdown
   function calculateCompletionPercentage(profileData: any): number {
     // If no profile data provided, return 0
-    if (!profileData) return 0;
+    if (!profileData) {
+      console.log('📊 No profile data provided, returning 0%');
+      return 0;
+    }
     
+    console.log('📊 Calculating completion for profile data:', JSON.stringify(profileData, null, 2));
     let totalPercentage = 0;
     
     // Helper function to check if a value is meaningful (not empty, null, undefined, or just whitespace)
@@ -2799,7 +2803,10 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     if (hasValue(profileData.jobTarget?.workStyle)) jobTargetScore += 10; // 1% for work style
     totalPercentage += (jobTargetScore / 100) * 10;
     
-    return Math.min(Math.round(totalPercentage), 100); // Cap at 100%
+    const finalPercentage = Math.min(Math.round(totalPercentage), 100);
+    console.log('📊 Final completion percentage calculated:', finalPercentage + '%');
+    console.log('📊 Breakdown - Personal:', Math.round((personalScore / 100) * 15) + '%, Gov ID:', Math.round((govIdScore / 100) * 8) + '%, Links:', Math.round((linksScore / 100) * 6) + '%, Eligibility:', Math.round((eligibilityScore / 100) * 7) + '%, Languages:', Math.round((languageScore / 100) * 8) + '%, Skills:', Math.round((skillsScore / 100) * 12) + '%, Education:', Math.round((educationScore / 100) * 10) + '%, Experience:', Math.round((experienceScore / 100) * 15) + '%, Certs:', Math.round((certScore / 100) * 5) + '%, Awards:', Math.round((awardScore / 100) * 4) + '%, Job Target:', Math.round((jobTargetScore / 100) * 10) + '%');
+    return finalPercentage; // Cap at 100%
   }
 
   // Certificate file upload routes
