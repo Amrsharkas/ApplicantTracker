@@ -12,6 +12,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useResumeRequirement } from "@/hooks/useResumeRequirement";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { apiRequest } from "@/lib/queryClient";
 
 import { MatchesModal } from "@/components/JobSeekerModals/MatchesModal";
 import { ComprehensiveProfileModal } from "@/components/JobSeekerModals/ComprehensiveProfileModal";
@@ -27,6 +28,32 @@ export default function Dashboard() {
   const logout = useLogout();
   const { toast } = useToast();
   const [activeModal, setActiveModal] = useState<string | null>(null);
+
+  // Function to populate profile with provided data
+  const populateProfile = async () => {
+    try {
+      const result = await apiRequest("/api/populate-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      
+      toast({
+        title: "Profile Populated!",
+        description: `Your profile has been filled with your data. Completion: ${result.completionPercentage}%`,
+      });
+      
+      // Refresh the page to show updated data
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Error populating profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to populate profile. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
   const [selectedJobDetails, setSelectedJobDetails] = useState<{title: string, id: string} | null>(null);
 
   const { data: profile, refetch: refetchProfile } = useQuery({
@@ -262,16 +289,24 @@ export default function Dashboard() {
                         <div className="text-2xl font-bold text-gray-900">{profileProgress}%</div>
                         <div className="text-xs text-gray-500">Complete</div>
                       </div>
-                      <button
-                        onClick={() => openModal('profile')}
-                        className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                          hasCompleteProfile 
-                            ? 'bg-green-600 text-white hover:bg-green-700' 
-                            : 'bg-blue-600 text-white hover:bg-blue-700'
-                        }`}
-                      >
-                        {hasCompleteProfile ? 'Edit Profile' : 'Build Profile'}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => openModal('profile')}
+                          className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                            hasCompleteProfile 
+                              ? 'bg-green-600 text-white hover:bg-green-700' 
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
+                        >
+                          {hasCompleteProfile ? 'Edit Profile' : 'Build Profile'}
+                        </button>
+                        <button
+                          onClick={populateProfile}
+                          className="px-4 py-2 rounded-lg font-medium transition-colors border-2 border-orange-500 text-orange-600 hover:bg-orange-50"
+                        >
+                          Fill My Data
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
