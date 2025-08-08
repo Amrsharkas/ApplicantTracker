@@ -10,7 +10,7 @@ import { ObjectStorageService } from "./objectStorage";
 import { ResumeService } from "./resumeService";
 import multer from "multer";
 import { z } from "zod";
-import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema } from "@shared/schema";
+import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile } from "@shared/schema";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -2342,6 +2342,435 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
         message: "Failed to generate honest profile",
         error: error instanceof Error ? error.message : "Unknown error"
       });
+    }
+  });
+
+  // =============================================
+  // COMPREHENSIVE PROFILE ROUTES
+  // =============================================
+
+  // Get comprehensive profile data
+  app.get("/api/comprehensive-profile", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const profile = await storage.getApplicantProfile(userId);
+      
+      if (!profile) {
+        // Return empty profile structure if no profile exists
+        return res.json({
+          personalDetails: {
+            firstName: "",
+            lastName: "",
+            email: "",
+            phone: "",
+            dateOfBirth: "",
+            nationality: "",
+            address: {},
+            emergencyContact: {}
+          },
+          governmentId: {
+            idType: "",
+            idNumber: "",
+            expiryDate: "",
+            issuingAuthority: "",
+            verified: false
+          },
+          linksPortfolio: {
+            linkedinUrl: "",
+            githubUrl: "",
+            portfolioUrl: "",
+            personalWebsite: "",
+            behanceUrl: "",
+            dribbbleUrl: "",
+            otherLinks: []
+          },
+          workEligibility: {},
+          languages: [{ language: "", proficiency: "conversational", certification: "" }],
+          skills: {
+            technicalSkills: [],
+            softSkills: [],
+            industryKnowledge: [],
+            tools: []
+          },
+          education: [],
+          experience: [],
+          certifications: [],
+          awards: [],
+          jobTarget: {
+            targetRoles: [],
+            targetIndustries: [],
+            targetCompanies: [],
+            salaryExpectations: {
+              currency: "EGP",
+              period: "monthly",
+              negotiable: true
+            },
+            benefits: {}
+          }
+        });
+      }
+
+      // Map database profile to frontend comprehensive profile format
+      const comprehensiveProfile = {
+        personalDetails: {
+          firstName: profile.name?.split(' ')[0] || "",
+          lastName: profile.name?.split(' ').slice(1).join(' ') || "",
+          email: profile.email || "",
+          phone: profile.phone || "",
+          dateOfBirth: profile.birthdate ? new Date(profile.birthdate).toISOString().split('T')[0] : "",
+          gender: profile.gender || "",
+          nationality: profile.nationality || "",
+          address: {
+            street: "",
+            city: profile.city || "",
+            state: "",
+            country: profile.country || "",
+            postalCode: ""
+          },
+          emergencyContact: {
+            name: "",
+            relationship: "",
+            phone: ""
+          }
+        },
+        governmentId: {
+          idType: "",
+          idNumber: "",
+          expiryDate: "",
+          issuingAuthority: "",
+          verified: false
+        },
+        linksPortfolio: {
+          linkedinUrl: profile.linkedinUrl || "",
+          githubUrl: profile.githubUrl || "",
+          portfolioUrl: "",
+          personalWebsite: profile.websiteUrl || "",
+          behanceUrl: "",
+          dribbbleUrl: "",
+          otherLinks: (profile.otherUrls || []).map(url => ({ platform: "Other", url }))
+        },
+        workEligibility: {
+          workAuthorization: "",
+          visaStatus: "",
+          visaExpiryDate: "",
+          sponsorshipRequired: false,
+          willingToRelocate: profile.willingToRelocate || false,
+          preferredLocations: profile.preferredWorkCountries || [],
+          workArrangement: profile.workplaceSettings || "",
+          availabilityDate: "",
+          noticePeriod: "",
+          travelWillingness: ""
+        },
+        languages: profile.languages || [{ language: "", proficiency: "conversational", certification: "" }],
+        skills: {
+          technicalSkills: (profile.skillsList || []).map(skill => ({ skill, level: "intermediate", yearsOfExperience: 0 })),
+          softSkills: [{ skill: "", level: "intermediate" }],
+          industryKnowledge: [],
+          tools: []
+        },
+        education: profile.degrees || [{ institution: "", degree: "", fieldOfStudy: "", startDate: "", endDate: "", current: false }],
+        experience: profile.workExperiences || [{ company: "", position: "", startDate: "", endDate: "", current: false, responsibilities: "" }],
+        certifications: profile.certifications || [],
+        awards: [],
+        jobTarget: {
+          targetRoles: profile.jobTitles || [],
+          targetIndustries: profile.jobCategories || [],
+          targetCompanies: [],
+          careerLevel: profile.careerLevel || "",
+          salaryExpectations: {
+            minSalary: profile.minimumSalary || 0,
+            maxSalary: 0,
+            currency: "EGP",
+            period: "monthly",
+            negotiable: true
+          },
+          benefits: {
+            healthInsurance: false,
+            retirementPlan: false,
+            paidTimeOff: false,
+            flexibleSchedule: false,
+            remoteWork: false,
+            professionalDevelopment: false,
+            stockOptions: false,
+            other: []
+          },
+          careerGoals: "",
+          workStyle: "",
+          motivations: "",
+          dealBreakers: ""
+        }
+      };
+
+      res.json(comprehensiveProfile);
+    } catch (error) {
+      console.error("Error fetching comprehensive profile:", error);
+      res.status(500).json({ message: "Failed to fetch comprehensive profile" });
+    }
+  });
+
+  // Autosave comprehensive profile data
+  app.post("/api/comprehensive-profile/autosave", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const profileData = req.body;
+      
+      // Map frontend comprehensive profile to database format (partial update)
+      const dbProfileData: Partial<InsertApplicantProfile> = {
+        userId,
+        name: profileData.personalDetails ? `${profileData.personalDetails.firstName || ''} ${profileData.personalDetails.lastName || ''}`.trim() : undefined,
+        email: profileData.personalDetails?.email,
+        phone: profileData.personalDetails?.phone,
+        birthdate: profileData.personalDetails?.dateOfBirth || undefined,
+        gender: profileData.personalDetails?.gender,
+        nationality: profileData.personalDetails?.nationality,
+        country: profileData.personalDetails?.address?.country,
+        city: profileData.personalDetails?.address?.city,
+        linkedinUrl: profileData.linksPortfolio?.linkedinUrl,
+        githubUrl: profileData.linksPortfolio?.githubUrl,
+        websiteUrl: profileData.linksPortfolio?.personalWebsite,
+        otherUrls: profileData.linksPortfolio?.otherLinks?.map((link: any) => link.url),
+        willingToRelocate: profileData.workEligibility?.willingToRelocate,
+        preferredWorkCountries: profileData.workEligibility?.preferredLocations,
+        workplaceSettings: profileData.workEligibility?.workArrangement,
+        languages: profileData.languages,
+        skillsList: profileData.skills?.technicalSkills?.map((skill: any) => skill.skill) || [],
+        degrees: profileData.education,
+        workExperiences: profileData.experience,
+        certifications: profileData.certifications,
+        jobTitles: profileData.jobTarget?.targetRoles,
+        jobCategories: profileData.jobTarget?.targetIndustries,
+        careerLevel: profileData.jobTarget?.careerLevel,
+        minimumSalary: profileData.jobTarget?.salaryExpectations?.minSalary,
+        jobTypes: profileData.jobTarget?.jobTypes,
+        updatedAt: new Date()
+      };
+
+      // Remove undefined values
+      Object.keys(dbProfileData).forEach(key => {
+        if (dbProfileData[key as keyof typeof dbProfileData] === undefined) {
+          delete dbProfileData[key as keyof typeof dbProfileData];
+        }
+      });
+
+      if (Object.keys(dbProfileData).length > 1) { // Only userId and updatedAt
+        await storage.upsertApplicantProfile(dbProfileData);
+      }
+      
+      res.json({ success: true, message: "Profile auto-saved successfully" });
+    } catch (error) {
+      console.error("Error auto-saving comprehensive profile:", error);
+      res.status(500).json({ message: "Failed to auto-save comprehensive profile" });
+    }
+  });
+
+  // Save complete comprehensive profile
+  app.post("/api/comprehensive-profile", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const profileData = req.body;
+      
+      // Validate required fields
+      if (!profileData.personalDetails?.firstName || !profileData.personalDetails?.lastName) {
+        return res.status(400).json({ message: "First name and last name are required" });
+      }
+      
+      if (!profileData.personalDetails?.email || !profileData.personalDetails?.phone) {
+        return res.status(400).json({ message: "Email and phone are required" });
+      }
+      
+      if (!profileData.languages || profileData.languages.length === 0) {
+        return res.status(400).json({ message: "At least one language is required" });
+      }
+      
+      if (!profileData.skills?.technicalSkills || profileData.skills.technicalSkills.length === 0) {
+        return res.status(400).json({ message: "At least one technical skill is required" });
+      }
+      
+      if (!profileData.skills?.softSkills || profileData.skills.softSkills.length === 0) {
+        return res.status(400).json({ message: "At least one soft skill is required" });
+      }
+      
+      if (!profileData.education || profileData.education.length === 0) {
+        return res.status(400).json({ message: "At least one education entry is required" });
+      }
+      
+      if (!profileData.experience || profileData.experience.length === 0) {
+        return res.status(400).json({ message: "At least one work experience is required" });
+      }
+      
+      if (!profileData.jobTarget?.targetRoles || profileData.jobTarget.targetRoles.length === 0) {
+        return res.status(400).json({ message: "At least one target role is required" });
+      }
+
+      // Map frontend comprehensive profile to database format
+      const dbProfileData: InsertApplicantProfile = {
+        userId,
+        name: `${profileData.personalDetails.firstName} ${profileData.personalDetails.lastName}`.trim(),
+        email: profileData.personalDetails.email,
+        phone: profileData.personalDetails.phone,
+        birthdate: profileData.personalDetails.dateOfBirth || null,
+        gender: profileData.personalDetails.gender || null,
+        nationality: profileData.personalDetails.nationality || null,
+        country: profileData.personalDetails.address?.country || null,
+        city: profileData.personalDetails.address?.city || null,
+        linkedinUrl: profileData.linksPortfolio?.linkedinUrl || null,
+        githubUrl: profileData.linksPortfolio?.githubUrl || null,
+        websiteUrl: profileData.linksPortfolio?.personalWebsite || null,
+        otherUrls: profileData.linksPortfolio?.otherLinks?.map((link: any) => link.url) || null,
+        willingToRelocate: profileData.workEligibility?.willingToRelocate || null,
+        preferredWorkCountries: profileData.workEligibility?.preferredLocations || null,
+        workplaceSettings: profileData.workEligibility?.workArrangement || null,
+        languages: profileData.languages,
+        skillsList: [
+          ...(profileData.skills?.technicalSkills?.map((skill: any) => skill.skill) || []),
+          ...(profileData.skills?.softSkills?.map((skill: any) => skill.skill) || [])
+        ],
+        degrees: profileData.education,
+        workExperiences: profileData.experience,
+        certifications: profileData.certifications || null,
+        jobTitles: profileData.jobTarget?.targetRoles || null,
+        jobCategories: profileData.jobTarget?.targetIndustries || null,
+        careerLevel: profileData.jobTarget?.careerLevel || null,
+        minimumSalary: profileData.jobTarget?.salaryExpectations?.minSalary || null,
+        jobTypes: profileData.jobTarget?.jobTypes || null,
+        
+        // Calculate completion percentage based on filled sections
+        completionPercentage: calculateCompletionPercentage(profileData),
+        
+        updatedAt: new Date()
+      };
+
+      await storage.upsertApplicantProfile(dbProfileData);
+      
+      res.json({ 
+        success: true, 
+        message: "Comprehensive profile saved successfully!",
+        completionPercentage: dbProfileData.completionPercentage
+      });
+    } catch (error) {
+      console.error("Error saving comprehensive profile:", error);
+      res.status(500).json({ message: "Failed to save comprehensive profile" });
+    }
+  });
+
+  // Helper function to calculate completion percentage
+  function calculateCompletionPercentage(profileData: any): number {
+    let completedSections = 0;
+    const totalSections = 11;
+    
+    // Personal Details (required)
+    if (profileData.personalDetails?.firstName && profileData.personalDetails?.lastName && 
+        profileData.personalDetails?.email && profileData.personalDetails?.phone) {
+      completedSections++;
+    }
+    
+    // Government ID (optional but counts if filled)
+    if (profileData.governmentId?.idType && profileData.governmentId?.idNumber) {
+      completedSections++;
+    }
+    
+    // Links & Portfolio (optional but counts if any links filled)
+    if (profileData.linksPortfolio?.linkedinUrl || profileData.linksPortfolio?.githubUrl || 
+        profileData.linksPortfolio?.portfolioUrl || profileData.linksPortfolio?.personalWebsite) {
+      completedSections++;
+    }
+    
+    // Work Eligibility (optional but counts if filled)
+    if (profileData.workEligibility?.workAuthorization || profileData.workEligibility?.workArrangement) {
+      completedSections++;
+    }
+    
+    // Languages (required)
+    if (profileData.languages && profileData.languages.length > 0 && profileData.languages[0].language) {
+      completedSections++;
+    }
+    
+    // Skills (required)
+    if (profileData.skills?.technicalSkills?.length > 0 && profileData.skills?.softSkills?.length > 0) {
+      completedSections++;
+    }
+    
+    // Education (required)
+    if (profileData.education && profileData.education.length > 0 && profileData.education[0].institution) {
+      completedSections++;
+    }
+    
+    // Experience (required)
+    if (profileData.experience && profileData.experience.length > 0 && profileData.experience[0].company) {
+      completedSections++;
+    }
+    
+    // Certifications (optional but counts if filled)
+    if (profileData.certifications && profileData.certifications.length > 0) {
+      completedSections++;
+    }
+    
+    // Awards (optional but counts if filled)
+    if (profileData.awards && profileData.awards.length > 0) {
+      completedSections++;
+    }
+    
+    // Job Target (required)
+    if (profileData.jobTarget?.targetRoles?.length > 0) {
+      completedSections++;
+    }
+    
+    return Math.round((completedSections / totalSections) * 100);
+  }
+
+  // Certificate file upload routes
+  app.post("/api/certificates/upload-url", requireAuth, async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error generating certificate upload URL:", error);
+      res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+
+  app.put("/api/certificates/file", requireAuth, async (req, res) => {
+    try {
+      const { certificateURL, certificateIndex } = req.body;
+      const userId = req.user!.id;
+      
+      if (!certificateURL || certificateIndex === undefined) {
+        return res.status(400).json({ message: "Certificate URL and index are required" });
+      }
+      
+      const objectStorageService = new ObjectStorageService();
+      const objectPath = objectStorageService.normalizeObjectEntityPath(certificateURL);
+      
+      // Get current profile
+      const profile = await storage.getApplicantProfile(userId);
+      if (!profile) {
+        return res.status(404).json({ message: "Profile not found" });
+      }
+      
+      // Update the certificate file path
+      const certifications = profile.certifications as any[] || [];
+      if (certifications[certificateIndex]) {
+        certifications[certificateIndex].certificateFile = objectPath;
+        
+        // Update profile with new certificate file path
+        await storage.upsertApplicantProfile({
+          userId,
+          certifications: certifications,
+          updatedAt: new Date()
+        });
+        
+        res.json({ 
+          success: true, 
+          objectPath,
+          message: "Certificate file uploaded successfully" 
+        });
+      } else {
+        res.status(400).json({ message: "Invalid certificate index" });
+      }
+    } catch (error) {
+      console.error("Error updating certificate file:", error);
+      res.status(500).json({ message: "Failed to update certificate file" });
     }
   });
 

@@ -1,0 +1,60 @@
+Fix profile form: remove uploads, ensure save/analysis works
+Scope
+
+Remove the National ID upload field. Replace with manual text fields only for ID details.
+
+Remove the Resume upload and Cover letter upload sections entirely.
+
+Keep the Certificate upload feature, but fix it so files upload, persist to storage, and correctly associate with the user profile.
+
+Functionality & UX
+
+Ensure the Complete Profile button triggers validation, saves all fields, and updates the profile completion percentage accurately.
+
+Guarantee all profile data (every field and certificate metadata) is saved reliably and is retrievable by the AI interview service.
+
+No silent failures: show clear inline errors and blocking toasts when saves/uploads fail.
+
+Data & Integration
+
+Expose a stable read endpoint/service so the AI interviewer can fetch all profile text fields and certificates without missing data.
+
+Confirm data is stored in canonical fields (no duplicates or stale caches) and that the AI receives the latest version.
+
+Acceptance Criteria
+
+ID is entered manually (no upload option visible).
+
+Resume and cover letter upload components are removed in UI and code.
+
+Certificate upload:
+
+Accepts allowed file types and size limits.
+
+Upload progress + success/failure states displayed.
+
+File stored and linked to the user; record visible on refresh.
+
+“Complete Profile”:
+
+Becomes enabled only when required fields are valid.
+
+Saves successfully and updates completion % immediately.
+
+Navigates or confirms with success feedback.
+
+AI fetch:
+
+Single API call returns complete, current profile data (including certificates) for analysis.
+
+Load test: 20 consecutive fetches return consistent data with 0 errors.
+
+Test Steps
+
+Fill all fields, upload a certificate, click Complete Profile → expect success toast and updated %.
+
+Refresh page → all data persists; certificate link/download works.
+
+Hit AI fetch endpoint → verify all fields and certificates are present and current.
+
+Trigger a failed upload (oversized file) → proper error shown; no partial records created.

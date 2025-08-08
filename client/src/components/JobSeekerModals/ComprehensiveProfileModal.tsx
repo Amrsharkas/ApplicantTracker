@@ -51,7 +51,6 @@ const comprehensiveProfileSchema = z.object({
     idNumber: z.string().optional(),
     expiryDate: z.string().optional(),
     issuingAuthority: z.string().optional(),
-    documentFile: z.string().optional(), // File path after upload
     verified: z.boolean().default(false),
   }).optional(),
 
@@ -67,8 +66,6 @@ const comprehensiveProfileSchema = z.object({
       platform: z.string(),
       url: z.string().url(),
     })).optional(),
-    resumeFile: z.string().optional(), // File path after upload
-    coverLetterFile: z.string().optional(), // File path after upload
   }).optional(),
 
   // 4. Work Eligibility & Preferences
@@ -240,7 +237,6 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
         idNumber: "",
         expiryDate: "",
         issuingAuthority: "",
-        documentFile: "",
         verified: false,
       },
       linksPortfolio: {
@@ -251,8 +247,6 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
         behanceUrl: "",
         dribbbleUrl: "",
         otherLinks: [],
-        resumeFile: "",
-        coverLetterFile: "",
       },
       workEligibility: {
         workAuthorization: undefined,
@@ -1081,16 +1075,6 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         )}
                       />
                     </div>
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-medium mb-2">Document Upload</h4>
-                      <div className="flex items-center space-x-2">
-                        <Button type="button" variant="outline" size="sm">
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload Document
-                        </Button>
-                        <span className="text-sm text-gray-500">Upload a clear photo or scan of your ID</span>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -1184,25 +1168,6 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           </FormItem>
                         )}
                       />
-                    </div>
-                    <div className="border-t pt-4">
-                      <h4 className="text-lg font-medium mb-3">Documents</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="border rounded-lg p-4">
-                          <h5 className="font-medium mb-2">Resume/CV</h5>
-                          <Button type="button" variant="outline" size="sm">
-                            <Upload className="h-4 w-4 mr-2" />
-                            Upload Resume
-                          </Button>
-                        </div>
-                        <div className="border rounded-lg p-4">
-                          <h5 className="font-medium mb-2">Cover Letter</h5>
-                          <Button type="button" variant="outline" size="sm">
-                            <Upload className="h-4 w-4 mr-2" />
-                            Upload Cover Letter
-                          </Button>
-                        </div>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
