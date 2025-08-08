@@ -84,39 +84,30 @@ const comprehensiveProfileSchema = z.object({
 
   // 5. Languages
   languages: z.array(z.object({
-    language: z.string().min(1, "Language is required"),
+    language: z.string().optional(), // Allow empty for incremental saving
     proficiency: z.enum(["basic", "conversational", "fluent", "native"]),
     certification: z.string().optional(),
-  })).min(1, "At least one language is required").refine(
-    (languages) => languages.some(lang => lang.language.trim() !== ""),
-    "At least one language must be filled in"
-  ),
+  })).optional(), // Allow empty for incremental saving
 
   // 6. Skills
   skills: z.object({
     technicalSkills: z.array(z.object({
-      skill: z.string().min(1, "Skill name is required"),
+      skill: z.string().optional(), // Allow empty for incremental saving
       level: z.enum(["beginner", "intermediate", "advanced", "expert"]),
       yearsOfExperience: z.number().min(0).optional(),
-    })).min(1, "At least one technical skill is required").refine(
-      (skills) => skills.some(skill => skill.skill.trim() !== ""),
-      "At least one technical skill must be filled in"
-    ),
+    })).optional(), // Allow empty for incremental saving
     softSkills: z.array(z.object({
-      skill: z.string().min(1, "Skill name is required"),
+      skill: z.string().optional(), // Allow empty for incremental saving
       level: z.enum(["beginner", "intermediate", "advanced", "expert"]),
-    })).min(1, "At least one soft skill is required").refine(
-      (skills) => skills.some(skill => skill.skill.trim() !== ""),
-      "At least one soft skill must be filled in"
-    ),
+    })).optional(), // Allow empty for incremental saving
     industryKnowledge: z.array(z.string()).optional(),
     tools: z.array(z.string()).optional(),
   }),
 
   // 7. Education (repeatable)
   education: z.array(z.object({
-    institution: z.string().min(1, "Institution is required"),
-    degree: z.string().min(1, "Degree is required"),
+    institution: z.string().optional(), // Allow empty for incremental saving
+    degree: z.string().optional(), // Allow empty for incremental saving
     fieldOfStudy: z.string().optional(),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
@@ -126,19 +117,19 @@ const comprehensiveProfileSchema = z.object({
     relevantCoursework: z.string().optional(),
     thesis: z.string().optional(),
     location: z.string().optional(),
-  })).min(1, "At least one education entry is required"),
+  })).optional(), // Allow empty for incremental saving
 
   // 8. Experience (repeatable)
   experience: z.array(z.object({
-    company: z.string().min(1, "Company is required"),
-    position: z.string().min(1, "Position is required"),
+    company: z.string().optional(), // Allow empty for incremental saving
+    position: z.string().optional(), // Allow empty for incremental saving
     department: z.string().optional(),
     employmentType: z.enum(["full-time", "part-time", "contract", "freelance", "internship"]).optional(),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
     current: z.boolean().optional(),
     location: z.string().optional(),
-    responsibilities: z.string().min(10, "Detailed responsibilities required"),
+    responsibilities: z.string().optional(), // Allow empty for incremental saving
     achievements: z.string().optional(),
     technologies: z.array(z.string()).optional(),
     teamSize: z.number().optional(),
@@ -148,11 +139,11 @@ const comprehensiveProfileSchema = z.object({
       currency: z.string().default("EGP"),
       period: z.enum(["hourly", "monthly", "annually"]).optional(),
     }).optional(),
-  })).min(1, "At least one work experience is required"),
+  })).optional(), // Allow empty for incremental saving
 
   // 9. Certifications & Licenses (repeatable)
   certifications: z.array(z.object({
-    name: z.string().min(1, "Certification name is required"),
+    name: z.string().optional(), // Allow empty for incremental saving
     issuingOrganization: z.string().optional(),
     issueDate: z.string().optional(),
     expiryDate: z.string().optional(),
@@ -164,7 +155,7 @@ const comprehensiveProfileSchema = z.object({
 
   // 10. Awards & Achievements (repeatable)
   awards: z.array(z.object({
-    title: z.string().min(1, "Award title is required"),
+    title: z.string().optional(), // Allow empty for incremental saving
     issuer: z.string().optional(),
     dateReceived: z.string().optional(),
     description: z.string().optional(),
@@ -174,7 +165,7 @@ const comprehensiveProfileSchema = z.object({
 
   // 11. Job Target & Fit
   jobTarget: z.object({
-    targetRoles: z.array(z.string()).min(1, "At least one target role is required"),
+    targetRoles: z.array(z.string()).optional(), // Allow empty for incremental saving
     targetIndustries: z.array(z.string()).optional(),
     targetCompanies: z.array(z.string()).optional(),
     careerLevel: z.enum(["entry", "junior", "mid", "senior", "lead", "manager", "director", "executive"]).optional(),
@@ -317,8 +308,8 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
         targetCompanies: [],
         careerLevel: undefined,
         salaryExpectations: {
-          minSalary: 0,
-          maxSalary: 0,
+          minSalary: undefined,
+          maxSalary: undefined,
           currency: "EGP",
           period: "monthly",
           negotiable: true,

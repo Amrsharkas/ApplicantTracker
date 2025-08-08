@@ -1,0 +1,140 @@
+Percentage Breakdown (✅ required, ❌ optional; optional contributes 0%)
+1) Personal Details — 15%
+First Name ✅ 2%
+
+Last Name ✅ 2%
+
+Email ✅ 2%
+
+Phone ✅ 2%
+
+Date of Birth ✅ 2%
+
+Gender ✅ 2%
+
+Nationality ✅ 3%
+
+Street Address ❌ 0%
+
+City ❌ 0%
+
+State/Province ❌ 0%
+
+Country ❌ 0%
+
+Postal Code ❌ 0%
+
+2) Government ID Submission — 8%
+ID Type ✅ 2%
+
+ID Number ✅ 2%
+
+Expiry Date ✅ 2%
+
+Issuing Authority ✅ 2%
+
+3) Links & Portfolio — 6%
+LinkedIn URL ✅ 6%
+
+GitHub URL ❌ 0%
+
+Portfolio URL ❌ 0%
+
+Personal Website ❌ 0%
+
+Behance URL ❌ 0%
+
+Dribbble URL ❌ 0%
+
+(Note: Many users won’t have these; they’re optional and must not reduce completion.)
+
+4) Work Eligibility & Preferences — 6%
+Work Authorization ✅ 2%
+
+Work Arrangement Preference ✅ 2%
+
+Availability Date ✅ 2%
+
+Notice Period ❌ 0%
+
+Willing to Relocate ❌ 0%
+
+Require Visa Sponsorship ❌ 0%
+
+5) Languages — 6%
+At least 1 Language ✅ 3%
+
+Proficiency Level (for that language) ✅ 3%
+
+Certification ❌ 0%
+
+6) Skills — 8%
+At least 1 Technical Skill ✅ 4%
+
+At least 1 Soft Skill ✅ 4%
+
+7) Education — 12%
+Institution ✅ 2%
+
+Degree ✅ 2%
+
+Field of Study ✅ 2%
+
+Location ✅ 2%
+
+Start Date ✅ 2%
+
+End Date or “Currently studying here” ✅ 2%
+
+GPA ❌ 0%
+
+Relevant Coursework ❌ 0%
+
+8) Work Experience — 12%
+Company Name ✅ 2%
+
+Position ✅ 2%
+
+Employment Type ✅ 2%
+
+Location ✅ 2%
+
+Start Date ✅ 2%
+
+End Date or “Currently working here” ✅ 2%
+
+Key Responsibilities & Achievements ✅ 2%
+
+9) Certifications & Licenses — 8%
+≥1 Certification with working file upload ✅ 8%
+
+10) Awards & Achievements — 4%
+≥1 Award ✅ 4%
+
+11) Job Target & Fit — 15%
+Career Level ✅ 5%
+
+Minimum Salary ✅ 2%
+
+Currency ✅ 2%
+
+Period ✅ 2%
+
+Career Goals ✅ 2%
+
+Work Style ✅ 1%
+
+What Motivates You ✅ 1%
+
+Maximum Salary ❌ 0%
+
+“Salary is negotiable” ❌ 0%
+
+Rules
+Progress updates immediately on successful save of a required field.
+
+“At least one” sections (Languages, Skills, Certifications, Awards) grant the full section % once the minimum is met.
+
+Optional fields never decrease completion and must not block 100%.
+
+Add clear inline errors/toasts; no silent failures.

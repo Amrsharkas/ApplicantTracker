@@ -2678,69 +2678,114 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
-  // Helper function to calculate completion percentage
+  // Helper function to calculate completion percentage based on detailed breakdown
   function calculateCompletionPercentage(profileData: any): number {
-    let completedSections = 0;
-    const totalSections = 11;
+    let totalPercentage = 0;
     
-    // Personal Details (required)
-    if (profileData.personalDetails?.firstName && profileData.personalDetails?.lastName && 
-        profileData.personalDetails?.email && profileData.personalDetails?.phone) {
-      completedSections++;
+    // 1. Personal Details - 15% (Required)
+    let personalScore = 0;
+    if (profileData.personalDetails?.firstName) personalScore += 20; // 3%
+    if (profileData.personalDetails?.lastName) personalScore += 20; // 3%
+    if (profileData.personalDetails?.email) personalScore += 20; // 3%
+    if (profileData.personalDetails?.phone) personalScore += 20; // 3%
+    if (profileData.personalDetails?.dateOfBirth) personalScore += 10; // 1.5%
+    if (profileData.personalDetails?.nationality) personalScore += 10; // 1.5%
+    totalPercentage += (personalScore / 100) * 15;
+    
+    // 2. Government ID - 8% (Optional)
+    let govIdScore = 0;
+    if (profileData.governmentId?.idType) govIdScore += 40; // 3.2%
+    if (profileData.governmentId?.idNumber) govIdScore += 40; // 3.2%
+    if (profileData.governmentId?.expiryDate) govIdScore += 20; // 1.6%
+    totalPercentage += (govIdScore / 100) * 8;
+    
+    // 3. Links & Portfolio - 6% (Optional)
+    let linksScore = 0;
+    if (profileData.linksPortfolio?.linkedinUrl) linksScore += 30; // 1.8%
+    if (profileData.linksPortfolio?.githubUrl) linksScore += 25; // 1.5%
+    if (profileData.linksPortfolio?.portfolioUrl) linksScore += 25; // 1.5%
+    if (profileData.linksPortfolio?.personalWebsite) linksScore += 20; // 1.2%
+    totalPercentage += (linksScore / 100) * 6;
+    
+    // 4. Work Eligibility - 7% (Semi-Required)
+    let eligibilityScore = 0;
+    if (profileData.workEligibility?.workAuthorization) eligibilityScore += 40; // 2.8%
+    if (profileData.workEligibility?.workArrangement) eligibilityScore += 30; // 2.1%
+    if (profileData.workEligibility?.willingToRelocate !== undefined) eligibilityScore += 15; // 1.05%
+    if (profileData.workEligibility?.availabilityDate) eligibilityScore += 15; // 1.05%
+    totalPercentage += (eligibilityScore / 100) * 7;
+    
+    // 5. Languages - 8% (Required)
+    let languageScore = 0;
+    const validLanguages = profileData.languages?.filter((lang: any) => lang.language && lang.language.trim() !== '') || [];
+    if (validLanguages.length > 0) {
+      languageScore += 70; // 5.6% for having at least one language
+      if (validLanguages.length > 1) languageScore += 20; // 1.6% for multiple languages
+      if (validLanguages.some((lang: any) => lang.certification)) languageScore += 10; // 0.8% for certifications
     }
+    totalPercentage += (languageScore / 100) * 8;
     
-    // Government ID (optional but counts if filled)
-    if (profileData.governmentId?.idType && profileData.governmentId?.idNumber) {
-      completedSections++;
+    // 6. Skills - 12% (Required)
+    let skillsScore = 0;
+    const validTechSkills = profileData.skills?.technicalSkills?.filter((skill: any) => skill.skill && skill.skill.trim() !== '') || [];
+    const validSoftSkills = profileData.skills?.softSkills?.filter((skill: any) => skill.skill && skill.skill.trim() !== '') || [];
+    
+    if (validTechSkills.length > 0) skillsScore += 50; // 6% for technical skills
+    if (validSoftSkills.length > 0) skillsScore += 30; // 3.6% for soft skills
+    if (validTechSkills.length >= 3) skillsScore += 10; // 1.2% for multiple tech skills
+    if (validSoftSkills.length >= 3) skillsScore += 10; // 1.2% for multiple soft skills
+    totalPercentage += (skillsScore / 100) * 12;
+    
+    // 7. Education - 10% (Required)
+    let educationScore = 0;
+    const validEducation = profileData.education?.filter((edu: any) => edu.institution && edu.institution.trim() !== '') || [];
+    if (validEducation.length > 0) {
+      educationScore += 60; // 6% for having education
+      if (validEducation[0].degree) educationScore += 25; // 2.5% for degree
+      if (validEducation[0].fieldOfStudy) educationScore += 15; // 1.5% for field of study
     }
+    totalPercentage += (educationScore / 100) * 10;
     
-    // Links & Portfolio (optional but counts if any links filled)
-    if (profileData.linksPortfolio?.linkedinUrl || profileData.linksPortfolio?.githubUrl || 
-        profileData.linksPortfolio?.portfolioUrl || profileData.linksPortfolio?.personalWebsite) {
-      completedSections++;
+    // 8. Experience - 15% (Required)
+    let experienceScore = 0;
+    const validExperience = profileData.experience?.filter((exp: any) => exp.company && exp.company.trim() !== '') || [];
+    if (validExperience.length > 0) {
+      experienceScore += 50; // 7.5% for having experience
+      if (validExperience[0].position) experienceScore += 20; // 3% for position
+      if (validExperience[0].responsibilities) experienceScore += 20; // 3% for responsibilities
+      if (validExperience.length > 1) experienceScore += 10; // 1.5% for multiple experiences
     }
+    totalPercentage += (experienceScore / 100) * 15;
     
-    // Work Eligibility (optional but counts if filled)
-    if (profileData.workEligibility?.workAuthorization || profileData.workEligibility?.workArrangement) {
-      completedSections++;
+    // 9. Certifications - 5% (Optional)
+    let certScore = 0;
+    const validCertifications = profileData.certifications?.filter((cert: any) => cert.name && cert.name.trim() !== '') || [];
+    if (validCertifications.length > 0) {
+      certScore += 70; // 3.5% for having certifications
+      if (validCertifications.length > 1) certScore += 30; // 1.5% for multiple certifications
     }
+    totalPercentage += (certScore / 100) * 5;
     
-    // Languages (required)
-    if (profileData.languages && profileData.languages.length > 0 && profileData.languages[0].language) {
-      completedSections++;
+    // 10. Awards - 4% (Optional)
+    let awardScore = 0;
+    const validAwards = profileData.awards?.filter((award: any) => award.title && award.title.trim() !== '') || [];
+    if (validAwards.length > 0) {
+      awardScore += 80; // 3.2% for having awards
+      if (validAwards.length > 1) awardScore += 20; // 0.8% for multiple awards
     }
+    totalPercentage += (awardScore / 100) * 4;
     
-    // Skills (required)
-    if (profileData.skills?.technicalSkills?.length > 0 && profileData.skills?.softSkills?.length > 0) {
-      completedSections++;
-    }
+    // 11. Job Target - 10% (Semi-Required)
+    let jobTargetScore = 0;
+    const validTargetRoles = profileData.jobTarget?.targetRoles?.filter((role: string) => role && role.trim() !== '') || [];
+    if (validTargetRoles.length > 0) jobTargetScore += 40; // 4% for target roles
+    if (profileData.jobTarget?.careerLevel) jobTargetScore += 20; // 2% for career level
+    if (profileData.jobTarget?.salaryExpectations?.minSalary) jobTargetScore += 15; // 1.5% for salary expectations
+    if (profileData.jobTarget?.careerGoals) jobTargetScore += 15; // 1.5% for career goals
+    if (profileData.jobTarget?.workStyle) jobTargetScore += 10; // 1% for work style
+    totalPercentage += (jobTargetScore / 100) * 10;
     
-    // Education (required)
-    if (profileData.education && profileData.education.length > 0 && profileData.education[0].institution) {
-      completedSections++;
-    }
-    
-    // Experience (required)
-    if (profileData.experience && profileData.experience.length > 0 && profileData.experience[0].company) {
-      completedSections++;
-    }
-    
-    // Certifications (optional but counts if filled)
-    if (profileData.certifications && profileData.certifications.length > 0) {
-      completedSections++;
-    }
-    
-    // Awards (optional but counts if filled)
-    if (profileData.awards && profileData.awards.length > 0) {
-      completedSections++;
-    }
-    
-    // Job Target (required)
-    if (profileData.jobTarget?.targetRoles?.length > 0) {
-      completedSections++;
-    }
-    
-    return Math.round((completedSections / totalSections) * 100);
+    return Math.min(Math.round(totalPercentage), 100); // Cap at 100%
   }
 
   // Certificate file upload routes
