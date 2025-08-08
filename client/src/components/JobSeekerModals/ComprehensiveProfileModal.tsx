@@ -87,19 +87,28 @@ const comprehensiveProfileSchema = z.object({
     language: z.string().min(1, "Language is required"),
     proficiency: z.enum(["basic", "conversational", "fluent", "native"]),
     certification: z.string().optional(),
-  })).min(1, "At least one language is required"),
+  })).min(1, "At least one language is required").refine(
+    (languages) => languages.some(lang => lang.language.trim() !== ""),
+    "At least one language must be filled in"
+  ),
 
   // 6. Skills
   skills: z.object({
     technicalSkills: z.array(z.object({
-      skill: z.string(),
+      skill: z.string().min(1, "Skill name is required"),
       level: z.enum(["beginner", "intermediate", "advanced", "expert"]),
       yearsOfExperience: z.number().min(0).optional(),
-    })).min(1, "At least one technical skill is required"),
+    })).min(1, "At least one technical skill is required").refine(
+      (skills) => skills.some(skill => skill.skill.trim() !== ""),
+      "At least one technical skill must be filled in"
+    ),
     softSkills: z.array(z.object({
-      skill: z.string(),
+      skill: z.string().min(1, "Skill name is required"),
       level: z.enum(["beginner", "intermediate", "advanced", "expert"]),
-    })).min(1, "At least one soft skill is required"),
+    })).min(1, "At least one soft skill is required").refine(
+      (skills) => skills.some(skill => skill.skill.trim() !== ""),
+      "At least one soft skill must be filled in"
+    ),
     industryKnowledge: z.array(z.string()).optional(),
     tools: z.array(z.string()).optional(),
   }),
@@ -404,8 +413,10 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
         headers: { "Content-Type": "application/json" },
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Profile saved successfully:', data);
       queryClient.invalidateQueries({ queryKey: ["/api/comprehensive-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
       toast({
         title: "Profile saved successfully!",
         description: "Your comprehensive profile has been completed.",
@@ -413,6 +424,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
       onClose();
     },
     onError: (error) => {
+      console.error('Profile save error:', error);
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -426,7 +438,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
       }
       toast({
         title: "Error saving profile",
-        description: error.message,
+        description: error.message || "Please check all required fields and try again.",
         variant: "destructive",
       });
     },
@@ -466,6 +478,8 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
   }, [existingProfile, form]);
 
   const onSubmit = (data: ComprehensiveProfileData) => {
+    console.log('Form submitted with data:', data);
+    console.log('Form errors:', form.formState.errors);
     saveProfileMutation.mutate(data);
   };
 
@@ -2206,6 +2220,11 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                 <Button 
                   type="submit"
                   disabled={saveProfileMutation.isPending}
+                  onClick={() => {
+                    console.log('Complete Profile button clicked');
+                    console.log('Form is valid:', form.formState.isValid);
+                    console.log('Form errors:', form.formState.errors);
+                  }}
                 >
                   {saveProfileMutation.isPending ? "Saving..." : "Complete Profile"}
                 </Button>

@@ -36,6 +36,13 @@ export default function Dashboard() {
     enabled: !!user, // Only run query if user is authenticated
   });
 
+  const { data: comprehensiveProfile, refetch: refetchComprehensiveProfile } = useQuery({
+    queryKey: ["/api/comprehensive-profile"],
+    retry: false,
+    refetchOnWindowFocus: false,
+    enabled: !!user, // Only run query if user is authenticated
+  });
+
   const { data: matches = [] } = useQuery({
     queryKey: ["/api/job-matches"],
     retry: false,
@@ -84,6 +91,7 @@ export default function Dashboard() {
     setSelectedJobDetails(null); // Reset job details when closing
     // Refresh profile data when closing modals to ensure dashboard is up-to-date
     refetchProfile();
+    refetchComprehensiveProfile();
   };
 
   const openJobDetails = (jobTitle: string, jobId: string) => {
@@ -91,12 +99,59 @@ export default function Dashboard() {
     setActiveModal('jobPostings');
   };
 
-  const profileProgress = (profile as any)?.completionPercentage || 0;
-  // Essential info requires name, email, phone, location (country or city), AND age - all must be present
-  const hasEssentialInfo = !!((profile as any)?.name && (profile as any)?.email && (profile as any)?.phone && ((profile as any)?.country || (profile as any)?.city) && (profile as any)?.age);
-  // Complete profile requires both essential info AND CV data - all in one unified form
-  const hasCompleteProfile = hasEssentialInfo && hasCV; // Both profile and CV data completed
+  // Calculate comprehensive profile completion
+  const comprehensiveProfileCompletion = calculateComprehensiveProfileCompletion(comprehensiveProfile);
+  const profileProgress = comprehensiveProfileCompletion.percentage;
+  
+  // Check if comprehensive profile has required fields completed
+  const hasCompleteProfile = comprehensiveProfileCompletion.isComplete;
   const hasCompletedInterview = (profile as any)?.aiProfileGenerated;
+  
+  // Helper function to calculate comprehensive profile completion
+  function calculateComprehensiveProfileCompletion(compProfile: any) {
+    if (!compProfile) {
+      return { percentage: 0, isComplete: false };
+    }
+    
+    let completedSections = 0;
+    const totalRequiredSections = 6; // Only count required sections for completion
+    
+    // 1. Personal Details (required)
+    if (compProfile.personalDetails?.firstName && compProfile.personalDetails?.lastName && 
+        compProfile.personalDetails?.email && compProfile.personalDetails?.phone) {
+      completedSections++;
+    }
+    
+    // 2. Languages (required)
+    if (compProfile.languages && compProfile.languages.length > 0 && compProfile.languages[0]?.language) {
+      completedSections++;
+    }
+    
+    // 3. Skills (required)
+    if (compProfile.skills?.technicalSkills?.length > 0 && compProfile.skills?.softSkills?.length > 0) {
+      completedSections++;
+    }
+    
+    // 4. Education (required)
+    if (compProfile.education && compProfile.education.length > 0 && compProfile.education[0]?.institution) {
+      completedSections++;
+    }
+    
+    // 5. Experience (required)
+    if (compProfile.experience && compProfile.experience.length > 0 && compProfile.experience[0]?.company) {
+      completedSections++;
+    }
+    
+    // 6. Job Target (required)
+    if (compProfile.jobTarget?.targetRoles?.length > 0) {
+      completedSections++;
+    }
+    
+    const percentage = Math.round((completedSections / totalRequiredSections) * 100);
+    const isComplete = completedSections === totalRequiredSections;
+    
+    return { percentage, isComplete };
+  }
   
   // Show full dashboard only when BOTH steps are complete: complete profile (including CV) AND AI interview
   const showFullDashboard = hasCompleteProfile && hasCompletedInterview;
