@@ -417,9 +417,12 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
       console.log('Profile saved successfully:', data);
       queryClient.invalidateQueries({ queryKey: ["/api/comprehensive-profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      // Show success message with progress info
+      const progressPercentage = data?.completionPercentage || 0;
       toast({
-        title: "Profile saved successfully!",
-        description: "Your comprehensive profile has been completed.",
+        title: "Profile progress saved!",
+        description: `Your profile is ${progressPercentage}% complete. ${progressPercentage >= 85 ? 'Interviews are now unlocked!' : 'Continue building to unlock interviews at 85%.'}`,
       });
       onClose();
     },
@@ -2224,36 +2227,23 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                     e.preventDefault();
                     e.stopPropagation();
                     
-                    console.log('Complete Profile button clicked');
-                    
-                    // Trigger validation for all fields
-                    const isValid = await form.trigger();
-                    
-                    if (!isValid) {
-                      console.log('Form validation failed:', form.formState.errors);
-                      toast({
-                        title: "Please fill in all required fields",
-                        description: "Check the form for any missing or invalid information.",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
+                    console.log('Save Progress button clicked - saving current progress');
                     
                     try {
                       const formData = form.getValues();
-                      console.log('Submitting comprehensive profile...');
+                      console.log('Saving current profile progress...');
                       saveProfileMutation.mutate(formData);
                     } catch (error) {
-                      console.error('Error during submission:', error);
+                      console.error('Error during save:', error);
                       toast({
-                        title: "Submission Error",
-                        description: "There was an error submitting the form. Please try again.",
+                        title: "Save Error",
+                        description: "There was an error saving your profile. Please try again.",
                         variant: "destructive",
                       });
                     }
                   }}
                 >
-                  {saveProfileMutation.isPending ? "Saving..." : "Complete Profile"}
+                  {saveProfileMutation.isPending ? "Saving..." : "Save Progress"}
                 </Button>
               </div>
             </div>
