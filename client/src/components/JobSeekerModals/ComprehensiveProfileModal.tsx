@@ -2220,33 +2220,34 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                 <Button 
                   type="button"
                   disabled={saveProfileMutation.isPending}
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     
-                    console.log('=== COMPLETE PROFILE BUTTON CLICKED ===');
-                    console.log('Event:', e);
-                    console.log('Button disabled?', saveProfileMutation.isPending);
+                    console.log('Complete Profile button clicked');
                     
-                    // Simple alert to test if click works at all
-                    alert('Button clicked! Check console for details.');
+                    // Trigger validation for all fields
+                    const isValid = await form.trigger();
                     
-                    console.log('Form state valid:', form.formState.isValid);
-                    console.log('Form errors:', form.formState.errors);
+                    if (!isValid) {
+                      console.log('Form validation failed:', form.formState.errors);
+                      toast({
+                        title: "Please fill in all required fields",
+                        description: "Check the form for any missing or invalid information.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
                     
-                    // Try to submit without validation first
                     try {
                       const formData = form.getValues();
-                      console.log('Form data to submit:', formData);
-                      
-                      console.log('Calling mutation...');
+                      console.log('Submitting comprehensive profile...');
                       saveProfileMutation.mutate(formData);
-                      console.log('Mutation called successfully');
                     } catch (error) {
                       console.error('Error during submission:', error);
                       toast({
                         title: "Submission Error",
-                        description: "There was an error submitting the form. Check console for details.",
+                        description: "There was an error submitting the form. Please try again.",
                         variant: "destructive",
                       });
                     }

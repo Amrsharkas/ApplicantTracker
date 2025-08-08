@@ -2352,7 +2352,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   // Get comprehensive profile data
   app.get("/api/comprehensive-profile", requireAuth, async (req, res) => {
     try {
-      const userId = req.user!.id;
+      const userId = (req.user as any)?.id;
       const profile = await storage.getApplicantProfile(userId);
       
       if (!profile) {
@@ -2511,7 +2511,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   // Autosave comprehensive profile data
   app.post("/api/comprehensive-profile/autosave", requireAuth, async (req, res) => {
     try {
-      const userId = req.user!.id;
+      const userId = (req.user as any)?.id;
       const profileData = req.body;
       
       // Map frontend comprehensive profile to database format (partial update)
@@ -2566,7 +2566,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   // Save complete comprehensive profile
   app.post("/api/comprehensive-profile", requireAuth, async (req, res) => {
     try {
-      const userId = req.user!.id;
+      const userId = (req.user as any)?.id;
       const profileData = req.body;
       
       // Validate required fields
@@ -2640,7 +2640,53 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
         updatedAt: new Date()
       };
 
+      // Save to local database first
       await storage.upsertApplicantProfile(dbProfileData);
+      
+      // Save comprehensive profile to Airtable for AI analysis and job matching
+      try {
+        console.log('📋 Saving comprehensive profile to Airtable for user:', userId);
+        
+        // Format the comprehensive profile data for Airtable
+        const comprehensiveProfileString = JSON.stringify({
+          personalDetails: profileData.personalDetails,
+          governmentId: profileData.governmentId,
+          linksPortfolio: profileData.linksPortfolio,
+          workEligibility: profileData.workEligibility,
+          languages: profileData.languages,
+          skills: profileData.skills,
+          education: profileData.education,
+          experience: profileData.experience,
+          certifications: profileData.certifications,
+          awards: profileData.awards,
+          jobTarget: profileData.jobTarget,
+          completionPercentage: dbProfileData.completionPercentage,
+          profileType: 'comprehensive',
+          lastUpdated: new Date().toISOString()
+        }, null, 2);
+        
+        // Use the existing airtableService to store the profile
+        await airtableService.storeUserProfile(
+          dbProfileData.name,
+          {
+            type: 'comprehensive',
+            data: profileData,
+            summary: `Comprehensive profile for ${dbProfileData.name}`,
+            completionPercentage: dbProfileData.completionPercentage,
+            skills: dbProfileData.skillsList,
+            education: profileData.education,
+            experience: profileData.experience,
+            targetRoles: profileData.jobTarget?.targetRoles
+          },
+          userId,
+          dbProfileData.email || undefined
+        );
+        
+        console.log('📋 Successfully saved comprehensive profile to Airtable for user:', userId);
+      } catch (airtableError) {
+        console.error('📋 Error saving comprehensive profile to Airtable:', airtableError);
+        // Continue execution even if Airtable fails - don't block the user
+      }
       
       res.json({ 
         success: true, 
@@ -2733,7 +2779,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   app.put("/api/certificates/file", requireAuth, async (req, res) => {
     try {
       const { certificateURL, certificateIndex } = req.body;
-      const userId = req.user!.id;
+      const userId = (req.user as any)?.id;
       
       if (!certificateURL || certificateIndex === undefined) {
         return res.status(400).json({ message: "Certificate URL and index are required" });
