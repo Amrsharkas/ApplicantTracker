@@ -2563,51 +2563,24 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
-  // Save complete comprehensive profile
+  // Save comprehensive profile (allows incremental saving)
   app.post("/api/comprehensive-profile", requireAuth, async (req, res) => {
     try {
       const userId = (req.user as any)?.id;
       const profileData = req.body;
       
-      // Validate required fields
-      if (!profileData.personalDetails?.firstName || !profileData.personalDetails?.lastName) {
-        return res.status(400).json({ message: "First name and last name are required" });
-      }
-      
-      if (!profileData.personalDetails?.email || !profileData.personalDetails?.phone) {
-        return res.status(400).json({ message: "Email and phone are required" });
-      }
-      
-      if (!profileData.languages || profileData.languages.length === 0) {
-        return res.status(400).json({ message: "At least one language is required" });
-      }
-      
-      if (!profileData.skills?.technicalSkills || profileData.skills.technicalSkills.length === 0) {
-        return res.status(400).json({ message: "At least one technical skill is required" });
-      }
-      
-      if (!profileData.skills?.softSkills || profileData.skills.softSkills.length === 0) {
-        return res.status(400).json({ message: "At least one soft skill is required" });
-      }
-      
-      if (!profileData.education || profileData.education.length === 0) {
-        return res.status(400).json({ message: "At least one education entry is required" });
-      }
-      
-      if (!profileData.experience || profileData.experience.length === 0) {
-        return res.status(400).json({ message: "At least one work experience is required" });
-      }
-      
-      if (!profileData.jobTarget?.targetRoles || profileData.jobTarget.targetRoles.length === 0) {
-        return res.status(400).json({ message: "At least one target role is required" });
-      }
+      // Allow incremental saving - no strict validation required
+      // The completion percentage calculation will handle determining what's complete
+      console.log('📋 Saving comprehensive profile incrementally for user:', userId);
 
-      // Map frontend comprehensive profile to database format
+      // Map frontend comprehensive profile to database format (handle partial data)
       const dbProfileData: InsertApplicantProfile = {
         userId,
-        name: `${profileData.personalDetails.firstName} ${profileData.personalDetails.lastName}`.trim(),
-        email: profileData.personalDetails.email,
-        phone: profileData.personalDetails.phone,
+        name: profileData.personalDetails?.firstName && profileData.personalDetails?.lastName 
+          ? `${profileData.personalDetails.firstName} ${profileData.personalDetails.lastName}`.trim() 
+          : null,
+        email: profileData.personalDetails?.email || null,
+        phone: profileData.personalDetails?.phone || null,
         birthdate: profileData.personalDetails.dateOfBirth || null,
         gender: profileData.personalDetails.gender || null,
         nationality: profileData.personalDetails.nationality || null,
@@ -2620,13 +2593,13 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
         willingToRelocate: profileData.workEligibility?.willingToRelocate || null,
         preferredWorkCountries: profileData.workEligibility?.preferredLocations || null,
         workplaceSettings: profileData.workEligibility?.workArrangement || null,
-        languages: profileData.languages,
+        languages: profileData.languages || null,
         skillsList: [
           ...(profileData.skills?.technicalSkills?.map((skill: any) => skill.skill) || []),
           ...(profileData.skills?.softSkills?.map((skill: any) => skill.skill) || [])
         ],
-        degrees: profileData.education,
-        workExperiences: profileData.experience,
+        degrees: profileData.education || null,
+        workExperiences: profileData.experience || null,
         certifications: profileData.certifications || null,
         jobTitles: profileData.jobTarget?.targetRoles || null,
         jobCategories: profileData.jobTarget?.targetIndustries || null,
@@ -2665,18 +2638,19 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
           lastUpdated: new Date().toISOString()
         }, null, 2);
         
-        // Use the existing airtableService to store the profile
+        // Use the existing airtableService to store the profile (handle partial data)
+        const profileName = dbProfileData.name || profileData.personalDetails?.firstName || `User ${userId}`;
         await airtableService.storeUserProfile(
-          dbProfileData.name,
+          profileName,
           {
             type: 'comprehensive',
             data: profileData,
-            summary: `Comprehensive profile for ${dbProfileData.name}`,
+            summary: `Comprehensive profile for ${profileName} (${dbProfileData.completionPercentage}% complete)`,
             completionPercentage: dbProfileData.completionPercentage,
-            skills: dbProfileData.skillsList,
-            education: profileData.education,
-            experience: profileData.experience,
-            targetRoles: profileData.jobTarget?.targetRoles
+            skills: dbProfileData.skillsList || [],
+            education: profileData.education || [],
+            experience: profileData.experience || [],
+            targetRoles: profileData.jobTarget?.targetRoles || []
           },
           userId,
           dbProfileData.email || undefined
@@ -2688,14 +2662,19 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
         // Continue execution even if Airtable fails - don't block the user
       }
       
+      console.log(`📋 Profile saved successfully for user ${userId} with ${dbProfileData.completionPercentage}% completion`);
+      
       res.json({ 
         success: true, 
-        message: "Comprehensive profile saved successfully!",
+        message: "Profile progress saved successfully!",
         completionPercentage: dbProfileData.completionPercentage
       });
     } catch (error) {
       console.error("Error saving comprehensive profile:", error);
-      res.status(500).json({ message: "Failed to save comprehensive profile" });
+      res.status(500).json({ 
+        message: "Failed to save comprehensive profile",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
