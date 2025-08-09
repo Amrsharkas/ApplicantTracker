@@ -11,6 +11,9 @@ import { ResumeService } from "./resumeService";
 import multer from "multer";
 import { z } from "zod";
 import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile } from "@shared/schema";
+import { db } from "./db";
+import { applicantProfiles, interviewSessions } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -2348,6 +2351,44 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   // =============================================
   // COMPREHENSIVE PROFILE ROUTES
   // =============================================
+
+  // Reset comprehensive profile data (clear pre-filled data)
+  app.post("/api/comprehensive-profile/reset", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      
+      // Clear the problematic pre-filled data from the database
+      await db
+        .update(applicantProfiles)
+        .set({
+          skills_list: null,
+          languages: null,
+          work_experiences: null,
+          degrees: null,
+          certifications: null,
+          achievements: null,
+          // Keep essential data but clear the pre-filled arrays
+          linkedin_url: null,
+          github_url: null,
+          website_url: null,
+          facebook_url: null,
+          twitter_url: null,
+          instagram_url: null,
+          youtube_url: null,
+          other_urls: null,
+          // Reset completion percentage to 0 for fresh start
+          completion_percentage: 0,
+          updated_at: new Date()
+        })
+        .where(eq(applicantProfiles.userId, userId));
+      
+      console.log(`Reset comprehensive profile data for user ${userId}`);
+      res.json({ success: true, message: "Profile data reset successfully" });
+    } catch (error) {
+      console.error("Error resetting comprehensive profile:", error);
+      res.status(500).json({ message: "Failed to reset profile" });
+    }
+  });
 
   // Get comprehensive profile data
   app.get("/api/comprehensive-profile", requireAuth, async (req, res) => {
