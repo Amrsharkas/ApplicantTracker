@@ -207,7 +207,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Form initialization with comprehensive default values
+  // Form initialization with truly empty default values to avoid false completion scores
   const form = useForm<ComprehensiveProfileData>({
     resolver: zodResolver(comprehensiveProfileSchema),
     defaultValues: {
@@ -252,54 +252,23 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
         workAuthorization: undefined,
         visaStatus: "",
         visaExpiryDate: "",
-        sponsorshipRequired: false,
-        willingToRelocate: false,
+        sponsorshipRequired: undefined, // Changed from false to undefined to avoid false completion
+        willingToRelocate: undefined, // Changed from false to undefined to avoid false completion
         preferredLocations: [],
         workArrangement: undefined,
         availabilityDate: "",
         noticePeriod: "",
         travelWillingness: undefined,
       },
-      languages: [{ language: "", proficiency: "conversational", certification: "" }],
+      languages: [], // Changed from pre-filled array to truly empty
       skills: {
-        technicalSkills: [{ skill: "", level: "intermediate", yearsOfExperience: 0 }],
-        softSkills: [{ skill: "", level: "intermediate" }],
+        technicalSkills: [], // Changed from pre-filled array to truly empty
+        softSkills: [], // Changed from pre-filled array to truly empty
         industryKnowledge: [],
         tools: [],
       },
-      education: [{ 
-        institution: "", 
-        degree: "", 
-        fieldOfStudy: "", 
-        startDate: "", 
-        endDate: "", 
-        current: false,
-        gpa: "",
-        honors: "",
-        relevantCoursework: "",
-        thesis: "",
-        location: "",
-      }],
-      experience: [{ 
-        company: "", 
-        position: "", 
-        department: "",
-        employmentType: undefined,
-        startDate: "", 
-        endDate: "", 
-        current: false,
-        location: "",
-        responsibilities: "",
-        achievements: "",
-        technologies: [],
-        teamSize: 0,
-        reportingTo: "",
-        salary: {
-          amount: 0,
-          currency: "EGP",
-          period: "monthly",
-        },
-      }],
+      education: [], // Changed from pre-filled array to truly empty
+      experience: [], // Changed from pre-filled array to truly empty
       certifications: [],
       awards: [],
       jobTarget: {
@@ -312,16 +281,16 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
           maxSalary: undefined,
           currency: "EGP",
           period: "monthly",
-          negotiable: true,
+          negotiable: undefined, // Changed from true to undefined to avoid false completion
         },
         benefits: {
-          healthInsurance: false,
-          retirementPlan: false,
-          paidTimeOff: false,
-          flexibleSchedule: false,
-          remoteWork: false,
-          professionalDevelopment: false,
-          stockOptions: false,
+          healthInsurance: undefined, // Changed from false to undefined to avoid false completion
+          retirementPlan: undefined, // Changed from false to undefined to avoid false completion
+          paidTimeOff: undefined, // Changed from false to undefined to avoid false completion
+          flexibleSchedule: undefined, // Changed from false to undefined to avoid false completion
+          remoteWork: undefined, // Changed from false to undefined to avoid false completion
+          professionalDevelopment: undefined, // Changed from false to undefined to avoid false completion
+          stockOptions: undefined, // Changed from false to undefined to avoid false completion
           other: [],
         },
         careerGoals: "",

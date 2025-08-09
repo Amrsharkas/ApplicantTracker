@@ -162,84 +162,18 @@ export class DatabaseStorage implements IStorage {
     const profile = await this.getApplicantProfile(userId);
     if (!profile) return;
 
-    let score = 0;
-    const details = {
-      essentialInfo: false,
-      generalInfo: false,
-      careerInterests: false,
-      experience: false,
-      education: false,
-      onlinePresence: false,
-      achievements: false,
-      resumeUpload: false
-    };
-
-    // Essential Information (required for dashboard unlock) - 30 points
-    // Name, email, phone, location (country or city), AND age - all must be present
-    const hasLocation = profile.country || profile.city;
-    if (profile.name && profile.email && profile.phone && hasLocation && profile.age) {
-      score += 30;
-      details.essentialInfo = true;
-    }
-
-    // General Information - 10 points
-    if (profile.birthdate || profile.gender || profile.nationality || profile.maritalStatus) {
-      score += 10;
-      details.generalInfo = true;
-    }
-
-    // Career Interests - 15 points
-    if (profile.careerLevel || profile.jobTypes || profile.workplaceSettings || profile.jobSearchStatus) {
-      score += 15;
-      details.careerInterests = true;
-    }
-
-    // Experience - 15 points
-    if (profile.totalYearsOfExperience || profile.workExperiences || profile.languages || 
-        profile.currentRole || profile.company || profile.yearsOfExperience) {
-      score += 15;
-      details.experience = true;
-    }
-
-    // Education - 10 points
-    if (profile.currentEducationLevel || profile.degrees || profile.highSchools || profile.certifications || 
-        profile.education || profile.university || profile.degree) {
-      score += 10;
-      details.education = true;
-    }
-
-    // Online Presence - 5 points
-    if (profile.linkedinUrl || profile.facebookUrl || profile.githubUrl || profile.websiteUrl) {
-      score += 5;
-      details.onlinePresence = true;
-    }
-
-    // Achievements - 5 points
-    if (profile.achievements) {
-      score += 5;
-      details.achievements = true;
-    }
-
-    // Resume upload - 10 points
-    if (profile.resumeUrl || profile.resumeContent) {
-      score += 10;
-      details.resumeUpload = true;
-    }
+    // Note: This old calculation method has been replaced by the comprehensive profile calculation
+    // The comprehensive profile system handles completion percentage calculation directly
+    // We only keep this method to ensure the AI interview completion sets profile to 100%
+    
+    let completionPercentage = profile.completionPercentage || 0;
 
     // If AI interview is completed, set to 100%
     if (profile.aiProfileGenerated) {
-      score = 100;
+      completionPercentage = 100;
     }
 
-    const completionPercentage = Math.min(score, 100);
-
-    console.log(`Profile completion for user ${userId}:`, {
-      score,
-      completionPercentage,
-      details,
-      hasEssentialInfo: details.essentialInfo,
-      hasAIProfile: !!profile.aiProfileGenerated
-    });
+    console.log(`Profile completion update for user ${userId}: ${completionPercentage}% (AI Profile: ${!!profile.aiProfileGenerated})`);
 
     await db
       .update(applicantProfiles)
