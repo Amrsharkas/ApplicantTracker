@@ -2797,10 +2797,10 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     const validTechSkills = profileData.skills?.technicalSkills?.filter((skill: any) => hasValue(skill.skill)) || [];
     const validSoftSkills = profileData.skills?.softSkills?.filter((skill: any) => hasValue(skill.skill)) || [];
     
-    if (validTechSkills.length > 0) skillsScore += 60; // 9% for technical skills
-    if (validSoftSkills.length > 0) skillsScore += 40; // 6% for soft skills
-    // Bonus for multiple skills capped
-    if (validTechSkills.length >= 2) skillsScore = Math.min(skillsScore + 0, 100); // No bonus needed
+    if (validTechSkills.length > 0) skillsScore += 70; // 10.5% for technical skills (increased)
+    if (validSoftSkills.length > 0) skillsScore += 30; // 4.5% for soft skills  
+    // Bonus for multiple technical skills
+    if (validTechSkills.length >= 2) skillsScore = Math.min(skillsScore + 0, 100); // Already at max
     totalPercentage += (skillsScore / 100) * 15;
     
     // 7. Education - 12% (Essential for most jobs)
@@ -2841,9 +2841,9 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     // 11. Job Target - 8% (Important for job matching)
     let jobTargetScore = 0;
     const validTargetRoles = profileData.jobTarget?.targetRoles?.filter((role: string) => hasValue(role)) || [];
-    if (validTargetRoles.length > 0) jobTargetScore += 50; // 4% for target roles
-    if (hasValue(profileData.jobTarget?.careerLevel)) jobTargetScore += 25; // 2% for career level
-    if (hasValue(profileData.jobTarget?.salaryExpectations?.minSalary)) jobTargetScore += 25; // 2% for salary expectations
+    if (validTargetRoles.length > 0) jobTargetScore += 62.5; // 5% for target roles (increased)
+    if (hasValue(profileData.jobTarget?.careerLevel)) jobTargetScore += 37.5; // 3% for career level (increased)
+    if (hasValue(profileData.jobTarget?.salaryExpectations?.minSalary)) jobTargetScore = Math.min(100, jobTargetScore + 0); // Full score if other fields filled
     // Career goals and work style are bonus
     totalPercentage += (jobTargetScore / 100) * 8;
     
