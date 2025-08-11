@@ -398,13 +398,21 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
         headers: { "Content-Type": "application/json" },
       });
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('Profile saved successfully:', data);
-      queryClient.invalidateQueries({ queryKey: ["/api/comprehensive-profile"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      // Show success message with progress info
-      const progressPercentage = data?.completionPercentage || 0;
+      
+      // Invalidate and refetch all profile-related queries to ensure consistency
+      await queryClient.invalidateQueries({ queryKey: ["/api/comprehensive-profile"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
+      // Refetch the comprehensive profile to get the latest completion percentage
+      const freshData = await queryClient.fetchQuery({
+        queryKey: ["/api/comprehensive-profile"],
+      });
+      
+      // Use the fresh backend completion percentage for consistency
+      const progressPercentage = freshData?.completionPercentage || data?.completionPercentage || 0;
       toast({
         title: "Profile progress saved!",
         description: `Your profile is ${progressPercentage}% complete. ${progressPercentage >= 85 ? 'Interviews are now unlocked!' : 'Continue building to unlock interviews at 85%.'}`,
