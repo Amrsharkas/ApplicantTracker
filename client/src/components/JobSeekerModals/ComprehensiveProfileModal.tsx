@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -432,7 +432,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
     },
   });
 
-  // Auto-save function
+  // Auto-save function with debouncing
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const autoSave = useCallback(
     async (data: ComprehensiveProfileData) => {
       if (!isAutoSaving) {
@@ -443,24 +445,41 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
     [autoSaveMutation, isAutoSaving]
   );
 
-  // Auto-save on field blur and timer
+  // Debounced auto-save function
+  const debouncedAutoSave = useCallback(
+    (data: ComprehensiveProfileData) => {
+      // Clear existing timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      
+      // Set new timeout
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        autoSave(data);
+      }, 2000); // Wait 2 seconds before auto-saving
+    },
+    [autoSave]
+  );
+
+  // Auto-save on form changes with debouncing
   useEffect(() => {
     const subscription = form.watch((data) => {
-      const timer = setTimeout(() => {
-        if (data) {
-          autoSave(data as ComprehensiveProfileData);
-        }
-      }, 3000); // Auto-save every 3 seconds
-
-      return () => clearTimeout(timer);
+      if (data && !isLoading) {
+        debouncedAutoSave(data as ComprehensiveProfileData);
+      }
     });
 
-    return () => subscription.unsubscribe();
-  }, [form, autoSave]);
+    return () => {
+      subscription.unsubscribe();
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [form, debouncedAutoSave, isLoading]);
 
-  // Update form with existing data when it loads
+  // Update form with existing data when it loads (only if form is currently empty)
   useEffect(() => {
-    if (existingProfile) {
+    if (existingProfile && !form.formState.isDirty) {
       form.reset(existingProfile);
     }
   }, [existingProfile, form]);
@@ -567,7 +586,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>First Name *</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Enter first name" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} placeholder="Enter first name" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -580,7 +599,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>Last Name *</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Enter last name" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} placeholder="Enter last name" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -593,7 +612,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>Email *</FormLabel>
                             <FormControl>
-                              <Input {...field} type="email" placeholder="Enter email" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} type="email" placeholder="Enter email" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -606,7 +625,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>Phone *</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Enter phone number" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} placeholder="Enter phone number" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -619,7 +638,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>Date of Birth</FormLabel>
                             <FormControl>
-                              <Input {...field} type="date" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} type="date" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -656,7 +675,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>Nationality</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Enter nationality" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} placeholder="Enter nationality" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -675,7 +694,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             <FormItem>
                               <FormLabel>Street Address</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter street address" onBlur={() => autoSave(form.getValues())} />
+                                <Input {...field} placeholder="Enter street address" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -688,7 +707,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             <FormItem>
                               <FormLabel>City</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter city" onBlur={() => autoSave(form.getValues())} />
+                                <Input {...field} placeholder="Enter city" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -701,7 +720,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             <FormItem>
                               <FormLabel>State/Province</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter state/province" onBlur={() => autoSave(form.getValues())} />
+                                <Input {...field} placeholder="Enter state/province" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -714,7 +733,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             <FormItem>
                               <FormLabel>Country</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter country" onBlur={() => autoSave(form.getValues())} />
+                                <Input {...field} placeholder="Enter country" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -727,7 +746,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             <FormItem>
                               <FormLabel>Postal Code</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter postal code" onBlur={() => autoSave(form.getValues())} />
+                                <Input {...field} placeholder="Enter postal code" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -747,7 +766,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             <FormItem>
                               <FormLabel>Name</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Emergency contact name" onBlur={() => autoSave(form.getValues())} />
+                                <Input {...field} placeholder="Emergency contact name" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -760,7 +779,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             <FormItem>
                               <FormLabel>Relationship</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Relationship to you" onBlur={() => autoSave(form.getValues())} />
+                                <Input {...field} placeholder="Relationship to you" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -773,7 +792,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             <FormItem>
                               <FormLabel>Phone</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Emergency contact phone" onBlur={() => autoSave(form.getValues())} />
+                                <Input {...field} placeholder="Emergency contact phone" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -842,7 +861,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                                   placeholder="0"
                                   value={field.value || ""}
                                   onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                                  onBlur={() => autoSave(form.getValues())}
+                                 
                                 />
                               </FormControl>
                               <FormMessage />
@@ -862,7 +881,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                                   placeholder="0"
                                   value={field.value || ""}
                                   onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                                  onBlur={() => autoSave(form.getValues())}
+                                 
                                 />
                               </FormControl>
                               <FormMessage />
@@ -950,7 +969,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                                 {...field} 
                                 rows={4} 
                                 placeholder="Describe your career goals and aspirations..."
-                                onBlur={() => autoSave(form.getValues())}
+                               
                               />
                             </FormControl>
                             <FormMessage />
@@ -968,7 +987,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                                 {...field} 
                                 rows={3} 
                                 placeholder="Describe your preferred work style and environment..."
-                                onBlur={() => autoSave(form.getValues())}
+                               
                               />
                             </FormControl>
                             <FormMessage />
@@ -986,7 +1005,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                                 {...field} 
                                 rows={3} 
                                 placeholder="What drives and motivates you in your career..."
-                                onBlur={() => autoSave(form.getValues())}
+                               
                               />
                             </FormControl>
                             <FormMessage />
@@ -1004,7 +1023,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                                 {...field} 
                                 rows={3} 
                                 placeholder="What would be deal breakers for you in a job..."
-                                onBlur={() => autoSave(form.getValues())}
+                               
                               />
                             </FormControl>
                             <FormMessage />
@@ -1057,7 +1076,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>ID Number</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Enter ID number" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} placeholder="Enter ID number" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1070,7 +1089,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>Expiry Date</FormLabel>
                             <FormControl>
-                              <Input {...field} type="date" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} type="date" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1083,7 +1102,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>Issuing Authority</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Issuing authority" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} placeholder="Issuing authority" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1112,7 +1131,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>LinkedIn URL</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="https://linkedin.com/in/yourprofile" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} placeholder="https://linkedin.com/in/yourprofile" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1125,7 +1144,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>GitHub URL</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="https://github.com/yourusername" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} placeholder="https://github.com/yourusername" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1138,7 +1157,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>Portfolio URL</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="https://yourportfolio.com" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} placeholder="https://yourportfolio.com" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1151,7 +1170,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>Personal Website</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="https://yourwebsite.com" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} placeholder="https://yourwebsite.com" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1164,7 +1183,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>Behance URL</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="https://behance.net/yourprofile" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} placeholder="https://behance.net/yourprofile" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1177,7 +1196,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>Dribbble URL</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="https://dribbble.com/yourprofile" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} placeholder="https://dribbble.com/yourprofile" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1253,7 +1272,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>Availability Date</FormLabel>
                             <FormControl>
-                              <Input {...field} type="date" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} type="date" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1266,7 +1285,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           <FormItem>
                             <FormLabel>Notice Period</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="e.g., 2 weeks, 1 month" onBlur={() => autoSave(form.getValues())} />
+                              <Input {...field} placeholder="e.g., 2 weeks, 1 month" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1355,7 +1374,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Language *</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="e.g., English, Arabic" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="e.g., English, Arabic" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1391,7 +1410,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Certification</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="e.g., IELTS, TOEFL" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="e.g., IELTS, TOEFL" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1449,7 +1468,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                                 <FormItem>
                                   <FormLabel>Skill *</FormLabel>
                                   <FormControl>
-                                    <Input {...field} placeholder="e.g., JavaScript, Python" onBlur={() => autoSave(form.getValues())} />
+                                    <Input {...field} placeholder="e.g., JavaScript, Python" />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -1491,7 +1510,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                                       placeholder="0"
                                       value={field.value || ""}
                                       onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
-                                      onBlur={() => autoSave(form.getValues())}
+                                     
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -1538,7 +1557,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                                 <FormItem>
                                   <FormLabel>Skill *</FormLabel>
                                   <FormControl>
-                                    <Input {...field} placeholder="e.g., Communication, Leadership" onBlur={() => autoSave(form.getValues())} />
+                                    <Input {...field} placeholder="e.g., Communication, Leadership" />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -1629,7 +1648,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Institution *</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="University/College name" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="University/College name" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1642,7 +1661,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Degree *</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Bachelor's, Master's, etc." onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="Bachelor's, Master's, etc." />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1655,7 +1674,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Field of Study</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Computer Science, Business, etc." onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="Computer Science, Business, etc." />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1668,7 +1687,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Location</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="City, Country" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="City, Country" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1681,7 +1700,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Start Date</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="date" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} type="date" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1694,7 +1713,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>End Date</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="date" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} type="date" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1707,7 +1726,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>GPA</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="3.8/4.0" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="3.8/4.0" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1739,7 +1758,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Relevant Coursework</FormLabel>
                                 <FormControl>
-                                  <Textarea {...field} rows={2} placeholder="List relevant courses..." onBlur={() => autoSave(form.getValues())} />
+                                  <Textarea {...field} rows={2} placeholder="List relevant courses..." />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1813,7 +1832,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Company *</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Company name" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="Company name" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1826,7 +1845,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Position *</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Job title" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="Job title" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1863,7 +1882,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Location</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="City, Country" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="City, Country" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1876,7 +1895,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Start Date</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="date" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} type="date" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1889,7 +1908,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>End Date</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="date" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} type="date" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1921,7 +1940,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Key Responsibilities & Achievements *</FormLabel>
                                 <FormControl>
-                                  <Textarea {...field} rows={4} placeholder="Describe your key responsibilities, achievements, and impact..." onBlur={() => autoSave(form.getValues())} />
+                                  <Textarea {...field} rows={4} placeholder="Describe your key responsibilities, achievements, and impact..." />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1983,7 +2002,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Certification Name *</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="AWS Certified Developer" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="AWS Certified Developer" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1996,7 +2015,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Issuing Organization</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Amazon Web Services" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="Amazon Web Services" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -2009,7 +2028,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Issue Date</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="date" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} type="date" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -2022,7 +2041,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Expiry Date</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="date" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} type="date" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -2035,7 +2054,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Credential ID</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Certificate ID" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="Certificate ID" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -2048,7 +2067,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Credential URL</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Verification URL" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="Verification URL" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -2117,7 +2136,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Award Title *</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Employee of the Month" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="Employee of the Month" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -2130,7 +2149,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Issuing Organization</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Company/Organization name" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} placeholder="Company/Organization name" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -2143,7 +2162,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Date Received</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="date" onBlur={() => autoSave(form.getValues())} />
+                                  <Input {...field} type="date" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -2183,7 +2202,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               <FormItem>
                                 <FormLabel>Description</FormLabel>
                                 <FormControl>
-                                  <Textarea {...field} rows={3} placeholder="Describe the award and what you achieved..." onBlur={() => autoSave(form.getValues())} />
+                                  <Textarea {...field} rows={3} placeholder="Describe the award and what you achieved..." />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
