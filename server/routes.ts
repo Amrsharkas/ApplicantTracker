@@ -2725,7 +2725,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
-  // Helper function to calculate completion percentage based on detailed breakdown
+  // Helper function to calculate completion percentage based on realistic job-seeking requirements
   function calculateCompletionPercentage(profileData: any): number {
     // If no profile data provided, return 0
     if (!profileData) {
@@ -2747,112 +2747,109 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       return false;
     };
     
-    // 1. Personal Details - 15% (Required)
+    // 1. Personal Details - 20% (Required - Core for job applications)
     let personalScore = 0;
-    if (hasValue(profileData.personalDetails?.firstName)) personalScore += 20; // 3%
-    if (hasValue(profileData.personalDetails?.lastName)) personalScore += 20; // 3%
-    if (hasValue(profileData.personalDetails?.email)) personalScore += 20; // 3%
-    if (hasValue(profileData.personalDetails?.phone)) personalScore += 20; // 3%
-    if (hasValue(profileData.personalDetails?.dateOfBirth)) personalScore += 10; // 1.5%
-    if (hasValue(profileData.personalDetails?.nationality)) personalScore += 10; // 1.5%
-    totalPercentage += (personalScore / 100) * 15;
+    if (hasValue(profileData.personalDetails?.firstName)) personalScore += 25; // 5%
+    if (hasValue(profileData.personalDetails?.lastName)) personalScore += 25; // 5%
+    if (hasValue(profileData.personalDetails?.email)) personalScore += 25; // 5%
+    if (hasValue(profileData.personalDetails?.phone)) personalScore += 25; // 5%
+    // Optional personal details for bonus points
+    if (hasValue(profileData.personalDetails?.dateOfBirth)) personalScore += 0; // 0% - not essential
+    if (hasValue(profileData.personalDetails?.nationality)) personalScore += 0; // 0% - not essential
+    totalPercentage += (personalScore / 100) * 20;
     
-    // 2. Government ID - 8% (Optional)
+    // 2. Government ID - 2% (Truly Optional - reduced weight)
     let govIdScore = 0;
-    if (hasValue(profileData.governmentId?.idType)) govIdScore += 40; // 3.2%
-    if (hasValue(profileData.governmentId?.idNumber)) govIdScore += 40; // 3.2%
-    if (hasValue(profileData.governmentId?.expiryDate)) govIdScore += 20; // 1.6%
-    totalPercentage += (govIdScore / 100) * 8;
+    if (hasValue(profileData.governmentId?.idType)) govIdScore += 50; // 1%
+    if (hasValue(profileData.governmentId?.idNumber)) govIdScore += 50; // 1%
+    totalPercentage += (govIdScore / 100) * 2;
     
-    // 3. Links & Portfolio - 6% (Optional)
+    // 3. Links & Portfolio - 5% (Optional but valuable)
     let linksScore = 0;
-    if (hasValue(profileData.linksPortfolio?.linkedinUrl)) linksScore += 30; // 1.8%
-    if (hasValue(profileData.linksPortfolio?.githubUrl)) linksScore += 25; // 1.5%
-    if (hasValue(profileData.linksPortfolio?.portfolioUrl)) linksScore += 25; // 1.5%
-    if (hasValue(profileData.linksPortfolio?.personalWebsite)) linksScore += 20; // 1.2%
-    totalPercentage += (linksScore / 100) * 6;
+    const linkCount = [
+      profileData.linksPortfolio?.linkedinUrl,
+      profileData.linksPortfolio?.githubUrl,
+      profileData.linksPortfolio?.portfolioUrl,
+      profileData.linksPortfolio?.personalWebsite
+    ].filter(link => hasValue(link)).length;
     
-    // 4. Work Eligibility - 7% (Semi-Required)
+    if (linkCount > 0) linksScore = Math.min(100, linkCount * 25); // 25% per link, max 100%
+    totalPercentage += (linksScore / 100) * 5;
+    
+    // 4. Work Eligibility - 8% (Important for job matching)
     let eligibilityScore = 0;
-    if (hasValue(profileData.workEligibility?.workAuthorization)) eligibilityScore += 40; // 2.8%
-    if (hasValue(profileData.workEligibility?.workArrangement)) eligibilityScore += 30; // 2.1%
-    if (profileData.workEligibility?.willingToRelocate !== undefined && profileData.workEligibility?.willingToRelocate !== null) eligibilityScore += 15; // 1.05%
-    if (hasValue(profileData.workEligibility?.availabilityDate)) eligibilityScore += 15; // 1.05%
-    totalPercentage += (eligibilityScore / 100) * 7;
+    if (hasValue(profileData.workEligibility?.workAuthorization)) eligibilityScore += 50; // 4%
+    if (hasValue(profileData.workEligibility?.workArrangement)) eligibilityScore += 50; // 4%
+    // Boolean values count if explicitly set
+    if (profileData.workEligibility?.willingToRelocate !== undefined) eligibilityScore += 0; // 0% - bonus only
+    totalPercentage += (eligibilityScore / 100) * 8;
     
-    // 5. Languages - 8% (Required)
+    // 5. Languages - 10% (Required for international job market)
     let languageScore = 0;
     const validLanguages = profileData.languages?.filter((lang: any) => hasValue(lang.language)) || [];
     if (validLanguages.length > 0) {
-      languageScore += 70; // 5.6% for having at least one language
-      if (validLanguages.length > 1) languageScore += 20; // 1.6% for multiple languages
-      if (validLanguages.some((lang: any) => hasValue(lang.certification))) languageScore += 10; // 0.8% for certifications
+      languageScore = 100; // Full score for having at least one language
     }
-    totalPercentage += (languageScore / 100) * 8;
+    totalPercentage += (languageScore / 100) * 10;
     
-    // 6. Skills - 12% (Required)
+    // 6. Skills - 15% (Critical for job matching)
     let skillsScore = 0;
     const validTechSkills = profileData.skills?.technicalSkills?.filter((skill: any) => hasValue(skill.skill)) || [];
     const validSoftSkills = profileData.skills?.softSkills?.filter((skill: any) => hasValue(skill.skill)) || [];
     
-    if (validTechSkills.length > 0) skillsScore += 50; // 6% for technical skills
-    if (validSoftSkills.length > 0) skillsScore += 30; // 3.6% for soft skills
-    if (validTechSkills.length >= 3) skillsScore += 10; // 1.2% for multiple tech skills
-    if (validSoftSkills.length >= 3) skillsScore += 10; // 1.2% for multiple soft skills
-    totalPercentage += (skillsScore / 100) * 12;
+    if (validTechSkills.length > 0) skillsScore += 60; // 9% for technical skills
+    if (validSoftSkills.length > 0) skillsScore += 40; // 6% for soft skills
+    // Bonus for multiple skills capped
+    if (validTechSkills.length >= 2) skillsScore = Math.min(skillsScore + 0, 100); // No bonus needed
+    totalPercentage += (skillsScore / 100) * 15;
     
-    // 7. Education - 10% (Required)
+    // 7. Education - 12% (Essential for most jobs)
     let educationScore = 0;
     const validEducation = profileData.education?.filter((edu: any) => hasValue(edu.institution)) || [];
     if (validEducation.length > 0) {
-      educationScore += 60; // 6% for having education
-      if (hasValue(validEducation[0].degree)) educationScore += 25; // 2.5% for degree
-      if (hasValue(validEducation[0].fieldOfStudy)) educationScore += 15; // 1.5% for field of study
+      educationScore += 70; // 8.4% for having education
+      if (hasValue(validEducation[0].degree)) educationScore += 30; // 3.6% for degree info
     }
-    totalPercentage += (educationScore / 100) * 10;
+    totalPercentage += (educationScore / 100) * 12;
     
-    // 8. Experience - 15% (Required)
+    // 8. Experience - 18% (Most important for job applications)
     let experienceScore = 0;
     const validExperience = profileData.experience?.filter((exp: any) => hasValue(exp.company)) || [];
     if (validExperience.length > 0) {
-      experienceScore += 50; // 7.5% for having experience
-      if (hasValue(validExperience[0].position)) experienceScore += 20; // 3% for position
-      if (hasValue(validExperience[0].responsibilities)) experienceScore += 20; // 3% for responsibilities
-      if (validExperience.length > 1) experienceScore += 10; // 1.5% for multiple experiences
+      experienceScore += 60; // 10.8% for having experience
+      if (hasValue(validExperience[0].position)) experienceScore += 25; // 4.5% for position
+      if (hasValue(validExperience[0].responsibilities)) experienceScore += 15; // 2.7% for responsibilities
     }
-    totalPercentage += (experienceScore / 100) * 15;
+    totalPercentage += (experienceScore / 100) * 18;
     
-    // 9. Certifications - 5% (Optional)
+    // 9. Certifications - 5% (Optional but valuable)
     let certScore = 0;
     const validCertifications = profileData.certifications?.filter((cert: any) => hasValue(cert.name)) || [];
     if (validCertifications.length > 0) {
-      certScore += 70; // 3.5% for having certifications
-      if (validCertifications.length > 1) certScore += 30; // 1.5% for multiple certifications
+      certScore = 100; // Full score for having any certifications
     }
     totalPercentage += (certScore / 100) * 5;
     
-    // 10. Awards - 4% (Optional)
+    // 10. Awards - 2% (Nice to have, reduced weight)
     let awardScore = 0;
     const validAwards = profileData.awards?.filter((award: any) => hasValue(award.title)) || [];
     if (validAwards.length > 0) {
-      awardScore += 80; // 3.2% for having awards
-      if (validAwards.length > 1) awardScore += 20; // 0.8% for multiple awards
+      awardScore = 100; // Full score for having any awards
     }
-    totalPercentage += (awardScore / 100) * 4;
+    totalPercentage += (awardScore / 100) * 2;
     
-    // 11. Job Target - 10% (Semi-Required)
+    // 11. Job Target - 8% (Important for job matching)
     let jobTargetScore = 0;
     const validTargetRoles = profileData.jobTarget?.targetRoles?.filter((role: string) => hasValue(role)) || [];
-    if (validTargetRoles.length > 0) jobTargetScore += 40; // 4% for target roles
-    if (hasValue(profileData.jobTarget?.careerLevel)) jobTargetScore += 20; // 2% for career level
-    if (hasValue(profileData.jobTarget?.salaryExpectations?.minSalary)) jobTargetScore += 15; // 1.5% for salary expectations
-    if (hasValue(profileData.jobTarget?.careerGoals)) jobTargetScore += 15; // 1.5% for career goals
-    if (hasValue(profileData.jobTarget?.workStyle)) jobTargetScore += 10; // 1% for work style
-    totalPercentage += (jobTargetScore / 100) * 10;
+    if (validTargetRoles.length > 0) jobTargetScore += 50; // 4% for target roles
+    if (hasValue(profileData.jobTarget?.careerLevel)) jobTargetScore += 25; // 2% for career level
+    if (hasValue(profileData.jobTarget?.salaryExpectations?.minSalary)) jobTargetScore += 25; // 2% for salary expectations
+    // Career goals and work style are bonus
+    totalPercentage += (jobTargetScore / 100) * 8;
     
     const finalPercentage = Math.min(Math.round(totalPercentage), 100);
     console.log('📊 Final completion percentage calculated:', finalPercentage + '%');
-    console.log('📊 Breakdown - Personal:', Math.round((personalScore / 100) * 15) + '%, Gov ID:', Math.round((govIdScore / 100) * 8) + '%, Links:', Math.round((linksScore / 100) * 6) + '%, Eligibility:', Math.round((eligibilityScore / 100) * 7) + '%, Languages:', Math.round((languageScore / 100) * 8) + '%, Skills:', Math.round((skillsScore / 100) * 12) + '%, Education:', Math.round((educationScore / 100) * 10) + '%, Experience:', Math.round((experienceScore / 100) * 15) + '%, Certs:', Math.round((certScore / 100) * 5) + '%, Awards:', Math.round((awardScore / 100) * 4) + '%, Job Target:', Math.round((jobTargetScore / 100) * 10) + '%');
+    console.log('📊 Breakdown - Personal:', Math.round((personalScore / 100) * 20) + '%, Gov ID:', Math.round((govIdScore / 100) * 2) + '%, Links:', Math.round((linksScore / 100) * 5) + '%, Eligibility:', Math.round((eligibilityScore / 100) * 8) + '%, Languages:', Math.round((languageScore / 100) * 10) + '%, Skills:', Math.round((skillsScore / 100) * 15) + '%, Education:', Math.round((educationScore / 100) * 12) + '%, Experience:', Math.round((experienceScore / 100) * 18) + '%, Certs:', Math.round((certScore / 100) * 5) + '%, Awards:', Math.round((awardScore / 100) * 2) + '%, Job Target:', Math.round((jobTargetScore / 100) * 8) + '%');
     return finalPercentage; // Cap at 100%
   }
 
