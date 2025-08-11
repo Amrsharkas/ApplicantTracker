@@ -2543,11 +2543,11 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       };
 
       // Calculate completion percentage using the same logic as save endpoint
-      const completionResult = calculateComprehensiveProfileCompletion(comprehensiveProfile);
+      const completionPercentage = calculateCompletionPercentage(comprehensiveProfile);
       
       res.json({
         ...comprehensiveProfile,
-        completionPercentage: completionResult.percentage
+        completionPercentage
       });
     } catch (error) {
       console.error("Error fetching comprehensive profile:", error);
