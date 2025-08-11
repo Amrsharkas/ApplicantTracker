@@ -99,142 +99,14 @@ export default function Dashboard() {
     setActiveModal('jobPostings');
   };
 
-  // Calculate comprehensive profile completion
-  const comprehensiveProfileCompletion = calculateComprehensiveProfileCompletion(comprehensiveProfile);
-  const profileProgress = comprehensiveProfileCompletion.percentage;
+  // Use backend-calculated completion percentage for consistency
+  const profileProgress = comprehensiveProfile?.completionPercentage || 0;
   
   // Check if comprehensive profile has required fields completed (85% threshold for interviews)
-  const hasCompleteProfile = comprehensiveProfileCompletion.percentage >= 85;
+  const hasCompleteProfile = profileProgress >= 85;
   const hasCompletedInterview = (profile as any)?.aiProfileGenerated;
   
-  // Helper function to calculate comprehensive profile completion
-  // This matches the server-side calculation exactly to ensure consistency
-  function calculateComprehensiveProfileCompletion(compProfile: any) {
-    if (!compProfile) {
-      return { percentage: 0, isComplete: false };
-    }
-    
-    let totalPercentage = 0;
-    
-    // Helper function to check if a value is meaningful (not empty, null, undefined, or just whitespace)
-    const hasValue = (val: any): boolean => {
-      if (val === null || val === undefined || val === '') return false;
-      if (typeof val === 'string') return val.trim() !== '';
-      if (typeof val === 'number') return val > 0;
-      if (typeof val === 'boolean') return true; // boolean values are always meaningful
-      if (Array.isArray(val)) return val.length > 0;
-      if (typeof val === 'object') return Object.keys(val).length > 0;
-      return false;
-    };
-    
-    // 1. Personal Details - 15% (Required)
-    let personalScore = 0;
-    if (hasValue(compProfile.personalDetails?.firstName)) personalScore += 20; // 3%
-    if (hasValue(compProfile.personalDetails?.lastName)) personalScore += 20; // 3%
-    if (hasValue(compProfile.personalDetails?.email)) personalScore += 20; // 3%
-    if (hasValue(compProfile.personalDetails?.phone)) personalScore += 20; // 3%
-    if (hasValue(compProfile.personalDetails?.dateOfBirth)) personalScore += 10; // 1.5%
-    if (hasValue(compProfile.personalDetails?.nationality)) personalScore += 10; // 1.5%
-    totalPercentage += (personalScore / 100) * 15;
-    
-    // 2. Government ID - 8% (Optional)
-    let govIdScore = 0;
-    if (hasValue(compProfile.governmentId?.idType)) govIdScore += 40; // 3.2%
-    if (hasValue(compProfile.governmentId?.idNumber)) govIdScore += 40; // 3.2%
-    if (hasValue(compProfile.governmentId?.expiryDate)) govIdScore += 20; // 1.6%
-    totalPercentage += (govIdScore / 100) * 8;
-    
-    // 3. Links & Portfolio - 6% (Optional)
-    let linksScore = 0;
-    if (hasValue(compProfile.linksPortfolio?.linkedinUrl)) linksScore += 30; // 1.8%
-    if (hasValue(compProfile.linksPortfolio?.githubUrl)) linksScore += 25; // 1.5%
-    if (hasValue(compProfile.linksPortfolio?.portfolioUrl)) linksScore += 25; // 1.5%
-    if (hasValue(compProfile.linksPortfolio?.personalWebsite)) linksScore += 20; // 1.2%
-    totalPercentage += (linksScore / 100) * 6;
-    
-    // 4. Work Eligibility - 7% (Semi-Required)
-    let eligibilityScore = 0;
-    if (hasValue(compProfile.workEligibility?.workAuthorization)) eligibilityScore += 40; // 2.8%
-    if (hasValue(compProfile.workEligibility?.workArrangement)) eligibilityScore += 30; // 2.1%
-    if (compProfile.workEligibility?.willingToRelocate !== undefined && compProfile.workEligibility?.willingToRelocate !== null) eligibilityScore += 15; // 1.05%
-    if (hasValue(compProfile.workEligibility?.availabilityDate)) eligibilityScore += 15; // 1.05%
-    totalPercentage += (eligibilityScore / 100) * 7;
-    
-    // 5. Languages - 8% (Required)
-    let languageScore = 0;
-    const validLanguages = compProfile.languages?.filter((lang: any) => hasValue(lang.language)) || [];
-    if (validLanguages.length > 0) {
-      languageScore += 70; // 5.6% for having at least one language
-      if (validLanguages.length > 1) languageScore += 20; // 1.6% for multiple languages
-      if (validLanguages.some((lang: any) => hasValue(lang.certification))) languageScore += 10; // 0.8% for certifications
-    }
-    totalPercentage += (languageScore / 100) * 8;
-    
-    // 6. Skills - 12% (Required)
-    let skillsScore = 0;
-    const validTechSkills = compProfile.skills?.technicalSkills?.filter((skill: any) => hasValue(skill.skill)) || [];
-    const validSoftSkills = compProfile.skills?.softSkills?.filter((skill: any) => hasValue(skill.skill)) || [];
-    
-    if (validTechSkills.length > 0) skillsScore += 50; // 6% for technical skills
-    if (validSoftSkills.length > 0) skillsScore += 30; // 3.6% for soft skills
-    if (validTechSkills.length >= 3) skillsScore += 10; // 1.2% for multiple tech skills
-    if (validSoftSkills.length >= 3) skillsScore += 10; // 1.2% for multiple soft skills
-    totalPercentage += (skillsScore / 100) * 12;
-    
-    // 7. Education - 10% (Required)
-    let educationScore = 0;
-    const validEducation = compProfile.education?.filter((edu: any) => hasValue(edu.institution)) || [];
-    if (validEducation.length > 0) {
-      educationScore += 60; // 6% for having education
-      if (hasValue(validEducation[0].degree)) educationScore += 25; // 2.5% for degree
-      if (hasValue(validEducation[0].fieldOfStudy)) educationScore += 15; // 1.5% for field of study
-    }
-    totalPercentage += (educationScore / 100) * 10;
-    
-    // 8. Experience - 15% (Required)
-    let experienceScore = 0;
-    const validExperience = compProfile.experience?.filter((exp: any) => hasValue(exp.company)) || [];
-    if (validExperience.length > 0) {
-      experienceScore += 50; // 7.5% for having experience
-      if (hasValue(validExperience[0].position)) experienceScore += 20; // 3% for position
-      if (hasValue(validExperience[0].responsibilities)) experienceScore += 20; // 3% for responsibilities
-      if (validExperience.length > 1) experienceScore += 10; // 1.5% for multiple experiences
-    }
-    totalPercentage += (experienceScore / 100) * 15;
-    
-    // 9. Certifications - 5% (Optional)
-    let certScore = 0;
-    const validCertifications = compProfile.certifications?.filter((cert: any) => hasValue(cert.name)) || [];
-    if (validCertifications.length > 0) {
-      certScore += 70; // 3.5% for having certifications
-      if (validCertifications.length > 1) certScore += 30; // 1.5% for multiple certifications
-    }
-    totalPercentage += (certScore / 100) * 5;
-    
-    // 10. Awards - 4% (Optional)
-    let awardScore = 0;
-    const validAwards = compProfile.awards?.filter((award: any) => hasValue(award.title)) || [];
-    if (validAwards.length > 0) {
-      awardScore += 80; // 3.2% for having awards
-      if (validAwards.length > 1) awardScore += 20; // 0.8% for multiple awards
-    }
-    totalPercentage += (awardScore / 100) * 4;
-    
-    // 11. Job Target - 10% (Semi-Required)
-    let jobTargetScore = 0;
-    const validTargetRoles = compProfile.jobTarget?.targetRoles?.filter((role: string) => hasValue(role)) || [];
-    if (validTargetRoles.length > 0) jobTargetScore += 40; // 4% for target roles
-    if (hasValue(compProfile.jobTarget?.careerLevel)) jobTargetScore += 20; // 2% for career level
-    if (hasValue(compProfile.jobTarget?.salaryExpectations?.minSalary)) jobTargetScore += 15; // 1.5% for salary expectations
-    if (hasValue(compProfile.jobTarget?.careerGoals)) jobTargetScore += 15; // 1.5% for career goals
-    if (hasValue(compProfile.jobTarget?.workStyle)) jobTargetScore += 10; // 1% for work style
-    totalPercentage += (jobTargetScore / 100) * 10;
-    
-    const percentage = Math.min(Math.round(totalPercentage), 100);
-    const isComplete = percentage >= 85;
-    
-    return { percentage, isComplete };
-  }
+
   
   // Show full dashboard only when BOTH steps are complete: complete profile (including CV) AND AI interview
   const showFullDashboard = hasCompleteProfile && hasCompletedInterview;
