@@ -415,7 +415,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
       const progressPercentage = freshData?.completionPercentage || data?.completionPercentage || 0;
       toast({
         title: "Profile progress saved!",
-        description: `Your profile is ${progressPercentage}% complete. ${progressPercentage >= 85 ? 'Interviews are now unlocked!' : 'Continue building to unlock interviews at 85%.'}`,
+        description: `Your profile is ${progressPercentage}% complete. ${progressPercentage >= 75 ? 'Interviews are now unlocked!' : 'Continue building to unlock interviews at 75%.'}`,
       });
       onClose();
     },

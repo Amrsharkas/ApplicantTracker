@@ -105,8 +105,8 @@ export default function Dashboard() {
   // Use backend-calculated completion percentage for consistency
   const profileProgress = comprehensiveProfile?.completionPercentage || 0;
   
-  // Check if comprehensive profile has required fields completed (85% threshold for interviews)
-  const hasCompleteProfile = profileProgress >= 85;
+  // Check if comprehensive profile has required fields completed (75% threshold for interviews)
+  const hasCompleteProfile = profileProgress >= 75;
   const hasCompletedInterview = (profile as any)?.aiProfileGenerated;
   
 
@@ -210,8 +210,8 @@ export default function Dashboard() {
                         <h3 className="text-lg font-semibold text-gray-900">Build Your Complete Profile</h3>
                         <p className="text-gray-600">
                           {hasCompleteProfile 
-                            ? 'Great! Your profile is ready for interviews (85%+ complete).' 
-                            : 'Build your professional profile including personal details, education, work experience, skills, and career preferences. Reach 85% to unlock interviews.'
+                            ? 'Great! Your profile is ready for interviews (75%+ complete).' 
+                            : 'Build your professional profile including personal details, education, work experience, skills, and career preferences. Reach 75% to unlock interviews.'
                           }
                         </p>
                       </div>
@@ -258,7 +258,7 @@ export default function Dashboard() {
                         <h3 className="text-lg font-semibold text-gray-900">Take AI Interview</h3>
                         <p className="text-gray-600">
                           {!hasCompleteProfile
-                            ? 'Build your profile to 85% completion to unlock the AI interview.' 
+                            ? 'Build your profile to 75% completion to unlock the AI interview.' 
                             : hasCompletedInterview 
                               ? 'Excellent! Your AI interview is complete.' 
                               : 'Chat with our AI to create your comprehensive professional analysis based on your profile.'
