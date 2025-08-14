@@ -628,11 +628,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isCompleted: false
       });
 
-      // Generate welcome message
+      // Generate welcome message with language support
       const welcomeMessage = await aiInterviewService.generateWelcomeMessage({
         ...user,
         ...profile
-      });
+      }, language);
 
       // Extract the first question text properly
       const firstQuestion = currentSet.questions && currentSet.questions.length > 0 
@@ -664,14 +664,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/interview/welcome', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const { language = 'english' } = req.body;
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
-      // Generate personalized welcome message
+      // Generate personalized welcome message with language support
       const welcomeMessage = await aiInterviewService.generateWelcomeMessage({
         ...user,
         ...profile
-      });
+      }, language);
 
       res.json({ welcomeMessage });
     } catch (error) {
@@ -763,6 +764,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const interviewType = req.params.type;
+      const { language = 'english' } = req.body;
       
       // Validate interview type
       if (!['personal', 'professional', 'technical'].includes(interviewType)) {
@@ -799,17 +801,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentSet = await aiInterviewService.generatePersonalInterview({
           ...user,
           ...profile
-        }, resumeContent || undefined, activeResume?.aiAnalysis);
+        }, resumeContent || undefined, activeResume?.aiAnalysis, language);
       } else if (interviewType === 'professional') {
         currentSet = await aiInterviewService.generateProfessionalInterview({
           ...user,
           ...profile
-        }, resumeContent || undefined, interviewContext, activeResume?.aiAnalysis);
+        }, resumeContent || undefined, interviewContext, activeResume?.aiAnalysis, language);
       } else if (interviewType === 'technical') {
         currentSet = await aiInterviewService.generateTechnicalInterview({
           ...user,
           ...profile
-        }, resumeContent || undefined, interviewContext, activeResume?.aiAnalysis);
+        }, resumeContent || undefined, interviewContext, activeResume?.aiAnalysis, language);
       }
 
       if (!currentSet) {
