@@ -89,6 +89,26 @@ const translations = {
     auth: {
       signIn: "Sign In"
     },
+    
+    // Interview Modal
+    interview: {
+      chooseStyle: "Choose Interview Style",
+      selectExperience: "Select Interview Type",
+      selectLanguage: "Select Interview Language",
+      languageNote: "The AI interviewer will ask questions and expect responses in the language you select"
+    },
+    
+    // Interview Types
+    voiceInterview: "Voice Interview",
+    textInterview: "Text Interview",
+    startingVoiceInterview: "Starting voice interview...",
+    speakNaturally: "Speak naturally with the AI interviewer",
+    
+    // Languages
+    languages: {
+      english: "English",
+      arabic: "العربية"
+    },
   },
   ar: {
     // Navigation & General
@@ -126,6 +146,26 @@ const translations = {
     chooseStyle: "اختر أسلوب المقابلة",
     selectExperience: "المقابلة - اختر كيف تريد خوض تجربة مقابلة الذكاء الاصطناعي",
     languageNote: "سيطرح المحاور الذكي الأسئلة ويتوقع الإجابات باللغة التي اخترتها",
+    
+    // Interview Modal
+    interview: {
+      chooseStyle: "اختر أسلوب المقابلة",
+      selectExperience: "اختر نوع المقابلة",
+      selectLanguage: "اختر لغة المقابلة",
+      languageNote: "سيطرح المحاور الذكي الأسئلة ويتوقع الإجابات باللغة التي اخترتها"
+    },
+    
+    // Interview Types
+    voiceInterview: "مقابلة صوتية",
+    textInterview: "مقابلة نصية",
+    startingVoiceInterview: "بدء المقابلة الصوتية...",
+    speakNaturally: "تحدث بطبيعية مع المحاور الذكي",
+    
+    // Languages
+    languages: {
+      english: "English",
+      arabic: "العربية"
+    },
     
     // Profile completion
     profileProgress: "تم حفظ تقدم الملف الشخصي!",

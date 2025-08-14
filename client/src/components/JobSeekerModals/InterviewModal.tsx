@@ -1053,7 +1053,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       <div className="text-center space-y-3">
         <h3 className="text-lg font-semibold">{t('interview.chooseStyle')}</h3>
         <p className="text-sm text-muted-foreground">
-          {selectedInterviewType.charAt(0).toUpperCase() + selectedInterviewType.slice(1)} {t('interview.selectExperience')}
+          {selectedInterviewType.charAt(0).toUpperCase() + selectedInterviewType.slice(1)} Interview - {t('interview.selectExperience')}
         </p>
       </div>
       
@@ -1096,11 +1096,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               <Mic className="h-8 w-8 text-primary" />
             )}
             <div className="text-center">
-              <h4 className="font-medium">Voice Interview</h4>
+              <h4 className="font-medium">{t('voiceInterview') || 'Voice Interview'}</h4>
               <p className="text-sm text-muted-foreground">
                 {isStartingInterview && mode === 'voice' 
-                  ? 'Starting voice interview...' 
-                  : 'Speak naturally with the AI interviewer'
+                  ? t('startingVoiceInterview') || 'Starting voice interview...' 
+                  : t('speakNaturally') || 'Speak naturally with the AI interviewer'
                 }
               </p>
             </div>
@@ -1122,7 +1122,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               <MessageCircle className="h-8 w-8 text-primary" />
             )}
             <div className="text-center">
-              <h4 className="font-medium">Text Interview</h4>
+              <h4 className="font-medium">{t('textInterview') || 'Text Interview'}</h4>
               <p className="text-sm text-muted-foreground">
                 {isStartingInterview && mode === 'text' 
                   ? 'Preparing interview questions...' 
