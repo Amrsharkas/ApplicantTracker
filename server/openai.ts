@@ -45,7 +45,7 @@ export class AIInterviewAgent {
   async generateWelcomeMessage(userData: any, language: string = 'english'): Promise<string> {
     const prompt = `You are an AI interviewer for Plato, an AI-powered job matching platform. Generate a professional welcome message for a candidate starting their comprehensive interview process.
 
-${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Generate this welcome message entirely in Egyptian Arabic (اللغة العربية المصرية). Use a casual, conversational tone that feels natural and friendly. Write as if you are a friendly Egyptian colleague welcoming them. Avoid formal Arabic - use everyday Egyptian expressions and colloquial language.' : 'LANGUAGE INSTRUCTION: Generate this welcome message entirely in English.'}
+${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Generate this welcome message ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Generate this welcome message entirely in English.'}
 
 CANDIDATE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : 'Candidate'}
@@ -65,9 +65,19 @@ Keep it professional and neutral - avoid overly positive or encouraging language
 Return ONLY the welcome message text, no JSON or additional formatting.`;
 
     try {
+      const messages = language === 'arabic' ? [
+        { 
+          role: "system" as const, 
+          content: "انت مصري من القاهرة وبتتكلم عامية مصرية بس. استخدم كلمات زي 'إزيك' و 'عامل إيه' و 'يلا' و 'معلش' و 'ماشي' و 'كدا' و 'دي'. ممنوع تستخدم فصحى خالص. اتكلم كإنك قاعد في قهوة في وسط البلد."
+        },
+        { role: "user" as const, content: prompt }
+      ] : [
+        { role: "user" as const, content: prompt }
+      ];
+
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
-        messages: [{ role: "user", content: prompt }],
+        messages,
         temperature: 0.7,
         max_tokens: 200
       });
@@ -82,7 +92,7 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
   private getFallbackWelcomeMessage(firstName?: string, language: string = 'english'): string {
     if (language === 'arabic') {
       const name = firstName ? ` يا ${firstName}` : '';
-      return `أهلاً وسهلاً بيك في بلاتو${name}. أنا هكون المحاور اللي هيقوم بعمل مقابلة شاملة معاك النهاردة. هنمر بثلاث مراحل مترابطة - شخصية ومهنية وتقنية - عشان نفهم خلفيتك وقدراتك. هحافظ على الاستمرارية في كل المراحل عشان نبني ملف شخصي متكامل.`;
+      return `إزيك${name}! أهلاً وسهلاً بيك في بلاتو. أنا هكون المحاور اللي هعمل معاك مقابلة شاملة النهاردة. إحنا هنمر بتلات مراحل مترابطة - شخصية ومهنية وتقنية - عشان نفهم خلفيتك وقدراتك كدا. هحافظ على الاستمرارية في كل المراحل عشان نبني ملف شخصي متكامل. يلا نبدأ!`;
     } else {
       const name = firstName ? `, ${firstName}` : '';
       return `Welcome to Plato${name}. I'll be conducting a comprehensive interview process with you today. We'll proceed through three connected phases - personal, professional, and technical - to understand your background and capabilities. I'll maintain continuity throughout all phases to build a complete profile.`;
@@ -102,7 +112,7 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
   async generatePersonalInterview(userData: any, resumeContent?: string, resumeAnalysis?: any, language: string = 'english'): Promise<InterviewSet> {
     const prompt = `You are a continuous AI interviewer conducting the Background phase of a comprehensive interview process. 
 
-${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview entirely in Egyptian Arabic (اللغة العربية المصرية). Use a casual, conversational tone that feels natural and friendly. Ask all questions in Egyptian Arabic with colloquial expressions and everyday language that Egyptians use in normal conversations. Avoid formal Arabic - speak like a friendly Egyptian colleague would.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
+${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
 
 CRITICAL: You must first analyze the candidate's profile in full detail before asking any questions. You already know about this candidate and must reference their profile naturally in your questions.
 
@@ -192,9 +202,19 @@ Return ONLY JSON:
 }`;
 
     try {
+      const messages = language === 'arabic' ? [
+        { 
+          role: "system" as const, 
+          content: "انت مصري من القاهرة وبتتكلم عامية مصرية بس. استخدم كلمات زي 'إزيك' و 'عامل إيه' و 'يلا' و 'معلش' و 'ماشي' و 'كدا' و 'دي'. ممنوع تستخدم فصحى خالص. اتكلم كإنك قاعد في قهوة في وسط البلد."
+        },
+        { role: "user" as const, content: prompt }
+      ] : [
+        { role: "user" as const, content: prompt }
+      ];
+
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
-        messages: [{ role: "user", content: prompt }],
+        messages,
         response_format: { type: "json_object" },
         temperature: 0.7
       });
@@ -225,7 +245,7 @@ Return ONLY JSON:
     
     const prompt = `You are continuing as the same AI interviewer. You have full knowledge of this candidate's profile AND their previous interview answers.
 
-${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview entirely in Egyptian Arabic (اللغة العربية المصرية). Use a casual, conversational tone that feels natural and friendly. Ask all questions in Egyptian Arabic with colloquial expressions and everyday language that Egyptians use in normal conversations. Avoid formal Arabic - speak like a friendly Egyptian colleague would.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
+${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
 
 COMPLETE CANDIDATE PROFILE:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
@@ -316,9 +336,19 @@ Return ONLY JSON:
 }`;
 
     try {
+      const messages = language === 'arabic' ? [
+        { 
+          role: "system" as const, 
+          content: "انت مصري من القاهرة وبتتكلم عامية مصرية بس. استخدم كلمات زي 'إزيك' و 'عامل إيه' و 'يلا' و 'معلش' و 'ماشي' و 'كدا' و 'دي'. ممنوع تستخدم فصحى خالص. اتكلم كإنك قاعد في قهوة في وسط البلد."
+        },
+        { role: "user" as const, content: prompt }
+      ] : [
+        { role: "user" as const, content: prompt }
+      ];
+
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
-        messages: [{ role: "user", content: prompt }],
+        messages,
         response_format: { type: "json_object" },
         temperature: 0.7
       });
@@ -351,7 +381,7 @@ Return ONLY JSON:
     
     const prompt = `You are completing the final interview phase as the same AI interviewer. You have comprehensive knowledge of this candidate's full profile AND all previous interview answers.
 
-${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview entirely in Egyptian Arabic (اللغة العربية المصرية). Use a casual, conversational tone that feels natural and friendly. Ask all questions in Egyptian Arabic with colloquial expressions and everyday language that Egyptians use in normal conversations. Avoid formal Arabic - speak like a friendly Egyptian colleague would.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
+${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
 
 COMPLETE CANDIDATE PROFILE:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
@@ -448,9 +478,19 @@ Return ONLY JSON:
 }`;
 
     try {
+      const messages = language === 'arabic' ? [
+        { 
+          role: "system" as const, 
+          content: "انت مصري من القاهرة وبتتكلم عامية مصرية بس. استخدم كلمات زي 'إزيك' و 'عامل إيه' و 'يلا' و 'معلش' و 'ماشي' و 'كدا' و 'دي'. ممنوع تستخدم فصحى خالص. اتكلم كإنك قاعد في قهوة في وسط البلد."
+        },
+        { role: "user" as const, content: prompt }
+      ] : [
+        { role: "user" as const, content: prompt }
+      ];
+
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
-        messages: [{ role: "user", content: prompt }],
+        messages,
         response_format: { type: "json_object" },
         temperature: 0.7
       });
