@@ -70,6 +70,25 @@ const translations = {
     
     // Language switch
     switchLanguage: "العربية",
+    
+    // Landing page
+    landing: {
+      hero: {
+        title: "Find Your Dream Job with AI-Powered Precision",
+        subtitle: "Transform your career journey with intelligent job matching and comprehensive AI interviews that showcase your true potential.",
+        getStarted: "Get Started",
+        learnMore: "Learn More"
+      },
+      companies: {
+        title: "Trusted by Leading Companies",
+        subtitle: "Join thousands of professionals who have found their perfect career match through our AI-powered platform"
+      }
+    },
+    
+    // Auth
+    auth: {
+      signIn: "Sign In"
+    },
   },
   ar: {
     // Navigation & General
@@ -128,6 +147,25 @@ const translations = {
     
     // Language switch
     switchLanguage: "English",
+    
+    // Landing page
+    landing: {
+      hero: {
+        title: "اعثر على وظيفة أحلامك بدقة الذكاء الاصطناعي",
+        subtitle: "حوّل رحلتك المهنية مع المطابقة الذكية للوظائف ومقابلات الذكاء الاصطناعي الشاملة التي تُظهر إمكاناتك الحقيقية.",
+        getStarted: "ابدأ الآن",
+        learnMore: "اعرف المزيد"
+      },
+      companies: {
+        title: "موثوق من قبل الشركات الرائدة",
+        subtitle: "انضم إلى آلاف المحترفين الذين وجدوا المطابقة المهنية المثالية من خلال منصتنا المدعومة بالذكاء الاصطناعي"
+      }
+    },
+    
+    // Auth
+    auth: {
+      signIn: "تسجيل الدخول"
+    },
   }
 };
 
@@ -153,8 +191,18 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
   };
 
   const t = (key: string): string => {
-    const translation = translations[language][key as keyof typeof translations['en']];
-    return translation || key;
+    const keys = key.split('.');
+    let translation: any = translations[language];
+    
+    for (const k of keys) {
+      if (translation && typeof translation === 'object' && k in translation) {
+        translation = translation[k];
+      } else {
+        return key; // Return the key if translation not found
+      }
+    }
+    
+    return typeof translation === 'string' ? translation : key;
   };
 
   // Set initial direction and language on mount
