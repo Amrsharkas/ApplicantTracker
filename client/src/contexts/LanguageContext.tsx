@@ -53,8 +53,11 @@ const translations = {
     // Profile completion
     profileProgress: "Profile progress saved!",
     profileComplete: "Your profile is {{percentage}}% complete. {{status}}",
-    interviewsUnlocked: "Interviews are now unlocked!",
-    continueBuilding: "Continue building to unlock interviews at 85%.",
+    interviewsUnlocked: "Great! Your profile is ready for interviews (75%+ complete).",
+    continueBuilding: "Continue building to unlock interviews at 75%.",
+    
+    // Dashboard
+    jobDashboard: "Your Job Dashboard",
     
     // Dashboard sections
     jobMatches: "Job Matches",
@@ -170,8 +173,11 @@ const translations = {
     // Profile completion
     profileProgress: "تم حفظ تقدم الملف الشخصي!",
     profileComplete: "ملفك الشخصي مكتمل بنسبة {{percentage}}%. {{status}}",
-    interviewsUnlocked: "تم فتح المقابلات الآن!",
+    interviewsUnlocked: "رائع! ملفك الشخصي جاهز للمقابلات (مكتمل 75%+).",
     continueBuilding: "تابع البناء لفتح المقابلات عند 75%.",
+    
+    // Dashboard
+    jobDashboard: "لوحة الوظائف الخاصة بك",
     
     // Dashboard sections
     jobMatches: "الوظائف المناسبة",

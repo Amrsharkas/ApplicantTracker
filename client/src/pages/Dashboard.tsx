@@ -187,7 +187,7 @@ export default function Dashboard() {
           ) : (
             /* Show getting started checklist for incomplete users */
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Plato!</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('welcome')}</h2>
               <p className="text-gray-600 mb-6">
                 Complete both steps below to unlock personalized job matching and access your full dashboard:
               </p>
@@ -207,11 +207,11 @@ export default function Dashboard() {
                         {hasCompleteProfile ? '✓' : '1'}
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Build Your Complete Profile</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">{t('buildProfile')}</h3>
                         <p className="text-gray-600">
                           {hasCompleteProfile 
-                            ? 'Great! Your profile is ready for interviews (75%+ complete).' 
-                            : 'Build your professional profile including personal details, education, work experience, skills, and career preferences. Reach 75% to unlock interviews.'
+                            ? t('interviewsUnlocked')
+                            : t('profileDescription')
                           }
                         </p>
                       </div>
@@ -219,7 +219,7 @@ export default function Dashboard() {
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
                         <div className="text-2xl font-bold text-gray-900">{profileProgress}%</div>
-                        <div className="text-xs text-gray-500">Complete</div>
+                        <div className="text-xs text-gray-500">{t('complete')}</div>
                       </div>
                       <button
                         onClick={() => openModal('profile')}
@@ -229,7 +229,7 @@ export default function Dashboard() {
                             : 'bg-blue-600 text-white hover:bg-blue-700'
                         }`}
                       >
-                        {hasCompleteProfile ? 'Edit Profile' : 'Build Profile'}
+{hasCompleteProfile ? 'Edit Profile' : t('buildProfileButton')}
                       </button>
                     </div>
                   </div>
@@ -255,13 +255,13 @@ export default function Dashboard() {
                         {hasCompletedInterview ? '✓' : '2'}
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Take AI Interview</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">{t('takeInterview')}</h3>
                         <p className="text-gray-600">
                           {!hasCompleteProfile
-                            ? 'Build your profile to 75% completion to unlock the AI interview.' 
+                            ? t('interviewDescription')
                             : hasCompletedInterview 
                               ? 'Excellent! Your AI interview is complete.' 
-                              : 'Chat with our AI to create your comprehensive professional analysis based on your profile.'
+                              : t('step2')
                           }
                         </p>
                       </div>
@@ -277,7 +277,7 @@ export default function Dashboard() {
                             : 'bg-purple-600 text-white hover:bg-purple-700'
                       }`}
                     >
-                      {hasCompletedInterview ? 'Review Interview' : 'Start Interview'}
+{hasCompletedInterview ? 'Review Interview' : t('startInterview')}
                     </button>
                   </div>
                 </div>
@@ -290,7 +290,7 @@ export default function Dashboard() {
         {showFullDashboard && (
           <div className="space-y-8">
             <div className="border-t border-gray-200 pt-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-8">Your Job Dashboard</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-8">{t('jobDashboard')}</h3>
 
               {/* Large Action Buttons */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -303,7 +303,7 @@ export default function Dashboard() {
                       <Target className="h-8 w-8 text-white" />
                     </div>
                     <div>
-                      <h4 className="text-2xl font-bold">Job Matches</h4>
+                      <h4 className="text-2xl font-bold">{t('jobMatches')}</h4>
                       <p className="text-blue-100 text-lg">AI-Curated Opportunities</p>
                     </div>
                   </div>
