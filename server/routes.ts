@@ -559,7 +559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/interview/start-voice", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const { interviewType } = req.body;
+      const { interviewType, language = 'english' } = req.body;
       
       // Validate interview type
       if (!['personal', 'professional', 'technical'].includes(interviewType)) {
@@ -594,17 +594,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentSet = await aiInterviewService.generatePersonalInterview({
           ...user,
           ...profile
-        }, resumeContent || undefined, resumeAnalysis);
+        }, resumeContent || undefined, resumeAnalysis, language);
       } else if (interviewType === 'professional') {
         currentSet = await aiInterviewService.generateProfessionalInterview({
           ...user,
           ...profile
-        }, resumeContent || undefined, interviewContext, resumeAnalysis);
+        }, resumeContent || undefined, interviewContext, resumeAnalysis, language);
       } else if (interviewType === 'technical') {
         currentSet = await aiInterviewService.generateTechnicalInterview({
           ...user,
           ...profile
-        }, resumeContent || undefined, interviewContext, resumeAnalysis);
+        }, resumeContent || undefined, interviewContext, resumeAnalysis, language);
       }
 
       if (!currentSet) {

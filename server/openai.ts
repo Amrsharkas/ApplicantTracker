@@ -92,8 +92,10 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
     return [personalSet, professionalSet, technicalSet];
   }
 
-  async generatePersonalInterview(userData: any, resumeContent?: string, resumeAnalysis?: any): Promise<InterviewSet> {
+  async generatePersonalInterview(userData: any, resumeContent?: string, resumeAnalysis?: any, language: string = 'english'): Promise<InterviewSet> {
     const prompt = `You are a continuous AI interviewer conducting the Background phase of a comprehensive interview process. 
+
+${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview entirely in Arabic. Ask all questions in Arabic and expect Arabic responses.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
 
 CRITICAL: You must first analyze the candidate's profile in full detail before asking any questions. You already know about this candidate and must reference their profile naturally in your questions.
 
@@ -208,13 +210,15 @@ Return ONLY JSON:
     }
   }
 
-  async generateProfessionalInterview(userData: any, resumeContent?: string, previousInterviewData?: any, resumeAnalysis?: any): Promise<InterviewSet> {
+  async generateProfessionalInterview(userData: any, resumeContent?: string, previousInterviewData?: any, resumeAnalysis?: any, language: string = 'english'): Promise<InterviewSet> {
     const contextInsights = previousInterviewData?.insights || '';
     const conversationStyle = previousInterviewData?.conversationStyle || '';
     const keyThemes = previousInterviewData?.keyThemes || [];
     const previousQuestions = previousInterviewData?.previousQuestions || [];
     
     const prompt = `You are continuing as the same AI interviewer. You have full knowledge of this candidate's profile AND their previous interview answers.
+
+${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview entirely in Arabic. Ask all questions in Arabic and expect Arabic responses.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
 
 COMPLETE CANDIDATE PROFILE:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
@@ -330,7 +334,7 @@ Return ONLY JSON:
     }
   }
 
-  async generateTechnicalInterview(userData: any, resumeContent?: string, previousInterviewData?: any, resumeAnalysis?: any): Promise<InterviewSet> {
+  async generateTechnicalInterview(userData: any, resumeContent?: string, previousInterviewData?: any, resumeAnalysis?: any, language: string = 'english'): Promise<InterviewSet> {
     const userRole = userData?.currentRole || 'professional';
     const userField = this.determineUserField(userData, resumeContent);
     const contextInsights = previousInterviewData?.insights || '';
@@ -339,6 +343,8 @@ Return ONLY JSON:
     const previousQuestions = previousInterviewData?.previousQuestions || [];
     
     const prompt = `You are completing the final interview phase as the same AI interviewer. You have comprehensive knowledge of this candidate's full profile AND all previous interview answers.
+
+${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview entirely in Arabic. Ask all questions in Arabic and expect Arabic responses.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
 
 COMPLETE CANDIDATE PROFILE:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}

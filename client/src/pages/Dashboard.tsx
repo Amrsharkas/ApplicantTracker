@@ -12,6 +12,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useResumeRequirement } from "@/hooks/useResumeRequirement";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 import { MatchesModal } from "@/components/JobSeekerModals/MatchesModal";
 import { ComprehensiveProfileModal } from "@/components/JobSeekerModals/ComprehensiveProfileModal";
@@ -26,6 +28,7 @@ export default function Dashboard() {
   const { user, isLoading } = useAuth();
   const logout = useLogout();
   const { toast } = useToast();
+  const { t, isRTL } = useLanguage();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedJobDetails, setSelectedJobDetails] = useState<{title: string, id: string} | null>(null);
 
@@ -131,7 +134,7 @@ export default function Dashboard() {
   }, [showFullDashboard, (profile as any)?.aiProfileGenerated, (user as any)?.id, toast]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`min-h-screen bg-gray-50 ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-6 py-4">
@@ -142,11 +145,12 @@ export default function Dashboard() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Plato</h1>
-                <p className="text-sm text-gray-600">AI Job Matching Platform</p>
+                <p className="text-sm text-gray-600">{t('dashboard.subtitle')}</p>
               </div>
             </div>
             
             <div className="flex items-center space-x-4">
+              <LanguageSwitcher />
               <button
                 onClick={() => openModal('userProfile')}
                 className="flex items-center space-x-2 hover:bg-gray-50 rounded-lg p-2 transition-colors"
@@ -164,7 +168,7 @@ export default function Dashboard() {
                 disabled={logout.isPending}
                 className="text-sm text-gray-600 hover:text-gray-800"
               >
-                {logout.isPending ? 'Signing Out...' : 'Sign Out'}
+                {logout.isPending ? t('common.signingOut') : t('common.signOut')}
               </button>
             </div>
           </div>

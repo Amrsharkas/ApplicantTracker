@@ -4,6 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Brain, Target, Zap, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthModal } from "@/components/AuthModal";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 // Import company logos
 import moderatorLogo from "@assets/image_1752003560205.png";
@@ -26,7 +28,7 @@ const companyLogos = [
 ];
 
 // Carousel component
-function CompanyCarousel() {
+function CompanyCarousel({ t }: { t: (key: string) => string }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
@@ -49,11 +51,10 @@ function CompanyCarousel() {
     >
       <div className="space-y-6">
         <h2 className="text-4xl font-bold text-slate-800">
-          Trusted by Industry Leaders
+          {t('landing.companies.title')}
         </h2>
         <p className="text-xl text-slate-600 max-w-4xl mx-auto">
-          Forward-thinking companies are already transforming their hiring with our AI-powered platform, 
-          discovering exceptional talent faster than ever before.
+          {t('landing.companies.subtitle')}
         </p>
       </div>
 
@@ -141,6 +142,7 @@ function CompanyCarousel() {
 
 export default function Landing() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { t, isRTL } = useLanguage();
   
   const openAuthModal = () => {
     setIsAuthModalOpen(true);
@@ -151,7 +153,7 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 overflow-hidden">
+    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 overflow-hidden ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Floating decorative elements */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="floating-element absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-xl"></div>
@@ -174,12 +176,15 @@ export default function Landing() {
               Plato
             </motion.div>
             
-            <Button 
-              onClick={openAuthModal}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-xl font-medium"
-            >
-              Sign In
-            </Button>
+            <div className="flex items-center space-x-4">
+              <LanguageSwitcher />
+              <Button 
+                onClick={openAuthModal}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-xl font-medium"
+              >
+                {t('auth.signIn')}
+              </Button>
+            </div>
           </div>
         </motion.header>
 
@@ -201,11 +206,7 @@ export default function Landing() {
                   transition={{ delay: 0.3 }}
                   className="text-5xl lg:text-6xl font-bold text-slate-900 leading-tight"
                 >
-                  Let AI help you get{" "}
-                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    discovered
-                  </span>{" "}
-                  by the right job
+{t('landing.hero.title')}
                 </motion.h1>
                 
                 <motion.p 
@@ -214,9 +215,7 @@ export default function Landing() {
                   transition={{ delay: 0.4 }}
                   className="text-xl text-slate-600 leading-relaxed"
                 >
-                  We turn your story into a professional profile that companies want. 
-                  Experience the future of job matching with AI-powered interviews and 
-                  intelligent recommendations.
+{t('landing.hero.subtitle')}
                 </motion.p>
               </div>
 
@@ -231,7 +230,7 @@ export default function Landing() {
                   size="lg"
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
                 >
-                  Get Started
+{t('landing.hero.getStarted')}
                 </Button>
                 
                 <Button 
@@ -239,7 +238,7 @@ export default function Landing() {
                   size="lg"
                   className="border-2 border-slate-300 hover:border-blue-500 text-slate-700 hover:text-blue-600 px-8 py-4 rounded-xl font-semibold text-lg"
                 >
-                  Learn More
+{t('landing.hero.learnMore')}
                 </Button>
               </motion.div>
 
@@ -341,7 +340,7 @@ export default function Landing() {
           </div>
 
           {/* Company Carousel Section */}
-          <CompanyCarousel />
+          <CompanyCarousel t={t} />
 
           {/* Bottom CTA Section */}
           <motion.div

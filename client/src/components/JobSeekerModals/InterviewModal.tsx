@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Mic, MicOff, MessageCircle, Phone, PhoneOff, Users, Briefcase, Target, User, CheckCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Mic, MicOff, MessageCircle, Phone, PhoneOff, Users, Briefcase, Target, User, CheckCircle, Languages } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRealtimeAPI } from '@/hooks/useRealtimeAPI';
 import { useResumeRequirement } from '@/hooks/useResumeRequirement';
@@ -14,6 +15,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { isUnauthorizedError } from '@/lib/authUtils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ResumeRequiredModal } from '@/components/ResumeRequiredModal';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface InterviewQuestion {
   question: string;
@@ -55,6 +57,7 @@ interface InterviewModalProps {
 export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const [mode, setMode] = useState<'types' | 'select' | 'text' | 'voice'>('types');
   const [selectedInterviewType, setSelectedInterviewType] = useState<string>('');
+  const [selectedInterviewLanguage, setSelectedInterviewLanguage] = useState<string>('english');
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -71,6 +74,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { t, isRTL } = useLanguage();
 
   // Check resume requirement
   const { hasResume, requiresResume, isLoading: isLoadingResume } = useResumeRequirement();
@@ -230,8 +234,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         ? `/api/interview/start/${selectedInterviewType}`
         : "/api/interview/start";
       
-      console.log('Starting interview with endpoint:', endpoint);
-      const response = await apiRequest("POST", endpoint, {});
+      console.log('Starting interview with endpoint:', endpoint, 'language:', selectedInterviewLanguage);
+      const response = await apiRequest("POST", endpoint, {
+        language: selectedInterviewLanguage
+      });
       return response;
     },
     onSuccess: (data) => {
@@ -711,7 +717,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         },
         credentials: 'include',
         body: JSON.stringify({ 
-          interviewType: selectedInterviewType 
+          interviewType: selectedInterviewType,
+          language: selectedInterviewLanguage
         })
       });
 
@@ -811,7 +818,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         },
         credentials: 'include',
         body: JSON.stringify({ 
-          interviewType: selectedInterviewType 
+          interviewType: selectedInterviewType,
+          language: selectedInterviewLanguage
         })
       });
 
@@ -1043,9 +1051,32 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const renderModeSelection = () => (
     <div className="space-y-6">
       <div className="text-center space-y-3">
-        <h3 className="text-lg font-semibold">Choose Your Interview Style</h3>
+        <h3 className="text-lg font-semibold">{t('interview.chooseStyle')}</h3>
         <p className="text-sm text-muted-foreground">
-          {selectedInterviewType.charAt(0).toUpperCase() + selectedInterviewType.slice(1)} Interview - Select how you'd like to experience your AI interview
+          {selectedInterviewType.charAt(0).toUpperCase() + selectedInterviewType.slice(1)} {t('interview.selectExperience')}
+        </p>
+      </div>
+      
+      {/* Language Selection */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-center space-x-2">
+          <Languages className="h-4 w-4 text-muted-foreground" />
+          <label className="text-sm font-medium">{t('interview.selectLanguage')}</label>
+        </div>
+        <Select 
+          value={selectedInterviewLanguage} 
+          onValueChange={setSelectedInterviewLanguage}
+        >
+          <SelectTrigger className="w-full max-w-xs mx-auto">
+            <SelectValue placeholder={t('interview.selectLanguage')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="english">{t('languages.english')}</SelectItem>
+            <SelectItem value="arabic">{t('languages.arabic')}</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground text-center">
+          {t('interview.languageNote')}
         </p>
       </div>
       
