@@ -63,6 +63,44 @@ const translations = {
     jobMatches: "Job Matches",
     applications: "Applications", 
     upcomingInterviews: "Upcoming Interviews",
+    jobPostings: "Job Postings",
+    
+    // Dashboard content
+    aiCuratedOpportunities: "AI-Curated Opportunities",
+    discoverPersonalizedJobs: "Discover personalized job matches based on your AI interview analysis and profile data",
+    trackApplicationProgress: "Track Application Progress",
+    monitorApplicationStatus: "Monitor your job applications and interview schedules across all platforms",
+    exploreOpportunities: "Explore New Opportunities",
+    browseLatestJobs: "Browse the latest job openings that match your skills and career goals",
+    viewUpcomingSchedule: "View Your Upcoming Schedule",
+    stayUpdated: "Stay updated with your confirmed interviews and important dates",
+    
+    // Stats and labels
+    responseRate: "response rate",
+    applicationResponseRate: "application response rate",
+    whyJobSeekingChallenging: "Why Job Seeking Is So Challenging",
+    
+    // Common actions
+    viewAll: "View All",
+    noDataAvailable: "No data available",
+    loadingData: "Loading data...",
+    
+    // Applications section
+    myApplications: "My Applications",
+    trackApplicationStatus: "Track your application status and progress",
+    
+    // Quick stats
+    quickStats: "Quick Stats",
+    jobMatchesLabel: "Job Matches",
+    applicationsLabel: "Applications",
+    profileCompletionLabel: "Profile Completion",
+    
+    // Industry challenge stats
+    avgJobSearchTime: "average job search time",
+    applicationsToGetOffer: "applications to get one offer",
+    sixMonths: "6 months",
+    oneHundredEighteen: "118",
+    twoPercent: "2%",
     
     // Forms
     personalDetails: "Personal Details",
@@ -183,6 +221,44 @@ const translations = {
     jobMatches: "الوظائف المناسبة",
     applications: "الطلبات",
     upcomingInterviews: "المقابلات القادمة",
+    jobPostings: "الوظائف المتاحة",
+    
+    // Dashboard content
+    aiCuratedOpportunities: "الفرص المختارة بالذكاء الاصطناعي",
+    discoverPersonalizedJobs: "اكتشف الوظائف المخصصة لك بناءً على تحليل مقابلة الذكاء الاصطناعي وبيانات ملفك الشخصي",
+    trackApplicationProgress: "تتبع تقدم الطلبات",
+    monitorApplicationStatus: "راقب طلبات العمل ومواعيد المقابلات عبر جميع المنصات",
+    exploreOpportunities: "استكشف الفرص الجديدة",
+    browseLatestJobs: "تصفح أحدث الوظائف المتاحة التي تناسب مهاراتك وأهدافك المهنية",
+    viewUpcomingSchedule: "اعرض جدولك القادم",
+    stayUpdated: "ابق محدثاً بمقابلاتك المؤكدة والتواريخ المهمة",
+    
+    // Stats and labels
+    responseRate: "معدل الرد",
+    applicationResponseRate: "معدل الرد على الطلبات",
+    whyJobSeekingChallenging: "لماذا البحث عن عمل صعب للغاية؟",
+    
+    // Common actions
+    viewAll: "عرض الكل",
+    noDataAvailable: "لا توجد بيانات متاحة",
+    loadingData: "جاري تحميل البيانات...",
+    
+    // Applications section
+    myApplications: "طلباتي",
+    trackApplicationStatus: "تتبع حالة وتقدم طلباتك",
+    
+    // Quick stats
+    quickStats: "إحصائيات سريعة",
+    jobMatchesLabel: "الوظائف المناسبة",
+    applicationsLabel: "الطلبات",
+    profileCompletionLabel: "اكتمال الملف",
+    
+    // Industry challenge stats
+    avgJobSearchTime: "متوسط وقت البحث عن عمل",
+    applicationsToGetOffer: "طلب للحصول على عرض واحد",
+    sixMonths: "٦ أشهر",
+    oneHundredEighteen: "١١٨",
+    twoPercent: "٢٪",
     
     // Forms
     personalDetails: "التفاصيل الشخصية",

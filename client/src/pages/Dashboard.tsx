@@ -304,11 +304,11 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <h4 className="text-2xl font-bold">{t('jobMatches')}</h4>
-                      <p className="text-blue-100 text-lg">AI-Curated Opportunities</p>
+                      <p className="text-blue-100 text-lg">{t('aiCuratedOpportunities')}</p>
                     </div>
                   </div>
                   <p className="text-blue-100 text-base leading-relaxed">
-                    Discover personalized job matches based on your AI interview analysis and profile data
+                    {t('discoverPersonalizedJobs')}
                   </p>
                 </button>
 
@@ -321,12 +321,12 @@ export default function Dashboard() {
                       <Briefcase className="h-8 w-8 text-white" />
                     </div>
                     <div>
-                      <h4 className="text-2xl font-bold">Job Postings</h4>
-                      <p className="text-green-100 text-lg">Browse All Opportunities</p>
+                      <h4 className="text-2xl font-bold">{t('jobPostings')}</h4>
+                      <p className="text-green-100 text-lg">{t('exploreOpportunities')}</p>
                     </div>
                   </div>
                   <p className="text-green-100 text-base leading-relaxed">
-                    Explore all available positions with smart filtering and AI-powered match scoring
+                    {t('browseLatestJobs')}
                   </p>
                 </button>
               </div>
@@ -342,11 +342,11 @@ export default function Dashboard() {
                       <MessageCircle className="h-6 w-6 text-white" />
                     </div>
                     <div className="text-left">
-                      <h4 className="text-xl font-bold">Upcoming Interviews</h4>
+                      <h4 className="text-xl font-bold">{t('upcomingInterviews')}</h4>
                       <p className="text-blue-100">
                         {(upcomingInterviews as any[]).length > 0 
                           ? `${(upcomingInterviews as any[]).length} interview${(upcomingInterviews as any[]).length > 1 ? 's' : ''} scheduled`
-                          : "Check your interview schedule"
+                          : t('stayUpdated')
                         }
                       </p>
                     </div>
@@ -366,8 +366,8 @@ export default function Dashboard() {
                       <FileText className="h-6 w-6 text-white" />
                     </div>
                     <div className="text-left">
-                      <h4 className="text-xl font-bold">My Applications</h4>
-                      <p className="text-purple-100">Track your application status and progress</p>
+                      <h4 className="text-xl font-bold">{t('myApplications')}</h4>
+                      <p className="text-purple-100">{t('trackApplicationStatus')}</p>
                     </div>
                   </div>
                   <div className="text-white text-2xl">→</div>
@@ -376,21 +376,21 @@ export default function Dashboard() {
 
               {/* Small Stats Section */}
               <div className="mt-8 pt-6 border-t border-gray-200">
-                <h4 className="text-sm font-medium text-gray-500 mb-3">Quick Stats</h4>
+                <h4 className="text-sm font-medium text-gray-500 mb-3">{t('quickStats')}</h4>
                 <div className="flex items-center space-x-8 text-sm">
                   <div className="flex items-center space-x-2">
                     <Target className="h-3 w-3 text-green-600" />
-                    <span className="text-gray-600">Job Matches:</span>
+                    <span className="text-gray-600">{t('jobMatchesLabel')}:</span>
                     <span className="font-medium text-gray-900">{(matches as any[]).length}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <FileText className="h-3 w-3 text-purple-600" />
-                    <span className="text-gray-600">Applications:</span>
+                    <span className="text-gray-600">{t('applicationsLabel')}:</span>
                     <span className="font-medium text-gray-900">{(applications as any[]).length}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <User className="h-3 w-3 text-blue-600" />
-                    <span className="text-gray-600">Profile Completion:</span>
+                    <span className="text-gray-600">{t('profileCompletionLabel')}:</span>
                     <span className="font-medium text-gray-900">{profileProgress}%</span>
                   </div>
                 </div>
@@ -399,19 +399,19 @@ export default function Dashboard() {
               {/* Compact Industry Stats */}
               <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
                 <div className="text-center">
-                  <h5 className="text-xs font-medium text-gray-500 mb-3">Why Job Seeking Is So Challenging</h5>
+                  <h5 className="text-xs font-medium text-gray-500 mb-3">{t('whyJobSeekingChallenging')}</h5>
                   <div className="flex justify-center items-center space-x-8 text-xs">
                     <div className="text-center">
-                      <div className="text-lg font-bold text-red-600">6 months</div>
-                      <p className="text-gray-600">average job search time</p>
+                      <div className="text-lg font-bold text-red-600">{t('sixMonths')}</div>
+                      <p className="text-gray-600">{t('avgJobSearchTime')}</p>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold text-orange-600">118</div>
-                      <p className="text-gray-600">applications to get one offer</p>
+                      <div className="text-lg font-bold text-orange-600">{t('oneHundredEighteen')}</div>
+                      <p className="text-gray-600">{t('applicationsToGetOffer')}</p>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold text-purple-600">2%</div>
-                      <p className="text-gray-600">application response rate</p>
+                      <div className="text-lg font-bold text-purple-600">{t('twoPercent')}</div>
+                      <p className="text-gray-600">{t('applicationResponseRate')}</p>
                     </div>
                   </div>
                 </div>
