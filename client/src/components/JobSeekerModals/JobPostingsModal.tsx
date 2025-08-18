@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmployerQuestionsModal } from "./EmployerQuestionsModal";
+import { SmartFilters } from "@/components/SmartFilters";
 import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft } from "lucide-react";
 
 // Country-City data structure
@@ -101,7 +102,9 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     careerLevel: "",
     jobCategory: "",
     jobType: "",
-    datePosted: ""
+    datePosted: "",
+    skills: [] as string[],
+    company: ""
   });
   const [expandedFilters, setExpandedFilters] = useState({
     workplace: true,
@@ -235,28 +238,10 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     },
   });
 
-  const { data: jobPostings = [], isLoading, error, refetch } = useQuery({
+  const { data: jobPostings = [], isLoading, error, refetch } = useQuery<JobPosting[]>({
     queryKey: ["/api/job-postings"],
     enabled: isOpen,
     refetchInterval: isOpen ? 30000 : false, // Auto-refresh every 30 seconds when modal is open
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to load job postings. Please try again.",
-        variant: "destructive",
-      });
-    },
   });
 
   const { data: userProfile } = useQuery({
@@ -761,231 +746,13 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
         <div className="flex h-[calc(95vh-120px)]">
           {/* Smart Filters Sidebar */}
-          <div className="w-80 border-r bg-gray-50 p-4 overflow-y-auto max-h-full">
-            <div className="space-y-1">
-              <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Smart Filters
-              </h3>
-              <p className="text-xs text-gray-600 mb-4">
-                {activeFiltersCount} active • Always available
-              </p>
-
-              {/* Workplace Filter */}
-              <div className="border-b pb-3 mb-3">
-                <button
-                  onClick={() => toggleFilter('workplace')}
-                  className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
-                >
-                  <span>Workplace</span>
-                  <div className="flex items-center gap-2">
-                    {filters.workplace.length > 0 && (
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                        {filters.workplace.length}
-                      </span>
-                    )}
-                    {expandedFilters.workplace ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </button>
-                {expandedFilters.workplace && (
-                  <div className="mt-2 space-y-2 pl-2">
-                    {['On-site', 'Remote', 'Hybrid'].map((option) => (
-                      <div key={option} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`workplace-${option}`}
-                          checked={filters.workplace.includes(option)}
-                          onCheckedChange={() => toggleWorkplaceFilter(option)}
-                        />
-                        <label
-                          htmlFor={`workplace-${option}`}
-                          className="text-sm text-gray-700 cursor-pointer"
-                        >
-                          {option}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Country Filter */}
-              <div className="border-b pb-3 mb-3">
-                <button
-                  onClick={() => toggleFilter('country')}
-                  className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
-                >
-                  <span>Country</span>
-                  {expandedFilters.country ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-                {expandedFilters.country && (
-                  <div className="mt-2 pl-2">
-                    <Select value={filters.country} onValueChange={(value) => {
-                      updateFilter('country', value);
-                      // Clear city when country changes
-                      updateFilter('city', '');
-                    }}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select country" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.keys(COUNTRIES_CITIES).map((country) => (
-                          <SelectItem key={country} value={country}>
-                            {country}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-
-              {/* City Filter */}
-              <div className="border-b pb-3 mb-3">
-                <button
-                  onClick={() => toggleFilter('city')}
-                  className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
-                >
-                  <span>City</span>
-                  {expandedFilters.city ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-                {expandedFilters.city && (
-                  <div className="mt-2 pl-2">
-                    <Select 
-                      value={filters.city} 
-                      onValueChange={(value) => updateFilter('city', value)}
-                      disabled={!filters.country}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder={
-                          filters.country ? "Select city" : "Select country first"
-                        } />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filters.country && COUNTRIES_CITIES[filters.country as keyof typeof COUNTRIES_CITIES]?.map((city) => (
-                          <SelectItem key={city} value={city}>
-                            {city}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-
-              {/* Career Level Filter */}
-              <div className="border-b pb-3 mb-3">
-                <button
-                  onClick={() => toggleFilter('careerLevel')}
-                  className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
-                >
-                  <span>Career Level</span>
-                  {expandedFilters.careerLevel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-                {expandedFilters.careerLevel && (
-                  <div className="mt-2 pl-2">
-                    <Select value={filters.careerLevel} onValueChange={(value) => updateFilter('careerLevel', value)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="entry">Entry Level</SelectItem>
-                        <SelectItem value="junior">Junior</SelectItem>
-                        <SelectItem value="mid">Mid Level</SelectItem>
-                        <SelectItem value="senior">Senior</SelectItem>
-                        <SelectItem value="lead">Lead</SelectItem>
-                        <SelectItem value="manager">Manager</SelectItem>
-                        <SelectItem value="director">Director</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-
-              {/* Job Category Filter */}
-              <div className="border-b pb-3 mb-3">
-                <button
-                  onClick={() => toggleFilter('jobCategory')}
-                  className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
-                >
-                  <span>Job Category</span>
-                  {expandedFilters.jobCategory ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-                {expandedFilters.jobCategory && (
-                  <div className="mt-2 pl-2">
-                    <Select value={filters.jobCategory} onValueChange={(value) => updateFilter('jobCategory', value)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="engineering">Engineering</SelectItem>
-                        <SelectItem value="marketing">Marketing</SelectItem>
-                        <SelectItem value="sales">Sales</SelectItem>
-                        <SelectItem value="finance">Finance</SelectItem>
-                        <SelectItem value="hr">Human Resources</SelectItem>
-                        <SelectItem value="design">Design</SelectItem>
-                        <SelectItem value="product">Product</SelectItem>
-                        <SelectItem value="operations">Operations</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-
-              {/* Job Type Filter */}
-              <div className="border-b pb-3 mb-3">
-                <button
-                  onClick={() => toggleFilter('jobType')}
-                  className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
-                >
-                  <span>Job Type</span>
-                  {expandedFilters.jobType ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-                {expandedFilters.jobType && (
-                  <div className="mt-2 pl-2">
-                    <Select value={filters.jobType} onValueChange={(value) => updateFilter('jobType', value)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="full-time">Full Time</SelectItem>
-                        <SelectItem value="part-time">Part Time</SelectItem>
-                        <SelectItem value="contract">Contract</SelectItem>
-                        <SelectItem value="freelance">Freelance</SelectItem>
-                        <SelectItem value="internship">Internship</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-
-              {/* Date Posted Filter */}
-              <div className="pb-3">
-                <button
-                  onClick={() => toggleFilter('datePosted')}
-                  className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
-                >
-                  <span>Date Posted</span>
-                  {expandedFilters.datePosted ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-                {expandedFilters.datePosted && (
-                  <div className="mt-2 pl-2">
-                    <Select value={filters.datePosted} onValueChange={(value) => updateFilter('datePosted', value)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select timeframe" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="today">Today</SelectItem>
-                        <SelectItem value="yesterday">Yesterday</SelectItem>
-                        <SelectItem value="week">Past Week</SelectItem>
-                        <SelectItem value="month">Past Month</SelectItem>
-                        <SelectItem value="3months">Past 3 Months</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <SmartFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+            onClearAll={clearAllFilters}
+            activeCount={activeFiltersCount}
+            isLoading={isFilteringInProgress}
+          />
 
           {/* Main Content */}
           <div className="flex-1 flex flex-col max-h-full">
