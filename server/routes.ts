@@ -1054,7 +1054,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                      updatedProfile?.technicalInterviewCompleted;
 
         if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
-          // Use centralized AI profile generation to prevent duplicates
+          // Generate final comprehensive profile only after ALL 3 interviews are complete
+          console.log(`🎯 All 3 interviews completed for user ${userId}. Generating final profile...`);
           const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService);
 
           res.json({ 
@@ -1064,7 +1065,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: `${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed! All interviews finished - your comprehensive profile has been generated.`
           });
         } else {
-          // Individual interview complete - determine next interview type
+          // Individual interview complete - STORE TEMPORARILY, don't send to Airtable yet
+          console.log(`📝 ${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed for user ${userId}. Storing responses temporarily...`);
+          
+          // Determine next interview type
           let nextInterviewType = null;
           if (interviewType === 'personal' && !updatedProfile?.professionalInterviewCompleted) {
             nextInterviewType = 'professional';
@@ -1316,7 +1320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                    updatedProfile?.technicalInterviewCompleted;
 
       if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
-        // Use centralized AI profile generation to prevent duplicates
+        // Generate final comprehensive profile only after ALL 3 interviews are complete
+        console.log(`🎯 All 3 interviews completed for user ${userId}. Generating final profile...`);
         const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService);
 
         res.json({ 
@@ -1326,6 +1331,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed! All interviews finished - your comprehensive profile has been generated.`
         });
       } else {
+        // Individual interview complete - STORE TEMPORARILY, don't send to Airtable yet
+        console.log(`📝 ${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed for user ${userId}. Storing responses temporarily...`);
         res.json({ 
           isComplete: true,
           allInterviewsCompleted: false,
@@ -1386,7 +1393,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                    updatedProfile?.technicalInterviewCompleted;
 
       if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
-        // Use centralized AI profile generation to prevent duplicates
+        // Generate final comprehensive profile only after ALL 3 interviews are complete
+        console.log(`🎯 All 3 voice interviews completed for user ${userId}. Generating final profile...`);
         const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService);
 
         // Update profile completion percentage
@@ -1399,7 +1407,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "All interviews completed! Your comprehensive AI profile has been generated successfully."
         });
       } else {
-        // Individual interview complete - determine next interview type
+        // Individual voice interview complete - STORE TEMPORARILY, don't send to Airtable yet
+        console.log(`📝 ${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} voice interview completed for user ${userId}. Storing responses temporarily...`);
+        
+        // Determine next interview type
         let nextInterviewType = null;
         if (interviewType === 'personal' && !updatedProfile?.professionalInterviewCompleted) {
           nextInterviewType = 'professional';
