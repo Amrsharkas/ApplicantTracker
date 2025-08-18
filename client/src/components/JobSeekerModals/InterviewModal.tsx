@@ -964,27 +964,32 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   }, [existingSession, currentSession]);
 
   const renderInterviewTypes = () => {
+    // Get completion status from user profile
+    const personalCompleted = userProfile?.personalInterviewCompleted || false;
+    const professionalCompleted = userProfile?.professionalInterviewCompleted || false;
+    const technicalCompleted = userProfile?.technicalInterviewCompleted || false;
+    
     const interviewTypes = (interviewTypesData && typeof interviewTypesData === 'object' && 'interviewTypes' in interviewTypesData) 
       ? (interviewTypesData as any).interviewTypes || [] : [
       {
         type: 'personal',
         title: 'Personal Interview',
         description: 'Understanding your personal self, background, and history',
-        completed: false,
+        completed: personalCompleted,
         questions: 5
       },
       {
         type: 'professional',
         title: 'Professional Interview',
         description: 'Exploring your career background and professional experience',
-        completed: false,
+        completed: professionalCompleted,
         questions: 7
       },
       {
         type: 'technical',
         title: 'Technical Interview',
         description: 'Dynamic assessment based on your field - problem solving and IQ evaluation',
-        completed: false,
+        completed: technicalCompleted,
         questions: 11
       }
     ];
