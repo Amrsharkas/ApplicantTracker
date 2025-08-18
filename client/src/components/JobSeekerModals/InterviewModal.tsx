@@ -164,8 +164,13 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             return [...prev, { role: 'assistant', content: aiText }];
           });
           
-          // Check if the AI is concluding the interview
-          if (aiText.toLowerCase().includes('conclude')) {
+          // Check if the AI is concluding the interview in English or Arabic
+          const conclusionKeywords = [
+            'conclude', 'final', 'wrap up', 'end of interview', 'that concludes',
+            'أتمنى لك', 'شكراً لك', 'انتهت المقابلة', 'نهاية المقابلة', 'هذا كل شيء', 'عفواً'
+          ];
+          
+          if (conclusionKeywords.some(keyword => aiText.toLowerCase().includes(keyword.toLowerCase()))) {
             setIsInterviewConcluded(true);
           }
         }
@@ -366,8 +371,13 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         setMessages(prev => [...prev, nextQuestion]);
         setCurrentQuestionIndex(prev => prev + 1);
         
-        // Check if the question contains "conclude" to show submit button
-        if (data.nextQuestion.toLowerCase().includes('conclude')) {
+        // Check if the question contains conclusion keywords in English or Arabic to show submit button
+        const conclusionKeywords = [
+          'conclude', 'final', 'wrap up', 'end of interview', 'that concludes',
+          'أتمنى لك', 'شكراً لك', 'انتهت المقابلة', 'نهاية المقابلة', 'هذا كل شيء', 'عفواً'
+        ];
+        
+        if (conclusionKeywords.some(keyword => data.nextQuestion.toLowerCase().includes(keyword.toLowerCase()))) {
           setIsInterviewConcluded(true);
         }
       }
