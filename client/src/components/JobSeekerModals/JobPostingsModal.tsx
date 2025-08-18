@@ -283,7 +283,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     }
   }, [isOpen]);
 
-  // Trigger AI filtering when filters or search query change
+  // Trigger simple filtering when filters or search query change
   useEffect(() => {
     if (isOpen && jobPostings.length > 0) {
       // Check if any filters are active
@@ -299,8 +299,11 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       );
 
       if (hasActiveFilters) {
-        // Apply AI filtering
-        aiFilterMutation.mutate(filters);
+        // Apply simple frontend filtering instead of AI filtering
+        const filtered = getSimpleFilteredJobs();
+        setFilteredJobs(filtered);
+        setFilterMessage("");
+        setHasExpandedSearch(false);
       } else {
         // No filters active, show all jobs
         setFilteredJobs([]);
@@ -319,12 +322,24 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
   }).length;
 
   // Simple, reliable filtering that actually works
-  const getFilteredJobs = () => {
+  const getSimpleFilteredJobs = () => {
     if (!jobPostings || jobPostings.length === 0) return [];
     
-
+    console.log('🔍 Simple filtering - Input:', { 
+      totalJobs: jobPostings.length, 
+      filters,
+      searchQuery,
+      sampleJob: jobPostings[0] ? {
+        title: jobPostings[0].jobTitle,
+        location: jobPostings[0].location,
+        employmentType: jobPostings[0].employmentType,
+        experienceLevel: jobPostings[0].experienceLevel
+      } : null
+    });
     
-    const filteredResults = jobPostings.filter((job: JobPosting) => {
+    const result = jobPostings.filter((job: JobPosting) => {
+      let matchesAll = true;
+
       // Search query filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -335,65 +350,112 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
           job.location?.toLowerCase().includes(query) ||
           job.skills?.some(skill => skill.toLowerCase().includes(query))
         );
-        if (!matchesSearch) return false;
+        if (!matchesSearch) {
+          console.log('❌ Search filter failed for:', job.jobTitle, 'query:', query);
+          matchesAll = false;
+        }
       }
 
-      // Smart workplace filter with OR logic
-      if (filters.workplace.length > 0) {
-        const jobWorkplace = job.employmentType?.toLowerCase() || "";
+      // Workplace filter - be more lenient
+      if (filters.workplace.length > 0 && matchesAll) {
+        const jobType = job.employmentType?.toLowerCase() || "";
         const jobLocation = job.location?.toLowerCase() || "";
-        const jobDescription = job.jobDescription?.toLowerCase() || "";
         
         const hasWorkplaceMatch = filters.workplace.some(w => {
           const filterValue = w.toLowerCase();
-          return (
-            jobWorkplace.includes(filterValue) ||
-            jobLocation.includes(filterValue) ||
-            jobDescription.includes(filterValue) ||
-            (filterValue === "on-site" && (jobWorkplace.includes("full") || jobLocation.includes("office"))) ||
-            (filterValue === "remote" && (jobWorkplace.includes("remote") || jobLocation.includes("remote"))) ||
-            (filterValue === "hybrid" && (jobWorkplace.includes("hybrid") || jobLocation.includes("hybrid")))
-          );
+          // More flexible matching
+          if (filterValue === "remote") {
+            return jobType.includes("remote") || jobLocation.includes("remote");
+          } else if (filterValue === "on-site") {
+            return jobType.includes("full") || jobType.includes("office") || jobLocation.includes("office");
+          } else if (filterValue === "hybrid") {
+            return jobType.includes("hybrid") || jobLocation.includes("hybrid");
+          }
+          return jobType.includes(filterValue) || jobLocation.includes(filterValue);
         });
-        if (!hasWorkplaceMatch) return false;
+        
+        if (!hasWorkplaceMatch) {
+          console.log('❌ Workplace filter failed for:', job.jobTitle, 'jobType:', jobType, 'workplace filters:', filters.workplace);
+          matchesAll = false;
+        }
       }
 
-      // Smart location filters with partial matching
-      if (filters.country && job.location) {
-        const locationLower = job.location.toLowerCase();
+      // Location filters - make them very lenient
+      if (filters.country && matchesAll) {
+        const locationLower = job.location?.toLowerCase() || "";
         const countryLower = filters.country.toLowerCase();
-        if (!locationLower.includes(countryLower)) return false;
+        
+        // If no location data, don't filter out
+        if (locationLower && !locationLower.includes(countryLower)) {
+          console.log('❌ Country filter failed for:', job.jobTitle, 'location:', locationLower, 'country filter:', countryLower);
+          matchesAll = false;
+        }
       }
 
-      if (filters.city && job.location) {
-        const locationLower = job.location.toLowerCase();
+      if (filters.city && matchesAll) {
+        const locationLower = job.location?.toLowerCase() || "";
         const cityLower = filters.city.toLowerCase();
-        if (!locationLower.includes(cityLower)) return false;
+        
+        // If no location data, don't filter out
+        if (locationLower && !locationLower.includes(cityLower)) {
+          console.log('❌ City filter failed for:', job.jobTitle, 'location:', locationLower, 'city filter:', cityLower);
+          matchesAll = false;
+        }
       }
 
-      // Smart career level filter
-      if (filters.careerLevel && job.experienceLevel) {
-        const experienceLower = job.experienceLevel.toLowerCase();
-        const levelLower = filters.careerLevel.toLowerCase();
-        if (!experienceLower.includes(levelLower)) return false;
-      }
-
-      // Smart job category filter
-      if (filters.jobCategory) {
-        const jobCategory = job.jobTitle.toLowerCase();
-        const categoryLower = filters.jobCategory.toLowerCase();
-        if (!jobCategory.includes(categoryLower)) return false;
-      }
-
-      // Smart job type filter
-      if (filters.jobType && job.employmentType) {
-        const typeLower = job.employmentType.toLowerCase();
+      // Job type filter - be more flexible
+      if (filters.jobType && matchesAll) {
+        const typeLower = job.employmentType?.toLowerCase() || "";
         const filterTypeLower = filters.jobType.toLowerCase();
-        if (!typeLower.includes(filterTypeLower)) return false;
+        
+        // Map common filter terms to job types
+        let typeMatches = false;
+        if (filterTypeLower === "full-time") {
+          typeMatches = typeLower.includes("full");
+        } else if (filterTypeLower === "part-time") {
+          typeMatches = typeLower.includes("part");
+        } else if (filterTypeLower === "contract") {
+          typeMatches = typeLower.includes("contract") || typeLower.includes("freelance");
+        } else if (filterTypeLower === "internship") {
+          typeMatches = typeLower.includes("intern");
+        } else {
+          typeMatches = typeLower.includes(filterTypeLower);
+        }
+        
+        if (!typeMatches) {
+          console.log('❌ Job type filter failed for:', job.jobTitle, 'jobType:', typeLower, 'filter:', filterTypeLower);
+          matchesAll = false;
+        }
       }
 
-      return true;
+      // Career level filter
+      if (filters.careerLevel && matchesAll) {
+        const experienceLower = job.experienceLevel?.toLowerCase() || "";
+        const levelLower = filters.careerLevel.toLowerCase();
+        
+        if (experienceLower && !experienceLower.includes(levelLower)) {
+          console.log('❌ Career level filter failed for:', job.jobTitle, 'level:', experienceLower, 'filter:', levelLower);
+          matchesAll = false;
+        }
+      }
+
+      if (matchesAll) {
+        console.log('✅ Job passed all filters:', job.jobTitle);
+      }
+
+      return matchesAll;
     });
+    
+    console.log('🔍 Filtering result:', { 
+      originalCount: jobPostings.length, 
+      filteredCount: result.length,
+      activeFilters: Object.entries(filters).filter(([key, value]) => {
+        if (Array.isArray(value)) return value.length > 0;
+        return value !== "";
+      })
+    });
+    
+    return result;
 
     // If we have enough results, return them
     if (primaryFiltered.length >= 3) {
