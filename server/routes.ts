@@ -345,30 +345,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Name, email, and summary are required" });
       }
 
-      // Prepare profile data with manual CV information
+      // Prepare comprehensive profile data with manual CV information - ensure ALL fields are saved
       const profileData = {
         userId,
+        
+        // Personal Details from Manual CV
         name: cvData.name,
         email: cvData.email,
         phone: cvData.phone,
         birthdate: cvData.birthdate ? new Date(cvData.birthdate) : null,
+        gender: cvData.gender,
         nationality: cvData.nationality,
+        maritalStatus: cvData.maritalStatus,
+        dependents: cvData.dependents,
+        militaryStatus: cvData.militaryStatus,
+        
+        // Location
         country: cvData.country,
         city: cvData.city,
+        willingToRelocate: cvData.willingToRelocate,
+        
+        // Online Presence & Portfolio
+        linkedinUrl: cvData.linkedinUrl,
+        githubUrl: cvData.githubUrl,
+        websiteUrl: cvData.websiteUrl,
+        facebookUrl: cvData.facebookUrl,
+        twitterUrl: cvData.twitterUrl,
+        instagramUrl: cvData.instagramUrl,
+        youtubeUrl: cvData.youtubeUrl,
+        otherUrls: cvData.otherUrls,
+        
+        // Work Eligibility & Preferences
+        preferredWorkCountries: cvData.preferredWorkCountries,
+        workplaceSettings: cvData.workplaceSettings,
         
         // Education and experience as JSONB
         degrees: cvData.degrees,
+        currentEducationLevel: cvData.currentEducationLevel,
+        highSchools: cvData.highSchools,
         workExperiences: cvData.workExperiences,
-        languages: cvData.languages,
-        certifications: cvData.certifications,
+        totalYearsOfExperience: cvData.totalYearsOfExperience,
         
-        // Skills
+        // Languages and Skills
+        languages: cvData.languages,
         skillsList: [...(cvData.technicalSkills || []), ...(cvData.softSkills || [])],
         
-        // Career preferences
+        // Certifications and Training
+        certifications: cvData.certifications,
+        trainingCourses: cvData.trainingCourses,
+        
+        // Career preferences and job targeting
         jobTypes: cvData.jobTypes,
-        workplaceSettings: cvData.workplaceSettings,
-        preferredWorkCountries: cvData.preferredWorkCountries,
+        jobTitles: cvData.jobTitles,
+        jobCategories: cvData.jobCategories,
+        careerLevel: cvData.careerLevel,
+        minimumSalary: cvData.minimumSalary,
+        hideSalaryFromCompanies: cvData.hideSalaryFromCompanies,
+        jobSearchStatus: cvData.jobSearchStatus,
         
         // Professional summary and achievements
         summary: cvData.summary,
@@ -2487,34 +2520,83 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       const userId = (req.user as any)?.id;
       const profileData = req.body;
       
-      // Map frontend comprehensive profile to database format (partial update)
+      // Map frontend comprehensive profile to database format (COMPLETE FIELD MAPPING for auto-save)
       const dbProfileData: Partial<InsertApplicantProfile> = {
         userId,
+        
+        // Personal Details Section - Enhanced
         name: profileData.personalDetails ? `${profileData.personalDetails.firstName || ''} ${profileData.personalDetails.lastName || ''}`.trim() : undefined,
         email: profileData.personalDetails?.email,
         phone: profileData.personalDetails?.phone,
         birthdate: profileData.personalDetails?.dateOfBirth || undefined,
         gender: profileData.personalDetails?.gender,
         nationality: profileData.personalDetails?.nationality,
+        maritalStatus: profileData.personalDetails?.maritalStatus,
+        dependents: profileData.personalDetails?.dependents,
+        militaryStatus: profileData.personalDetails?.militaryStatus,
+        
+        // Location
         country: profileData.personalDetails?.address?.country,
         city: profileData.personalDetails?.address?.city,
+        
+        // Online Presence & Portfolio - ALL social media fields
         linkedinUrl: profileData.linksPortfolio?.linkedinUrl,
         githubUrl: profileData.linksPortfolio?.githubUrl,
         websiteUrl: profileData.linksPortfolio?.personalWebsite,
+        facebookUrl: profileData.linksPortfolio?.facebookUrl,
+        twitterUrl: profileData.linksPortfolio?.twitterUrl,
+        instagramUrl: profileData.linksPortfolio?.instagramUrl,
+        youtubeUrl: profileData.linksPortfolio?.youtubeUrl,
         otherUrls: profileData.linksPortfolio?.otherLinks?.map((link: any) => link.url),
+        
+        // Work Eligibility & Preferences
         willingToRelocate: profileData.workEligibility?.willingToRelocate,
         preferredWorkCountries: profileData.workEligibility?.preferredLocations,
         workplaceSettings: profileData.workEligibility?.workArrangement,
+        
+        // Languages
         languages: profileData.languages,
-        skillsList: profileData.skills?.technicalSkills?.map((skill: any) => skill.skill) || [],
+        
+        // Skills - Enhanced to include both technical and soft skills
+        skillsList: [
+          ...(profileData.skills?.technicalSkills?.map((skill: any) => skill.skill) || []),
+          ...(profileData.skills?.softSkills?.map((skill: any) => skill.skill) || [])
+        ],
+        
+        // Education - Enhanced with level detection
         degrees: profileData.education,
+        currentEducationLevel: profileData.education?.[0]?.degree,
+        highSchools: profileData.education?.filter((edu: any) => 
+          edu.degree?.toLowerCase().includes('high school')),
+        
+        // Experience - Enhanced with years calculation
         workExperiences: profileData.experience,
+        totalYearsOfExperience: profileData.experience?.reduce((total: number, exp: any) => {
+          if (exp.startDate && exp.endDate) {
+            const start = new Date(exp.startDate);
+            const end = new Date(exp.endDate);
+            const years = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365);
+            return total + Math.max(0, years);
+          }
+          return total;
+        }, 0),
+        
+        // Certifications & Training
         certifications: profileData.certifications,
+        trainingCourses: profileData.trainingCourses,
+        
+        // Awards & Achievements
+        achievements: profileData.awards?.map((award: any) => award.title || award.name).join(', '),
+        
+        // Career Preferences & Job Target - Complete mapping
         jobTitles: profileData.jobTarget?.targetRoles,
         jobCategories: profileData.jobTarget?.targetIndustries,
         careerLevel: profileData.jobTarget?.careerLevel,
         minimumSalary: profileData.jobTarget?.salaryExpectations?.minSalary,
+        hideSalaryFromCompanies: profileData.jobTarget?.salaryExpectations?.negotiable === false,
         jobTypes: profileData.jobTarget?.jobTypes,
+        jobSearchStatus: profileData.jobTarget?.jobSearchStatus,
+        
         updatedAt: new Date()
       };
 
@@ -2536,6 +2618,41 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
+  // Test endpoint to verify profile field mapping (development only)
+  app.get("/api/debug/profile-fields/:userId", requireAuth, async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const profile = await storage.getApplicantProfile(userId);
+      
+      if (!profile) {
+        return res.status(404).json({ message: "Profile not found" });
+      }
+      
+      // Return all profile fields to verify what's actually saved in the database
+      const fieldReport = {
+        userId: profile.userId,
+        fieldsPopulated: Object.keys(profile).reduce((acc, key) => {
+          const value = profile[key as keyof typeof profile];
+          acc[key] = {
+            hasValue: value !== null && value !== undefined && value !== '',
+            type: typeof value,
+            isArray: Array.isArray(value),
+            arrayLength: Array.isArray(value) ? value.length : undefined,
+            value: value // Show actual value for debugging
+          };
+          return acc;
+        }, {} as Record<string, any>),
+        totalFieldsWithData: Object.values(profile).filter(v => v !== null && v !== undefined && v !== '').length,
+        completionPercentage: profile.completionPercentage
+      };
+      
+      res.json(fieldReport);
+    } catch (error) {
+      console.error("Error fetching profile fields:", error);
+      res.status(500).json({ message: "Failed to fetch profile fields" });
+    }
+  });
+
   // Save comprehensive profile (allows incremental saving)
   app.post("/api/comprehensive-profile", requireAuth, async (req, res) => {
     try {
@@ -2549,36 +2666,82 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       // Map frontend comprehensive profile to database format (handle partial data)
       const dbProfileData: InsertApplicantProfile = {
         userId,
+        
+        // Personal Details Section
         name: profileData.personalDetails?.firstName && profileData.personalDetails?.lastName 
           ? `${profileData.personalDetails.firstName} ${profileData.personalDetails.lastName}`.trim() 
           : null,
         email: profileData.personalDetails?.email || null,
         phone: profileData.personalDetails?.phone || null,
-        birthdate: profileData.personalDetails.dateOfBirth || null,
-        gender: profileData.personalDetails.gender || null,
-        nationality: profileData.personalDetails.nationality || null,
-        country: profileData.personalDetails.address?.country || null,
-        city: profileData.personalDetails.address?.city || null,
+        birthdate: profileData.personalDetails?.dateOfBirth || null,
+        gender: profileData.personalDetails?.gender || null,
+        nationality: profileData.personalDetails?.nationality || null,
+        
+        // Location
+        country: profileData.personalDetails?.address?.country || null,
+        city: profileData.personalDetails?.address?.city || null,
+        
+        // Additional personal fields
+        maritalStatus: profileData.personalDetails?.maritalStatus || null,
+        dependents: profileData.personalDetails?.dependents || null,
+        militaryStatus: profileData.personalDetails?.militaryStatus || null,
+        
+        // Online Presence & Portfolio
         linkedinUrl: profileData.linksPortfolio?.linkedinUrl || null,
         githubUrl: profileData.linksPortfolio?.githubUrl || null,
         websiteUrl: profileData.linksPortfolio?.personalWebsite || null,
+        facebookUrl: profileData.linksPortfolio?.facebookUrl || null,
+        twitterUrl: profileData.linksPortfolio?.twitterUrl || null,
+        instagramUrl: profileData.linksPortfolio?.instagramUrl || null,
+        youtubeUrl: profileData.linksPortfolio?.youtubeUrl || null,
         otherUrls: profileData.linksPortfolio?.otherLinks?.map((link: any) => link.url) || null,
+        
+        // Work Eligibility & Preferences
         willingToRelocate: profileData.workEligibility?.willingToRelocate || null,
         preferredWorkCountries: profileData.workEligibility?.preferredLocations || null,
         workplaceSettings: profileData.workEligibility?.workArrangement || null,
+        
+        // Languages
         languages: profileData.languages || null,
+        
+        // Skills
         skillsList: [
           ...(profileData.skills?.technicalSkills?.map((skill: any) => skill.skill) || []),
           ...(profileData.skills?.softSkills?.map((skill: any) => skill.skill) || [])
         ],
+        
+        // Education
         degrees: profileData.education || null,
+        currentEducationLevel: profileData.education?.[0]?.degree || null,
+        highSchools: profileData.education?.filter((edu: any) => edu.degree?.toLowerCase().includes('high school')) || null,
+        
+        // Work Experience  
         workExperiences: profileData.experience || null,
+        totalYearsOfExperience: profileData.experience?.reduce((total: number, exp: any) => {
+          if (exp.startDate && exp.endDate) {
+            const start = new Date(exp.startDate);
+            const end = new Date(exp.endDate);
+            const years = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365);
+            return total + Math.max(0, years);
+          }
+          return total;
+        }, 0) || null,
+        
+        // Certifications & Training
         certifications: profileData.certifications || null,
+        trainingCourses: profileData.trainingCourses || null,
+        
+        // Awards & Achievements
+        achievements: profileData.awards?.map((award: any) => award.title || award.name).join(', ') || null,
+        
+        // Career Preferences & Job Target
         jobTitles: profileData.jobTarget?.targetRoles || null,
         jobCategories: profileData.jobTarget?.targetIndustries || null,
         careerLevel: profileData.jobTarget?.careerLevel || null,
         minimumSalary: profileData.jobTarget?.salaryExpectations?.minSalary || null,
+        hideSalaryFromCompanies: profileData.jobTarget?.salaryExpectations?.negotiable === false || null,
         jobTypes: profileData.jobTarget?.jobTypes || null,
+        jobSearchStatus: profileData.jobTarget?.jobSearchStatus || null,
         
         // Calculate completion percentage based on filled sections
         completionPercentage: calculateCompletionPercentage(profileData),
