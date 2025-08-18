@@ -322,7 +322,9 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
   const getFilteredJobs = () => {
     if (!jobPostings || jobPostings.length === 0) return [];
     
-    return jobPostings.filter((job: JobPosting) => {
+
+    
+    const filteredResults = jobPostings.filter((job: JobPosting) => {
       // Search query filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
