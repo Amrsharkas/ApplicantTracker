@@ -3,6 +3,8 @@
 ## Overview
 Plato is an AI-powered job matching platform that connects applicants with relevant job opportunities. It leverages AI interviews to deeply understand applicants' skills, experience, and career goals, then matches them to suitable roles. The platform focuses on creating comprehensive applicant profiles and streamlining the job application process, serving as a bridge between job seekers and employers.
 
+**Platform Status:** Ready for public launch (August 18, 2025) - Database completely reset with zero test data.
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
