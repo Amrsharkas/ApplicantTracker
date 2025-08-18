@@ -47,10 +47,14 @@ export class AIInterviewAgent {
 
 ${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Generate this welcome message ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Generate this welcome message entirely in English.'}
 
-CANDIDATE DATA:
-${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : 'Candidate'}
-${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
-${userData?.yearsOfExperience ? `Experience: ${userData.yearsOfExperience} years` : ''}
+COMPREHENSIVE CANDIDATE DATA:
+${userData?.name ? `Name: ${userData.name}` : 'Candidate'}
+${userData?.workExperiences?.[0] ? `Current Role: ${userData.workExperiences[0].position} at ${userData.workExperiences[0].company}` : ''}
+${userData?.totalYearsOfExperience ? `Experience: ${userData.totalYearsOfExperience} years` : ''}
+${userData?.degrees?.[0] ? `Education: ${userData.degrees[0].degree} in ${userData.degrees[0].field} from ${userData.degrees[0].institution}` : ''}
+${userData?.skillsList?.length ? `Key Skills: ${userData.skillsList.slice(0, 3).join(', ')}` : ''}
+${userData?.careerLevel ? `Career Level: ${userData.careerLevel}` : ''}
+${userData?.jobTitles?.[0] ? `Target Role: ${userData.jobTitles[0]}` : ''}
 
 Create a professional welcome message that:
 1. Welcomes them to Plato professionally
@@ -116,33 +120,63 @@ ${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in 
 
 CRITICAL: You must first analyze the candidate's profile in full detail before asking any questions. You already know about this candidate and must reference their profile naturally in your questions.
 
-CANDIDATE PROFILE DATA:
-${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
+COMPREHENSIVE CANDIDATE PROFILE DATA:
+=== PERSONAL DETAILS ===
+${userData?.name ? `Full Name: ${userData.name}` : ''}
 ${userData?.email ? `Email: ${userData.email}` : ''}
 ${userData?.phone ? `Phone: ${userData.phone}` : ''}
-${userData?.location ? `Location: ${userData.location}` : ''}
-${userData?.age ? `Age: ${userData.age}` : ''}
-${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
-${userData?.yearsOfExperience ? `Years of Experience: ${userData.yearsOfExperience}` : ''}
-${userData?.education ? `Education: ${userData.education}${userData.university ? ` from ${userData.university}` : ''}` : ''}
-${userData?.skills ? `Skills: ${userData.skills.join(', ')}` : ''}
-${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
+${userData?.birthdate ? `Date of Birth: ${new Date(userData.birthdate).toLocaleDateString()}` : ''}
+${userData?.gender ? `Gender: ${userData.gender}` : ''}
+${userData?.nationality ? `Nationality: ${userData.nationality}` : ''}
+${userData?.maritalStatus ? `Marital Status: ${userData.maritalStatus}` : ''}
+${userData?.dependents ? `Dependents: ${userData.dependents}` : ''}
+${userData?.militaryStatus ? `Military Status: ${userData.militaryStatus}` : ''}
+
+=== LOCATION & MOBILITY ===
+${userData?.country ? `Country: ${userData.country}` : ''}
+${userData?.city ? `City: ${userData.city}` : ''}
+${userData?.willingToRelocate !== undefined ? `Willing to Relocate: ${userData.willingToRelocate ? 'Yes' : 'No'}` : ''}
+${userData?.preferredWorkCountries?.length ? `Preferred Work Countries: ${userData.preferredWorkCountries.join(', ')}` : ''}
+${userData?.workplaceSettings ? `Work Arrangement Preference: ${userData.workplaceSettings}` : ''}
+
+=== ONLINE PRESENCE & PORTFOLIO ===
 ${userData?.linkedinUrl ? `LinkedIn: ${userData.linkedinUrl}` : ''}
 ${userData?.githubUrl ? `GitHub: ${userData.githubUrl}` : ''}
-${userData?.portfolioUrl ? `Portfolio: ${userData.portfolioUrl}` : ''}
-${userData?.careerGoals ? `Career Goals: ${userData.careerGoals}` : ''}
-${userData?.targetRole ? `Target Role: ${userData.targetRole}` : ''}
-${userData?.targetCompany ? `Target Company: ${userData.targetCompany}` : ''}
-${userData?.targetSalary ? `Target Salary: ${userData.targetSalary}` : ''}
-${userData?.workStyle ? `Work Style: ${userData.workStyle}` : ''}
-${userData?.previousRole ? `Previous Role: ${userData.previousRole}` : ''}
-${userData?.previousCompany ? `Previous Company: ${userData.previousCompany}` : ''}
-${userData?.achievements ? `Achievements: ${userData.achievements}` : ''}
-${userData?.certifications ? `Certifications: ${userData.certifications}` : ''}
-${userData?.languages ? `Languages: ${userData.languages.join(', ')}` : ''}
-${userData?.availability ? `Availability: ${userData.availability}` : ''}
-${userData?.remotePreference ? `Remote Preference: ${userData.remotePreference}` : ''}
-${userData?.salaryExpectation ? `Salary Expectation: ${userData.salaryExpectation}` : ''}
+${userData?.websiteUrl ? `Personal Website: ${userData.websiteUrl}` : ''}
+${userData?.facebookUrl ? `Facebook: ${userData.facebookUrl}` : ''}
+${userData?.twitterUrl ? `Twitter: ${userData.twitterUrl}` : ''}
+${userData?.instagramUrl ? `Instagram: ${userData.instagramUrl}` : ''}
+${userData?.youtubeUrl ? `YouTube: ${userData.youtubeUrl}` : ''}
+${userData?.otherUrls?.length ? `Other URLs: ${userData.otherUrls.join(', ')}` : ''}
+
+=== EDUCATION ===
+${userData?.currentEducationLevel ? `Current Education Level: ${userData.currentEducationLevel}` : ''}
+${userData?.degrees?.length ? `Degrees:\n${userData.degrees.map((deg: any) => `  • ${deg.degree} in ${deg.field || 'N/A'} from ${deg.institution} (${deg.startDate} - ${deg.endDate || 'Present'})${deg.gpa ? ` - GPA: ${deg.gpa}` : ''}`).join('\n')}` : ''}
+${userData?.highSchools?.length ? `High School Education:\n${userData.highSchools.map((hs: any) => `  • ${hs.institution} (${hs.startDate} - ${hs.endDate || 'Present'})`).join('\n')}` : ''}
+
+=== WORK EXPERIENCE ===
+${userData?.totalYearsOfExperience ? `Total Years of Experience: ${userData.totalYearsOfExperience}` : ''}
+${userData?.workExperiences?.length ? `Work Experience:\n${userData.workExperiences.map((exp: any) => `  • ${exp.position} at ${exp.company} (${exp.startDate} - ${exp.endDate || 'Present'})\n    Responsibilities: ${exp.responsibilities || 'N/A'}`).join('\n')}` : ''}
+
+=== SKILLS & LANGUAGES ===
+${userData?.skillsList?.length ? `Skills: ${userData.skillsList.join(', ')}` : ''}
+${userData?.languages?.length ? `Languages:\n${userData.languages.map((lang: any) => `  • ${lang.language}: ${lang.proficiency}${lang.certification ? ` (Certified: ${lang.certification})` : ''}`).join('\n')}` : ''}
+
+=== CERTIFICATIONS & TRAINING ===
+${userData?.certifications?.length ? `Certifications:\n${userData.certifications.map((cert: any) => `  • ${cert.name} by ${cert.issuer || 'N/A'} (${cert.issueDate}${cert.expiryDate ? ` - expires ${cert.expiryDate}` : ''})`).join('\n')}` : ''}
+${userData?.trainingCourses?.length ? `Training Courses:\n${userData.trainingCourses.map((course: any) => `  • ${course.name} by ${course.provider || 'N/A'}`).join('\n')}` : ''}
+
+=== CAREER GOALS & PREFERENCES ===
+${userData?.jobTitles?.length ? `Target Job Titles: ${userData.jobTitles.join(', ')}` : ''}
+${userData?.jobCategories?.length ? `Target Industries: ${userData.jobCategories.join(', ')}` : ''}
+${userData?.careerLevel ? `Career Level: ${userData.careerLevel}` : ''}
+${userData?.minimumSalary ? `Minimum Salary Expectation: ${userData.minimumSalary}` : ''}
+${userData?.jobTypes?.length ? `Preferred Job Types: ${userData.jobTypes.join(', ')}` : ''}
+${userData?.jobSearchStatus ? `Job Search Status: ${userData.jobSearchStatus}` : ''}
+
+=== ACHIEVEMENTS & SUMMARY ===
+${userData?.achievements ? `Notable Achievements: ${userData.achievements}` : ''}
+${userData?.summary ? `Professional Summary: ${userData.summary}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
 
 ${resumeAnalysis ? `
@@ -247,21 +281,63 @@ Return ONLY JSON:
 
 ${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
 
-COMPLETE CANDIDATE PROFILE:
-${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
+COMPREHENSIVE CANDIDATE PROFILE DATA:
+=== PERSONAL DETAILS ===
+${userData?.name ? `Full Name: ${userData.name}` : ''}
 ${userData?.email ? `Email: ${userData.email}` : ''}
 ${userData?.phone ? `Phone: ${userData.phone}` : ''}
-${userData?.location ? `Location: ${userData.location}` : ''}
-${userData?.age ? `Age: ${userData.age}` : ''}
-${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
-${userData?.yearsOfExperience ? `Years of Experience: ${userData.yearsOfExperience}` : ''}
-${userData?.education ? `Education: ${userData.education}${userData.university ? ` from ${userData.university}` : ''}` : ''}
-${userData?.skills ? `Skills: ${userData.skills.join(', ')}` : ''}
-${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
-${userData?.careerGoals ? `Career Goals: ${userData.careerGoals}` : ''}
-${userData?.targetRole ? `Target Role: ${userData.targetRole}` : ''}
-${userData?.targetCompany ? `Target Company: ${userData.targetCompany}` : ''}
-${userData?.workStyle ? `Work Style: ${userData.workStyle}` : ''}
+${userData?.birthdate ? `Date of Birth: ${new Date(userData.birthdate).toLocaleDateString()}` : ''}
+${userData?.gender ? `Gender: ${userData.gender}` : ''}
+${userData?.nationality ? `Nationality: ${userData.nationality}` : ''}
+${userData?.maritalStatus ? `Marital Status: ${userData.maritalStatus}` : ''}
+${userData?.dependents ? `Dependents: ${userData.dependents}` : ''}
+${userData?.militaryStatus ? `Military Status: ${userData.militaryStatus}` : ''}
+
+=== LOCATION & MOBILITY ===
+${userData?.country ? `Country: ${userData.country}` : ''}
+${userData?.city ? `City: ${userData.city}` : ''}
+${userData?.willingToRelocate !== undefined ? `Willing to Relocate: ${userData.willingToRelocate ? 'Yes' : 'No'}` : ''}
+${userData?.preferredWorkCountries?.length ? `Preferred Work Countries: ${userData.preferredWorkCountries.join(', ')}` : ''}
+${userData?.workplaceSettings ? `Work Arrangement Preference: ${userData.workplaceSettings}` : ''}
+
+=== ONLINE PRESENCE & PORTFOLIO ===
+${userData?.linkedinUrl ? `LinkedIn: ${userData.linkedinUrl}` : ''}
+${userData?.githubUrl ? `GitHub: ${userData.githubUrl}` : ''}
+${userData?.websiteUrl ? `Personal Website: ${userData.websiteUrl}` : ''}
+${userData?.facebookUrl ? `Facebook: ${userData.facebookUrl}` : ''}
+${userData?.twitterUrl ? `Twitter: ${userData.twitterUrl}` : ''}
+${userData?.instagramUrl ? `Instagram: ${userData.instagramUrl}` : ''}
+${userData?.youtubeUrl ? `YouTube: ${userData.youtubeUrl}` : ''}
+${userData?.otherUrls?.length ? `Other URLs: ${userData.otherUrls.join(', ')}` : ''}
+
+=== EDUCATION ===
+${userData?.currentEducationLevel ? `Current Education Level: ${userData.currentEducationLevel}` : ''}
+${userData?.degrees?.length ? `Degrees:\n${userData.degrees.map((deg: any) => `  • ${deg.degree} in ${deg.field || 'N/A'} from ${deg.institution} (${deg.startDate} - ${deg.endDate || 'Present'})${deg.gpa ? ` - GPA: ${deg.gpa}` : ''}`).join('\n')}` : ''}
+${userData?.highSchools?.length ? `High School Education:\n${userData.highSchools.map((hs: any) => `  • ${hs.institution} (${hs.startDate} - ${hs.endDate || 'Present'})`).join('\n')}` : ''}
+
+=== WORK EXPERIENCE ===
+${userData?.totalYearsOfExperience ? `Total Years of Experience: ${userData.totalYearsOfExperience}` : ''}
+${userData?.workExperiences?.length ? `Work Experience:\n${userData.workExperiences.map((exp: any) => `  • ${exp.position} at ${exp.company} (${exp.startDate} - ${exp.endDate || 'Present'})\n    Responsibilities: ${exp.responsibilities || 'N/A'}`).join('\n')}` : ''}
+
+=== SKILLS & LANGUAGES ===
+${userData?.skillsList?.length ? `Skills: ${userData.skillsList.join(', ')}` : ''}
+${userData?.languages?.length ? `Languages:\n${userData.languages.map((lang: any) => `  • ${lang.language}: ${lang.proficiency}${lang.certification ? ` (Certified: ${lang.certification})` : ''}`).join('\n')}` : ''}
+
+=== CERTIFICATIONS & TRAINING ===
+${userData?.certifications?.length ? `Certifications:\n${userData.certifications.map((cert: any) => `  • ${cert.name} by ${cert.issuer || 'N/A'} (${cert.issueDate}${cert.expiryDate ? ` - expires ${cert.expiryDate}` : ''})`).join('\n')}` : ''}
+${userData?.trainingCourses?.length ? `Training Courses:\n${userData.trainingCourses.map((course: any) => `  • ${course.name} by ${course.provider || 'N/A'}`).join('\n')}` : ''}
+
+=== CAREER GOALS & PREFERENCES ===
+${userData?.jobTitles?.length ? `Target Job Titles: ${userData.jobTitles.join(', ')}` : ''}
+${userData?.jobCategories?.length ? `Target Industries: ${userData.jobCategories.join(', ')}` : ''}
+${userData?.careerLevel ? `Career Level: ${userData.careerLevel}` : ''}
+${userData?.minimumSalary ? `Minimum Salary Expectation: ${userData.minimumSalary}` : ''}
+${userData?.jobTypes?.length ? `Preferred Job Types: ${userData.jobTypes.join(', ')}` : ''}
+${userData?.jobSearchStatus ? `Job Search Status: ${userData.jobSearchStatus}` : ''}
+
+=== ACHIEVEMENTS & SUMMARY ===
+${userData?.achievements ? `Notable Achievements: ${userData.achievements}` : ''}
+${userData?.summary ? `Professional Summary: ${userData.summary}` : ''}
 ${userData?.previousRole ? `Previous Role: ${userData.previousRole}` : ''}
 ${userData?.previousCompany ? `Previous Company: ${userData.previousCompany}` : ''}
 ${userData?.achievements ? `Achievements: ${userData.achievements}` : ''}
@@ -383,23 +459,63 @@ Return ONLY JSON:
 
 ${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
 
-COMPLETE CANDIDATE PROFILE:
-${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
+COMPREHENSIVE CANDIDATE PROFILE DATA:
+=== PERSONAL DETAILS ===
+${userData?.name ? `Full Name: ${userData.name}` : ''}
 ${userData?.email ? `Email: ${userData.email}` : ''}
 ${userData?.phone ? `Phone: ${userData.phone}` : ''}
-${userData?.location ? `Location: ${userData.location}` : ''}
-${userData?.age ? `Age: ${userData.age}` : ''}
-${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
-${userData?.yearsOfExperience ? `Years of Experience: ${userData.yearsOfExperience}` : ''}
-${userData?.education ? `Education: ${userData.education}${userData.university ? ` from ${userData.university}` : ''}` : ''}
-${userData?.skills ? `Skills: ${userData.skills.join(', ')}` : ''}
-${userData?.summary ? `Profile Summary: ${userData.summary}` : ''}
-${userData?.careerGoals ? `Career Goals: ${userData.careerGoals}` : ''}
-${userData?.targetRole ? `Target Role: ${userData.targetRole}` : ''}
-${userData?.workStyle ? `Work Style: ${userData.workStyle}` : ''}
-${userData?.previousRole ? `Previous Role: ${userData.previousRole}` : ''}
-${userData?.achievements ? `Achievements: ${userData.achievements}` : ''}
-${userData?.certifications ? `Certifications: ${userData.certifications}` : ''}
+${userData?.birthdate ? `Date of Birth: ${new Date(userData.birthdate).toLocaleDateString()}` : ''}
+${userData?.gender ? `Gender: ${userData.gender}` : ''}
+${userData?.nationality ? `Nationality: ${userData.nationality}` : ''}
+${userData?.maritalStatus ? `Marital Status: ${userData.maritalStatus}` : ''}
+${userData?.dependents ? `Dependents: ${userData.dependents}` : ''}
+${userData?.militaryStatus ? `Military Status: ${userData.militaryStatus}` : ''}
+
+=== LOCATION & MOBILITY ===
+${userData?.country ? `Country: ${userData.country}` : ''}
+${userData?.city ? `City: ${userData.city}` : ''}
+${userData?.willingToRelocate !== undefined ? `Willing to Relocate: ${userData.willingToRelocate ? 'Yes' : 'No'}` : ''}
+${userData?.preferredWorkCountries?.length ? `Preferred Work Countries: ${userData.preferredWorkCountries.join(', ')}` : ''}
+${userData?.workplaceSettings ? `Work Arrangement Preference: ${userData.workplaceSettings}` : ''}
+
+=== ONLINE PRESENCE & PORTFOLIO ===
+${userData?.linkedinUrl ? `LinkedIn: ${userData.linkedinUrl}` : ''}
+${userData?.githubUrl ? `GitHub: ${userData.githubUrl}` : ''}
+${userData?.websiteUrl ? `Personal Website: ${userData.websiteUrl}` : ''}
+${userData?.facebookUrl ? `Facebook: ${userData.facebookUrl}` : ''}
+${userData?.twitterUrl ? `Twitter: ${userData.twitterUrl}` : ''}
+${userData?.instagramUrl ? `Instagram: ${userData.instagramUrl}` : ''}
+${userData?.youtubeUrl ? `YouTube: ${userData.youtubeUrl}` : ''}
+${userData?.otherUrls?.length ? `Other URLs: ${userData.otherUrls.join(', ')}` : ''}
+
+=== EDUCATION ===
+${userData?.currentEducationLevel ? `Current Education Level: ${userData.currentEducationLevel}` : ''}
+${userData?.degrees?.length ? `Degrees:\n${userData.degrees.map((deg: any) => `  • ${deg.degree} in ${deg.field || 'N/A'} from ${deg.institution} (${deg.startDate} - ${deg.endDate || 'Present'})${deg.gpa ? ` - GPA: ${deg.gpa}` : ''}`).join('\n')}` : ''}
+${userData?.highSchools?.length ? `High School Education:\n${userData.highSchools.map((hs: any) => `  • ${hs.institution} (${hs.startDate} - ${hs.endDate || 'Present'})`).join('\n')}` : ''}
+
+=== WORK EXPERIENCE ===
+${userData?.totalYearsOfExperience ? `Total Years of Experience: ${userData.totalYearsOfExperience}` : ''}
+${userData?.workExperiences?.length ? `Work Experience:\n${userData.workExperiences.map((exp: any) => `  • ${exp.position} at ${exp.company} (${exp.startDate} - ${exp.endDate || 'Present'})\n    Responsibilities: ${exp.responsibilities || 'N/A'}`).join('\n')}` : ''}
+
+=== SKILLS & LANGUAGES ===
+${userData?.skillsList?.length ? `Skills: ${userData.skillsList.join(', ')}` : ''}
+${userData?.languages?.length ? `Languages:\n${userData.languages.map((lang: any) => `  • ${lang.language}: ${lang.proficiency}${lang.certification ? ` (Certified: ${lang.certification})` : ''}`).join('\n')}` : ''}
+
+=== CERTIFICATIONS & TRAINING ===
+${userData?.certifications?.length ? `Certifications:\n${userData.certifications.map((cert: any) => `  • ${cert.name} by ${cert.issuer || 'N/A'} (${cert.issueDate}${cert.expiryDate ? ` - expires ${cert.expiryDate}` : ''})`).join('\n')}` : ''}
+${userData?.trainingCourses?.length ? `Training Courses:\n${userData.trainingCourses.map((course: any) => `  • ${course.name} by ${course.provider || 'N/A'}`).join('\n')}` : ''}
+
+=== CAREER GOALS & PREFERENCES ===
+${userData?.jobTitles?.length ? `Target Job Titles: ${userData.jobTitles.join(', ')}` : ''}
+${userData?.jobCategories?.length ? `Target Industries: ${userData.jobCategories.join(', ')}` : ''}
+${userData?.careerLevel ? `Career Level: ${userData.careerLevel}` : ''}
+${userData?.minimumSalary ? `Minimum Salary Expectation: ${userData.minimumSalary}` : ''}
+${userData?.jobTypes?.length ? `Preferred Job Types: ${userData.jobTypes.join(', ')}` : ''}
+${userData?.jobSearchStatus ? `Job Search Status: ${userData.jobSearchStatus}` : ''}
+
+=== ACHIEVEMENTS & SUMMARY ===
+${userData?.achievements ? `Notable Achievements: ${userData.achievements}` : ''}
+${userData?.summary ? `Professional Summary: ${userData.summary}` : ''}
 ${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
 
 ${resumeAnalysis ? `
