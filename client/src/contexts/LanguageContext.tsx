@@ -117,20 +117,71 @@ const translations = {
     // Landing page
     landing: {
       hero: {
-        title: "Find Your Dream Job with AI-Powered Precision",
-        subtitle: "Transform your career journey with intelligent job matching and comprehensive AI interviews that showcase your true potential.",
-        getStarted: "Get Started",
+        title: "Get Your Dream Job with Precision AI Matching",
+        subtitle: "Navigate your career journey with intelligent job discovery and AI-powered profile analysis that reveals your true potential.",
+        getStarted: "Start Now",
         learnMore: "Learn More"
+      },
+      features: {
+        aiPoweredMatching: "AI-Powered Matching",
+        smartInterviews: "Smart Interviews", 
+        instantResults: "Instant Results",
+        aiInterview: {
+          title: "AI Interview",
+          description: "Have a natural conversation with our AI to build your professional profile automatically"
+        },
+        smartMatching: {
+          title: "Smart Matching",
+          description: "Get matched to jobs with precision scoring based on your skills, experience, and goals"
+        },
+        instantResultsFeature: {
+          title: "Instant Results",
+          description: "See your matches immediately with detailed scoring and application tracking"
+        }
       },
       companies: {
         title: "Trusted by Leading Companies",
-        subtitle: "Join thousands of professionals who have found their perfect career match through our AI-powered platform"
+        subtitle: "Join thousands of professionals who have found their perfect career match through our AI-powered platform",
+        testimonial: "Revolutionary approach to talent acquisition",
+        subtitle2: "Join the companies shaping the future of hiring"
+      },
+      cta: {
+        title: "Ready to find your perfect job match?",
+        subtitle: "Join thousands of professionals who've discovered their dream careers with AI-powered job matching",
+        startJourney: "Start Your Journey"
       }
     },
     
     // Auth
     auth: {
-      signIn: "Sign In"
+      signIn: "Sign In",
+      signUp: "Sign Up", 
+      email: "Email",
+      password: "Password",
+      confirmPassword: "Confirm Password",
+      firstName: "First Name",
+      lastName: "Last Name",
+      username: "Username",
+      enterEmail: "Enter your email",
+      enterPassword: "Enter your password",
+      confirmYourPassword: "Confirm your password",
+      firstNamePlaceholder: "First name",
+      lastNamePlaceholder: "Last name",
+      usernamePlaceholder: "Username",
+      usernameOptional: "Username (Optional)",
+      chooseUsername: "Choose a username",
+      createPassword: "Create a password",
+      signingIn: "Signing In...",
+      signingUp: "Signing Up...",
+      createAccount: "Create Account",
+      invalidEmail: "Invalid email address",
+      passwordRequired: "Password is required",
+      passwordMinLength: "Password must be at least 6 characters",
+      firstNameRequired: "First name is required",
+      lastNameRequired: "Last name is required",
+      usernameMinLength: "Username must be at least 3 characters",
+      passwordsDontMatch: "Passwords don't match",
+      welcomeToPlato: "Welcome to Plato"
     },
     
     // Interview Modal
@@ -282,15 +333,66 @@ const translations = {
         getStarted: "ابدأ الآن",
         learnMore: "اعرف المزيد"
       },
+      features: {
+        aiPoweredMatching: "المطابقة بالذكاء الاصطناعي",
+        smartInterviews: "مقابلات ذكية",
+        instantResults: "نتائج فورية",
+        aiInterview: {
+          title: "مقابلة الذكاء الاصطناعي",
+          description: "أجرِ محادثة طبيعية مع الذكاء الاصطناعي لبناء ملفك المهني تلقائياً"
+        },
+        smartMatching: {
+          title: "المطابقة الذكية", 
+          description: "احصل على وظائف مطابقة بدقة مع تقييم شامل يعتمد على مهاراتك وخبرتك وأهدافك"
+        },
+        instantResultsFeature: {
+          title: "نتائج فورية",
+          description: "اطلع على مطابقاتك فوراً مع تقييم مفصل وتتبع للطلبات"
+        }
+      },
       companies: {
         title: "موثوق من قبل الشركات الرائدة",
-        subtitle: "انضم إلى آلاف المحترفين الذين وجدوا المطابقة المهنية المثالية من خلال منصتنا المدعومة بالذكاء الاصطناعي"
+        subtitle: "انضم إلى آلاف المحترفين الذين وجدوا المطابقة المهنية المثالية من خلال منصتنا المدعومة بالذكاء الاصطناعي",
+        testimonial: "نهج ثوري في اكتساب المواهب",
+        subtitle2: "انضم إلى الشركات التي تشكل مستقبل التوظيف"
+      },
+      cta: {
+        title: "هل أنت مستعد للعثور على وظيفتك المثالية؟",
+        subtitle: "انضم إلى آلاف المحترفين الذين اكتشفوا وظائف أحلامهم بمطابقة الذكاء الاصطناعي",
+        startJourney: "ابدأ رحلتك"
       }
     },
     
     // Auth
     auth: {
-      signIn: "تسجيل الدخول"
+      signIn: "تسجيل الدخول",
+      signUp: "إنشاء حساب",
+      email: "البريد الإلكتروني",
+      password: "كلمة المرور",
+      confirmPassword: "تأكيد كلمة المرور",
+      firstName: "الاسم الأول",
+      lastName: "اسم العائلة",
+      username: "اسم المستخدم",
+      enterEmail: "أدخل بريدك الإلكتروني",
+      enterPassword: "أدخل كلمة المرور",
+      confirmYourPassword: "أكد كلمة المرور",
+      firstNamePlaceholder: "الاسم الأول",
+      lastNamePlaceholder: "اسم العائلة",
+      usernamePlaceholder: "اسم المستخدم",
+      usernameOptional: "اسم المستخدم (اختياري)",
+      chooseUsername: "اختر اسم المستخدم",
+      createPassword: "أنشئ كلمة مرور",
+      signingIn: "جاري تسجيل الدخول...",
+      signingUp: "جاري إنشاء الحساب...",
+      createAccount: "إنشاء حساب",
+      invalidEmail: "عنوان بريد إلكتروني غير صحيح",
+      passwordRequired: "كلمة المرور مطلوبة",
+      passwordMinLength: "يجب أن تكون كلمة المرور ٦ أحرف على الأقل",
+      firstNameRequired: "الاسم الأول مطلوب",
+      lastNameRequired: "اسم العائلة مطلوب",
+      usernameMinLength: "يجب أن يكون اسم المستخدم ٣ أحرف على الأقل",
+      passwordsDontMatch: "كلمات المرور غير متطابقة",
+      welcomeToPlato: "أهلاً بك في بلاتو"
     },
   }
 };

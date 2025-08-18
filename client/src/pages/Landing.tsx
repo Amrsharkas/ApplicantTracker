@@ -130,10 +130,10 @@ function CompanyCarousel({ t }: { t: (key: string) => string }) {
 
       <div className="text-center space-y-3">
         <p className="text-slate-700 font-semibold text-xl">
-          "Revolutionary approach to talent acquisition"
+          "{t('landing.companies.testimonial')}"
         </p>
         <p className="text-slate-500 text-base">
-          Join the companies shaping the future of hiring
+          {t('landing.companies.subtitle2')}
         </p>
       </div>
     </motion.div>
@@ -251,15 +251,15 @@ export default function Landing() {
               >
                 <div className="flex items-center gap-2 text-slate-600">
                   <CheckCircle className="w-5 h-5 text-green-500" />
-                  <span className="font-medium">AI-Powered Matching</span>
+                  <span className="font-medium">{t('landing.features.aiPoweredMatching')}</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-600">
                   <CheckCircle className="w-5 h-5 text-green-500" />
-                  <span className="font-medium">Smart Interviews</span>
+                  <span className="font-medium">{t('landing.features.smartInterviews')}</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-600">
                   <CheckCircle className="w-5 h-5 text-green-500" />
-                  <span className="font-medium">Instant Results</span>
+                  <span className="font-medium">{t('landing.features.instantResults')}</span>
                 </div>
               </motion.div>
             </motion.div>
@@ -283,9 +283,9 @@ export default function Landing() {
                         <Brain className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-slate-800 text-lg mb-2">AI Interview</h3>
+                        <h3 className="font-semibold text-slate-800 text-lg mb-2">{t('landing.features.aiInterview.title')}</h3>
                         <p className="text-slate-600">
-                          Have a natural conversation with our AI to build your professional profile automatically.
+                          {t('landing.features.aiInterview.description')}
                         </p>
                       </div>
                     </div>
@@ -305,9 +305,9 @@ export default function Landing() {
                         <Target className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-slate-800 text-lg mb-2">Smart Matching</h3>
+                        <h3 className="font-semibold text-slate-800 text-lg mb-2">{t('landing.features.smartMatching.title')}</h3>
                         <p className="text-slate-600">
-                          Get matched to jobs with precision scoring based on your skills, experience, and goals.
+                          {t('landing.features.smartMatching.description')}
                         </p>
                       </div>
                     </div>
@@ -327,9 +327,9 @@ export default function Landing() {
                         <Zap className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-slate-800 text-lg mb-2">Instant Results</h3>
+                        <h3 className="font-semibold text-slate-800 text-lg mb-2">{t('landing.features.instantResultsFeature.title')}</h3>
                         <p className="text-slate-600">
-                          See your matches immediately with detailed scoring and application tracking.
+                          {t('landing.features.instantResultsFeature.description')}
                         </p>
                       </div>
                     </div>
@@ -350,17 +350,17 @@ export default function Landing() {
             className="text-center mt-20 space-y-6"
           >
             <h2 className="text-3xl font-bold text-slate-800">
-              Ready to find your perfect job match?
+              {t('landing.cta.title')}
             </h2>
             <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-              Join thousands of professionals who've discovered their dream careers with AI-powered job matching.
+              {t('landing.cta.subtitle')}
             </p>
             <Button 
               onClick={openAuthModal}
               size="lg"
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-12 py-4 rounded-xl font-semibold text-xl shadow-lg hover:shadow-xl transition-all duration-300"
             >
-              Start Your Journey
+              {t('landing.cta.startJourney')}
             </Button>
           </motion.div>
         </main>

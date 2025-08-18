@@ -9,26 +9,21 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLogin, useRegister } from "@/hooks/useAuth";
 import { Eye, EyeOff, X } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
-});
+type LoginFormData = {
+  email: string;
+  password: string;
+};
 
-const registerSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string(),
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  username: z.string().min(3, "Username must be at least 3 characters").optional(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
-type RegisterFormData = z.infer<typeof registerSchema>;
+type RegisterFormData = {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  firstName: string;
+  lastName: string;
+  username?: string;
+};
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -38,9 +33,28 @@ interface AuthModalProps {
 export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { t } = useLanguage();
   
   const loginMutation = useLogin();
   const registerMutation = useRegister();
+
+  // Create schemas with translated error messages
+  const loginSchema = z.object({
+    email: z.string().email(t('auth.invalidEmail')),
+    password: z.string().min(1, t('auth.passwordRequired')),
+  });
+
+  const registerSchema = z.object({
+    email: z.string().email(t('auth.invalidEmail')),
+    password: z.string().min(6, t('auth.passwordMinLength')),
+    confirmPassword: z.string(),
+    firstName: z.string().min(1, t('auth.firstNameRequired')),
+    lastName: z.string().min(1, t('auth.lastNameRequired')),
+    username: z.string().min(3, t('auth.usernameMinLength')).optional(),
+  }).refine((data) => data.password === data.confirmPassword, {
+    message: t('auth.passwordsDontMatch'),
+    path: ["confirmPassword"],
+  });
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -85,24 +99,24 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Welcome to Plato
+{t('auth.welcomeToPlato')}
           </DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="signin" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin">Sign In</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsTrigger value="signin">{t('auth.signIn')}</TabsTrigger>
+            <TabsTrigger value="signup">{t('auth.signUp')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="signin" className="space-y-4">
             <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="login-email">Email</Label>
+                <Label htmlFor="login-email">{t('auth.email')}</Label>
                 <Input
                   id="login-email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder={t('auth.enterEmail')}
                   {...loginForm.register("email")}
                   className={loginForm.formState.errors.email ? "border-red-500" : ""}
                 />
@@ -112,12 +126,12 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="login-password">Password</Label>
+                <Label htmlFor="login-password">{t('auth.password')}</Label>
                 <div className="relative">
                   <Input
                     id="login-password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
+                    placeholder={t('auth.enterPassword')}
                     {...loginForm.register("password")}
                     className={loginForm.formState.errors.password ? "border-red-500" : ""}
                   />
@@ -153,7 +167,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 disabled={loginMutation.isPending}
               >
-                {loginMutation.isPending ? "Signing In..." : "Sign In"}
+                {loginMutation.isPending ? t('auth.signingIn') : t('auth.signIn')}
               </Button>
             </form>
           </TabsContent>
@@ -162,10 +176,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="firstName">{t('auth.firstName')}</Label>
                   <Input
                     id="firstName"
-                    placeholder="First name"
+                    placeholder={t('auth.firstNamePlaceholder')}
                     {...registerForm.register("firstName")}
                     className={registerForm.formState.errors.firstName ? "border-red-500" : ""}
                   />
@@ -175,10 +189,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="lastName">{t('auth.lastName')}</Label>
                   <Input
                     id="lastName"
-                    placeholder="Last name"
+                    placeholder={t('auth.lastNamePlaceholder')}
                     {...registerForm.register("lastName")}
                     className={registerForm.formState.errors.lastName ? "border-red-500" : ""}
                   />
@@ -189,11 +203,11 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="register-email">Email</Label>
+                <Label htmlFor="register-email">{t('auth.email')}</Label>
                 <Input
                   id="register-email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder={t('auth.enterEmail')}
                   {...registerForm.register("email")}
                   className={registerForm.formState.errors.email ? "border-red-500" : ""}
                 />
@@ -203,10 +217,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="username">Username (Optional)</Label>
+                <Label htmlFor="username">{t('auth.usernameOptional')}</Label>
                 <Input
                   id="username"
-                  placeholder="Choose a username"
+                  placeholder={t('auth.chooseUsername')}
                   {...registerForm.register("username")}
                   className={registerForm.formState.errors.username ? "border-red-500" : ""}
                 />
@@ -216,12 +230,12 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="register-password">Password</Label>
+                <Label htmlFor="register-password">{t('auth.password')}</Label>
                 <div className="relative">
                   <Input
                     id="register-password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Create a password"
+                    placeholder={t('auth.createPassword')}
                     {...registerForm.register("password")}
                     className={registerForm.formState.errors.password ? "border-red-500" : ""}
                   />
@@ -245,12 +259,12 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm your password"
+                    placeholder={t('auth.confirmYourPassword')}
                     {...registerForm.register("confirmPassword")}
                     className={registerForm.formState.errors.confirmPassword ? "border-red-500" : ""}
                   />
@@ -286,7 +300,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 disabled={registerMutation.isPending}
               >
-                {registerMutation.isPending ? "Creating Account..." : "Create Account"}
+                {registerMutation.isPending ? t('auth.signingUp') : t('auth.createAccount')}
               </Button>
             </form>
           </TabsContent>
