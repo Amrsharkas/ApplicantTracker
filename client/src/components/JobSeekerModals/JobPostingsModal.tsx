@@ -283,35 +283,47 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     }
   }, [isOpen]);
 
+  // Check if any filters are applied - SINGLE SOURCE OF TRUTH
+  const hasActiveFilters = !!(
+    filters.jobType ||
+    (filters.workplace && filters.workplace.length > 0) ||
+    filters.country ||
+    filters.city ||
+    filters.careerLevel ||
+    filters.jobCategory ||
+    filters.datePosted ||
+    searchQuery
+  );
+
   // Trigger simple filtering when filters or search query change
   useEffect(() => {
     if (isOpen && jobPostings.length > 0) {
-      // Check if any filters are active
-      const hasActiveFilters = (
-        filters.workplace.length > 0 ||
-        filters.country !== "" ||
-        filters.city !== "" ||
-        filters.careerLevel !== "" ||
-        filters.jobCategory !== "" ||
-        filters.jobType !== "" ||
-        filters.datePosted !== "" ||
-        searchQuery !== ""
-      );
+      console.log('🔍 useEffect triggered:', { 
+        hasActiveFilters, 
+        filters, 
+        searchQuery,
+        jobPostingsCount: jobPostings.length 
+      });
 
       if (hasActiveFilters) {
         // Apply simple frontend filtering instead of AI filtering
         const filtered = getSimpleFilteredJobs();
+        console.log('🔍 Setting filtered jobs:', { 
+          originalCount: jobPostings.length, 
+          filteredCount: filtered.length 
+        });
         setFilteredJobs(filtered);
         setFilterMessage("");
         setHasExpandedSearch(false);
       } else {
         // No filters active, show all jobs
+        console.log('🔍 No filters active, clearing filtered jobs');
         setFilteredJobs([]);
         setFilterMessage("");
         setHasExpandedSearch(false);
       }
     }
-  }, [filters, searchQuery, jobPostings, isOpen]);
+  }, [filters, searchQuery, jobPostings, isOpen, hasActiveFilters]);
 
   // Calculate active filters count
   const activeFiltersCount = Object.entries(filters).filter(([key, value]) => {
@@ -329,12 +341,12 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       totalJobs: jobPostings.length, 
       filters,
       searchQuery,
-      sampleJob: jobPostings[0] ? {
-        title: jobPostings[0].jobTitle,
-        location: jobPostings[0].location,
-        employmentType: jobPostings[0].employmentType,
-        experienceLevel: jobPostings[0].experienceLevel
-      } : null
+      allJobs: jobPostings.map(job => ({
+        title: job.jobTitle,
+        location: job.location,
+        employmentType: job.employmentType,
+        experienceLevel: job.experienceLevel
+      }))
     });
     
     const result = jobPostings.filter((job: JobPosting) => {
@@ -608,20 +620,15 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     return isNaN(finalScore) ? 50 : finalScore; // Fallback to 50 if NaN
   };
 
-  // Check if any filters are applied
-  const hasActiveFilters = !!(
-    filters.jobType ||
-    (filters.workplace && filters.workplace.length > 0) ||
-    filters.country ||
-    filters.city ||
-    filters.careerLevel ||
-    filters.jobCategory ||
-    filters.datePosted ||
-    searchQuery
-  );
-
   // Display logic: filtered jobs when filters active, otherwise all jobs
   const displayedJobs = hasActiveFilters ? filteredJobs : jobPostings;
+  
+  console.log('🔍 Display logic:', { 
+    hasActiveFilters, 
+    filteredJobsLength: filteredJobs.length, 
+    jobPostingsLength: jobPostings.length,
+    displayedJobsLength: displayedJobs.length 
+  });
 
   // Helper functions
   const toggleFilter = (filterType: keyof typeof expandedFilters) => {
