@@ -87,6 +87,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       
       dc.addEventListener('message', (e) => {
         const serverEvent = JSON.parse(e.data);
+        console.log('📨 Voice interview event:', serverEvent.type, serverEvent);
         
         // Handle specific events
         if (serverEvent.type === 'response.audio.done') {
@@ -96,8 +97,10 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
           setIsSpeaking(true);
           options.onAudioStart?.();
         } else if (serverEvent.type === 'input_audio_buffer.speech_started') {
+          console.log('👂 User started speaking');
           setIsListening(true);
         } else if (serverEvent.type === 'input_audio_buffer.speech_stopped') {
+          console.log('👂 User stopped speaking - triggering AI response');
           setIsListening(false);
           // Trigger AI response after user stops speaking
           setTimeout(() => {
@@ -117,6 +120,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       });
       
       dc.addEventListener('open', () => {
+        console.log('🎤 Voice interview connection established - AI ready to talk');
         setIsConnected(true);
         setIsConnecting(false);
         
@@ -201,6 +205,7 @@ This focused approach ensures we understand them comprehensively while respectin
         dc.send(JSON.stringify(sessionUpdate));
         
         // Start the conversation
+        console.log('🚀 Sending initial conversation start command to AI');
         const responseCreate = {
           type: 'response.create',
           response: {
@@ -209,6 +214,34 @@ This focused approach ensures we understand them comprehensively while respectin
         };
         
         dc.send(JSON.stringify(responseCreate));
+        
+        // Add a timeout to detect if AI doesn't respond
+        setTimeout(() => {
+          if (!options.onMessage) return;
+          
+          console.log('⚠️ AI hasn\'t responded in 10 seconds - checking connection');
+          // Send a fallback message to ensure AI starts talking
+          const fallbackCreate = {
+            type: 'conversation.item.create',
+            item: {
+              type: 'message',
+              role: 'assistant',
+              content: [{ 
+                type: 'text', 
+                text: 'Hello! I\'m ready to begin your interview. Can you hear me clearly?' 
+              }]
+            }
+          };
+          dc.send(JSON.stringify(fallbackCreate));
+          
+          const responseCreate2 = {
+            type: 'response.create',
+            response: {
+              modalities: ['text', 'audio']
+            }
+          };
+          dc.send(JSON.stringify(responseCreate2));
+        }, 10000);
       });
       
       // Create offer and set up connection
