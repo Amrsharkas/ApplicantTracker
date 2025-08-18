@@ -22,6 +22,89 @@ const upload = multer({
 
 const resumeService = new ResumeService();
 
+// Centralized AI profile generation with deduplication
+const profileGenerationLock = new Map<string, Promise<any>>();
+
+async function generateComprehensiveAIProfile(userId: string, updatedProfile: any, storage: any, aiInterviewService: any, airtableService: any) {
+  // Check if profile generation is already in progress for this user
+  if (profileGenerationLock.has(userId)) {
+    console.log(`📋 AI profile generation already in progress for user ${userId}, waiting...`);
+    return await profileGenerationLock.get(userId);
+  }
+
+  // Check if AI profile already generated
+  if (updatedProfile?.aiProfileGenerated) {
+    console.log(`📋 AI profile already generated for user ${userId}, skipping...`);
+    return updatedProfile.aiProfile;
+  }
+
+  // Create a promise for this profile generation
+  const generationPromise = (async () => {
+    try {
+      console.log(`📋 Starting comprehensive AI profile generation for user ${userId}`);
+      
+      // Get user data for comprehensive analysis
+      const user = await storage.getUser(userId);
+      
+      // Get all interview sessions for this user using the new method
+      const allInterviewSessions = await storage.getAllInterviewSessions(userId);
+      const allResponses = allInterviewSessions.flatMap((session: any) => 
+        session.sessionData?.responses || []
+      );
+
+      // Get resume content from profile
+      const resumeContent = updatedProfile?.resumeContent || null;
+
+      // Use AI Agent 2 to generate comprehensive profile from ALL interviews
+      const generatedProfile = await aiInterviewService.generateProfile(
+        { ...user, ...updatedProfile },
+        resumeContent,
+        allResponses
+      );
+
+      // Update profile with AI data - mark as generated to prevent duplicates
+      await storage.upsertApplicantProfile({
+        userId,
+        ...updatedProfile,
+        aiProfile: generatedProfile,
+        aiProfileGenerated: true,
+        summary: generatedProfile.summary,
+        skillsList: generatedProfile.skills
+      });
+
+      // Calculate job matches
+      await storage.calculateJobMatches(userId);
+
+      // Store profile in Airtable (only once)
+      try {
+        const userName = user?.firstName && user?.lastName 
+          ? `${user.firstName} ${user.lastName}` 
+          : user?.email || `User ${userId}`;
+        
+        await airtableService.storeUserProfile(userName, generatedProfile, userId, user?.email);
+        console.log('📋 Successfully stored comprehensive profile in Airtable for user:', userId);
+      } catch (error) {
+        console.error('📋 Failed to store profile in Airtable:', error);
+        // Don't fail the entire request if Airtable fails
+      }
+
+      console.log(`📋 Comprehensive AI profile generation completed for user ${userId}`);
+      return generatedProfile;
+    } catch (error) {
+      console.error(`📋 Error generating comprehensive AI profile for user ${userId}:`, error);
+      throw error;
+    } finally {
+      // Remove the lock when done
+      profileGenerationLock.delete(userId);
+    }
+  })();
+
+  // Store the promise in the lock map
+  profileGenerationLock.set(userId, generationPromise);
+  
+  return await generationPromise;
+}
+
 // Helper function to create CV analysis from manual data
 function createManualCVAnalysisFromData(cvData: any) {
   return {
@@ -938,56 +1021,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                      updatedProfile?.technicalInterviewCompleted;
 
         if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
-          // Get user data for comprehensive analysis
-          const user = await storage.getUser(userId);
-          
-          // Get all interview sessions for this user
-          const allSessions = await storage.getInterviewHistory(userId);
-          const completedSessions = allSessions.filter(s => s.isCompleted);
-          
-          // Combine all responses from all interview types
-          let allResponses: any[] = [];
-          completedSessions.forEach(s => {
-            const sessionData = s.sessionData as any;
-            if (sessionData.responses) {
-              allResponses = allResponses.concat(sessionData.responses);
-            }
-          });
-
-          // Get resume content from profile
-          const resumeContent = updatedProfile?.resumeContent || null;
-
-          // Use AI Agent 2 to generate comprehensive profile from ALL interviews
-          const generatedProfile = await aiInterviewService.generateProfile(
-            { ...user, ...updatedProfile },
-            resumeContent,
-            allResponses
-          );
-
-          // Update profile with AI data
-          await storage.upsertApplicantProfile({
-            userId,
-            ...updatedProfile,
-            aiProfile: generatedProfile,
-            aiProfileGenerated: true,
-            summary: generatedProfile.summary,
-            skillsList: generatedProfile.skills
-          });
-
-          // Calculate job matches
-          await storage.calculateJobMatches(userId);
-
-          // Store profile in Airtable
-          try {
-            const userName = user?.firstName && user?.lastName 
-              ? `${user.firstName} ${user.lastName}` 
-              : user?.email || `User ${userId}`;
-            
-            await airtableService.storeUserProfile(userName, generatedProfile, userId, user?.email);
-          } catch (error) {
-            console.error('Failed to store profile in Airtable:', error);
-            // Don't fail the entire request if Airtable fails
-          }
+          // Use centralized AI profile generation to prevent duplicates
+          const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService);
 
           res.json({ 
             isComplete: true,
@@ -1248,56 +1283,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                    updatedProfile?.technicalInterviewCompleted;
 
       if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
-        // Get user data for comprehensive analysis
-        const user = await storage.getUser(userId);
-        
-        // Get all interview sessions for this user
-        const allSessions = await storage.getInterviewHistory(userId);
-        const completedSessions = allSessions.filter(s => s.isCompleted);
-        
-        // Combine all responses from all interview types
-        let allResponses: any[] = [];
-        completedSessions.forEach(s => {
-          const sessionData = s.sessionData as any;
-          if (sessionData.responses) {
-            allResponses = allResponses.concat(sessionData.responses);
-          }
-        });
-
-        // Get resume content from profile
-        const resumeContent = updatedProfile?.resumeContent || null;
-
-        // Use AI Agent 2 to generate comprehensive profile from ALL interviews
-        const generatedProfile = await aiInterviewService.generateProfile(
-          { ...user, ...updatedProfile },
-          resumeContent,
-          allResponses
-        );
-
-        // Update profile with AI data
-        await storage.upsertApplicantProfile({
-          userId,
-          ...updatedProfile,
-          aiProfile: generatedProfile,
-          aiProfileGenerated: true,
-          summary: generatedProfile.summary,
-          skillsList: generatedProfile.skills
-        });
-
-        // Calculate job matches
-        await storage.calculateJobMatches(userId);
-
-        // Store profile in Airtable
-        try {
-          const userName = user?.firstName && user?.lastName 
-            ? `${user.firstName} ${user.lastName}` 
-            : user?.email || `User ${userId}`;
-          
-          await airtableService.storeUserProfile(userName, generatedProfile, userId, user?.email);
-        } catch (error) {
-          console.error('Failed to store profile in Airtable:', error);
-          // Don't fail the entire request if Airtable fails
-        }
+        // Use centralized AI profile generation to prevent duplicates
+        const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService);
 
         res.json({ 
           isComplete: true,
@@ -1366,45 +1353,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                    updatedProfile?.technicalInterviewCompleted;
 
       if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
-        // NOW generate the comprehensive profile using data from ALL interviews
-        const allInterviewSessions = await storage.getAllInterviewSessions(userId);
-        const allConversationHistory = allInterviewSessions.flatMap(session => 
-          session.sessionData?.responses || []
-        );
-
-        // Use AI Agent 2 to generate comprehensive profile from ALL interview data
-        const generatedProfile = await aiProfileAnalysisAgent.generateComprehensiveProfile(
-          { ...user, ...profile },
-          resumeContent,
-          allConversationHistory
-        );
-
-        // Update profile with AI-generated data and mark as complete
-        await storage.upsertApplicantProfile({
-          userId,
-          ...updatedProfile,
-          aiProfile: generatedProfile,
-          aiProfileGenerated: true,
-          summary: generatedProfile.summary,
-          skillsList: generatedProfile.skills
-        });
+        // Use centralized AI profile generation to prevent duplicates
+        const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService);
 
         // Update profile completion percentage
         await storage.updateProfileCompletion(userId);
-
-        // Calculate job matches
-        await storage.calculateJobMatches(userId);
-
-        // Store in Airtable only when all interviews are complete
-        try {
-          const userName = user?.firstName 
-            ? `${user.firstName} ${user.lastName || ''}`.trim()
-            : user?.email || 'Unknown User';
-          
-          await airtableService.storeUserProfile(userName, generatedProfile, userId, user?.email);
-        } catch (error) {
-          console.error('Failed to store profile in Airtable:', error);
-        }
 
         res.json({ 
           isComplete: true,
@@ -1467,13 +1420,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Use AI Agent 2 to generate comprehensive profile from resume, profile, and interview responses
-      const generatedProfile = await aiInterviewService.generateProfile(
-        { ...user, ...profile },
-        resumeContent,
-        responses
-      );
-
       // Create interview session
       const session = await storage.createInterviewSession({
         userId,
@@ -1483,36 +1429,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentQuestionIndex: responses.length 
         },
         isCompleted: true,
-        generatedProfile
+        generatedProfile: null // Don't generate individual profiles
       });
 
-      // Update profile with AI generated data
-      const aiProfile = generatedProfile;
-      await storage.upsertApplicantProfile({
-        ...profile,
-        userId,
-        aiProfile,
-        aiProfileGenerated: true
-      });
+      // Don't generate individual profiles - wait for all interviews to complete
 
       // Update profile completion percentage
       await storage.updateProfileCompletion(userId);
 
-      // Store in Airtable
-      try {
-        const userName = user?.firstName && user?.lastName 
-          ? `${user.firstName} ${user.lastName}` 
-          : user?.email || 'Unknown User';
-        
-        await airtableService.storeUserProfile(userName, generatedProfile, userId, user?.email);
-      } catch (airtableError) {
-        console.warn("Failed to store profile in Airtable:", airtableError);
-        // Continue without failing the interview
-      }
-
       res.json({ 
         isComplete: true, 
-        profile: generatedProfile,
+        profile: null, // Individual profiles are no longer generated
         sessionId: session.id,
         message: "Voice interview completed successfully!" 
       });
