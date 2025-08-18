@@ -38,6 +38,8 @@ const translations = {
     next: "Next",
     previous: "Previous",
     close: "Close",
+    signOut: "Sign Out",
+    signingOut: "Signing Out...",
     
     // Interview specific
     selectLanguage: "Select Interview Language",
@@ -176,6 +178,8 @@ const translations = {
     next: "التالي",
     previous: "السابق",
     close: "إغلاق",
+    signOut: "تسجيل الخروج",
+    signingOut: "جاري تسجيل الخروج...",
     
     // Interview specific
     selectLanguage: "اختر لغة المقابلة",

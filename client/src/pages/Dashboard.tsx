@@ -145,7 +145,6 @@ export default function Dashboard() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Plato</h1>
-                <p className="text-sm text-gray-600">{t('dashboard.subtitle')}</p>
               </div>
             </div>
             
@@ -168,7 +167,7 @@ export default function Dashboard() {
                 disabled={logout.isPending}
                 className="text-sm text-gray-600 hover:text-gray-800"
               >
-                {logout.isPending ? t('common.signingOut') : t('common.signOut')}
+                {logout.isPending ? t('signingOut') : t('signOut')}
               </button>
             </div>
           </div>
