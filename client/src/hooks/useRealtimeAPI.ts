@@ -105,6 +105,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
           // Trigger AI response after user stops speaking
           setTimeout(() => {
             if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
+              console.log('🤖 Sending response trigger to AI');
               const responseCreate = {
                 type: 'response.create',
                 response: {
@@ -113,7 +114,16 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
               };
               dataChannelRef.current.send(JSON.stringify(responseCreate));
             }
-          }, 500); // Small delay to ensure audio buffer is processed
+          }, 800); // Optimized delay to ensure audio buffer is processed
+        } else if (serverEvent.type === 'response.audio_transcript.done' || serverEvent.type === 'response.done') {
+          console.log('🎯 AI response complete - ready for next interaction');
+          // Ensure we're ready to listen again
+          setIsSpeaking(false);
+          setIsListening(true);
+        } else if (serverEvent.type === 'output_audio_buffer.stopped') {
+          console.log('🔊 Audio output stopped - conversation ready for user');
+          setIsSpeaking(false);
+          setIsListening(true);
         }
         
         options.onMessage?.(serverEvent);
@@ -191,9 +201,9 @@ This focused approach ensures we understand them comprehensively while respectin
             },
             turn_detection: {
               type: 'server_vad',
-              threshold: 0.5,
-              prefix_padding_ms: 300,
-              silence_duration_ms: 2500
+              threshold: 0.6,
+              prefix_padding_ms: 500,
+              silence_duration_ms: 1800
             },
             tools: [],
             tool_choice: 'none',
@@ -219,21 +229,8 @@ This focused approach ensures we understand them comprehensively while respectin
         setTimeout(() => {
           if (!options.onMessage) return;
           
-          console.log('⚠️ AI hasn\'t responded in 10 seconds - checking connection');
-          // Send a fallback message to ensure AI starts talking
-          const fallbackCreate = {
-            type: 'conversation.item.create',
-            item: {
-              type: 'message',
-              role: 'assistant',
-              content: [{ 
-                type: 'text', 
-                text: 'Hello! I\'m ready to begin your interview. Can you hear me clearly?' 
-              }]
-            }
-          };
-          dc.send(JSON.stringify(fallbackCreate));
-          
+          console.log('⚠️ AI hasn\'t responded in 5 seconds - sending keepalive');
+          // Send a simple response trigger to ensure AI keeps talking
           const responseCreate2 = {
             type: 'response.create',
             response: {
@@ -241,7 +238,7 @@ This focused approach ensures we understand them comprehensively while respectin
             }
           };
           dc.send(JSON.stringify(responseCreate2));
-        }, 10000);
+        }, 5000);
       });
       
       // Create offer and set up connection
