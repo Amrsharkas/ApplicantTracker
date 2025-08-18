@@ -12,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmployerQuestionsModal } from "./EmployerQuestionsModal";
-import { SmartFilters } from "@/components/SmartFilters";
 import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft } from "lucide-react";
 
 // Country-City data structure
@@ -102,9 +101,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     careerLevel: "",
     jobCategory: "",
     jobType: "",
-    datePosted: "",
-    skills: [] as string[],
-    company: ""
+    datePosted: ""
   });
   const [expandedFilters, setExpandedFilters] = useState({
     workplace: true,
@@ -169,14 +166,6 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     },
   });
 
-  // Application confirmation handler
-  const handleConfirmApplication = () => {
-    if (selectedJob) {
-      newApplicationMutation.mutate({ job: selectedJob });
-      setShowApplicationAnalysis(false);
-    }
-  };
-
   // New application mutation for the updated endpoint
   const newApplicationMutation = useMutation({
     mutationFn: async (data: { job: JobPosting }) => {
@@ -208,7 +197,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       // Check if it's a duplicate application error
       if (error.message.includes('already applied')) {
         setAiLoadingResult({
-          type: 'success',
+          type: 'info',
           message: `You've already applied to this position!\n\nWe know you're excited about this opportunity, but one application per job should do the trick! 😊`
         });
         toast({
@@ -246,10 +235,28 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     },
   });
 
-  const { data: jobPostings = [], isLoading, error, refetch } = useQuery<JobPosting[]>({
+  const { data: jobPostings = [], isLoading, error, refetch } = useQuery({
     queryKey: ["/api/job-postings"],
     enabled: isOpen,
     refetchInterval: isOpen ? 30000 : false, // Auto-refresh every 30 seconds when modal is open
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to load job postings. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const { data: userProfile } = useQuery({
@@ -283,75 +290,42 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     }
   }, [isOpen]);
 
-  // Check if any filters are applied - SINGLE SOURCE OF TRUTH
-  const hasActiveFilters = !!(
-    filters.jobType ||
-    (filters.workplace && filters.workplace.length > 0) ||
-    filters.country ||
-    filters.city ||
-    filters.careerLevel ||
-    filters.jobCategory ||
-    filters.datePosted ||
-    searchQuery
-  );
-
-  // Trigger simple filtering when filters or search query change
+  // Trigger AI filtering when filters or search query change
   useEffect(() => {
     if (isOpen && jobPostings.length > 0) {
-      console.log('🔍 useEffect triggered:', { 
-        hasActiveFilters, 
-        filters, 
-        searchQuery,
-        jobPostingsCount: jobPostings.length 
-      });
+      // Check if any filters are active
+      const hasActiveFilters = (
+        filters.workplace.length > 0 ||
+        filters.country !== "" ||
+        filters.city !== "" ||
+        filters.careerLevel !== "" ||
+        filters.jobCategory !== "" ||
+        filters.jobType !== "" ||
+        filters.datePosted !== "" ||
+        searchQuery !== ""
+      );
 
       if (hasActiveFilters) {
-        // Apply simple frontend filtering instead of AI filtering
-        const filtered = getSimpleFilteredJobs();
-        console.log('🔍 Setting filtered jobs:', { 
-          originalCount: jobPostings.length, 
-          filteredCount: filtered.length 
-        });
-        setFilteredJobs(filtered);
-        setFilterMessage("");
-        setHasExpandedSearch(false);
+        // Apply AI filtering
+        aiFilterMutation.mutate(filters);
       } else {
         // No filters active, show all jobs
-        console.log('🔍 No filters active, clearing filtered jobs');
         setFilteredJobs([]);
         setFilterMessage("");
         setHasExpandedSearch(false);
       }
     }
-  }, [filters, searchQuery, jobPostings, isOpen, hasActiveFilters]);
+  }, [filters, searchQuery, jobPostings, isOpen]);
 
   // Calculate active filters count
-  const activeFiltersCount = Object.entries(filters).filter(([key, value]) => {
-    if (Array.isArray(value)) {
-      return value.length > 0;
-    }
-    return value !== "";
-  }).length;
+  const activeFiltersCount = Object.values(filters).filter(value => 
+    Array.isArray(value) ? value.length > 0 : value !== ""
+  ).length;
 
-  // Simple, reliable filtering that actually works
-  const getSimpleFilteredJobs = () => {
-    if (!jobPostings || jobPostings.length === 0) return [];
-    
-    console.log('🔍 Simple filtering - Input:', { 
-      totalJobs: jobPostings.length, 
-      filters,
-      searchQuery,
-      allJobs: jobPostings.map(job => ({
-        title: job.jobTitle,
-        location: job.location,
-        employmentType: job.employmentType,
-        experienceLevel: job.experienceLevel
-      }))
-    });
-    
-    const result = jobPostings.filter((job: JobPosting) => {
-      let matchesAll = true;
-
+  // Intelligent filtering with OR logic and fallback support
+  const getFilteredJobs = () => {
+    // Primary filtering with exact matches
+    const primaryFiltered = jobPostings.filter((job: JobPosting) => {
       // Search query filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -362,112 +336,60 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
           job.location?.toLowerCase().includes(query) ||
           job.skills?.some(skill => skill.toLowerCase().includes(query))
         );
-        if (!matchesSearch) {
-          console.log('❌ Search filter failed for:', job.jobTitle, 'query:', query);
-          matchesAll = false;
-        }
+        if (!matchesSearch) return false;
       }
 
-      // Workplace filter - be more lenient
-      if (filters.workplace.length > 0 && matchesAll) {
-        const jobType = job.employmentType?.toLowerCase() || "";
-        const jobLocation = job.location?.toLowerCase() || "";
-        
+      // Smart workplace filter with OR logic
+      if (filters.workplace.length > 0) {
+        const jobWorkplace = job.employmentType?.toLowerCase() || "";
         const hasWorkplaceMatch = filters.workplace.some(w => {
           const filterValue = w.toLowerCase();
-          // More flexible matching
-          if (filterValue === "remote") {
-            return jobType.includes("remote") || jobLocation.includes("remote");
-          } else if (filterValue === "on-site") {
-            return jobType.includes("full") || jobType.includes("office") || jobLocation.includes("office");
-          } else if (filterValue === "hybrid") {
-            return jobType.includes("hybrid") || jobLocation.includes("hybrid");
-          }
-          return jobType.includes(filterValue) || jobLocation.includes(filterValue);
+          return (
+            jobWorkplace.includes(filterValue) ||
+            (filterValue === "on-site" && (jobWorkplace.includes("full time") || jobWorkplace.includes("office"))) ||
+            (filterValue === "remote" && jobWorkplace.includes("remote")) ||
+            (filterValue === "hybrid" && (jobWorkplace.includes("hybrid") || jobWorkplace.includes("flexible")))
+          );
         });
-        
-        if (!hasWorkplaceMatch) {
-          console.log('❌ Workplace filter failed for:', job.jobTitle, 'jobType:', jobType, 'workplace filters:', filters.workplace);
-          matchesAll = false;
-        }
+        if (!hasWorkplaceMatch) return false;
       }
 
-      // Location filters - make them very lenient
-      if (filters.country && matchesAll) {
-        const locationLower = job.location?.toLowerCase() || "";
+      // Smart location filters with partial matching
+      if (filters.country && job.location) {
+        const locationLower = job.location.toLowerCase();
         const countryLower = filters.country.toLowerCase();
-        
-        // If no location data, don't filter out
-        if (locationLower && !locationLower.includes(countryLower)) {
-          console.log('❌ Country filter failed for:', job.jobTitle, 'location:', locationLower, 'country filter:', countryLower);
-          matchesAll = false;
-        }
+        if (!locationLower.includes(countryLower)) return false;
       }
 
-      if (filters.city && matchesAll) {
-        const locationLower = job.location?.toLowerCase() || "";
+      if (filters.city && job.location) {
+        const locationLower = job.location.toLowerCase();
         const cityLower = filters.city.toLowerCase();
-        
-        // If no location data, don't filter out
-        if (locationLower && !locationLower.includes(cityLower)) {
-          console.log('❌ City filter failed for:', job.jobTitle, 'location:', locationLower, 'city filter:', cityLower);
-          matchesAll = false;
-        }
+        if (!locationLower.includes(cityLower)) return false;
       }
 
-      // Job type filter - be more flexible
-      if (filters.jobType && matchesAll) {
-        const typeLower = job.employmentType?.toLowerCase() || "";
-        const filterTypeLower = filters.jobType.toLowerCase();
-        
-        // Map common filter terms to job types
-        let typeMatches = false;
-        if (filterTypeLower === "full-time") {
-          typeMatches = typeLower.includes("full");
-        } else if (filterTypeLower === "part-time") {
-          typeMatches = typeLower.includes("part");
-        } else if (filterTypeLower === "contract") {
-          typeMatches = typeLower.includes("contract") || typeLower.includes("freelance");
-        } else if (filterTypeLower === "internship") {
-          typeMatches = typeLower.includes("intern");
-        } else {
-          typeMatches = typeLower.includes(filterTypeLower);
-        }
-        
-        if (!typeMatches) {
-          console.log('❌ Job type filter failed for:', job.jobTitle, 'jobType:', typeLower, 'filter:', filterTypeLower);
-          matchesAll = false;
-        }
-      }
-
-      // Career level filter
-      if (filters.careerLevel && matchesAll) {
-        const experienceLower = job.experienceLevel?.toLowerCase() || "";
+      // Smart career level filter
+      if (filters.careerLevel && job.experienceLevel) {
+        const experienceLower = job.experienceLevel.toLowerCase();
         const levelLower = filters.careerLevel.toLowerCase();
-        
-        if (experienceLower && !experienceLower.includes(levelLower)) {
-          console.log('❌ Career level filter failed for:', job.jobTitle, 'level:', experienceLower, 'filter:', levelLower);
-          matchesAll = false;
-        }
+        if (!experienceLower.includes(levelLower)) return false;
       }
 
-      if (matchesAll) {
-        console.log('✅ Job passed all filters:', job.jobTitle);
+      // Smart job category filter
+      if (filters.jobCategory) {
+        const jobCategory = job.jobTitle.toLowerCase();
+        const categoryLower = filters.jobCategory.toLowerCase();
+        if (!jobCategory.includes(categoryLower)) return false;
       }
 
-      return matchesAll;
+      // Smart job type filter
+      if (filters.jobType && job.employmentType) {
+        const typeLower = job.employmentType.toLowerCase();
+        const filterTypeLower = filters.jobType.toLowerCase();
+        if (!typeLower.includes(filterTypeLower)) return false;
+      }
+
+      return true;
     });
-    
-    console.log('🔍 Filtering result:', { 
-      originalCount: jobPostings.length, 
-      filteredCount: result.length,
-      activeFilters: Object.entries(filters).filter(([key, value]) => {
-        if (Array.isArray(value)) return value.length > 0;
-        return value !== "";
-      })
-    });
-    
-    return result;
 
     // If we have enough results, return them
     if (primaryFiltered.length >= 3) {
@@ -620,15 +542,22 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     return isNaN(finalScore) ? 50 : finalScore; // Fallback to 50 if NaN
   };
 
-  // Display logic: filtered jobs when filters active, otherwise all jobs
+  // Check if any filters are applied
+  const hasActiveFilters = !!(
+    filters.jobType ||
+    (filters.workplace && filters.workplace.length > 0) ||
+    filters.country ||
+    filters.city ||
+    filters.careerLevel ||
+    filters.jobCategory ||
+    filters.datePosted ||
+    searchQuery
+  );
+
+  // STRICT FILTERING: If filters are applied, ONLY show filtered results (even if empty)
+  // If no filters are applied, show all jobs
   const displayedJobs = hasActiveFilters ? filteredJobs : jobPostings;
-  
-  console.log('🔍 Display logic:', { 
-    hasActiveFilters, 
-    filteredJobsLength: filteredJobs.length, 
-    jobPostingsLength: jobPostings.length,
-    displayedJobsLength: displayedJobs.length 
-  });
+  const showingRelatedJobs = hasExpandedSearch;
 
   // Helper functions
   const toggleFilter = (filterType: keyof typeof expandedFilters) => {
@@ -663,9 +592,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       careerLevel: "",
       jobCategory: "",
       jobType: "",
-      datePosted: "",
-      skills: [],
-      company: ""
+      datePosted: ""
     });
     setSearchQuery("");
   };
@@ -768,7 +695,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
 
 
-  const showRelatedNotice = false; // Feature disabled for now
+  const showRelatedNotice = showingRelatedJobs && activeFiltersCount > 0;
 
   const handleClose = () => {
     resetApplicationState();
@@ -834,13 +761,231 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
         <div className="flex h-[calc(95vh-120px)]">
           {/* Smart Filters Sidebar */}
-          <SmartFilters
-            filters={filters}
-            onFiltersChange={setFilters}
-            onClearAll={clearAllFilters}
-            activeCount={activeFiltersCount}
-            isLoading={isFilteringInProgress}
-          />
+          <div className="w-80 border-r bg-gray-50 p-4 overflow-y-auto max-h-full">
+            <div className="space-y-1">
+              <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Smart Filters
+              </h3>
+              <p className="text-xs text-gray-600 mb-4">
+                {activeFiltersCount} active • Always available
+              </p>
+
+              {/* Workplace Filter */}
+              <div className="border-b pb-3 mb-3">
+                <button
+                  onClick={() => toggleFilter('workplace')}
+                  className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
+                >
+                  <span>Workplace</span>
+                  <div className="flex items-center gap-2">
+                    {filters.workplace.length > 0 && (
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                        {filters.workplace.length}
+                      </span>
+                    )}
+                    {expandedFilters.workplace ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </div>
+                </button>
+                {expandedFilters.workplace && (
+                  <div className="mt-2 space-y-2 pl-2">
+                    {['On-site', 'Remote', 'Hybrid'].map((option) => (
+                      <div key={option} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`workplace-${option}`}
+                          checked={filters.workplace.includes(option)}
+                          onCheckedChange={() => toggleWorkplaceFilter(option)}
+                        />
+                        <label
+                          htmlFor={`workplace-${option}`}
+                          className="text-sm text-gray-700 cursor-pointer"
+                        >
+                          {option}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Country Filter */}
+              <div className="border-b pb-3 mb-3">
+                <button
+                  onClick={() => toggleFilter('country')}
+                  className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
+                >
+                  <span>Country</span>
+                  {expandedFilters.country ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                {expandedFilters.country && (
+                  <div className="mt-2 pl-2">
+                    <Select value={filters.country} onValueChange={(value) => {
+                      updateFilter('country', value);
+                      // Clear city when country changes
+                      updateFilter('city', '');
+                    }}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(COUNTRIES_CITIES).map((country) => (
+                          <SelectItem key={country} value={country}>
+                            {country}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {/* City Filter */}
+              <div className="border-b pb-3 mb-3">
+                <button
+                  onClick={() => toggleFilter('city')}
+                  className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
+                >
+                  <span>City</span>
+                  {expandedFilters.city ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                {expandedFilters.city && (
+                  <div className="mt-2 pl-2">
+                    <Select 
+                      value={filters.city} 
+                      onValueChange={(value) => updateFilter('city', value)}
+                      disabled={!filters.country}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={
+                          filters.country ? "Select city" : "Select country first"
+                        } />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filters.country && COUNTRIES_CITIES[filters.country as keyof typeof COUNTRIES_CITIES]?.map((city) => (
+                          <SelectItem key={city} value={city}>
+                            {city}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {/* Career Level Filter */}
+              <div className="border-b pb-3 mb-3">
+                <button
+                  onClick={() => toggleFilter('careerLevel')}
+                  className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
+                >
+                  <span>Career Level</span>
+                  {expandedFilters.careerLevel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                {expandedFilters.careerLevel && (
+                  <div className="mt-2 pl-2">
+                    <Select value={filters.careerLevel} onValueChange={(value) => updateFilter('careerLevel', value)}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="entry">Entry Level</SelectItem>
+                        <SelectItem value="junior">Junior</SelectItem>
+                        <SelectItem value="mid">Mid Level</SelectItem>
+                        <SelectItem value="senior">Senior</SelectItem>
+                        <SelectItem value="lead">Lead</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="director">Director</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {/* Job Category Filter */}
+              <div className="border-b pb-3 mb-3">
+                <button
+                  onClick={() => toggleFilter('jobCategory')}
+                  className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
+                >
+                  <span>Job Category</span>
+                  {expandedFilters.jobCategory ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                {expandedFilters.jobCategory && (
+                  <div className="mt-2 pl-2">
+                    <Select value={filters.jobCategory} onValueChange={(value) => updateFilter('jobCategory', value)}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="engineering">Engineering</SelectItem>
+                        <SelectItem value="marketing">Marketing</SelectItem>
+                        <SelectItem value="sales">Sales</SelectItem>
+                        <SelectItem value="finance">Finance</SelectItem>
+                        <SelectItem value="hr">Human Resources</SelectItem>
+                        <SelectItem value="design">Design</SelectItem>
+                        <SelectItem value="product">Product</SelectItem>
+                        <SelectItem value="operations">Operations</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {/* Job Type Filter */}
+              <div className="border-b pb-3 mb-3">
+                <button
+                  onClick={() => toggleFilter('jobType')}
+                  className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
+                >
+                  <span>Job Type</span>
+                  {expandedFilters.jobType ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                {expandedFilters.jobType && (
+                  <div className="mt-2 pl-2">
+                    <Select value={filters.jobType} onValueChange={(value) => updateFilter('jobType', value)}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="full-time">Full Time</SelectItem>
+                        <SelectItem value="part-time">Part Time</SelectItem>
+                        <SelectItem value="contract">Contract</SelectItem>
+                        <SelectItem value="freelance">Freelance</SelectItem>
+                        <SelectItem value="internship">Internship</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {/* Date Posted Filter */}
+              <div className="pb-3">
+                <button
+                  onClick={() => toggleFilter('datePosted')}
+                  className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
+                >
+                  <span>Date Posted</span>
+                  {expandedFilters.datePosted ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                {expandedFilters.datePosted && (
+                  <div className="mt-2 pl-2">
+                    <Select value={filters.datePosted} onValueChange={(value) => updateFilter('datePosted', value)}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select timeframe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="yesterday">Yesterday</SelectItem>
+                        <SelectItem value="week">Past Week</SelectItem>
+                        <SelectItem value="month">Past Month</SelectItem>
+                        <SelectItem value="3months">Past 3 Months</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Main Content */}
           <div className="flex-1 flex flex-col max-h-full">
@@ -1361,10 +1506,10 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                     {applicationAnalysis.isGoodMatch ? (
                       <Button
                         onClick={handleConfirmApplication}
-                        disabled={newApplicationMutation.isPending}
+                        disabled={actualApplicationMutation.isPending}
                         className="flex items-center gap-2 flex-1"
                       >
-                        {newApplicationMutation.isPending ? (
+                        {actualApplicationMutation.isPending ? (
                           <>
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                             Submitting Application...
@@ -1381,10 +1526,10 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         <Button
                           variant="outline"
                           onClick={handleConfirmApplication}
-                          disabled={newApplicationMutation.isPending}
+                          disabled={actualApplicationMutation.isPending}
                           className="flex items-center gap-2"
                         >
-                          {newApplicationMutation.isPending ? (
+                          {actualApplicationMutation.isPending ? (
                             <>
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
                               Applying...
