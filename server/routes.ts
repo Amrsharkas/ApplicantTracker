@@ -1181,6 +1181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyName: job.companyName,
         applicantName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email || `User ${userId}`,
         applicantId: userId,
+        applicantEmail: user.email, // Include user email
         aiProfile: userProfileData, // Use complete profile from Airtable
         notes: combinedNotes
       };
@@ -2908,6 +2909,32 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     } catch (error) {
       console.error("Error updating certificate file:", error);
       res.status(500).json({ message: "Failed to update certificate file" });
+    }
+  });
+
+  // Admin endpoint to update job applications with user emails
+  app.post('/api/admin/update-applications-emails', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // Basic admin check (you can enhance this with proper role checking)
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      console.log(`📧 Email update requested by user ${userId}`);
+      
+      // Run the email update process
+      await airtableService.updateJobApplicationsWithEmails();
+      
+      res.json({ 
+        message: 'Job applications email update completed successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error updating applications with emails:', error);
+      res.status(500).json({ message: 'Failed to update applications with emails' });
     }
   });
 

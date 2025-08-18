@@ -424,6 +424,7 @@ export class AirtableService {
     applicantId: string;
     aiProfile: any;
     notes: string;
+    applicantEmail?: string;
   }): Promise<void> {
     if (!jobApplicationsBase) {
       console.warn('Job applications Airtable base not configured, skipping application submission');
@@ -467,6 +468,7 @@ export class AirtableService {
           "Company": applicationData.companyName,
           "Applicant Name": applicationData.applicantName,
           "Applicant User ID": applicationData.applicantId,
+          "Applicant Email": applicationData.applicantEmail || "", // Add email field
           "User profile": userProfileForApplication,
           "Notes": notesString
         }
@@ -590,6 +592,133 @@ export class AirtableService {
     } catch (error) {
       console.error('Error storing profile in Airtable:', error);
       throw new Error('Failed to store profile in Airtable');
+    }
+  }
+
+  // Update existing job applications with user email addresses
+  async updateJobApplicationsWithEmails(): Promise<void> {
+    if (!jobApplicationsBase) {
+      console.warn('Job applications Airtable base not configured, skipping email update');
+      return;
+    }
+
+    try {
+      console.log('🔄 Starting job applications email update process...');
+
+      // Fetch all job applications from Airtable
+      const possibleTableNames = ['platojobapplications', 'Applications', 'Job Applications', 'Table 1', 'tblApplications'];
+      let applications: any[] = [];
+      let successfulTableName = '';
+
+      for (const tableName of possibleTableNames) {
+        try {
+          const url = `https://api.airtable.com/v0/appEYs1fTytFXoJ7x/${tableName}`;
+          console.log(`🔍 Trying to fetch applications from table: ${tableName}`);
+          
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Authorization': 'Bearer pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0',
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            applications = data.records || [];
+            successfulTableName = tableName;
+            console.log(`✅ Successfully fetched ${applications.length} applications from ${tableName}`);
+            break;
+          } else {
+            console.log(`❌ Failed to fetch from ${tableName}: ${response.status}`);
+          }
+        } catch (error) {
+          console.log(`❌ Error fetching from ${tableName}:`, error);
+        }
+      }
+
+      if (applications.length === 0) {
+        console.log('📭 No job applications found to update');
+        return;
+      }
+
+      // Get unique user IDs from applications
+      const userIds = [...new Set(applications
+        .map(app => app.fields?.["Applicant User ID"])
+        .filter(id => id))] as string[];
+
+      console.log(`📋 Found ${userIds.length} unique users in applications`);
+
+      // Fetch user emails from database
+      const userEmails: Record<string, string> = {};
+      for (const userId of userIds) {
+        try {
+          const user = await storage.getUser(userId);
+          if (user?.email) {
+            userEmails[userId] = user.email;
+            console.log(`📧 Found email for user ${userId}: ${user.email}`);
+          } else {
+            // Try to get email from applicant profile
+            const profile = await storage.getApplicantProfile(userId);
+            if (profile?.email) {
+              userEmails[userId] = profile.email;
+              console.log(`📧 Found email in profile for user ${userId}: ${profile.email}`);
+            } else {
+              console.log(`⚠️ No email found for user ${userId}`);
+            }
+          }
+        } catch (error) {
+          console.log(`❌ Error fetching user data for ${userId}:`, error);
+        }
+      }
+
+      // Update applications that don't have email addresses
+      let updatedCount = 0;
+      for (const application of applications) {
+        const fields = application.fields || {};
+        const userId = fields["Applicant User ID"];
+        const currentEmail = fields["Applicant Email"];
+
+        // Skip if application already has an email or user has no email
+        if (currentEmail && currentEmail.trim() !== '' || !userId || !userEmails[userId]) {
+          continue;
+        }
+
+        try {
+          const updateUrl = `https://api.airtable.com/v0/appEYs1fTytFXoJ7x/${successfulTableName}/${application.id}`;
+          
+          const updatePayload = {
+            fields: {
+              "Applicant Email": userEmails[userId]
+            }
+          };
+
+          const updateResponse = await fetch(updateUrl, {
+            method: 'PATCH',
+            headers: {
+              'Authorization': 'Bearer pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updatePayload)
+          });
+
+          if (updateResponse.ok) {
+            console.log(`✅ Updated application ${application.id} with email: ${userEmails[userId]}`);
+            updatedCount++;
+          } else {
+            const errorText = await updateResponse.text();
+            console.log(`❌ Failed to update application ${application.id}: ${updateResponse.status} - ${errorText}`);
+          }
+        } catch (error) {
+          console.log(`❌ Error updating application ${application.id}:`, error);
+        }
+      }
+
+      console.log(`🎯 Email update process completed. Updated ${updatedCount} applications.`);
+
+    } catch (error) {
+      console.error('❌ Error in updateJobApplicationsWithEmails:', error);
+      throw new Error('Failed to update job applications with emails');
     }
   }
 
