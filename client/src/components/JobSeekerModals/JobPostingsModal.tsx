@@ -169,6 +169,14 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     },
   });
 
+  // Application confirmation handler
+  const handleConfirmApplication = () => {
+    if (selectedJob) {
+      newApplicationMutation.mutate({ job: selectedJob });
+      setShowApplicationAnalysis(false);
+    }
+  };
+
   // New application mutation for the updated endpoint
   const newApplicationMutation = useMutation({
     mutationFn: async (data: { job: JobPosting }) => {
@@ -200,7 +208,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       // Check if it's a duplicate application error
       if (error.message.includes('already applied')) {
         setAiLoadingResult({
-          type: 'info',
+          type: 'success',
           message: `You've already applied to this position!\n\nWe know you're excited about this opportunity, but one application per job should do the trick! 😊`
         });
         toast({
@@ -303,9 +311,12 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
   }, [filters, searchQuery, jobPostings, isOpen]);
 
   // Calculate active filters count
-  const activeFiltersCount = Object.values(filters).filter(value => 
-    Array.isArray(value) ? value.length > 0 : value !== ""
-  ).length;
+  const activeFiltersCount = Object.entries(filters).filter(([key, value]) => {
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+    return value !== "";
+  }).length;
 
   // Intelligent filtering with OR logic and fallback support
   const getFilteredJobs = () => {
@@ -327,13 +338,18 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       // Smart workplace filter with OR logic
       if (filters.workplace.length > 0) {
         const jobWorkplace = job.employmentType?.toLowerCase() || "";
+        const jobLocation = job.location?.toLowerCase() || "";
+        const jobDescription = job.jobDescription?.toLowerCase() || "";
+        
         const hasWorkplaceMatch = filters.workplace.some(w => {
           const filterValue = w.toLowerCase();
           return (
             jobWorkplace.includes(filterValue) ||
-            (filterValue === "on-site" && (jobWorkplace.includes("full time") || jobWorkplace.includes("office"))) ||
-            (filterValue === "remote" && jobWorkplace.includes("remote")) ||
-            (filterValue === "hybrid" && (jobWorkplace.includes("hybrid") || jobWorkplace.includes("flexible")))
+            jobLocation.includes(filterValue) ||
+            jobDescription.includes(filterValue) ||
+            (filterValue === "on-site" && (jobWorkplace.includes("full") || jobLocation.includes("office"))) ||
+            (filterValue === "remote" && (jobWorkplace.includes("remote") || jobLocation.includes("remote"))) ||
+            (filterValue === "hybrid" && (jobWorkplace.includes("hybrid") || jobLocation.includes("hybrid")))
           );
         });
         if (!hasWorkplaceMatch) return false;
@@ -1273,10 +1289,10 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                     {applicationAnalysis.isGoodMatch ? (
                       <Button
                         onClick={handleConfirmApplication}
-                        disabled={actualApplicationMutation.isPending}
+                        disabled={newApplicationMutation.isPending}
                         className="flex items-center gap-2 flex-1"
                       >
-                        {actualApplicationMutation.isPending ? (
+                        {newApplicationMutation.isPending ? (
                           <>
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                             Submitting Application...
@@ -1293,10 +1309,10 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         <Button
                           variant="outline"
                           onClick={handleConfirmApplication}
-                          disabled={actualApplicationMutation.isPending}
+                          disabled={newApplicationMutation.isPending}
                           className="flex items-center gap-2"
                         >
-                          {actualApplicationMutation.isPending ? (
+                          {newApplicationMutation.isPending ? (
                             <>
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
                               Applying...
