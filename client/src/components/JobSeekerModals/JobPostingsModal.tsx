@@ -318,10 +318,11 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     return value !== "";
   }).length;
 
-  // Intelligent filtering with OR logic and fallback support
+  // Simple, reliable filtering that actually works
   const getFilteredJobs = () => {
-    // Primary filtering with exact matches
-    const primaryFiltered = jobPostings.filter((job: JobPosting) => {
+    if (!jobPostings || jobPostings.length === 0) return [];
+    
+    return jobPostings.filter((job: JobPosting) => {
       // Search query filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -555,10 +556,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     searchQuery
   );
 
-  // STRICT FILTERING: If filters are applied, ONLY show filtered results (even if empty)
-  // If no filters are applied, show all jobs
+  // Display logic: filtered jobs when filters active, otherwise all jobs
   const displayedJobs = hasActiveFilters ? filteredJobs : jobPostings;
-  const showingRelatedJobs = hasExpandedSearch;
 
   // Helper functions
   const toggleFilter = (filterType: keyof typeof expandedFilters) => {
@@ -593,7 +592,9 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       careerLevel: "",
       jobCategory: "",
       jobType: "",
-      datePosted: ""
+      datePosted: "",
+      skills: [],
+      company: ""
     });
     setSearchQuery("");
   };
@@ -696,7 +697,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
 
 
-  const showRelatedNotice = showingRelatedJobs && activeFiltersCount > 0;
+  const showRelatedNotice = false; // Feature disabled for now
 
   const handleClose = () => {
     resetApplicationState();
