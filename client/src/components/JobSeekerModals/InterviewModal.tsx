@@ -353,8 +353,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         } else {
           // Individual interview complete with no next type
           toast({
-            title: "Interview Complete!",
-            description: "Your AI profile has been generated successfully.",
+            title: "Interview Section Complete!",
+            description: "Continue with the remaining interviews to complete your profile.",
           });
         }
       } else if (data.nextQuestion) {
@@ -419,8 +419,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       } else {
         // Individual interview complete with no next type
         toast({
-          title: "Interview Complete!",
-          description: "Your interview has been submitted and processed successfully.",
+          title: "Interview Section Complete!",
+          description: "Continue with the remaining interviews to complete your profile.",
         });
       }
       
@@ -652,23 +652,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         // Reset to interview types view to show all completed
         setMode('types');
         setSelectedInterviewType('');
-      } else if (completionData.nextInterviewType) {
-        // Continue to next interview type automatically
-        toast({
-          title: "Interview Section Complete",
-          description: `Moving to ${completionData.nextInterviewType} interview...`,
-        });
-        
-        // Automatically start next interview
-        setTimeout(() => {
-          setSelectedInterviewType(completionData.nextInterviewType);
-          setMode('select');
-        }, 1500);
       } else {
-        // Individual interview complete
+        // Individual interview complete - no profile generated yet
         toast({
-          title: "Interview Complete!",
-          description: "This interview section has been completed successfully.",
+          title: "Interview Section Complete!",
+          description: "Continue with the remaining interviews to complete your profile.",
         });
         setMode('types');
         setSelectedInterviewType('');
@@ -1213,7 +1201,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                 <span className="text-sm font-medium text-green-700">Interview Complete!</span>
               </div>
               <p className="text-sm text-green-600 mt-1">
-                Your AI profile has been generated successfully. You can now explore job opportunities and apply to positions.
+                Interview section completed successfully! Continue with remaining interviews to complete your profile.
               </p>
             </CardContent>
           </Card>
@@ -1388,7 +1376,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                 <span className="text-sm font-medium text-green-700">Voice Interview Complete!</span>
               </div>
               <p className="text-sm text-green-600 mt-1">
-                Your AI profile has been generated successfully.
+                Interview section completed successfully! Continue with remaining interviews to complete your profile.
               </p>
             </CardContent>
           </Card>

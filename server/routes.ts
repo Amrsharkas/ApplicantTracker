@@ -1341,19 +1341,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Use AI Agent 2 to generate comprehensive profile
-      const generatedProfile = await aiProfileAnalysisAgent.generateComprehensiveProfile(
-        { ...user, ...profile },
-        resumeContent,
-        conversationHistory
-      );
-
       // Mark this specific interview type as completed
       if (interviewType) {
         await storage.updateInterviewCompletion(userId, interviewType);
       }
 
-      // Save the interview session with completion
+      // Save the interview session with completion (without generating profile yet)
       const session = await storage.createInterviewSession({
         userId,
         interviewType: interviewType || 'personal',
@@ -1363,7 +1356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentQuestionIndex: conversationHistory.length 
         },
         isCompleted: true,
-        generatedProfile
+        generatedProfile: null // Don't save individual profiles
       });
 
       // Check if all 3 interviews are completed
@@ -1373,6 +1366,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                    updatedProfile?.technicalInterviewCompleted;
 
       if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
+        // NOW generate the comprehensive profile using data from ALL interviews
+        const allInterviewSessions = await storage.getAllInterviewSessions(userId);
+        const allConversationHistory = allInterviewSessions.flatMap(session => 
+          session.sessionData?.responses || []
+        );
+
+        // Use AI Agent 2 to generate comprehensive profile from ALL interview data
+        const generatedProfile = await aiProfileAnalysisAgent.generateComprehensiveProfile(
+          { ...user, ...profile },
+          resumeContent,
+          allConversationHistory
+        );
+
         // Update profile with AI-generated data and mark as complete
         await storage.upsertApplicantProfile({
           userId,
@@ -1388,32 +1394,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Calculate job matches
         await storage.calculateJobMatches(userId);
-      } else {
-        // Just mark the individual interview as complete
-        await storage.upsertApplicantProfile({
-          userId,
-          ...updatedProfile
-        });
-      }
 
-      // Store in Airtable
-      try {
-        const userName = user?.firstName 
-          ? `${user.firstName} ${user.lastName || ''}`.trim()
-          : user?.email || 'Unknown User';
-        
-        await airtableService.storeUserProfile(userName, generatedProfile, userId, user?.email);
-      } catch (error) {
-        console.error('Failed to store profile in Airtable:', error);
-      }
+        // Store in Airtable only when all interviews are complete
+        try {
+          const userName = user?.firstName 
+            ? `${user.firstName} ${user.lastName || ''}`.trim()
+            : user?.email || 'Unknown User';
+          
+          await airtableService.storeUserProfile(userName, generatedProfile, userId, user?.email);
+        } catch (error) {
+          console.error('Failed to store profile in Airtable:', error);
+        }
 
-      // Check if all interviews are completed after this one
-      if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
         res.json({ 
           isComplete: true,
           allInterviewsCompleted: true,
           profile: generatedProfile,
-          message: "Voice interview completed! All interviews finished - your comprehensive profile has been generated."
+          message: "All interviews completed! Your comprehensive AI profile has been generated successfully."
         });
       } else {
         // Individual interview complete - determine next interview type
@@ -1428,8 +1425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isComplete: true,
           allInterviewsCompleted: false,
           nextInterviewType,
-          profile: generatedProfile,
-          message: "Voice interview completed successfully!"
+          message: "Interview section completed successfully!"
         });
       }
     } catch (error) {
