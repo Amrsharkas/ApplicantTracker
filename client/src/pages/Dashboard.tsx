@@ -107,11 +107,17 @@ export default function Dashboard() {
   
   // Check if comprehensive profile has required fields completed (75% threshold for interviews)
   const hasCompleteProfile = profileProgress >= 75;
-  const hasCompletedInterview = (profile as any)?.aiProfileGenerated;
   
-
+  // More strict interview completion check - require ALL three interviews AND aiProfileGenerated
+  const hasCompletedPersonalInterview = (profile as any)?.personalInterviewCompleted;
+  const hasCompletedProfessionalInterview = (profile as any)?.professionalInterviewCompleted;
+  const hasCompletedTechnicalInterview = (profile as any)?.technicalInterviewCompleted;
+  const hasAiProfileGenerated = (profile as any)?.aiProfileGenerated;
   
-  // Show full dashboard only when BOTH steps are complete: complete profile (including CV) AND AI interview
+  const hasCompletedAllInterviews = hasCompletedPersonalInterview && hasCompletedProfessionalInterview && hasCompletedTechnicalInterview;
+  const hasCompletedInterview = hasCompletedAllInterviews && hasAiProfileGenerated;
+  
+  // Show full dashboard only when BOTH steps are complete: complete profile (including CV) AND ALL interviews completed
   const showFullDashboard = hasCompleteProfile && hasCompletedInterview;
 
   // Show welcome toast only once after completing interview
