@@ -166,11 +166,19 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           
           // Check if the AI is concluding the interview in English or Arabic
           const conclusionKeywords = [
-            'conclude', 'final', 'wrap up', 'end of interview', 'that concludes',
-            'أتمنى لك', 'شكراً لك', 'انتهت المقابلة', 'نهاية المقابلة', 'هذا كل شيء', 'عفواً'
+            'conclude', 'final', 'wrap up', 'end of interview', 'that concludes', 'thank you for', 'this concludes',
+            'complete', 'finished', 'done with', 'good luck', 'best wishes', 'interview is over', 'all done',
+            'أتمنى لك', 'شكراً لك', 'انتهت المقابلة', 'نهاية المقابلة', 'هذا كل شيء', 'عفواً', 'تم الانتهاء',
+            'بالتوفيق', 'أتمنى لك النجاح', 'هذا يختتم', 'انتهينا من', 'كل التوفيق'
           ];
           
-          if (conclusionKeywords.some(keyword => aiText.toLowerCase().includes(keyword.toLowerCase()))) {
+          // Also check for question count completion - if we've reached expected count
+          const expectedQuestionCount = getQuestionCount(selectedInterviewType);
+          const currentQuestionCount = conversationHistory.filter(msg => msg.role === 'assistant').length;
+          
+          if (conclusionKeywords.some(keyword => aiText.toLowerCase().includes(keyword.toLowerCase())) || 
+              currentQuestionCount >= expectedQuestionCount) {
+            console.log('🎯 Voice interview concluded - setting submit button state');
             setIsInterviewConcluded(true);
           }
         }
@@ -373,11 +381,18 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         
         // Check if the question contains conclusion keywords in English or Arabic to show submit button
         const conclusionKeywords = [
-          'conclude', 'final', 'wrap up', 'end of interview', 'that concludes',
-          'أتمنى لك', 'شكراً لك', 'انتهت المقابلة', 'نهاية المقابلة', 'هذا كل شيء', 'عفواً'
+          'conclude', 'final', 'wrap up', 'end of interview', 'that concludes', 'thank you for', 'this concludes',
+          'complete', 'finished', 'done with', 'good luck', 'best wishes', 'interview is over', 'all done',
+          'أتمنى لك', 'شكراً لك', 'انتهت المقابلة', 'نهاية المقابلة', 'هذا كل شيء', 'عفواً', 'تم الانتهاء',
+          'بالتوفيق', 'أتمنى لك النجاح', 'هذا يختتم', 'انتهينا من', 'كل التوفيق'
         ];
         
-        if (conclusionKeywords.some(keyword => data.nextQuestion.toLowerCase().includes(keyword.toLowerCase()))) {
+        // Also check if this is the last question in the set
+        const questions = currentSession?.sessionData?.questions || [];
+        const isLastQuestion = currentQuestionIndex >= questions.length - 1;
+        
+        if (conclusionKeywords.some(keyword => data.nextQuestion.toLowerCase().includes(keyword.toLowerCase())) || isLastQuestion) {
+          console.log('🎯 Text interview concluded - setting submit button state');
           setIsInterviewConcluded(true);
         }
       }
@@ -1407,9 +1422,17 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                 if (isInterviewConcluded) {
                   processVoiceInterviewMutation.mutate();
                 } else {
-                  // Just hang up
-                  realtimeAPI.disconnect();
-                  setMode('select');
+                  // Check if minimum conversation length reached (at least 5 exchanges)
+                  const userMessages = conversationHistory.filter(msg => msg.role === 'user');
+                  if (userMessages.length >= 3) {
+                    console.log('🎯 Minimum voice interview length reached - enabling submit');
+                    setIsInterviewConcluded(true);
+                    processVoiceInterviewMutation.mutate();
+                  } else {
+                    // Just hang up
+                    realtimeAPI.disconnect();
+                    setMode('select');
+                  }
                 }
               }}
               disabled={isProcessingInterview || processVoiceInterviewMutation.isPending}
@@ -1419,7 +1442,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Processing Interview...
                 </>
-              ) : isInterviewConcluded ? (
+              ) : isInterviewConcluded || conversationHistory.filter(msg => msg.role === 'user').length >= 3 ? (
                 <>
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Submit Interview
