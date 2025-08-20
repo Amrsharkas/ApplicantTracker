@@ -147,6 +147,21 @@ ${userProfile.location ? `Location: ${userProfile.location}` : ''}
 ${userProfile.summary ? `Profile Summary: ${userProfile.summary}` : ''}
 ${userProfile.resumeUrl ? `NOTE: The candidate has uploaded a resume. Use this background information to ask more personalized and relevant follow-up questions.` : ''}
 
+WORK EXPERIENCE CONTEXT:
+${userProfile.workExperiences && Array.isArray(userProfile.workExperiences) ? 
+  userProfile.workExperiences.map((exp: any) => {
+    const isCurrent = exp.current || exp.endDate === '' || !exp.endDate;
+    return `- ${isCurrent ? 'CURRENT POSITION' : 'PAST POSITION'}: ${exp.position || exp.jobTitle || 'Position'} at ${exp.company || 'Company'} (${exp.startDate || 'Start date'} - ${isCurrent ? 'Present' : (exp.endDate || 'End date')})`;
+  }).join('\n') : 
+  userProfile.company ? `- CURRENT POSITION: ${userProfile.currentRole || 'Current role'} at ${userProfile.company}` : ''
+}
+
+IMPORTANT EMPLOYMENT GUIDELINES:
+- When discussing work experiences, clearly distinguish between CURRENT and PAST positions
+- For current positions, use present tense: "What are your main responsibilities in your current role at [company]?"
+- For past positions, use past tense: "What were your key achievements during your time at [previous company]?"
+- Reference specific companies and roles from their background when asking questions
+
 Use this information to tailor your questions and make them more specific to their background. Reference their experience and current situation when appropriate.` : '';
 
           // Get interview type and questions from parameters
