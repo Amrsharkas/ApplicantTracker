@@ -307,6 +307,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
+      // Convert numeric fields to integers to prevent decimal validation errors
+      const integerFields = ['totalYearsOfExperience', 'age', 'yearsOfExperience', 'completionPercentage', 'minimumSalary'];
+      integerFields.forEach(field => {
+        if (processedBody[field] !== undefined && processedBody[field] !== null && processedBody[field] !== '') {
+          const numValue = parseFloat(processedBody[field]);
+          if (!isNaN(numValue)) {
+            processedBody[field] = Math.round(numValue); // Convert to integer
+          }
+        }
+      });
+      
+      // Handle nested integer fields in JSONB objects
+      if (processedBody.degrees && Array.isArray(processedBody.degrees)) {
+        processedBody.degrees = processedBody.degrees.map((degree: any) => ({
+          ...degree,
+          gpa: degree.gpa && !isNaN(parseFloat(degree.gpa)) ? parseFloat(degree.gpa) : degree.gpa
+        }));
+      }
+      
+      if (processedBody.workExperiences && Array.isArray(processedBody.workExperiences)) {
+        processedBody.workExperiences = processedBody.workExperiences.map((exp: any) => ({
+          ...exp,
+          yearsAtPosition: exp.yearsAtPosition && !isNaN(parseFloat(exp.yearsAtPosition)) ? Math.round(parseFloat(exp.yearsAtPosition)) : exp.yearsAtPosition
+        }));
+      }
+      
       // For simple profile updates, validate only the fields being sent
       const profileData = {
         userId,
