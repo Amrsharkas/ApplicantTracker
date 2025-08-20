@@ -176,6 +176,9 @@ Key guidelines:
 - Maintain a calm, consistent tone - focused, observant, and neutral
 - If you have background information about them, reference it naturally to make questions more relevant
 - Keep the conversation moving toward the goal of understanding them deeply
+- CRITICAL: Ask ONE question at a time and WAIT for the user's complete response before asking the next question
+- Never send multiple questions in sequence without waiting for answers
+- Always pause and listen after asking each question
 - After each answer, acknowledge what they shared with neutral responses like "Understood" or "Got it" before moving to the next question
 - Speak clearly and at a natural pace
 - ALWAYS respond after the user speaks - never stay silent
@@ -225,20 +228,8 @@ This focused approach ensures we understand them comprehensively while respectin
         
         dc.send(JSON.stringify(responseCreate));
         
-        // Add a timeout to detect if AI doesn't respond
-        setTimeout(() => {
-          if (!options.onMessage) return;
-          
-          console.log('⚠️ AI hasn\'t responded in 5 seconds - sending keepalive');
-          // Send a simple response trigger to ensure AI keeps talking
-          const responseCreate2 = {
-            type: 'response.create',
-            response: {
-              modalities: ['text', 'audio']
-            }
-          };
-          dc.send(JSON.stringify(responseCreate2));
-        }, 5000);
+        // Don't send automatic keepalive - let the conversation flow naturally
+        // The AI should wait for user responses before continuing
       });
       
       // Create offer and set up connection
