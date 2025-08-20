@@ -292,12 +292,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const processedBody = { ...req.body };
       
       // Convert empty date strings to null
-      const dateFields = ['birthdate'];
+      const dateFields = ['birthdate', 'dateOfBirth'];
       dateFields.forEach(field => {
-        if (processedBody[field] === '') {
+        if (processedBody[field] === '' || processedBody[field] === 'Invalid Date') {
           processedBody[field] = null;
         }
       });
+      
+      // Handle nested date fields in personal details
+      if (processedBody.personalDetails?.dateOfBirth === '' || processedBody.personalDetails?.dateOfBirth === 'Invalid Date') {
+        processedBody.personalDetails.dateOfBirth = null;
+      }
       
       // Convert empty arrays to null where appropriate
       const arrayFields = ['jobTypes', 'jobTitles', 'jobCategories', 'preferredWorkCountries', 'workExperiences', 'languages', 'degrees', 'highSchools', 'certifications', 'trainingCourses', 'otherUrls'];
@@ -329,6 +334,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (processedBody.workExperiences && Array.isArray(processedBody.workExperiences)) {
         processedBody.workExperiences = processedBody.workExperiences.map((exp: any) => ({
           ...exp,
+          yearsAtPosition: exp.yearsAtPosition && !isNaN(parseFloat(exp.yearsAtPosition)) ? Math.round(parseFloat(exp.yearsAtPosition)) : exp.yearsAtPosition
+        }));
+      }
+      
+      // Handle experience array specifically for "currently working here" checkbox
+      if (processedBody.experience && Array.isArray(processedBody.experience)) {
+        processedBody.experience = processedBody.experience.map((exp: any) => ({
+          ...exp,
+          // If currently working, clear the end date
+          endDate: exp.current ? "" : exp.endDate,
+          // Ensure numeric fields are handled properly
           yearsAtPosition: exp.yearsAtPosition && !isNaN(parseFloat(exp.yearsAtPosition)) ? Math.round(parseFloat(exp.yearsAtPosition)) : exp.yearsAtPosition
         }));
       }
