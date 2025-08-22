@@ -8,6 +8,7 @@ import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
+import SubscriptionDemo from "@/pages/SubscriptionDemo";
 import { useState, useEffect } from "react";
 
 import NotFound from "@/pages/not-found";
@@ -56,6 +57,11 @@ function Router() {
       <Route path="/dashboard">
         {isAuthenticated ? <Dashboard /> : <Redirect to="/" />}
       </Route>
+      
+      <Route path="/subscription-demo">
+        {isAuthenticated ? <SubscriptionDemo /> : <Redirect to="/" />}
+      </Route>
+      
       <Route component={NotFound} />
     </Switch>
   );

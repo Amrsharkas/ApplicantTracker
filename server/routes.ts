@@ -16,6 +16,7 @@ import { applicantProfiles, interviewSessions } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import Stripe from "stripe";
 import { subscriptionService } from "./subscriptionService";
+import { requireFeature, checkUsageLimit, usageCheckers } from "./subscriptionMiddleware";
 
 // Initialize Stripe
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -727,7 +728,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Voice interview initialization route
-  app.post("/api/interview/start-voice", requireAuth, async (req: any, res) => {
+  app.post("/api/interview/start-voice", 
+    requireAuth, 
+    requireFeature('voiceInterviews'),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       const { interviewType, language = 'english' } = req.body;
@@ -931,7 +935,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/start/:type', requireAuth, async (req: any, res) => {
+  app.post('/api/interview/start/:type', 
+    requireAuth, 
+    requireFeature('aiInterviews'),
+    checkUsageLimit('aiInterviews', usageCheckers.getAiInterviewsUsage),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       const interviewType = req.params.type;
@@ -1167,7 +1175,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // New Job Application Endpoint with AI Skill Analysis
-  app.post('/api/job-applications/submit', requireAuth, async (req: any, res) => {
+  app.post('/api/job-applications/submit', 
+    requireAuth,
+    requireFeature('jobApplications'),
+    checkUsageLimit('jobApplications', usageCheckers.getApplicationsUsage),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       const { job } = req.body;
@@ -3091,6 +3103,79 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   });
 
   // =================== SUBSCRIPTION ROUTES ===================
+
+  // Demonstrate subscription feature differentiation
+  app.get('/api/subscription/feature-test', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const subscription = await subscriptionService.getUserSubscription(userId);
+      const features = await subscriptionService.getUserFeatures(userId);
+      
+      if (!subscription || !features) {
+        return res.status(404).json({ error: "No subscription found" });
+      }
+
+      // Test different feature access levels
+      const featureTests = {
+        planName: subscription.plan.name,
+        planDisplayName: subscription.plan.displayName,
+        price: subscription.plan.price,
+        features: {
+          aiInterviews: {
+            enabled: features.aiInterviews.enabled,
+            limit: features.aiInterviews.limit,
+            description: features.aiInterviews.limit === -1 ? 'Unlimited' : `${features.aiInterviews.limit} per month`
+          },
+          jobMatches: {
+            enabled: features.jobMatches.enabled,
+            limit: features.jobMatches.limit,
+            description: features.jobMatches.limit === -1 ? 'Unlimited' : `${features.jobMatches.limit} per month`
+          },
+          jobApplications: {
+            enabled: features.jobApplications.enabled,
+            limit: features.jobApplications.limit,
+            description: features.jobApplications.limit === -1 ? 'Unlimited' : `${features.jobApplications.limit} per month`
+          },
+          voiceInterviews: {
+            enabled: features.voiceInterviews,
+            description: features.voiceInterviews ? 'Available' : 'Not available'
+          },
+          advancedMatching: {
+            enabled: features.advancedMatching,
+            description: features.advancedMatching ? 'AI-powered smart matching' : 'Basic matching only'
+          },
+          profileAnalysis: {
+            enabled: features.profileAnalysis.enabled,
+            depth: features.profileAnalysis.depth,
+            description: `${features.profileAnalysis.depth} analysis level`
+          },
+          prioritySupport: {
+            enabled: features.prioritySupport,
+            description: features.prioritySupport ? '24/7 priority support' : 'Standard support'
+          },
+          analyticsAccess: {
+            enabled: features.analyticsAccess,
+            description: features.analyticsAccess ? 'Full analytics dashboard' : 'Basic stats only'
+          }
+        },
+        // Show what happens when trying to access restricted features
+        accessTests: {
+          canStartAiInterview: await subscriptionService.hasFeatureAccess(userId, 'aiInterviews'),
+          canUseVoiceInterviews: await subscriptionService.hasFeatureAccess(userId, 'voiceInterviews'),
+          canAccessAnalytics: await subscriptionService.hasFeatureAccess(userId, 'analyticsAccess'),
+          canUseAdvancedMatching: await subscriptionService.hasFeatureAccess(userId, 'advancedMatching'),
+        }
+      };
+
+      res.json({
+        message: `Testing subscription features for ${subscription.plan.displayName}`,
+        ...featureTests
+      });
+    } catch (error) {
+      console.error("Error testing subscription features:", error);
+      res.status(500).json({ message: "Failed to test subscription features" });
+    }
+  });
 
   // Get all available subscription plans
   app.get('/api/subscription/plans', async (req, res) => {
