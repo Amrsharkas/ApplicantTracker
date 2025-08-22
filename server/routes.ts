@@ -14,6 +14,16 @@ import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUplo
 import { db } from "./db";
 import { applicantProfiles, interviewSessions } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
+import Stripe from "stripe";
+import { subscriptionService } from "./subscriptionService";
+
+// Initialize Stripe
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2024-06-20",
+});
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -233,6 +243,9 @@ function generateOverallImpression(cvData: any): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+  
+  // Initialize subscription plans on startup
+  await subscriptionService.initializeDefaultPlans();
 
   // Note: Auth routes are now handled in setupAuth from auth.ts
 
@@ -3074,6 +3087,270 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     } catch (error) {
       console.error('Error updating applications with emails:', error);
       res.status(500).json({ message: 'Failed to update applications with emails' });
+    }
+  });
+
+  // =================== SUBSCRIPTION ROUTES ===================
+
+  // Get all available subscription plans
+  app.get('/api/subscription/plans', async (req, res) => {
+    try {
+      const plans = await subscriptionService.getActivePlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching subscription plans:", error);
+      res.status(500).json({ message: "Failed to fetch subscription plans" });
+    }
+  });
+
+  // Get current user's subscription
+  app.get('/api/subscription/current', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const subscription = await subscriptionService.getUserSubscription(userId);
+      const features = await subscriptionService.getUserFeatures(userId);
+      
+      res.json({ 
+        subscription, 
+        features,
+        planName: subscription?.plan?.name || 'free'
+      });
+    } catch (error) {
+      console.error("Error fetching user subscription:", error);
+      res.status(500).json({ message: "Failed to fetch subscription" });
+    }
+  });
+
+  // Create Stripe payment intent for subscription
+  app.post('/api/subscription/create-payment-intent', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { planId } = req.body;
+
+      if (!planId) {
+        return res.status(400).json({ message: "Plan ID is required" });
+      }
+
+      // Get the plan details
+      const plans = await subscriptionService.getActivePlans();
+      const selectedPlan = plans.find(p => p.id === planId);
+      
+      if (!selectedPlan) {
+        return res.status(404).json({ message: "Subscription plan not found" });
+      }
+
+      if (selectedPlan.price === 0) {
+        // Free plan - no payment needed
+        return res.json({ 
+          planName: selectedPlan.name,
+          price: 0,
+          message: "This is a free plan" 
+        });
+      }
+
+      // Get or create Stripe customer
+      const user = await storage.getUser(userId);
+      let customer;
+      
+      try {
+        // Try to find existing customer
+        const existingCustomers = await stripe.customers.list({
+          email: user.email,
+          limit: 1
+        });
+        
+        if (existingCustomers.data.length > 0) {
+          customer = existingCustomers.data[0];
+        } else {
+          // Create new customer
+          customer = await stripe.customers.create({
+            email: user.email,
+            name: user.displayName || `${user.firstName} ${user.lastName}`,
+            metadata: { userId }
+          });
+        }
+      } catch (stripeError) {
+        console.error("Stripe customer error:", stripeError);
+        return res.status(500).json({ message: "Failed to create customer" });
+      }
+
+      // Create payment intent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: selectedPlan.price,
+        currency: 'usd',
+        customer: customer.id,
+        metadata: {
+          userId,
+          planId: selectedPlan.id.toString(),
+          planName: selectedPlan.name
+        },
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        planName: selectedPlan.name,
+        price: selectedPlan.price,
+        customerId: customer.id
+      });
+
+    } catch (error) {
+      console.error("Error creating payment intent:", error);
+      res.status(500).json({ message: "Failed to create payment intent" });
+    }
+  });
+
+  // Create subscription after successful payment
+  app.post('/api/subscription/create', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { paymentIntentId, planId } = req.body;
+
+      if (!paymentIntentId || !planId) {
+        return res.status(400).json({ message: "Payment intent ID and plan ID are required" });
+      }
+
+      // Verify the payment intent
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ message: "Payment not completed" });
+      }
+
+      if (paymentIntent.metadata.userId !== userId) {
+        return res.status(403).json({ message: "Payment intent does not belong to this user" });
+      }
+
+      // Create subscription in database
+      const subscription = await subscriptionService.createUserSubscription(
+        userId,
+        parseInt(planId),
+        {
+          customerId: paymentIntent.customer as string,
+          subscriptionId: paymentIntentId, // Using payment intent as subscription reference for one-time payments
+          paymentIntentId,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        }
+      );
+
+      const updatedSubscription = await subscriptionService.getUserSubscription(userId);
+      const features = await subscriptionService.getUserFeatures(userId);
+
+      res.json({ 
+        success: true,
+        subscription: updatedSubscription,
+        features,
+        message: "Subscription activated successfully!"
+      });
+
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ message: "Failed to create subscription" });
+    }
+  });
+
+  // Cancel subscription
+  app.post('/api/subscription/cancel', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { cancelAtPeriodEnd = true } = req.body;
+
+      await subscriptionService.cancelSubscription(userId, cancelAtPeriodEnd);
+
+      res.json({ 
+        success: true,
+        message: cancelAtPeriodEnd 
+          ? "Subscription will be canceled at the end of the billing period"
+          : "Subscription canceled immediately"
+      });
+
+    } catch (error) {
+      console.error("Error canceling subscription:", error);
+      res.status(500).json({ message: "Failed to cancel subscription" });
+    }
+  });
+
+  // Check if user has access to a specific feature
+  app.post('/api/subscription/check-feature', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { feature, requiredValue } = req.body;
+
+      if (!feature) {
+        return res.status(400).json({ message: "Feature name is required" });
+      }
+
+      const hasAccess = await subscriptionService.hasFeatureAccess(userId, feature, requiredValue);
+      const features = await subscriptionService.getUserFeatures(userId);
+
+      res.json({ 
+        hasAccess,
+        feature,
+        currentFeatures: features
+      });
+
+    } catch (error) {
+      console.error("Error checking feature access:", error);
+      res.status(500).json({ message: "Failed to check feature access" });
+    }
+  });
+
+  // Check if user has reached limit for a feature
+  app.post('/api/subscription/check-limit', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { feature, currentUsage } = req.body;
+
+      if (!feature || currentUsage === undefined) {
+        return res.status(400).json({ message: "Feature name and current usage are required" });
+      }
+
+      const hasReachedLimit = await subscriptionService.hasReachedLimit(userId, feature, currentUsage);
+      const features = await subscriptionService.getUserFeatures(userId);
+
+      res.json({ 
+        hasReachedLimit,
+        feature,
+        currentUsage,
+        limit: features?.[feature]?.limit || 0
+      });
+
+    } catch (error) {
+      console.error("Error checking feature limit:", error);
+      res.status(500).json({ message: "Failed to check feature limit" });
+    }
+  });
+
+  // Stripe webhook for subscription updates (optional)
+  app.post('/api/subscription/webhook', async (req, res) => {
+    try {
+      // Verify webhook signature if you have the webhook secret
+      // const sig = req.headers['stripe-signature'];
+      // const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+      
+      const event = req.body;
+
+      switch (event.type) {
+        case 'payment_intent.succeeded':
+          console.log('💳 Payment succeeded:', event.data.object.id);
+          break;
+        case 'customer.subscription.updated':
+          console.log('📝 Subscription updated:', event.data.object.id);
+          break;
+        case 'customer.subscription.deleted':
+          console.log('❌ Subscription canceled:', event.data.object.id);
+          break;
+        default:
+          console.log('🔔 Unhandled webhook event type:', event.type);
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error('Webhook error:', error);
+      res.status(400).json({ error: 'Webhook error' });
     }
   });
 
