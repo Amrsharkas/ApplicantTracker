@@ -152,7 +152,7 @@ export default function SubscriptionDemo() {
           </Card>
 
           {/* Feature Access Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {/* AI Interviews */}
             <Card className={featureTest.features.aiInterviews.enabled ? 'border-green-200' : 'border-red-200'}>
               <CardHeader className="pb-3">
@@ -174,11 +174,35 @@ export default function SubscriptionDemo() {
               </CardContent>
             </Card>
 
-            {/* Voice Interviews */}
-            <Card className={featureTest.features.voiceInterviews.enabled ? 'border-green-200' : 'border-red-200'}>
+            {/* Job Applications */}
+            <Card className={featureTest.features.jobApplications.enabled ? 'border-green-200' : 'border-red-200'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  {featureTest.features.voiceInterviews.enabled ? 
+                  {featureTest.features.jobApplications.enabled ? 
+                    <CheckCircle className="h-4 w-4 text-green-600" /> : 
+                    <XCircle className="h-4 w-4 text-red-600" />
+                  }
+                  Job Applications
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <p className="text-sm text-muted-foreground">
+                  {featureTest.features.jobApplications.description}
+                </p>
+                <Badge variant="outline" className="mt-2">
+                  {featureTest.planName === 'free' ? '2/month' : 
+                   featureTest.planName === 'standard' ? '5/month' :
+                   featureTest.planName === 'intermediate' ? '10/month' : 'Unlimited'
+                  }
+                </Badge>
+              </CardContent>
+            </Card>
+
+            {/* Voice Interviews */}
+            <Card className={featureTest.features.voiceInterviews?.enabled ? 'border-green-200' : 'border-red-200'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  {featureTest.features.voiceInterviews?.enabled ? 
                     <CheckCircle className="h-4 w-4 text-green-600" /> : 
                     <XCircle className="h-4 w-4 text-red-600" />
                   }
@@ -188,55 +212,87 @@ export default function SubscriptionDemo() {
               </CardHeader>
               <CardContent className="pt-0">
                 <p className="text-sm text-muted-foreground">
-                  {featureTest.features.voiceInterviews.description}
+                  {featureTest.features.voiceInterviews?.description || 
+                   (featureTest.features.voiceInterviews?.enabled ? 'Available' : 'Premium only')}
                 </p>
                 <Badge variant={featureTest.accessTests.canUseVoiceInterviews ? 'default' : 'destructive'} className="mt-2">
                   {featureTest.accessTests.canUseVoiceInterviews ? 'Available' : 'Premium Only'}
                 </Badge>
               </CardContent>
             </Card>
+          </div>
 
-            {/* Advanced Matching */}
-            <Card className={featureTest.features.advancedMatching.enabled ? 'border-green-200' : 'border-red-200'}>
+          {/* New EGP Plan Features */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Profile Views */}
+            <Card className={featureTest.features.profileViews?.enabled ? 'border-blue-200' : 'border-gray-200'}>
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  {featureTest.features.advancedMatching.enabled ? 
-                    <CheckCircle className="h-4 w-4 text-green-600" /> : 
-                    <XCircle className="h-4 w-4 text-red-600" />
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  {featureTest.features.profileViews?.enabled ? 
+                    <CheckCircle className="h-4 w-4 text-blue-600" /> : 
+                    <XCircle className="h-4 w-4 text-gray-400" />
                   }
-                  <Users className="h-4 w-4" />
-                  Smart Matching
+                  Profile Views
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <p className="text-sm text-muted-foreground">
-                  {featureTest.features.advancedMatching.description}
+                <p className="text-xs text-muted-foreground">
+                  {featureTest.features.profileViews?.enabled ? '"Who viewed your profile" tracking' : 'Not available'}
                 </p>
-                <Badge variant={featureTest.accessTests.canUseAdvancedMatching ? 'default' : 'destructive'} className="mt-2">
-                  {featureTest.accessTests.canUseAdvancedMatching ? 'AI-Powered' : 'Basic Only'}
-                </Badge>
               </CardContent>
             </Card>
 
-            {/* Analytics Access */}
-            <Card className={featureTest.features.analyticsAccess.enabled ? 'border-green-200' : 'border-red-200'}>
+            {/* Visibility Boost */}
+            <Card className={featureTest.features.visibilityBoost?.enabled ? 'border-blue-200' : 'border-gray-200'}>
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  {featureTest.features.analyticsAccess.enabled ? 
-                    <CheckCircle className="h-4 w-4 text-green-600" /> : 
-                    <XCircle className="h-4 w-4 text-red-600" />
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  {featureTest.features.visibilityBoost?.enabled ? 
+                    <CheckCircle className="h-4 w-4 text-blue-600" /> : 
+                    <XCircle className="h-4 w-4 text-gray-400" />
                   }
-                  <BarChart className="h-4 w-4" />
-                  Analytics
+                  Visibility Boost
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <p className="text-sm text-muted-foreground">
-                  {featureTest.features.analyticsAccess.description}
+                <p className="text-xs text-muted-foreground">
+                  {featureTest.features.visibilityBoost?.enabled ? 'Enhanced visibility in employer searches' : 'Standard visibility only'}
                 </p>
-                <Badge variant={featureTest.accessTests.canAccessAnalytics ? 'default' : 'destructive'} className="mt-2">
-                  {featureTest.accessTests.canAccessAnalytics ? 'Full Access' : 'Premium Only'}
-                </Badge>
+              </CardContent>
+            </Card>
+
+            {/* AI Coaching */}
+            <Card className={featureTest.features.aiCoaching?.enabled ? 'border-purple-200' : 'border-gray-200'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  {featureTest.features.aiCoaching?.enabled ? 
+                    <CheckCircle className="h-4 w-4 text-purple-600" /> : 
+                    <XCircle className="h-4 w-4 text-gray-400" />
+                  }
+                  AI Coaching
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <p className="text-xs text-muted-foreground">
+                  {featureTest.features.aiCoaching?.enabled ? 'Career guidance & skill gap analysis' : 'Premium feature only'}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* VIP Access */}
+            <Card className={featureTest.features.vipAccess?.enabled ? 'border-gold-200' : 'border-gray-200'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  {featureTest.features.vipAccess?.enabled ? 
+                    <CheckCircle className="h-4 w-4 text-yellow-600" /> : 
+                    <XCircle className="h-4 w-4 text-gray-400" />
+                  }
+                  VIP Access
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <p className="text-xs text-muted-foreground">
+                  {featureTest.features.vipAccess?.enabled ? 'Job fairs & partner opportunities' : 'Premium feature only'}
+                </p>
               </CardContent>
             </Card>
           </div>

@@ -54,7 +54,8 @@ interface SubscriptionModalProps {
 
 function formatPrice(priceInCents: number): string {
   if (priceInCents === 0) return "Free";
-  return `$${(priceInCents / 100).toFixed(2)}`;
+  // Convert cents to EGP (assuming prices are stored in EGP cents)
+  return `${(priceInCents / 100).toFixed(0)} EGP`;
 }
 
 function formatLimit(limit: number): string {
@@ -66,12 +67,12 @@ function getPlanIcon(planName: string) {
   switch (planName) {
     case 'free':
       return <Star className="w-6 h-6 text-gray-500" />;
-    case 'basic':
+    case 'standard':
       return <Zap className="w-6 h-6 text-blue-500" />;
+    case 'intermediate':
+      return <Building2 className="w-6 h-6 text-green-500" />;
     case 'premium':
       return <Crown className="w-6 h-6 text-yellow-500" />;
-    case 'enterprise':
-      return <Building2 className="w-6 h-6 text-purple-500" />;
     default:
       return <Star className="w-6 h-6 text-gray-500" />;
   }

@@ -3149,6 +3149,31 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
             depth: features.profileAnalysis.depth,
             description: `${features.profileAnalysis.depth} analysis level`
           },
+          profileViews: {
+            enabled: features.profileViews,
+            description: features.profileViews ? '"Who viewed your profile" tracking' : 'Not available'
+          },
+          visibilityBoost: {
+            enabled: features.visibilityBoost,
+            description: features.visibilityBoost ? 'Enhanced visibility in employer searches' : 'Standard visibility only'
+          },
+          profileRebuilds: {
+            enabled: features.profileRebuilds.enabled,
+            limit: features.profileRebuilds.limit,
+            description: features.profileRebuilds.enabled ? `${features.profileRebuilds.limit} rebuilds per month` : 'Not available'
+          },
+          aiCoaching: {
+            enabled: features.aiCoaching,
+            description: features.aiCoaching ? 'Career guidance & skill gap analysis' : 'Premium feature only'
+          },
+          mockInterviews: {
+            enabled: features.mockInterviews,
+            description: features.mockInterviews ? 'AI interview preparation sessions' : 'Premium feature only'
+          },
+          vipAccess: {
+            enabled: features.vipAccess,
+            description: features.vipAccess ? 'Job fairs & partner opportunities' : 'Premium feature only'
+          },
           prioritySupport: {
             enabled: features.prioritySupport,
             description: features.prioritySupport ? '24/7 priority support' : 'Standard support'
