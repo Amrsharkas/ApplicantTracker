@@ -158,5 +158,13 @@ export const usageCheckers = {
     const userId = (req as any).user?.id;
     // You would implement actual counting logic here
     return 0;
+  },
+
+  // Count profile rebuilds by the user this month
+  async getProfileRebuildsUsage(req: Request): Promise<number> {
+    const userId = (req as any).user?.id;
+    // You would implement actual counting logic here
+    // For now, return 0 as placeholder - this would count profile resets/rebuilds in the current month
+    return 0;
   }
 };

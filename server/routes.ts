@@ -691,6 +691,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Coaching endpoint - Pro plan exclusive feature
+  app.post("/api/coaching/career-guidance", 
+    requireAuth, 
+    requireFeature('aiCoaching'),
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { question, context } = req.body;
+      
+      if (!question) {
+        return res.status(400).json({ error: "Question is required" });
+      }
+      
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+      
+      // Get user's complete profile and interview history for personalized coaching
+      const interviewHistory = await storage.getInterviewHistory(userId);
+      
+      const coachingResponse = await aiInterviewService.generateCareerGuidance({
+        user,
+        profile,
+        question,
+        context,
+        interviewHistory
+      });
+      
+      res.json({ 
+        guidance: coachingResponse,
+        coachingType: 'career-guidance',
+        personalizedFor: user.firstName || 'User'
+      });
+    } catch (error) {
+      console.error("Error providing AI coaching:", error);
+      res.status(500).json({ error: "Failed to provide career guidance" });
+    }
+  });
+
+  // Mock Interview endpoint - Pro plan exclusive feature
+  app.post("/api/coaching/mock-interview", 
+    requireAuth, 
+    requireFeature('mockInterviews'),
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { interviewType = 'general', jobRole, companyName } = req.body;
+      
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+      
+      // Generate mock interview questions tailored to the user's profile
+      const mockInterview = await aiInterviewService.generateMockInterview({
+        user,
+        profile,
+        interviewType,
+        jobRole,
+        companyName
+      });
+      
+      res.json({ 
+        mockInterview,
+        sessionType: 'mock-interview',
+        targetRole: jobRole || 'General Interview'
+      });
+    } catch (error) {
+      console.error("Error generating mock interview:", error);
+      res.status(500).json({ error: "Failed to generate mock interview" });
+    }
+  });
+
   // Create ephemeral token for Realtime API
   app.post("/api/realtime/session", requireAuth, async (req, res) => {
     try {
@@ -1027,7 +1097,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Legacy endpoint for backward compatibility
-  app.post('/api/interview/start', requireAuth, async (req: any, res) => {
+  app.post('/api/interview/start', 
+    requireAuth, 
+    requireFeature('aiInterviews'),
+    checkUsageLimit('aiInterviews', usageCheckers.getAiInterviewsUsage),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       
@@ -1719,7 +1793,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/applications', requireAuth, async (req: any, res) => {
+  app.post('/api/applications', 
+    requireAuth, 
+    requireFeature('jobApplications'),
+    checkUsageLimit('jobApplications', usageCheckers.getApplicationsUsage),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       const applicationData = insertApplicationSchema.parse({
@@ -2049,7 +2127,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Job Application Analysis Route
-  app.post('/api/job-application/analyze', requireAuth, async (req: any, res) => {
+  app.post('/api/job-application/analyze', 
+    requireAuth, 
+    requireFeature('profileAnalysis'),
+    async (req: any, res) => {
     try {
       let userId = req.user?.claims?.sub;
       const { jobId, jobTitle, jobDescription, companyName, requirements, employmentType } = req.body;
@@ -2304,7 +2385,10 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   console.log("🚀 Airtable job monitoring system started - checking every 60 seconds");
 
   // Generate brutally honest profile for Airtable after all interviews completed
-  app.post('/api/profile/generate-honest-assessment', requireAuth, async (req: any, res) => {
+  app.post('/api/profile/generate-honest-assessment', 
+    requireAuth, 
+    requireFeature('profileAnalysis'),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       
@@ -2386,11 +2470,113 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   });
 
   // =============================================
+  // PREMIUM FEATURE ROUTES - PROFILE VIEWS & VISIBILITY
+  // =============================================
+
+  // Track profile views - Premium & Pro exclusive
+  app.post("/api/profile/track-view", 
+    requireAuth, 
+    requireFeature('profileViews'),
+    async (req: any, res) => {
+    try {
+      const viewerId = req.user.id;
+      const { profileId, viewType = 'employer_view' } = req.body;
+      
+      if (!profileId) {
+        return res.status(400).json({ error: "Profile ID is required" });
+      }
+      
+      // Log the profile view (in production, store in database)
+      console.log(`👀 Profile View Tracked: ${viewerId} viewed profile ${profileId} (${viewType})`);
+      
+      // TODO: Implement actual view tracking in database
+      // await storage.trackProfileView(viewerId, profileId, viewType);
+      
+      res.json({ 
+        message: "Profile view tracked successfully",
+        viewType,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error tracking profile view:", error);
+      res.status(500).json({ error: "Failed to track profile view" });
+    }
+  });
+
+  // Get who viewed your profile - Premium & Pro exclusive
+  app.get("/api/profile/viewers", 
+    requireAuth, 
+    requireFeature('profileViews'),
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // TODO: Implement actual viewer retrieval from database
+      // For now, return mock data to demonstrate the feature
+      const viewers = [
+        {
+          id: 'viewer_1',
+          name: 'TechCorp HR',
+          company: 'TechCorp Solutions',
+          viewedAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+          viewType: 'employer_view'
+        },
+        {
+          id: 'viewer_2', 
+          name: 'Innovation Labs',
+          company: 'Innovation Labs Inc',
+          viewedAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+          viewType: 'recruiter_view'
+        }
+      ];
+      
+      res.json({ 
+        viewers,
+        totalViews: viewers.length,
+        recentViews: viewers.filter(v => 
+          new Date(v.viewedAt).getTime() > Date.now() - 604800000 // Last 7 days
+        ).length
+      });
+    } catch (error) {
+      console.error("Error fetching profile viewers:", error);
+      res.status(500).json({ error: "Failed to fetch profile viewers" });
+    }
+  });
+
+  // Apply visibility boost - Premium & Pro exclusive
+  app.post("/api/profile/visibility-boost", 
+    requireAuth, 
+    requireFeature('visibilityBoost'),
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { boostDuration = 24 } = req.body; // hours
+      
+      // TODO: Implement actual visibility boost in database
+      console.log(`🚀 Visibility Boost Applied: User ${userId} boosted for ${boostDuration} hours`);
+      
+      res.json({ 
+        message: "Visibility boost applied successfully",
+        boostActive: true,
+        boostExpiresAt: new Date(Date.now() + (boostDuration * 60 * 60 * 1000)).toISOString(),
+        boostDuration: `${boostDuration} hours`
+      });
+    } catch (error) {
+      console.error("Error applying visibility boost:", error);
+      res.status(500).json({ error: "Failed to apply visibility boost" });
+    }
+  });
+
+  // =============================================
   // COMPREHENSIVE PROFILE ROUTES
   // =============================================
 
-  // Reset comprehensive profile data (clear pre-filled data)
-  app.post("/api/comprehensive-profile/reset", requireAuth, async (req, res) => {
+  // Reset comprehensive profile data (clear pre-filled data) - Profile Rebuild Feature
+  app.post("/api/comprehensive-profile/reset", 
+    requireAuth, 
+    requireFeature('profileRebuilds'),
+    checkUsageLimit('profileRebuilds', usageCheckers.getProfileRebuildsUsage),
+    async (req, res) => {
     try {
       const userId = (req.user as any)?.id;
       
