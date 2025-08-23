@@ -3220,10 +3220,16 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       const subscription = await subscriptionService.getUserSubscription(userId);
       const features = await subscriptionService.getUserFeatures(userId);
       
+      if (!subscription) {
+        return res.status(404).json({ 
+          message: "No active subscription found" 
+        });
+      }
+      
       res.json({ 
         subscription, 
         features,
-        planName: subscription?.plan?.name || 'free'
+        planName: subscription.plan.name
       });
     } catch (error) {
       console.error("Error fetching user subscription:", error);

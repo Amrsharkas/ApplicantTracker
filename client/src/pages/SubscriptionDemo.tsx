@@ -190,9 +190,9 @@ export default function SubscriptionDemo() {
                   {featureTest.features.jobApplications.description}
                 </p>
                 <Badge variant="outline" className="mt-2">
-                  {featureTest.planName === 'free' ? '2/month' : 
-                   featureTest.planName === 'standard' ? '5/month' :
-                   featureTest.planName === 'intermediate' ? '10/month' : 'Unlimited'
+                  {featureTest.planName === 'standard' ? '5/month' : 
+                   featureTest.planName === 'premium' ? '10/month' :
+                   featureTest.planName === 'pro' ? 'Unlimited' : 'No access'
                   }
                 </Badge>
               </CardContent>

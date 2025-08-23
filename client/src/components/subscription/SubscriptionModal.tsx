@@ -65,14 +65,12 @@ function formatLimit(limit: number): string {
 
 function getPlanIcon(planName: string) {
   switch (planName) {
-    case 'free':
-      return <Star className="w-6 h-6 text-gray-500" />;
     case 'standard':
       return <Zap className="w-6 h-6 text-blue-500" />;
-    case 'intermediate':
-      return <Building2 className="w-6 h-6 text-green-500" />;
     case 'premium':
       return <Crown className="w-6 h-6 text-yellow-500" />;
+    case 'pro':
+      return <Building2 className="w-6 h-6 text-purple-600" />;
     default:
       return <Star className="w-6 h-6 text-gray-500" />;
   }
@@ -268,9 +266,13 @@ export function SubscriptionModal({ isOpen, onClose }: SubscriptionModalProps) {
     queryKey: ['/api/subscription/current'],
     queryFn: async () => {
       const response = await fetch('/api/subscription/current');
-      if (!response.ok) throw new Error('Failed to fetch current subscription');
+      if (!response.ok) {
+        if (response.status === 404) return null; // No subscription found
+        throw new Error('Failed to fetch current subscription');
+      }
       return response.json() as UserSubscription;
     },
+    retry: false,
   });
 
   const handlePlanSelect = (plan: SubscriptionPlan) => {

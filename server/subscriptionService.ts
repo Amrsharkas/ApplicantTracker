@@ -53,17 +53,17 @@ export class SubscriptionService {
     if (existingPlans.length === 0) {
       const defaultPlans = [
         {
-          name: "free",
-          displayName: "Free Plan",
-          description: "Perfect for getting started with AI interviews",
-          price: 0,
+          name: "standard",
+          displayName: "Standard Plan",
+          description: "For job seekers who want to start applying.",
+          price: 64900, // 649 EGP/month (in cents for Stripe compatibility)
           interval: "month",
-          stripePriceId: null,
+          stripePriceId: process.env.STRIPE_STANDARD_PRICE_ID || null,
           features: JSON.stringify({
-            aiInterviews: { enabled: true, limit: 1 },
-            jobMatches: { enabled: true, limit: 3 },
-            jobApplications: { enabled: true, limit: 2 },
-            resumeUploads: { enabled: true, limit: 1 },
+            aiInterviews: { enabled: true, limit: -1 },
+            jobMatches: { enabled: true, limit: -1 },
+            jobApplications: { enabled: true, limit: 5 },
+            resumeUploads: { enabled: true, limit: 2 },
             profileAnalysis: { enabled: true, depth: "basic" },
             profileRebuilds: { enabled: false, limit: 0 },
             profileViews: false,
@@ -82,26 +82,26 @@ export class SubscriptionService {
           sortOrder: 1,
         },
         {
-          name: "standard",
-          displayName: "Standard Plan",
-          description: "Apply to up to 5 jobs per month with AI-curated matches",
-          price: 44900, // 449 EGP/month (in cents for Stripe compatibility)
+          name: "premium",
+          displayName: "Premium Plan",
+          description: "For more active job seekers aiming for faster results.",
+          price: 94900, // 949 EGP/month
           interval: "month",
-          stripePriceId: process.env.STRIPE_STANDARD_PRICE_ID || null,
+          stripePriceId: process.env.STRIPE_PREMIUM_PRICE_ID || null,
           features: JSON.stringify({
-            aiInterviews: { enabled: true, limit: 3 },
+            aiInterviews: { enabled: true, limit: -1 },
             jobMatches: { enabled: true, limit: -1 },
-            jobApplications: { enabled: true, limit: 5 },
-            resumeUploads: { enabled: true, limit: 2 },
-            profileAnalysis: { enabled: true, depth: "detailed" },
-            profileRebuilds: { enabled: true, limit: 1 },
-            profileViews: false,
-            visibilityBoost: false,
-            priorityNotifications: false,
+            jobApplications: { enabled: true, limit: 10 },
+            resumeUploads: { enabled: true, limit: 3 },
+            profileAnalysis: { enabled: true, depth: "comprehensive" },
+            profileRebuilds: { enabled: false, limit: 0 },
+            profileViews: true,
+            visibilityBoost: true,
+            priorityNotifications: true,
             aiCoaching: false,
             mockInterviews: false,
             vipAccess: false,
-            prioritySupport: false,
+            prioritySupport: true,
             voiceInterviews: false,
             advancedMatching: true,
             analyticsAccess: false,
@@ -111,48 +111,19 @@ export class SubscriptionService {
           sortOrder: 2,
         },
         {
-          name: "intermediate",
-          displayName: "Intermediate Plan",
-          description: "Enhanced visibility and employer insights with priority notifications",
-          price: 64900, // 649 EGP/month
+          name: "pro",
+          displayName: "Pro Plan",
+          description: "The ultimate plan for professionals serious about landing a job.",
+          price: 129900, // 1299 EGP/month
           interval: "month",
-          stripePriceId: process.env.STRIPE_INTERMEDIATE_PRICE_ID || null,
-          features: JSON.stringify({
-            aiInterviews: { enabled: true, limit: 5 },
-            jobMatches: { enabled: true, limit: -1 },
-            jobApplications: { enabled: true, limit: 10 },
-            resumeUploads: { enabled: true, limit: 3 },
-            profileAnalysis: { enabled: true, depth: "comprehensive" },
-            profileRebuilds: { enabled: true, limit: 2 },
-            profileViews: true,
-            visibilityBoost: true,
-            priorityNotifications: true,
-            aiCoaching: false,
-            mockInterviews: false,
-            vipAccess: false,
-            prioritySupport: false,
-            voiceInterviews: false,
-            advancedMatching: true,
-            analyticsAccess: true,
-            exportData: false,
-            customBranding: false,
-          } as PlanFeatures),
-          sortOrder: 3,
-        },
-        {
-          name: "premium",
-          displayName: "Premium Plan",
-          description: "Complete career advancement package with AI coaching and VIP access",
-          price: 94900, // 949 EGP/month
-          interval: "month",
-          stripePriceId: process.env.STRIPE_PREMIUM_PRICE_ID || null,
+          stripePriceId: process.env.STRIPE_PRO_PRICE_ID || null,
           features: JSON.stringify({
             aiInterviews: { enabled: true, limit: -1 },
             jobMatches: { enabled: true, limit: -1 },
             jobApplications: { enabled: true, limit: -1 },
             resumeUploads: { enabled: true, limit: -1 },
-            profileAnalysis: { enabled: true, depth: "enterprise" },
-            profileRebuilds: { enabled: true, limit: 4 },
+            profileAnalysis: { enabled: true, depth: "comprehensive" },
+            profileRebuilds: { enabled: true, limit: -1 },
             profileViews: true,
             visibilityBoost: true,
             priorityNotifications: true,
@@ -166,7 +137,7 @@ export class SubscriptionService {
             exportData: true,
             customBranding: false,
           } as PlanFeatures),
-          sortOrder: 4,
+          sortOrder: 3,
         },
       ];
 
@@ -200,30 +171,7 @@ export class SubscriptionService {
       .limit(1);
 
     if (result.length === 0) {
-      // Return free plan if no subscription found
-      const freePlan = await db
-        .select()
-        .from(subscriptionPlans)
-        .where(eq(subscriptionPlans.name, "free"))
-        .limit(1);
-
-      if (freePlan.length > 0) {
-        return {
-          id: 0,
-          userId,
-          planId: freePlan[0].id,
-          stripeCustomerId: null,
-          stripeSubscriptionId: null,
-          stripePaymentIntentId: null,
-          status: "active",
-          currentPeriodStart: null,
-          currentPeriodEnd: null,
-          cancelAtPeriodEnd: false,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          plan: freePlan[0],
-        };
-      }
+      // No subscription found - user needs to subscribe
       return null;
     }
 
