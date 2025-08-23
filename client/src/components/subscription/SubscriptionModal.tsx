@@ -91,6 +91,39 @@ function getPlanColor(planName: string): string {
   }
 }
 
+// Helper function to get plan features for display - EXACTLY as specified by user
+function getPlanFeatures(planName: string): string[] {
+  switch (planName) {
+    case 'standard':
+      return [
+        'Apply to 5 jobs per month',
+        'Basic Profile Analysis',
+        'Standard AI Interviews',
+        'Customer Support (Standard Response Time)'
+      ];
+    case 'premium':
+      return [
+        'Apply to 10 jobs per month',
+        'Comprehensive Profile Analysis',
+        'Advanced Visibility (shown more prominently to employers)',
+        'See Who Viewed Your Profile',
+        'Customer Support (Priority Response)'
+      ];
+    case 'pro':
+      return [
+        'Unlimited Job Applications',
+        'Comprehensive Profile Analysis',
+        'AI Coaching & Recommendations (feedback on weaknesses + interview prep)',
+        'Higher Visibility Boost (top candidate highlight for employers)',
+        'See Who Viewed Your Profile',
+        'Unlimited Profile Rebuilds (update/refine anytime)',
+        'Customer Support (Top Priority & Dedicated Assistance)'
+      ];
+    default:
+      return [];
+  }
+}
+
 function CheckoutForm({ selectedPlan, onSuccess, onCancel }: {
   selectedPlan: SubscriptionPlan;
   onSuccess: () => void;
@@ -380,94 +413,12 @@ export function SubscriptionModal({ isOpen, onClose }: SubscriptionModalProps) {
 
                 <CardContent className="space-y-3">
                   <div className="space-y-2 text-sm">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span>
-                        {plan.features.aiInterviews.enabled 
-                          ? `${formatLimit(plan.features.aiInterviews.limit)} AI Interviews`
-                          : 'No AI Interviews'
-                        }
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span>
-                        {plan.features.jobMatches.enabled 
-                          ? `${formatLimit(plan.features.jobMatches.limit)} Job Matches`
-                          : 'No Job Matches'
-                        }
-                      </span>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span>
-                        {plan.features.jobApplications.enabled 
-                          ? `${formatLimit(plan.features.jobApplications.limit)} Applications`
-                          : 'No Applications'
-                        }
-                      </span>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span>
-                        {plan.features.resumeUploads.enabled 
-                          ? `${formatLimit(plan.features.resumeUploads.limit)} Resume Uploads`
-                          : 'No Resume Uploads'
-                        }
-                      </span>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="capitalize">
-                        {plan.features.profileAnalysis.depth} Profile Analysis
-                      </span>
-                    </div>
-
-                    {plan.features.voiceInterviews && (
-                      <div className="flex items-center space-x-2">
+                    {getPlanFeatures(plan.name).map((feature, index) => (
+                      <div key={index} className="flex items-center space-x-2">
                         <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span>Voice Interviews</span>
+                        <span>{feature}</span>
                       </div>
-                    )}
-
-                    {plan.features.advancedMatching && (
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span>Advanced Matching</span>
-                      </div>
-                    )}
-
-                    {plan.features.analyticsAccess && (
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span>Analytics Access</span>
-                      </div>
-                    )}
-
-                    {plan.features.prioritySupport && (
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span>Priority Support</span>
-                      </div>
-                    )}
-
-                    {plan.features.exportData && (
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span>Data Export</span>
-                      </div>
-                    )}
-
-                    {plan.features.customBranding && (
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span>Custom Branding</span>
-                      </div>
-                    )}
+                    ))}
                   </div>
 
                   <Button

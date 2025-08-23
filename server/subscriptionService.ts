@@ -60,11 +60,12 @@ export class SubscriptionService {
           interval: "month",
           stripePriceId: process.env.STRIPE_STANDARD_PRICE_ID || null,
           features: JSON.stringify({
-            aiInterviews: { enabled: true, limit: -1 },
+            aiInterviews: { enabled: true, limit: -1 }, // Standard AI Interviews
             jobMatches: { enabled: true, limit: -1 },
-            jobApplications: { enabled: true, limit: 5 },
-            resumeUploads: { enabled: true, limit: 2 },
-            profileAnalysis: { enabled: true, depth: "basic" },
+            jobApplications: { enabled: true, limit: 5 }, // Apply to 5 jobs per month
+            resumeUploads: { enabled: true, limit: -1 },
+            profileAnalysis: { enabled: true, depth: "basic" }, // Basic Profile Analysis
+            // DISABLED features for Standard plan
             profileRebuilds: { enabled: false, limit: 0 },
             profileViews: false,
             visibilityBoost: false,
@@ -72,7 +73,7 @@ export class SubscriptionService {
             aiCoaching: false,
             mockInterviews: false,
             vipAccess: false,
-            prioritySupport: false,
+            prioritySupport: true, // Customer Support (Standard Response Time)
             voiceInterviews: false,
             advancedMatching: false,
             analyticsAccess: false,
@@ -91,19 +92,19 @@ export class SubscriptionService {
           features: JSON.stringify({
             aiInterviews: { enabled: true, limit: -1 },
             jobMatches: { enabled: true, limit: -1 },
-            jobApplications: { enabled: true, limit: 10 },
-            resumeUploads: { enabled: true, limit: 3 },
-            profileAnalysis: { enabled: true, depth: "comprehensive" },
+            jobApplications: { enabled: true, limit: 10 }, // Apply to 10 jobs per month
+            resumeUploads: { enabled: true, limit: -1 },
+            profileAnalysis: { enabled: true, depth: "comprehensive" }, // Comprehensive Profile Analysis
             profileRebuilds: { enabled: false, limit: 0 },
-            profileViews: true,
-            visibilityBoost: true,
-            priorityNotifications: true,
+            profileViews: true, // See Who Viewed Your Profile
+            visibilityBoost: true, // Advanced Visibility (shown more prominently to employers)
+            priorityNotifications: false,
             aiCoaching: false,
             mockInterviews: false,
             vipAccess: false,
-            prioritySupport: true,
+            prioritySupport: true, // Customer Support (Priority Response)
             voiceInterviews: false,
-            advancedMatching: true,
+            advancedMatching: false,
             analyticsAccess: false,
             exportData: false,
             customBranding: false,
@@ -120,21 +121,21 @@ export class SubscriptionService {
           features: JSON.stringify({
             aiInterviews: { enabled: true, limit: -1 },
             jobMatches: { enabled: true, limit: -1 },
-            jobApplications: { enabled: true, limit: -1 },
+            jobApplications: { enabled: true, limit: -1 }, // Unlimited Job Applications
             resumeUploads: { enabled: true, limit: -1 },
-            profileAnalysis: { enabled: true, depth: "comprehensive" },
-            profileRebuilds: { enabled: true, limit: -1 },
-            profileViews: true,
-            visibilityBoost: true,
-            priorityNotifications: true,
-            aiCoaching: true,
-            mockInterviews: true,
-            vipAccess: true,
-            prioritySupport: true,
-            voiceInterviews: true,
-            advancedMatching: true,
-            analyticsAccess: true,
-            exportData: true,
+            profileAnalysis: { enabled: true, depth: "comprehensive" }, // Comprehensive Profile Analysis
+            profileRebuilds: { enabled: true, limit: -1 }, // Unlimited Profile Rebuilds
+            profileViews: true, // See Who Viewed Your Profile
+            visibilityBoost: true, // Higher Visibility Boost (top candidate highlight for employers)
+            priorityNotifications: false,
+            aiCoaching: true, // AI Coaching & Recommendations (feedback on weaknesses + interview prep)
+            mockInterviews: false,
+            vipAccess: false,
+            prioritySupport: true, // Customer Support (Top Priority & Dedicated Assistance)
+            voiceInterviews: false,
+            advancedMatching: false,
+            analyticsAccess: false,
+            exportData: false,
             customBranding: false,
           } as PlanFeatures),
           sortOrder: 3,
