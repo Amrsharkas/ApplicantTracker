@@ -387,12 +387,12 @@ export function SubscriptionModal({ isOpen, onClose }: SubscriptionModalProps) {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {plans?.map((plan) => {
             const isCurrentPlan = currentSubscription?.planName === plan.name;
             
             return (
-              <Card key={plan.id} className={`relative ${getPlanColor(plan.name)}`}>
+              <Card key={plan.id} className={`relative h-full flex flex-col ${getPlanColor(plan.name)}`}>
                 {plan.name === 'premium' && (
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                     <Badge className="bg-yellow-500 text-white">Most Popular</Badge>
@@ -411,18 +411,18 @@ export function SubscriptionModal({ isOpen, onClose }: SubscriptionModalProps) {
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-3">
-                  <div className="space-y-2 text-sm">
+                <CardContent className="flex-1 flex flex-col">
+                  <div className="flex-1 space-y-2 text-sm mb-6">
                     {getPlanFeatures(plan.name).map((feature, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span>{feature}</span>
+                      <div key={index} className="flex items-start space-x-2">
+                        <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span className="text-sm leading-5">{feature}</span>
                       </div>
                     ))}
                   </div>
 
                   <Button
-                    className="w-full mt-4"
+                    className="w-full mt-auto"
                     variant={isCurrentPlan ? "secondary" : "default"}
                     disabled={isCurrentPlan}
                     onClick={() => handlePlanSelect(plan)}
