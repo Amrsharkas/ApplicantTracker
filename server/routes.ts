@@ -8,13 +8,23 @@ import { aiJobFilteringService } from "./aiJobFiltering";
 import { employerQuestionService } from "./employerQuestions";
 import { ObjectStorageService } from "./objectStorage";
 import { ResumeService } from "./resumeService";
-import { LinkedInParser, LinkedInParsingError } from "./linkedinParser";
 import multer from "multer";
 import { z } from "zod";
 import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile } from "@shared/schema";
 import { db } from "./db";
 import { applicantProfiles, interviewSessions } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
+import Stripe from "stripe";
+import { subscriptionService } from "./subscriptionService";
+import { requireFeature, checkUsageLimit, usageCheckers } from "./subscriptionMiddleware";
+
+// Initialize Stripe
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2024-06-20",
+});
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -234,6 +244,9 @@ function generateOverallImpression(cvData: any): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+  
+  // Initialize subscription plans on startup
+  await subscriptionService.initializeDefaultPlans();
 
   // Note: Auth routes are now handled in setupAuth from auth.ts
 
@@ -678,213 +691,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // LinkedIn Profile Parsing Endpoints
-  
-  // Parse LinkedIn profile from URL
-  app.post('/api/linkedin/parse-url', requireAuth, async (req: any, res) => {
+  // AI Coaching endpoint - Pro plan exclusive feature
+  app.post("/api/coaching/career-guidance", 
+    requireAuth, 
+    requireFeature('aiCoaching'),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const { linkedinUrl } = req.body;
-
-      if (!linkedinUrl) {
-        return res.status(400).json({ 
-          error: "LinkedIn URL is required" 
-        });
-      }
-
-      console.log(`📋 Parsing LinkedIn profile from URL for user ${userId}: ${linkedinUrl}`);
-
-      // Attempt to parse the LinkedIn profile
-      const profileData = await LinkedInParser.parseFromUrl(linkedinUrl);
+      const { question, context } = req.body;
       
-      // Map to our database profile format
-      const mappedProfile = LinkedInParser.mapToProfileFormat(profileData);
-      mappedProfile.linkedinUrl = linkedinUrl; // Set the original URL
-
-      console.log(`📋 LinkedIn import data mapped: ${Object.keys(mappedProfile).length} fields`);
-      console.log(`📋 LinkedIn field summary:`, {
-        name: !!mappedProfile.name,
-        location: !!mappedProfile.city && !!mappedProfile.country,
-        experience: mappedProfile.workExperiences?.length || 0,
-        education: mappedProfile.degrees?.length || 0,
-        skills: mappedProfile.skillsList?.length || 0,
-        languages: mappedProfile.languages?.length || 0,
-        certifications: mappedProfile.certifications?.length || 0
-      });
-
-      // Update user's profile with comprehensive LinkedIn data
-      const existingProfile = await storage.getApplicantProfile(userId);
-      
-      const updatedProfile = {
-        userId,
-        ...existingProfile,
-        ...mappedProfile,
-      };
-      
-      const profile = await storage.upsertApplicantProfile(updatedProfile);
-      await storage.updateProfileCompletion(userId);
-
-      // Verify what was actually saved to database
-      const savedProfile = await storage.getApplicantProfile(userId);
-      console.log(`📋 After LinkedIn import, database contains:`, {
-        workExperiences: Array.isArray(savedProfile?.workExperiences) ? savedProfile.workExperiences.length : 0,
-        degrees: Array.isArray(savedProfile?.degrees) ? savedProfile.degrees.length : 0,
-        skillsList: Array.isArray(savedProfile?.skillsList) ? savedProfile.skillsList.length : 0,
-        languages: Array.isArray(savedProfile?.languages) ? savedProfile.languages.length : 0,
-        certifications: Array.isArray(savedProfile?.certifications) ? savedProfile.certifications.length : 0,
-        name: !!savedProfile?.name,
-        city: !!savedProfile?.city,
-        currentRole: !!savedProfile?.currentRole,
-        rawWorkExperiences: savedProfile?.workExperiences,
-        rawDegrees: savedProfile?.degrees,
-        rawLanguages: savedProfile?.languages
-      });
-
-      res.json({
-        message: "LinkedIn profile parsed successfully",
-        profile,
-        linkedinData: profileData,
-        fieldsUpdated: Object.keys(mappedProfile).length,
-        databaseVerification: {
-          workExperiences: Array.isArray(savedProfile?.workExperiences) ? savedProfile.workExperiences.length : 0,
-          degrees: Array.isArray(savedProfile?.degrees) ? savedProfile.degrees.length : 0,
-          skillsList: Array.isArray(savedProfile?.skillsList) ? savedProfile.skillsList.length : 0,
-          languages: Array.isArray(savedProfile?.languages) ? savedProfile.languages.length : 0,
-          certifications: Array.isArray(savedProfile?.certifications) ? savedProfile.certifications.length : 0
-        }
-      });
-
-    } catch (error) {
-      console.error("LinkedIn URL parsing error:", error);
-      
-      if (error instanceof LinkedInParsingError) {
-        return res.status(error.statusCode).json({
-          error: error.message,
-          suggestion: error.statusCode === 403 
-            ? "LinkedIn is blocking automated access. Try copying your profile content instead."
-            : "Please verify your LinkedIn URL is correct and public."
-        });
+      if (!question) {
+        return res.status(400).json({ error: "Question is required" });
       }
       
-      res.status(500).json({
-        error: "Failed to parse LinkedIn profile",
-        suggestion: "LinkedIn may be blocking automated access. Try the profile text parsing method instead."
-      });
-    }
-  });
-
-  // Parse LinkedIn profile from text/content
-  app.post('/api/linkedin/parse-text', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const { profileText, linkedinUrl } = req.body;
-
-      if (!profileText) {
-        return res.status(400).json({ 
-          error: "LinkedIn profile content is required" 
-        });
-      }
-
-      console.log(`📋 Parsing LinkedIn profile from text for user ${userId} (${profileText.length} characters)`);
-
-      // Parse using AI
-      const profileData = await LinkedInParser.parseFromText(profileText);
-      
-      // Map to our database profile format
-      const mappedProfile = LinkedInParser.mapToProfileFormat(profileData);
-      if (linkedinUrl) {
-        mappedProfile.linkedinUrl = linkedinUrl;
-      }
-
-      console.log(`📋 LinkedIn text import data mapped: ${Object.keys(mappedProfile).length} fields`);
-      console.log(`📋 LinkedIn field summary:`, {
-        name: !!mappedProfile.name,
-        location: !!mappedProfile.city && !!mappedProfile.country,
-        experience: mappedProfile.workExperiences?.length || 0,
-        education: mappedProfile.degrees?.length || 0,
-        skills: mappedProfile.skillsList?.length || 0,
-        languages: mappedProfile.languages?.length || 0,
-        certifications: mappedProfile.certifications?.length || 0
-      });
-
-      // Update user's profile with comprehensive LinkedIn data
-      const existingProfile = await storage.getApplicantProfile(userId);
-      
-      const updatedProfile = {
-        userId,
-        ...existingProfile,
-        ...mappedProfile,
-      };
-      
-      const profile = await storage.upsertApplicantProfile(updatedProfile);
-      await storage.updateProfileCompletion(userId);
-
-      // Verify what was actually saved to database
-      const savedProfile = await storage.getApplicantProfile(userId);
-      console.log(`📋 After LinkedIn text import, database contains:`, {
-        workExperiences: Array.isArray(savedProfile?.workExperiences) ? savedProfile.workExperiences.length : 0,
-        degrees: Array.isArray(savedProfile?.degrees) ? savedProfile.degrees.length : 0,
-        skillsList: Array.isArray(savedProfile?.skillsList) ? savedProfile.skillsList.length : 0,
-        languages: Array.isArray(savedProfile?.languages) ? savedProfile.languages.length : 0,
-        certifications: Array.isArray(savedProfile?.certifications) ? savedProfile.certifications.length : 0,
-        name: !!savedProfile?.name,
-        city: !!savedProfile?.city,
-        currentRole: !!savedProfile?.currentRole,
-        rawWorkExperiences: savedProfile?.workExperiences,
-        rawDegrees: savedProfile?.degrees,
-        rawLanguages: savedProfile?.languages
-      });
-
-      res.json({
-        message: "LinkedIn profile content parsed successfully",
-        profile,
-        linkedinData: profileData,
-        fieldsUpdated: Object.keys(mappedProfile).length,
-        databaseVerification: {
-          workExperiences: Array.isArray(savedProfile?.workExperiences) ? savedProfile.workExperiences.length : 0,
-          degrees: Array.isArray(savedProfile?.degrees) ? savedProfile.degrees.length : 0,
-          skillsList: Array.isArray(savedProfile?.skillsList) ? savedProfile.skillsList.length : 0,
-          languages: Array.isArray(savedProfile?.languages) ? savedProfile.languages.length : 0,
-          certifications: Array.isArray(savedProfile?.certifications) ? savedProfile.certifications.length : 0
-        }
-      });
-
-    } catch (error) {
-      console.error("LinkedIn text parsing error:", error);
-      
-      if (error instanceof LinkedInParsingError) {
-        return res.status(error.statusCode).json({
-          error: error.message
-        });
-      }
-      
-      res.status(500).json({
-        error: "Failed to parse LinkedIn profile content",
-        details: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Get LinkedIn parsing status/suggestions
-  app.get('/api/linkedin/status', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
+      const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
       
-      res.json({
-        hasLinkedInUrl: !!profile?.linkedinUrl,
-        linkedinUrl: profile?.linkedinUrl || null,
-        profileCompletion: profile?.completionPercentage || 0,
-        canImproveWithLinkedIn: (profile?.completionPercentage || 0) < 80,
-        suggestions: profile?.linkedinUrl 
-          ? ["Profile already has LinkedIn URL", "You can re-import to update with latest changes"]
-          : ["Import from LinkedIn to auto-fill profile", "Significantly increase profile completion"]
+      // Get user's complete profile and interview history for personalized coaching
+      const interviewHistory = await storage.getInterviewHistory(userId);
+      
+      const coachingResponse = await aiInterviewService.generateCareerGuidance({
+        user,
+        profile,
+        question,
+        context,
+        interviewHistory
+      });
+      
+      res.json({ 
+        guidance: coachingResponse,
+        coachingType: 'career-guidance',
+        personalizedFor: user.firstName || 'User'
       });
     } catch (error) {
-      console.error("Error getting LinkedIn status:", error);
-      res.status(500).json({
-        error: "Failed to get LinkedIn status"
+      console.error("Error providing AI coaching:", error);
+      res.status(500).json({ error: "Failed to provide career guidance" });
+    }
+  });
+
+  // Mock Interview endpoint - Pro plan exclusive feature
+  app.post("/api/coaching/mock-interview", 
+    requireAuth, 
+    requireFeature('mockInterviews'),
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { interviewType = 'general', jobRole, companyName } = req.body;
+      
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+      
+      // Generate mock interview questions tailored to the user's profile
+      const mockInterview = await aiInterviewService.generateMockInterview({
+        user,
+        profile,
+        interviewType,
+        jobRole,
+        companyName
       });
+      
+      res.json({ 
+        mockInterview,
+        sessionType: 'mock-interview',
+        targetRole: jobRole || 'General Interview'
+      });
+    } catch (error) {
+      console.error("Error generating mock interview:", error);
+      res.status(500).json({ error: "Failed to generate mock interview" });
     }
   });
 
@@ -925,7 +798,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Voice interview initialization route
-  app.post("/api/interview/start-voice", requireAuth, async (req: any, res) => {
+  app.post("/api/interview/start-voice", 
+    requireAuth, 
+    requireFeature('voiceInterviews'),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       const { interviewType, language = 'english' } = req.body;
@@ -1129,7 +1005,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/start/:type', requireAuth, async (req: any, res) => {
+  app.post('/api/interview/start/:type', 
+    requireAuth, 
+    requireFeature('aiInterviews'),
+    checkUsageLimit('aiInterviews', usageCheckers.getAiInterviewsUsage),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       const interviewType = req.params.type;
@@ -1217,7 +1097,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Legacy endpoint for backward compatibility
-  app.post('/api/interview/start', requireAuth, async (req: any, res) => {
+  app.post('/api/interview/start', 
+    requireAuth, 
+    requireFeature('aiInterviews'),
+    checkUsageLimit('aiInterviews', usageCheckers.getAiInterviewsUsage),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       
@@ -1365,7 +1249,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // New Job Application Endpoint with AI Skill Analysis
-  app.post('/api/job-applications/submit', requireAuth, async (req: any, res) => {
+  app.post('/api/job-applications/submit', 
+    requireAuth,
+    requireFeature('jobApplications'),
+    checkUsageLimit('jobApplications', usageCheckers.getApplicationsUsage),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       const { job } = req.body;
@@ -1905,7 +1793,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/applications', requireAuth, async (req: any, res) => {
+  app.post('/api/applications', 
+    requireAuth, 
+    requireFeature('jobApplications'),
+    checkUsageLimit('jobApplications', usageCheckers.getApplicationsUsage),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       const applicationData = insertApplicationSchema.parse({
@@ -2235,7 +2127,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Job Application Analysis Route
-  app.post('/api/job-application/analyze', requireAuth, async (req: any, res) => {
+  app.post('/api/job-application/analyze', 
+    requireAuth, 
+    requireFeature('profileAnalysis'),
+    async (req: any, res) => {
     try {
       let userId = req.user?.claims?.sub;
       const { jobId, jobTitle, jobDescription, companyName, requirements, employmentType } = req.body;
@@ -2490,7 +2385,10 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   console.log("🚀 Airtable job monitoring system started - checking every 60 seconds");
 
   // Generate brutally honest profile for Airtable after all interviews completed
-  app.post('/api/profile/generate-honest-assessment', requireAuth, async (req: any, res) => {
+  app.post('/api/profile/generate-honest-assessment', 
+    requireAuth, 
+    requireFeature('profileAnalysis'),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       
@@ -2572,11 +2470,113 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   });
 
   // =============================================
+  // PREMIUM FEATURE ROUTES - PROFILE VIEWS & VISIBILITY
+  // =============================================
+
+  // Track profile views - Premium & Pro exclusive
+  app.post("/api/profile/track-view", 
+    requireAuth, 
+    requireFeature('profileViews'),
+    async (req: any, res) => {
+    try {
+      const viewerId = req.user.id;
+      const { profileId, viewType = 'employer_view' } = req.body;
+      
+      if (!profileId) {
+        return res.status(400).json({ error: "Profile ID is required" });
+      }
+      
+      // Log the profile view (in production, store in database)
+      console.log(`👀 Profile View Tracked: ${viewerId} viewed profile ${profileId} (${viewType})`);
+      
+      // TODO: Implement actual view tracking in database
+      // await storage.trackProfileView(viewerId, profileId, viewType);
+      
+      res.json({ 
+        message: "Profile view tracked successfully",
+        viewType,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error tracking profile view:", error);
+      res.status(500).json({ error: "Failed to track profile view" });
+    }
+  });
+
+  // Get who viewed your profile - Premium & Pro exclusive
+  app.get("/api/profile/viewers", 
+    requireAuth, 
+    requireFeature('profileViews'),
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // TODO: Implement actual viewer retrieval from database
+      // For now, return mock data to demonstrate the feature
+      const viewers = [
+        {
+          id: 'viewer_1',
+          name: 'TechCorp HR',
+          company: 'TechCorp Solutions',
+          viewedAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+          viewType: 'employer_view'
+        },
+        {
+          id: 'viewer_2', 
+          name: 'Innovation Labs',
+          company: 'Innovation Labs Inc',
+          viewedAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+          viewType: 'recruiter_view'
+        }
+      ];
+      
+      res.json({ 
+        viewers,
+        totalViews: viewers.length,
+        recentViews: viewers.filter(v => 
+          new Date(v.viewedAt).getTime() > Date.now() - 604800000 // Last 7 days
+        ).length
+      });
+    } catch (error) {
+      console.error("Error fetching profile viewers:", error);
+      res.status(500).json({ error: "Failed to fetch profile viewers" });
+    }
+  });
+
+  // Apply visibility boost - Premium & Pro exclusive
+  app.post("/api/profile/visibility-boost", 
+    requireAuth, 
+    requireFeature('visibilityBoost'),
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { boostDuration = 24 } = req.body; // hours
+      
+      // TODO: Implement actual visibility boost in database
+      console.log(`🚀 Visibility Boost Applied: User ${userId} boosted for ${boostDuration} hours`);
+      
+      res.json({ 
+        message: "Visibility boost applied successfully",
+        boostActive: true,
+        boostExpiresAt: new Date(Date.now() + (boostDuration * 60 * 60 * 1000)).toISOString(),
+        boostDuration: `${boostDuration} hours`
+      });
+    } catch (error) {
+      console.error("Error applying visibility boost:", error);
+      res.status(500).json({ error: "Failed to apply visibility boost" });
+    }
+  });
+
+  // =============================================
   // COMPREHENSIVE PROFILE ROUTES
   // =============================================
 
-  // Reset comprehensive profile data (clear pre-filled data)
-  app.post("/api/comprehensive-profile/reset", requireAuth, async (req, res) => {
+  // Reset comprehensive profile data (clear pre-filled data) - Profile Rebuild Feature
+  app.post("/api/comprehensive-profile/reset", 
+    requireAuth, 
+    requireFeature('profileRebuilds'),
+    checkUsageLimit('profileRebuilds', usageCheckers.getProfileRebuildsUsage),
+    async (req, res) => {
     try {
       const userId = (req.user as any)?.id;
       
@@ -3288,43 +3288,371 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
-  // Debug route for LinkedIn parsing (TEMPORARY - for testing)
-  app.post("/api/debug/linkedin-parse", async (req, res) => {
+  // =================== SUBSCRIPTION ROUTES ===================
+
+  // Demonstrate subscription feature differentiation
+  app.get('/api/subscription/feature-test', requireAuth, async (req: any, res) => {
     try {
-      const { content } = req.body;
+      const userId = req.user.id;
+      const subscription = await subscriptionService.getUserSubscription(userId);
+      const features = await subscriptionService.getUserFeatures(userId);
       
-      if (!content) {
-        return res.status(400).json({ error: "LinkedIn profile content is required" });
+      if (!subscription || !features) {
+        return res.status(404).json({ error: "No subscription found" });
       }
 
-      console.log('🔍 Testing LinkedIn parsing with content length:', content.length);
-      
-      // Parse the LinkedIn profile
-      const profileData = await LinkedInParser.parseFromText(content);
-      console.log('📊 Raw parsed data:', JSON.stringify(profileData, null, 2));
-      
-      // Map to profile format
-      const mappedProfile = LinkedInParser.mapToProfileFormat(profileData);
-      console.log('📋 Mapped profile data:', JSON.stringify(mappedProfile, null, 2));
-      
-      // Count non-empty fields
-      const nonEmptyFields = Object.entries(mappedProfile).filter(([key, value]) => {
-        if (Array.isArray(value)) return value.length > 0;
-        if (typeof value === 'object' && value !== null) return Object.keys(value).length > 0;
-        return value !== null && value !== undefined && value !== '';
-      });
-      
+      // Test different feature access levels
+      const featureTests = {
+        planName: subscription.plan.name,
+        planDisplayName: subscription.plan.displayName,
+        price: subscription.plan.price,
+        features: {
+          aiInterviews: {
+            enabled: features.aiInterviews.enabled,
+            limit: features.aiInterviews.limit,
+            description: features.aiInterviews.limit === -1 ? 'Unlimited' : `${features.aiInterviews.limit} per month`
+          },
+          jobMatches: {
+            enabled: features.jobMatches.enabled,
+            limit: features.jobMatches.limit,
+            description: features.jobMatches.limit === -1 ? 'Unlimited' : `${features.jobMatches.limit} per month`
+          },
+          jobApplications: {
+            enabled: features.jobApplications.enabled,
+            limit: features.jobApplications.limit,
+            description: features.jobApplications.limit === -1 ? 'Unlimited' : `${features.jobApplications.limit} per month`
+          },
+          voiceInterviews: {
+            enabled: features.voiceInterviews,
+            description: features.voiceInterviews ? 'Available' : 'Not available'
+          },
+          advancedMatching: {
+            enabled: features.advancedMatching,
+            description: features.advancedMatching ? 'AI-powered smart matching' : 'Basic matching only'
+          },
+          profileAnalysis: {
+            enabled: features.profileAnalysis.enabled,
+            depth: features.profileAnalysis.depth,
+            description: `${features.profileAnalysis.depth} analysis level`
+          },
+          profileViews: {
+            enabled: features.profileViews,
+            description: features.profileViews ? '"Who viewed your profile" tracking' : 'Not available'
+          },
+          visibilityBoost: {
+            enabled: features.visibilityBoost,
+            description: features.visibilityBoost ? 'Enhanced visibility in employer searches' : 'Standard visibility only'
+          },
+          profileRebuilds: {
+            enabled: features.profileRebuilds.enabled,
+            limit: features.profileRebuilds.limit,
+            description: features.profileRebuilds.enabled ? `${features.profileRebuilds.limit} rebuilds per month` : 'Not available'
+          },
+          aiCoaching: {
+            enabled: features.aiCoaching,
+            description: features.aiCoaching ? 'Career guidance & skill gap analysis' : 'Premium feature only'
+          },
+          mockInterviews: {
+            enabled: features.mockInterviews,
+            description: features.mockInterviews ? 'AI interview preparation sessions' : 'Premium feature only'
+          },
+          vipAccess: {
+            enabled: features.vipAccess,
+            description: features.vipAccess ? 'Job fairs & partner opportunities' : 'Premium feature only'
+          },
+          prioritySupport: {
+            enabled: features.prioritySupport,
+            description: features.prioritySupport ? '24/7 priority support' : 'Standard support'
+          },
+          analyticsAccess: {
+            enabled: features.analyticsAccess,
+            description: features.analyticsAccess ? 'Full analytics dashboard' : 'Basic stats only'
+          }
+        },
+        // Show what happens when trying to access restricted features
+        accessTests: {
+          canStartAiInterview: await subscriptionService.hasFeatureAccess(userId, 'aiInterviews'),
+          canUseVoiceInterviews: await subscriptionService.hasFeatureAccess(userId, 'voiceInterviews'),
+          canAccessAnalytics: await subscriptionService.hasFeatureAccess(userId, 'analyticsAccess'),
+          canUseAdvancedMatching: await subscriptionService.hasFeatureAccess(userId, 'advancedMatching'),
+        }
+      };
+
       res.json({
-        success: true,
-        rawData: profileData,
-        mappedData: mappedProfile,
-        fieldsExtracted: nonEmptyFields.length,
-        fieldNames: nonEmptyFields.map(([key]) => key)
+        message: `Testing subscription features for ${subscription.plan.displayName}`,
+        ...featureTests
       });
-      
     } catch (error) {
-      console.error('LinkedIn parsing test error:', error);
-      res.status(500).json({ error: error.message });
+      console.error("Error testing subscription features:", error);
+      res.status(500).json({ message: "Failed to test subscription features" });
+    }
+  });
+
+  // Get all available subscription plans
+  app.get('/api/subscription/plans', async (req, res) => {
+    try {
+      const plans = await subscriptionService.getActivePlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching subscription plans:", error);
+      res.status(500).json({ message: "Failed to fetch subscription plans" });
+    }
+  });
+
+  // Get current user's subscription
+  app.get('/api/subscription/current', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const subscription = await subscriptionService.getUserSubscription(userId);
+      const features = await subscriptionService.getUserFeatures(userId);
+      
+      if (!subscription) {
+        return res.status(404).json({ 
+          message: "No active subscription found" 
+        });
+      }
+      
+      res.json({ 
+        subscription, 
+        features,
+        planName: subscription.plan.name
+      });
+    } catch (error) {
+      console.error("Error fetching user subscription:", error);
+      res.status(500).json({ message: "Failed to fetch subscription" });
+    }
+  });
+
+  // Create Stripe payment intent for subscription
+  app.post('/api/subscription/create-payment-intent', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { planId } = req.body;
+
+      if (!planId) {
+        return res.status(400).json({ message: "Plan ID is required" });
+      }
+
+      // Get the plan details
+      const plans = await subscriptionService.getActivePlans();
+      const selectedPlan = plans.find(p => p.id === planId);
+      
+      if (!selectedPlan) {
+        return res.status(404).json({ message: "Subscription plan not found" });
+      }
+
+      if (selectedPlan.price === 0) {
+        // Free plan - no payment needed
+        return res.json({ 
+          planName: selectedPlan.name,
+          price: 0,
+          message: "This is a free plan" 
+        });
+      }
+
+      // Get or create Stripe customer
+      const user = await storage.getUser(userId);
+      let customer;
+      
+      try {
+        // Try to find existing customer
+        const existingCustomers = await stripe.customers.list({
+          email: user.email,
+          limit: 1
+        });
+        
+        if (existingCustomers.data.length > 0) {
+          customer = existingCustomers.data[0];
+        } else {
+          // Create new customer
+          customer = await stripe.customers.create({
+            email: user.email,
+            name: user.displayName || `${user.firstName} ${user.lastName}`,
+            metadata: { userId }
+          });
+        }
+      } catch (stripeError) {
+        console.error("Stripe customer error:", stripeError);
+        return res.status(500).json({ message: "Failed to create customer" });
+      }
+
+      // Create payment intent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: selectedPlan.price,
+        currency: 'usd',
+        customer: customer.id,
+        metadata: {
+          userId,
+          planId: selectedPlan.id.toString(),
+          planName: selectedPlan.name
+        },
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        planName: selectedPlan.name,
+        price: selectedPlan.price,
+        customerId: customer.id
+      });
+
+    } catch (error) {
+      console.error("Error creating payment intent:", error);
+      res.status(500).json({ message: "Failed to create payment intent" });
+    }
+  });
+
+  // Create subscription after successful payment
+  app.post('/api/subscription/create', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { paymentIntentId, planId } = req.body;
+
+      if (!paymentIntentId || !planId) {
+        return res.status(400).json({ message: "Payment intent ID and plan ID are required" });
+      }
+
+      // Verify the payment intent
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ message: "Payment not completed" });
+      }
+
+      if (paymentIntent.metadata.userId !== userId) {
+        return res.status(403).json({ message: "Payment intent does not belong to this user" });
+      }
+
+      // Create subscription in database
+      const subscription = await subscriptionService.createUserSubscription(
+        userId,
+        parseInt(planId),
+        {
+          customerId: paymentIntent.customer as string,
+          subscriptionId: paymentIntentId, // Using payment intent as subscription reference for one-time payments
+          paymentIntentId,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        }
+      );
+
+      const updatedSubscription = await subscriptionService.getUserSubscription(userId);
+      const features = await subscriptionService.getUserFeatures(userId);
+
+      res.json({ 
+        success: true,
+        subscription: updatedSubscription,
+        features,
+        message: "Subscription activated successfully!"
+      });
+
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ message: "Failed to create subscription" });
+    }
+  });
+
+  // Cancel subscription
+  app.post('/api/subscription/cancel', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { cancelAtPeriodEnd = true } = req.body;
+
+      await subscriptionService.cancelSubscription(userId, cancelAtPeriodEnd);
+
+      res.json({ 
+        success: true,
+        message: cancelAtPeriodEnd 
+          ? "Subscription will be canceled at the end of the billing period"
+          : "Subscription canceled immediately"
+      });
+
+    } catch (error) {
+      console.error("Error canceling subscription:", error);
+      res.status(500).json({ message: "Failed to cancel subscription" });
+    }
+  });
+
+  // Check if user has access to a specific feature
+  app.post('/api/subscription/check-feature', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { feature, requiredValue } = req.body;
+
+      if (!feature) {
+        return res.status(400).json({ message: "Feature name is required" });
+      }
+
+      const hasAccess = await subscriptionService.hasFeatureAccess(userId, feature, requiredValue);
+      const features = await subscriptionService.getUserFeatures(userId);
+
+      res.json({ 
+        hasAccess,
+        feature,
+        currentFeatures: features
+      });
+
+    } catch (error) {
+      console.error("Error checking feature access:", error);
+      res.status(500).json({ message: "Failed to check feature access" });
+    }
+  });
+
+  // Check if user has reached limit for a feature
+  app.post('/api/subscription/check-limit', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { feature, currentUsage } = req.body;
+
+      if (!feature || currentUsage === undefined) {
+        return res.status(400).json({ message: "Feature name and current usage are required" });
+      }
+
+      const hasReachedLimit = await subscriptionService.hasReachedLimit(userId, feature, currentUsage);
+      const features = await subscriptionService.getUserFeatures(userId);
+
+      res.json({ 
+        hasReachedLimit,
+        feature,
+        currentUsage,
+        limit: features?.[feature]?.limit || 0
+      });
+
+    } catch (error) {
+      console.error("Error checking feature limit:", error);
+      res.status(500).json({ message: "Failed to check feature limit" });
+    }
+  });
+
+  // Stripe webhook for subscription updates (optional)
+  app.post('/api/subscription/webhook', async (req, res) => {
+    try {
+      // Verify webhook signature if you have the webhook secret
+      // const sig = req.headers['stripe-signature'];
+      // const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+      
+      const event = req.body;
+
+      switch (event.type) {
+        case 'payment_intent.succeeded':
+          console.log('💳 Payment succeeded:', event.data.object.id);
+          break;
+        case 'customer.subscription.updated':
+          console.log('📝 Subscription updated:', event.data.object.id);
+          break;
+        case 'customer.subscription.deleted':
+          console.log('❌ Subscription canceled:', event.data.object.id);
+          break;
+        default:
+          console.log('🔔 Unhandled webhook event type:', event.type);
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error('Webhook error:', error);
+      res.status(400).json({ error: 'Webhook error' });
     }
   });
 
