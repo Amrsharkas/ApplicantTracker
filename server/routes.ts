@@ -8,6 +8,7 @@ import { aiJobFilteringService } from "./aiJobFiltering";
 import { employerQuestionService } from "./employerQuestions";
 import { ObjectStorageService } from "./objectStorage";
 import { ResumeService } from "./resumeService";
+import { LinkedInParser, LinkedInParsingError } from "./linkedinParser";
 import multer from "multer";
 import { z } from "zod";
 import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile } from "@shared/schema";
@@ -673,6 +674,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error uploading resume:", error);
       res.status(500).json({ 
         message: "Failed to upload resume. Please try again." 
+      });
+    }
+  });
+
+  // LinkedIn Profile Parsing Endpoints
+  
+  // Parse LinkedIn profile from URL
+  app.post('/api/linkedin/parse-url', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { linkedinUrl } = req.body;
+
+      if (!linkedinUrl) {
+        return res.status(400).json({ 
+          error: "LinkedIn URL is required" 
+        });
+      }
+
+      console.log(`📋 Parsing LinkedIn profile from URL for user ${userId}: ${linkedinUrl}`);
+
+      // Attempt to parse the LinkedIn profile
+      const profileData = await LinkedInParser.parseFromUrl(linkedinUrl);
+      
+      // Map to our profile format
+      const mappedProfile = LinkedInParser.mapToProfileFormat(profileData);
+      mappedProfile.linkedinUrl = linkedinUrl; // Set the original URL
+
+      // Update user's profile with LinkedIn data
+      const existingProfile = await storage.getApplicantProfile(userId);
+      const updatedProfile = {
+        userId,
+        ...existingProfile,
+        ...mappedProfile,
+        completionPercentage: Math.max(existingProfile?.completionPercentage || 0, mappedProfile.completionPercentage)
+      };
+
+      const profile = await storage.upsertApplicantProfile(updatedProfile);
+      await storage.updateProfileCompletion(userId);
+
+      res.json({
+        message: "LinkedIn profile parsed successfully",
+        profile,
+        linkedinData: profileData,
+        fieldsUpdated: Object.keys(mappedProfile).length
+      });
+
+    } catch (error) {
+      console.error("LinkedIn URL parsing error:", error);
+      
+      if (error instanceof LinkedInParsingError) {
+        return res.status(error.statusCode).json({
+          error: error.message,
+          suggestion: error.statusCode === 403 
+            ? "LinkedIn is blocking automated access. Try copying your profile content instead."
+            : "Please verify your LinkedIn URL is correct and public."
+        });
+      }
+      
+      res.status(500).json({
+        error: "Failed to parse LinkedIn profile",
+        suggestion: "LinkedIn may be blocking automated access. Try the profile text parsing method instead."
+      });
+    }
+  });
+
+  // Parse LinkedIn profile from text/content
+  app.post('/api/linkedin/parse-text', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { profileText, linkedinUrl } = req.body;
+
+      if (!profileText) {
+        return res.status(400).json({ 
+          error: "LinkedIn profile content is required" 
+        });
+      }
+
+      console.log(`📋 Parsing LinkedIn profile from text for user ${userId} (${profileText.length} characters)`);
+
+      // Parse using AI
+      const profileData = await LinkedInParser.parseFromText(profileText);
+      
+      // Map to our profile format
+      const mappedProfile = LinkedInParser.mapToProfileFormat(profileData);
+      if (linkedinUrl) {
+        mappedProfile.linkedinUrl = linkedinUrl;
+      }
+
+      // Update user's profile with LinkedIn data
+      const existingProfile = await storage.getApplicantProfile(userId);
+      const updatedProfile = {
+        userId,
+        ...existingProfile,
+        ...mappedProfile,
+        completionPercentage: Math.max(existingProfile?.completionPercentage || 0, mappedProfile.completionPercentage)
+      };
+
+      const profile = await storage.upsertApplicantProfile(updatedProfile);
+      await storage.updateProfileCompletion(userId);
+
+      res.json({
+        message: "LinkedIn profile content parsed successfully",
+        profile,
+        linkedinData: profileData,
+        fieldsUpdated: Object.keys(mappedProfile).length
+      });
+
+    } catch (error) {
+      console.error("LinkedIn text parsing error:", error);
+      
+      if (error instanceof LinkedInParsingError) {
+        return res.status(error.statusCode).json({
+          error: error.message
+        });
+      }
+      
+      res.status(500).json({
+        error: "Failed to parse LinkedIn profile content",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get LinkedIn parsing status/suggestions
+  app.get('/api/linkedin/status', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const profile = await storage.getApplicantProfile(userId);
+      
+      res.json({
+        hasLinkedInUrl: !!profile?.linkedinUrl,
+        linkedinUrl: profile?.linkedinUrl || null,
+        profileCompletion: profile?.completionPercentage || 0,
+        canImproveWithLinkedIn: (profile?.completionPercentage || 0) < 80,
+        suggestions: profile?.linkedinUrl 
+          ? ["Profile already has LinkedIn URL", "You can re-import to update with latest changes"]
+          : ["Import from LinkedIn to auto-fill profile", "Significantly increase profile completion"]
+      });
+    } catch (error) {
+      console.error("Error getting LinkedIn status:", error);
+      res.status(500).json({
+        error: "Failed to get LinkedIn status"
       });
     }
   });

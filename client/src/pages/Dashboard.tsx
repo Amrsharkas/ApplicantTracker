@@ -21,6 +21,7 @@ import { UserProfileModal } from "@/components/JobSeekerModals/UserProfileModal"
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
 import { InterviewModal } from "@/components/JobSeekerModals/InterviewModal";
 import { UpcomingInterviewModal } from "@/components/JobSeekerModals/UpcomingInterviewModal";
+import { LinkedInImportModal } from "@/components/JobSeekerModals/LinkedInImportModal";
 
 import { JobPostingsModal } from "@/components/JobSeekerModals/JobPostingsModal";
 
@@ -226,16 +227,25 @@ export default function Dashboard() {
                         <div className="text-2xl font-bold text-gray-900">{profileProgress}%</div>
                         <div className="text-xs text-gray-500">{t('complete')}</div>
                       </div>
-                      <button
-                        onClick={() => openModal('profile')}
-                        className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                          hasCompleteProfile 
-                            ? 'bg-green-600 text-white hover:bg-green-700' 
-                            : 'bg-blue-600 text-white hover:bg-blue-700'
-                        }`}
-                      >
-{hasCompleteProfile ? 'Edit Profile' : t('buildProfileButton')}
-                      </button>
+                      <div className="flex flex-col space-y-2">
+                        <button
+                          onClick={() => openModal('profile')}
+                          className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                            hasCompleteProfile 
+                              ? 'bg-green-600 text-white hover:bg-green-700' 
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
+                        >
+                          {hasCompleteProfile ? 'Edit Profile' : t('buildProfileButton')}
+                        </button>
+                        <button
+                          onClick={() => openModal('linkedinImport')}
+                          className="px-6 py-1.5 text-sm rounded-lg font-medium transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                          title="Import your LinkedIn profile to auto-fill profile information"
+                        >
+                          Import from LinkedIn
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -452,6 +462,10 @@ export default function Dashboard() {
       />
       <ComprehensiveProfileModal 
         isOpen={activeModal === 'profile'} 
+        onClose={closeModal} 
+      />
+      <LinkedInImportModal 
+        isOpen={activeModal === 'linkedinImport'} 
         onClose={closeModal} 
       />
       <InterviewModal 
