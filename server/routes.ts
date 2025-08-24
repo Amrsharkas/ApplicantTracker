@@ -3288,6 +3288,46 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
+  // Debug route for LinkedIn parsing (TEMPORARY - for testing)
+  app.post("/api/debug/linkedin-parse", async (req, res) => {
+    try {
+      const { content } = req.body;
+      
+      if (!content) {
+        return res.status(400).json({ error: "LinkedIn profile content is required" });
+      }
+
+      console.log('🔍 Testing LinkedIn parsing with content length:', content.length);
+      
+      // Parse the LinkedIn profile
+      const profileData = await LinkedInParser.parseFromText(content);
+      console.log('📊 Raw parsed data:', JSON.stringify(profileData, null, 2));
+      
+      // Map to profile format
+      const mappedProfile = LinkedInParser.mapToProfileFormat(profileData);
+      console.log('📋 Mapped profile data:', JSON.stringify(mappedProfile, null, 2));
+      
+      // Count non-empty fields
+      const nonEmptyFields = Object.entries(mappedProfile).filter(([key, value]) => {
+        if (Array.isArray(value)) return value.length > 0;
+        if (typeof value === 'object' && value !== null) return Object.keys(value).length > 0;
+        return value !== null && value !== undefined && value !== '';
+      });
+      
+      res.json({
+        success: true,
+        rawData: profileData,
+        mappedData: mappedProfile,
+        fieldsExtracted: nonEmptyFields.length,
+        fieldNames: nonEmptyFields.map(([key]) => key)
+      });
+      
+    } catch (error) {
+      console.error('LinkedIn parsing test error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
