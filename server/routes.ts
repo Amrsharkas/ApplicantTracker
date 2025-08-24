@@ -724,11 +724,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const profile = await storage.upsertApplicantProfile(updatedProfile);
       await storage.updateProfileCompletion(userId);
 
+      // Verify what was actually saved to database
+      const savedProfile = await storage.getApplicantProfile(userId);
+      console.log(`📋 After LinkedIn import, database contains:`, {
+        workExperiences: Array.isArray(savedProfile?.workExperiences) ? savedProfile.workExperiences.length : 0,
+        degrees: Array.isArray(savedProfile?.degrees) ? savedProfile.degrees.length : 0,
+        skillsList: Array.isArray(savedProfile?.skillsList) ? savedProfile.skillsList.length : 0,
+        languages: Array.isArray(savedProfile?.languages) ? savedProfile.languages.length : 0,
+        certifications: Array.isArray(savedProfile?.certifications) ? savedProfile.certifications.length : 0,
+        name: !!savedProfile?.name,
+        city: !!savedProfile?.city,
+        currentRole: !!savedProfile?.currentRole,
+        rawWorkExperiences: savedProfile?.workExperiences,
+        rawDegrees: savedProfile?.degrees,
+        rawLanguages: savedProfile?.languages
+      });
+
       res.json({
         message: "LinkedIn profile parsed successfully",
         profile,
         linkedinData: profileData,
-        fieldsUpdated: Object.keys(mappedProfile).length
+        fieldsUpdated: Object.keys(mappedProfile).length,
+        databaseVerification: {
+          workExperiences: Array.isArray(savedProfile?.workExperiences) ? savedProfile.workExperiences.length : 0,
+          degrees: Array.isArray(savedProfile?.degrees) ? savedProfile.degrees.length : 0,
+          skillsList: Array.isArray(savedProfile?.skillsList) ? savedProfile.skillsList.length : 0,
+          languages: Array.isArray(savedProfile?.languages) ? savedProfile.languages.length : 0,
+          certifications: Array.isArray(savedProfile?.certifications) ? savedProfile.certifications.length : 0
+        }
       });
 
     } catch (error) {
@@ -796,11 +819,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const profile = await storage.upsertApplicantProfile(updatedProfile);
       await storage.updateProfileCompletion(userId);
 
+      // Verify what was actually saved to database
+      const savedProfile = await storage.getApplicantProfile(userId);
+      console.log(`📋 After LinkedIn text import, database contains:`, {
+        workExperiences: Array.isArray(savedProfile?.workExperiences) ? savedProfile.workExperiences.length : 0,
+        degrees: Array.isArray(savedProfile?.degrees) ? savedProfile.degrees.length : 0,
+        skillsList: Array.isArray(savedProfile?.skillsList) ? savedProfile.skillsList.length : 0,
+        languages: Array.isArray(savedProfile?.languages) ? savedProfile.languages.length : 0,
+        certifications: Array.isArray(savedProfile?.certifications) ? savedProfile.certifications.length : 0,
+        name: !!savedProfile?.name,
+        city: !!savedProfile?.city,
+        currentRole: !!savedProfile?.currentRole,
+        rawWorkExperiences: savedProfile?.workExperiences,
+        rawDegrees: savedProfile?.degrees,
+        rawLanguages: savedProfile?.languages
+      });
+
       res.json({
         message: "LinkedIn profile content parsed successfully",
         profile,
         linkedinData: profileData,
-        fieldsUpdated: Object.keys(mappedProfile).length
+        fieldsUpdated: Object.keys(mappedProfile).length,
+        databaseVerification: {
+          workExperiences: Array.isArray(savedProfile?.workExperiences) ? savedProfile.workExperiences.length : 0,
+          degrees: Array.isArray(savedProfile?.degrees) ? savedProfile.degrees.length : 0,
+          skillsList: Array.isArray(savedProfile?.skillsList) ? savedProfile.skillsList.length : 0,
+          languages: Array.isArray(savedProfile?.languages) ? savedProfile.languages.length : 0,
+          certifications: Array.isArray(savedProfile?.certifications) ? savedProfile.certifications.length : 0
+        }
       });
 
     } catch (error) {
