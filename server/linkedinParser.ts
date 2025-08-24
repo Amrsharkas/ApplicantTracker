@@ -179,96 +179,140 @@ export class LinkedInParser {
   }
 
   /**
-   * Convert LinkedIn data to our profile format
+   * Convert LinkedIn data to comprehensive profile format
    */
   static mapToProfileFormat(linkedinData: LinkedInProfileData) {
     // Extract location components
     const locationParts = linkedinData.location?.split(',').map(s => s.trim()) || [];
     const city = locationParts[0] || '';
     const country = locationParts[locationParts.length - 1] || '';
+    const state = locationParts.length > 2 ? locationParts[1] : '';
+    
+    // Parse name into first and last name
+    const nameParts = linkedinData.name?.split(' ') || [];
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
 
-    // Process work experiences
+    // Process work experiences for comprehensive profile
     const workExperiences = linkedinData.experience?.map(exp => ({
-      jobTitle: exp.title,
-      company: exp.company,
+      company: exp.company || '',
+      position: exp.title || '',
       location: exp.location || '',
       startDate: exp.startDate || '',
       endDate: exp.current ? '' : (exp.endDate || ''),
       current: exp.current || false,
-      description: exp.description || '',
-      responsibilities: exp.description ? [exp.description] : [],
+      responsibilities: exp.description || '',
     })) || [];
 
-    // Process education
-    const degrees = linkedinData.education?.map(edu => ({
-      institution: edu.institution,
+    // Process education for comprehensive profile
+    const education = linkedinData.education?.map(edu => ({
+      institution: edu.institution || '',
       degree: edu.degree || '',
       fieldOfStudy: edu.fieldOfStudy || '',
-      graduationYear: edu.endYear || '',
-      startYear: edu.startYear || '',
+      startDate: edu.startYear || '',
+      endDate: edu.endYear || '',
+      current: false,
       gpa: '',
-      achievements: edu.description ? [edu.description] : [],
+      location: '',
+      relevantCoursework: edu.description || '',
     })) || [];
 
-    // Process certifications
+    // Process certifications for comprehensive profile
     const certifications = linkedinData.certifications?.map(cert => ({
-      name: cert.name,
-      issuer: cert.issuer,
+      name: cert.name || '',
+      issuer: cert.issuer || '',
       issueDate: cert.issueDate || '',
-      expirationDate: cert.expirationDate || '',
+      expiryDate: cert.expirationDate || '',
       credentialId: cert.credentialId || '',
-      description: '',
+      url: '',
     })) || [];
+
+    // Process skills for comprehensive profile
+    const skills = {
+      technicalSkills: (linkedinData.skills || []).slice(0, 10).map(skill => ({
+        skill: skill,
+        level: 'intermediate' as const,
+        yearsOfExperience: 0,
+      })),
+      softSkills: [{
+        skill: '',
+        level: 'intermediate' as const,
+      }],
+      industryKnowledge: [] as any[],
+      tools: [] as any[],
+    };
+
+    // Process languages for comprehensive profile
+    const languages = (linkedinData.languages || []).map(lang => ({
+      language: lang,
+      proficiency: 'conversational' as const,
+      certification: '',
+    }));
+
+    // Add English as default if not present
+    if (languages.length === 0 || !languages.find(l => l.language.toLowerCase().includes('english'))) {
+      languages.push({
+        language: 'English',
+        proficiency: 'conversational' as const,
+        certification: '',
+      });
+    }
 
     // Calculate total years of experience
     let totalYearsOfExperience = 0;
     if (workExperiences.length > 0) {
-      // Simple calculation - can be enhanced
-      totalYearsOfExperience = Math.min(workExperiences.length * 2, 20); // Rough estimate
+      // Better calculation based on actual experience
+      workExperiences.forEach(exp => {
+        if (exp.startDate && (exp.endDate || exp.current)) {
+          // Simple year calculation - can be enhanced
+          const startYear = parseInt(exp.startDate.split('/')[1] || exp.startDate) || new Date().getFullYear();
+          const endYear = exp.current ? new Date().getFullYear() : (parseInt(exp.endDate.split('/')[1] || exp.endDate) || new Date().getFullYear());
+          totalYearsOfExperience += Math.max(0, endYear - startYear);
+        }
+      });
+      // Cap at reasonable maximum
+      totalYearsOfExperience = Math.min(totalYearsOfExperience, 30);
     }
 
     // Determine career level based on experience
     let careerLevel = 'entry_level';
-    if (totalYearsOfExperience >= 10) {
+    if (totalYearsOfExperience >= 15) {
       careerLevel = 'senior_management';
-    } else if (totalYearsOfExperience >= 7) {
+    } else if (totalYearsOfExperience >= 8) {
       careerLevel = 'manager';
     } else if (totalYearsOfExperience >= 3) {
       careerLevel = 'experienced';
+    } else if (totalYearsOfExperience >= 1) {
+      careerLevel = 'entry_level';
+    } else {
+      careerLevel = 'student';
     }
 
+    // Map LinkedIn data directly to database fields that will be used by comprehensive profile endpoint
     return {
-      // Basic Information
-      name: linkedinData.name || '',
+      // Basic information fields
+      name: linkedinData.name || `${firstName} ${lastName}`.trim(),
       city: city,
       country: country,
-      
-      // Career Information
+      phone: linkedinData.phone || '',
+      email: linkedinData.email || '',
       currentRole: linkedinData.headline || '',
       summary: linkedinData.summary || '',
       totalYearsOfExperience: totalYearsOfExperience,
       careerLevel: careerLevel,
+      linkedinUrl: '', // This will be set by the caller
+      githubUrl: '',
+      websiteUrl: linkedinData.website || '',
       
-      // Professional Data
-      workExperiences: workExperiences,
-      degrees: degrees,
-      certifications: certifications,
+      // Array fields
       skillsList: linkedinData.skills || [],
       
-      // Online Presence
-      linkedinUrl: '', // This will be set by the caller
-      
-      // Languages (simple format)
-      languages: linkedinData.languages?.map(lang => ({
-        language: lang,
-        proficiency: 'professional', // Default proficiency
-      })) || [],
-      
-      // Achievements
-      achievements: linkedinData.achievements?.join('\n') || '',
-      
-      // Set completion percentage higher since we have substantial data
-      completionPercentage: 75,
+      // JSONB fields that map to comprehensive profile sections
+      workExperiences: workExperiences,
+      degrees: education, 
+      certifications: certifications,
+      languages: languages,
+      achievements: (linkedinData.achievements || []).join('\n') || null,
     };
   }
 

@@ -697,19 +697,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Attempt to parse the LinkedIn profile
       const profileData = await LinkedInParser.parseFromUrl(linkedinUrl);
       
-      // Map to our profile format
+      // Map to our database profile format
       const mappedProfile = LinkedInParser.mapToProfileFormat(profileData);
       mappedProfile.linkedinUrl = linkedinUrl; // Set the original URL
 
-      // Update user's profile with LinkedIn data
+      console.log(`📋 LinkedIn import data mapped: ${Object.keys(mappedProfile).length} fields`);
+      console.log(`📋 LinkedIn field summary:`, {
+        name: !!mappedProfile.name,
+        location: !!mappedProfile.city && !!mappedProfile.country,
+        experience: mappedProfile.workExperiences?.length || 0,
+        education: mappedProfile.degrees?.length || 0,
+        skills: mappedProfile.skillsList?.length || 0,
+        languages: mappedProfile.languages?.length || 0,
+        certifications: mappedProfile.certifications?.length || 0
+      });
+
+      // Update user's profile with comprehensive LinkedIn data
       const existingProfile = await storage.getApplicantProfile(userId);
+      
       const updatedProfile = {
         userId,
         ...existingProfile,
         ...mappedProfile,
-        completionPercentage: Math.max(existingProfile?.completionPercentage || 0, mappedProfile.completionPercentage)
       };
-
+      
       const profile = await storage.upsertApplicantProfile(updatedProfile);
       await storage.updateProfileCompletion(userId);
 
@@ -756,21 +767,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse using AI
       const profileData = await LinkedInParser.parseFromText(profileText);
       
-      // Map to our profile format
+      // Map to our database profile format
       const mappedProfile = LinkedInParser.mapToProfileFormat(profileData);
       if (linkedinUrl) {
         mappedProfile.linkedinUrl = linkedinUrl;
       }
 
-      // Update user's profile with LinkedIn data
+      console.log(`📋 LinkedIn text import data mapped: ${Object.keys(mappedProfile).length} fields`);
+      console.log(`📋 LinkedIn field summary:`, {
+        name: !!mappedProfile.name,
+        location: !!mappedProfile.city && !!mappedProfile.country,
+        experience: mappedProfile.workExperiences?.length || 0,
+        education: mappedProfile.degrees?.length || 0,
+        skills: mappedProfile.skillsList?.length || 0,
+        languages: mappedProfile.languages?.length || 0,
+        certifications: mappedProfile.certifications?.length || 0
+      });
+
+      // Update user's profile with comprehensive LinkedIn data
       const existingProfile = await storage.getApplicantProfile(userId);
+      
       const updatedProfile = {
         userId,
         ...existingProfile,
         ...mappedProfile,
-        completionPercentage: Math.max(existingProfile?.completionPercentage || 0, mappedProfile.completionPercentage)
       };
-
+      
       const profile = await storage.upsertApplicantProfile(updatedProfile);
       await storage.updateProfileCompletion(userId);
 
