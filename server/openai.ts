@@ -1301,6 +1301,7 @@ export const aiInterviewService = {
   generatePersonalInterview: aiInterviewAgent.generatePersonalInterview.bind(aiInterviewAgent),
   generateProfessionalInterview: aiInterviewAgent.generateProfessionalInterview.bind(aiInterviewAgent),
   generateTechnicalInterview: aiInterviewAgent.generateTechnicalInterview.bind(aiInterviewAgent),
+  generateJobSpecificInterview: aiInterviewAgent.generateJobSpecificInterview.bind(aiInterviewAgent),
   generateProfile: aiProfileAnalysisAgent.generateComprehensiveProfile.bind(aiProfileAnalysisAgent),
   parseResume: aiProfileAnalysisAgent.parseResume.bind(aiProfileAnalysisAgent)
 };

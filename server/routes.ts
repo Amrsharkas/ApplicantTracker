@@ -3227,11 +3227,16 @@ Start by welcoming the candidate to the interview for the ${jobTitle} position a
         const data = await response.json();
         res.json(data);
       } else {
-        // For text mode, return the interview set directly (like regular interviews)
+        // For text mode, return a similar structure to voice mode for consistency
+        // The frontend expects client_secret for the connection logic
         res.json({
+          client_secret: {
+            value: `text-job-interview-${userId}-${Date.now()}`,
+          },
           sessionId: `job-${userId}-${Date.now()}`,
           questions: jobInterviewSet.questions,
-          firstQuestion: jobInterviewSet.questions[0]?.question || "Tell me about your interest in this position."
+          firstQuestion: jobInterviewSet.questions[0]?.question || "Tell me about your interest in this position.",
+          mode: 'text'
         });
       }
     } catch (error) {
