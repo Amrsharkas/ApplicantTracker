@@ -2,7 +2,7 @@ import OpenAI from "openai";
 
 // Using the latest OpenAI model gpt-4o (May 13, 2024). Note: ChatGPT-5 is not yet publicly available
 const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key"
+  apiKey: process.env.OPENAI_API_KEY1 || process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key"
 });
 
 export interface InterviewQuestion {

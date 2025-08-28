@@ -683,7 +683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY1}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -3203,7 +3203,7 @@ Start by welcoming the candidate to the interview for the ${jobTitle} position a
         const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY1}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
