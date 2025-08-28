@@ -17,6 +17,7 @@ import { eq, and } from "drizzle-orm";
 import Stripe from "stripe";
 import { subscriptionService } from "./subscriptionService";
 import { requireFeature, checkUsageLimit, usageCheckers } from "./subscriptionMiddleware";
+import { jobInterviewService } from "./jobInterviewService";
 
 // Initialize Stripe
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -3653,6 +3654,249 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     } catch (error) {
       console.error('Webhook error:', error);
       res.status(400).json({ error: 'Webhook error' });
+    }
+  });
+
+  // =================== JOB-SPECIFIC INTERVIEW ROUTES ===================
+
+  // Generate job-specific interview questions
+  app.post('/api/job-interview/generate-questions', requireAuth, async (req: any, res) => {
+    try {
+      const { jobId, language = 'english' } = req.body;
+      
+      if (!jobId) {
+        return res.status(400).json({ message: 'Job ID is required' });
+      }
+
+      // Fetch job details from Airtable
+      const allJobPostings = await airtableService.getAllJobPostings();
+      const job = allJobPostings.find(j => j.recordId === jobId);
+      
+      if (!job) {
+        return res.status(404).json({ message: 'Job not found' });
+      }
+
+      const jobData = {
+        jobTitle: job.jobTitle,
+        jobDescription: job.jobDescription,
+        companyName: job.companyName,
+        requirements: job.employerQuestions || '',
+        skills: job.skills || []
+      };
+
+      const questions = await jobInterviewService.generateJobSpecificQuestions(jobData, language);
+      
+      console.log(`✅ Generated ${questions.length} job-specific questions for ${job.jobTitle} at ${job.companyName}`);
+      
+      res.json({ 
+        questions,
+        jobData,
+        totalQuestions: questions.length 
+      });
+    } catch (error) {
+      console.error('Error generating job interview questions:', error);
+      res.status(500).json({ message: 'Failed to generate interview questions' });
+    }
+  });
+
+  // Real-time session for job-specific interviews
+  app.post('/api/job-interview/realtime/session', requireAuth, async (req: any, res) => {
+    try {
+      const { jobId, language = 'english' } = req.body;
+      
+      if (!jobId) {
+        return res.status(400).json({ message: 'Job ID is required' });
+      }
+
+      // Fetch job details and generate questions
+      const allJobPostings = await airtableService.getAllJobPostings();
+      const job = allJobPostings.find(j => j.recordId === jobId);
+      
+      if (!job) {
+        return res.status(404).json({ message: 'Job not found' });
+      }
+
+      const jobData = {
+        jobTitle: job.jobTitle,
+        jobDescription: job.jobDescription,
+        companyName: job.companyName,
+        requirements: job.employerQuestions || '',
+        skills: job.skills || []
+      };
+
+      const questions = await jobInterviewService.generateJobSpecificQuestions(jobData, language);
+      const instructions = await jobInterviewService.generateRealtimeInstructions(jobData, questions, language);
+
+      // Create ephemeral token for OpenAI Realtime API
+      const ephemeralTokenResponse = await fetch('https://api.openai.com/v1/realtime/sessions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-realtime-preview',
+          voice: 'alloy',
+          instructions: instructions,
+          turn_detection: {
+            type: 'server_vad',
+            threshold: 0.5,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 200,
+          },
+        }),
+      });
+
+      if (!ephemeralTokenResponse.ok) {
+        throw new Error(`OpenAI API error: ${ephemeralTokenResponse.status}`);
+      }
+
+      const ephemeralToken = await ephemeralTokenResponse.json();
+      
+      console.log(`✅ Created realtime session for job interview: ${job.jobTitle} at ${job.companyName}`);
+      
+      res.json({
+        client_secret: ephemeralToken.client_secret,
+        questions,
+        jobData,
+        instructions
+      });
+    } catch (error) {
+      console.error('Error creating realtime session:', error);
+      res.status(500).json({ message: 'Failed to create realtime session' });
+    }
+  });
+
+  // Analyze job interview responses
+  app.post('/api/job-interview/analyze', requireAuth, async (req: any, res) => {
+    try {
+      const { jobId, responses, language = 'english' } = req.body;
+      const userId = req.user.id;
+      
+      if (!jobId || !responses || !Array.isArray(responses)) {
+        return res.status(400).json({ message: 'Job ID and responses are required' });
+      }
+
+      // Fetch job details
+      const allJobPostings = await airtableService.getAllJobPostings();
+      const job = allJobPostings.find(j => j.recordId === jobId);
+      
+      if (!job) {
+        return res.status(404).json({ message: 'Job not found' });
+      }
+
+      const jobData = {
+        jobTitle: job.jobTitle,
+        jobDescription: job.jobDescription,
+        companyName: job.companyName,
+        requirements: job.employerQuestions || '',
+        skills: job.skills || []
+      };
+
+      // Generate questions to match with responses
+      const questions = await jobInterviewService.generateJobSpecificQuestions(jobData, language);
+      
+      // Analyze responses
+      const analysis = await jobInterviewService.analyzeJobInterviewResponses(
+        jobData, 
+        questions, 
+        responses, 
+        language
+      );
+
+      console.log(`✅ Analyzed job interview for ${job.jobTitle} - Score: ${analysis.overallScore}/100`);
+      
+      res.json({
+        analysis,
+        jobData,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error analyzing job interview:', error);
+      res.status(500).json({ message: 'Failed to analyze interview responses' });
+    }
+  });
+
+  // Submit job interview results to Airtable
+  app.post('/api/job-interview/submit', requireAuth, async (req: any, res) => {
+    try {
+      const { jobId, analysis, responses } = req.body;
+      const userId = req.user.id;
+      
+      if (!jobId || !analysis) {
+        return res.status(400).json({ message: 'Job ID and analysis are required' });
+      }
+
+      // Get user info
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Fetch job details
+      const allJobPostings = await airtableService.getAllJobPostings();
+      const job = allJobPostings.find(j => j.recordId === jobId);
+      
+      if (!job) {
+        return res.status(404).json({ message: 'Job not found' });
+      }
+
+      // Prepare job interview data for submission
+      const jobInterviewData = `JOB-SPECIFIC AI INTERVIEW RESULTS
+
+Job Position: ${job.jobTitle}
+Company: ${job.companyName}
+Interview Date: ${new Date().toLocaleDateString()}
+
+OVERALL ASSESSMENT:
+Score: ${analysis.overallScore}/100
+Qualified: ${analysis.recommendation.qualified ? 'Yes' : 'No'}
+
+ROLE COMPATIBILITY:
+Score: ${analysis.roleCompatibility.score}/100
+Strengths: ${analysis.roleCompatibility.strengths.join(', ')}
+Concerns: ${analysis.roleCompatibility.concerns.join(', ')}
+
+SKILLS ASSESSMENT:
+${analysis.skillsAssessment.map((skill: any) => 
+  `• ${skill.skill}: ${skill.score}/10 - ${skill.evidence}`
+).join('\n')}
+
+RECOMMENDATION:
+${analysis.recommendation.reasoning}
+
+Next Steps: ${analysis.recommendation.nextSteps.join(', ')}
+
+DETAILED FEEDBACK:
+${analysis.detailedFeedback}
+
+---
+Powered by Plato AI Interview System`;
+
+      // Submit to job applications with interview results
+      await airtableService.submitJobApplication({
+        jobTitle: job.jobTitle,
+        jobId: job.recordId,
+        jobDescription: job.jobDescription,
+        companyName: job.companyName,
+        applicantName: user.name || 'Unknown',
+        applicantId: userId,
+        aiProfile: {},
+        notes: jobInterviewData, // Store interview results in notes field
+        applicantEmail: user.email
+      });
+
+      console.log(`✅ Submitted job interview application for ${job.jobTitle} with AI analysis`);
+      
+      res.json({
+        success: true,
+        message: 'Job interview application submitted successfully',
+        qualified: analysis.recommendation.qualified,
+        overallScore: analysis.overallScore
+      });
+    } catch (error) {
+      console.error('Error submitting job interview application:', error);
+      res.status(500).json({ message: 'Failed to submit job interview application' });
     }
   });
 

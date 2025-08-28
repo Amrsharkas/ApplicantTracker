@@ -12,7 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmployerQuestionsModal } from "./EmployerQuestionsModal";
-import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft } from "lucide-react";
+import JobInterviewModal from "./JobInterviewModal";
+import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft, Brain } from "lucide-react";
 
 // Country-City data structure
 const COUNTRIES_CITIES = {
@@ -91,6 +92,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     message: string;
   }>({ type: null, message: '' });
   const [showEmployerQuestions, setShowEmployerQuestions] = useState(false);
+  const [showJobInterview, setShowJobInterview] = useState(false);
+  const [selectedJobForInterview, setSelectedJobForInterview] = useState<JobPosting | null>(null);
   const [pendingApplication, setPendingApplication] = useState<JobPosting | null>(null);
   const [employerAnswers, setEmployerAnswers] = useState<string[]>([]);
   const [filters, setFilters] = useState({
@@ -659,6 +662,12 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     }
   };
 
+  const handleJobInterview = (job: JobPosting) => {
+    setSelectedJobForInterview(job);
+    setShowJobInterview(true);
+    setSelectedJob(null); // Close job details panel
+  };
+
   const handleEmployerQuestionsSubmit = (answers: string[]) => {
     if (pendingApplication) {
       setEmployerAnswers(answers);
@@ -689,6 +698,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     setShowApplicationAnalysis(false);
     setApplicationAnalysis(null);
     setShowEmployerQuestions(false);
+    setShowJobInterview(false);
+    setSelectedJobForInterview(null);
     setPendingApplication(null);
     setEmployerAnswers([]);
   };
@@ -1387,6 +1398,14 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         Close
                       </Button>
                       <Button
+                        variant="outline"
+                        onClick={() => handleJobInterview(selectedJob)}
+                        className="flex items-center gap-2 px-4"
+                      >
+                        <Brain className="h-4 w-4" />
+                        AI Interview
+                      </Button>
+                      <Button
                         onClick={() => proceedWithApplication(selectedJob)}
                         disabled={newApplicationMutation.isPending}
                         className="flex items-center gap-2 px-6"
@@ -1399,7 +1418,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         ) : (
                           <>
                             <ArrowRight className="h-4 w-4" />
-                            Apply Now
+                            Quick Apply
                           </>
                         )}
                       </Button>
@@ -1715,6 +1734,18 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
         jobTitle={pendingApplication?.jobTitle || ''}
         companyName={pendingApplication?.companyName || ''}
         jobId={pendingApplication?.recordId || ''}
+      />
+
+      {/* Job Interview Modal */}
+      <JobInterviewModal
+        isOpen={showJobInterview}
+        onClose={() => {
+          setShowJobInterview(false);
+          setSelectedJobForInterview(null);
+        }}
+        jobTitle={selectedJobForInterview?.jobTitle || ''}
+        companyName={selectedJobForInterview?.companyName || ''}
+        jobId={selectedJobForInterview?.recordId || ''}
       />
     </Dialog>
   );
