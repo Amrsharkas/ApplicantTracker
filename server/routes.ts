@@ -3077,6 +3077,149 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
+  // Job-specific interview routes
+  app.get('/api/job/:recordId/details', requireAuth, async (req: any, res) => {
+    try {
+      const { recordId } = req.params;
+      console.log(`📋 Fetching job details for record: ${recordId}`);
+      
+      const jobDetails = await airtableService.getJobDetails(recordId);
+      
+      if (!jobDetails) {
+        return res.status(404).json({ message: 'Job not found' });
+      }
+      
+      res.json(jobDetails);
+    } catch (error) {
+      console.error('Error fetching job details:', error);
+      res.status(500).json({ message: 'Failed to fetch job details' });
+    }
+  });
+
+  app.post('/api/job-interview/session', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { mode, language, jobTitle, jobDescription, jobRequirements } = req.body;
+      
+      console.log(`📋 Creating job interview session for user: ${userId}`);
+      console.log(`📋 Interview mode: ${mode}, language: ${language}`);
+      console.log(`📋 Job: ${jobTitle}`);
+      
+      // Get user profile for context
+      const userProfile = await storage.getComprehensiveProfile(userId);
+      
+      // Generate job-specific interview instructions
+      const jobInterviewInstructions = `
+You are an AI interviewer conducting a job-specific interview for the position of "${jobTitle}". 
+
+JOB CONTEXT:
+- Position: ${jobTitle}
+- Description: ${jobDescription}
+- Requirements: ${jobRequirements}
+
+USER PROFILE CONTEXT:
+${userProfile ? JSON.stringify(userProfile, null, 2) : 'No user profile available'}
+
+INTERVIEW GUIDELINES:
+- Conduct exactly 10 questions tailored to assess the candidate's fit for this specific job
+- Focus on skills, experience, and qualifications relevant to the job requirements
+- Ask behavioral questions, technical questions, and scenario-based questions
+- Be professional but conversational
+- Language: ${language === 'arabic' ? 'Arabic (Egyptian dialect for casual conversation)' : 'English'}
+- Wait for complete answers before asking the next question
+- Number your questions (Question 1, Question 2, etc.)
+- After question 10, conclude the interview professionally
+
+QUESTION CATEGORIES TO COVER:
+1. Relevant technical skills and experience
+2. Problem-solving scenarios related to the role
+3. Cultural fit and motivation for this specific position
+4. Past experience handling similar responsibilities
+5. Understanding of the role requirements
+6. Ability to work in the company environment
+7. Career goals alignment with the position
+8. Specific examples from their background
+9. Challenges they might face in this role
+10. Questions about their interest in this particular job
+
+Start by welcoming the candidate to the interview for the ${jobTitle} position and ask your first question. Keep each question focused and relevant to the job.
+`;
+
+      // Create ephemeral token for realtime API
+      const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-realtime-preview-2024-12-17',
+          voice: 'sage',
+          instructions: jobInterviewInstructions,
+          modalities: mode === 'voice' ? ['text', 'audio'] : ['text'],
+          turn_detection: mode === 'voice' ? {
+            type: 'server_vad',
+            threshold: 0.5,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 500
+          } : null
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create OpenAI realtime session');
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error('Error creating job interview session:', error);
+      res.status(500).json({ message: 'Failed to create interview session' });
+    }
+  });
+
+  app.post('/api/job-interview/submit', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { 
+        jobRecordId, 
+        jobTitle, 
+        companyName, 
+        jobDescription, 
+        interviewTranscript, 
+        interviewAnalysis 
+      } = req.body;
+      
+      console.log(`📋 Submitting job interview result for user: ${userId}, job: ${jobTitle}`);
+      
+      // Get user details
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Submit to Airtable
+      await airtableService.submitJobInterviewResult({
+        jobRecordId,
+        jobTitle,
+        companyName,
+        applicantId: userId,
+        applicantName: user.firstName && user.lastName 
+          ? `${user.firstName} ${user.lastName}` 
+          : user.email || 'Unknown',
+        applicantEmail: user.email || '',
+        jobDescription,
+        interviewAnalysis,
+        interviewTranscript
+      });
+      
+      res.json({ success: true, message: 'Job interview submitted successfully' });
+    } catch (error) {
+      console.error('Error submitting job interview:', error);
+      res.status(500).json({ message: 'Failed to submit interview result' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
