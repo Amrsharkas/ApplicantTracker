@@ -1768,6 +1768,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
         jobTitle={pendingJobApplication?.jobTitle || ''}
         companyName={pendingJobApplication?.companyName || ''}
         jobRecordId={pendingJobApplication?.recordId || ''}
+        jobDescription={pendingJobApplication?.jobDescription || ''}
+        jobRequirements={pendingJobApplication?.skills?.join(', ') || ''}
         mode={selectedInterviewMode}
         language={selectedInterviewLanguage}
       />

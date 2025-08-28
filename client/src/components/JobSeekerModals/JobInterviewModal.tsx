@@ -27,6 +27,8 @@ interface JobInterviewModalProps {
   jobTitle: string;
   companyName: string;
   jobRecordId: string;
+  jobDescription?: string;
+  jobRequirements?: string;
   mode: 'voice' | 'text';
   language: 'english' | 'arabic';
 }
@@ -37,6 +39,8 @@ export function JobInterviewModal({
   jobTitle, 
   companyName, 
   jobRecordId,
+  jobDescription = '',
+  jobRequirements = '',
   mode,
   language 
 }: JobInterviewModalProps) {
@@ -55,21 +59,12 @@ export function JobInterviewModal({
   const conversationRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Fetch job details
-  const fetchJobDetails = async () => {
-    try {
-      const details = await apiRequest(`/api/job/${jobRecordId}/details`);
-      setJobDetails(details);
-      return details;
-    } catch (error) {
-      console.error('Failed to fetch job details:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch job details. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
+  // Use provided job details directly
+  const jobDetailsData = {
+    jobTitle,
+    jobDescription,
+    jobRequirements,
+    companyName
   };
 
   const { 
@@ -170,15 +165,15 @@ export function JobInterviewModal({
   // Start interview
   const startInterview = async () => {
     try {
-      const details = await fetchJobDetails();
       setInterviewStarted(true);
+      setJobDetails(jobDetailsData);
       
       await connect({
         mode,
         language,
         jobTitle,
-        jobDescription: details.jobDescription,
-        jobRequirements: details.jobRequirements
+        jobDescription,
+        jobRequirements
       });
     } catch (error) {
       console.error('Failed to start interview:', error);
