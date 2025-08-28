@@ -12,8 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmployerQuestionsModal } from "./EmployerQuestionsModal";
-import JobInterviewModal from "./JobInterviewModal";
-import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft, Brain } from "lucide-react";
+import { JobInterviewChoiceModal } from "./JobInterviewChoiceModal";
+import { JobInterviewModal } from "./JobInterviewModal";
+import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft } from "lucide-react";
 
 // Country-City data structure
 const COUNTRIES_CITIES = {
@@ -92,10 +93,13 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     message: string;
   }>({ type: null, message: '' });
   const [showEmployerQuestions, setShowEmployerQuestions] = useState(false);
-  const [showJobInterview, setShowJobInterview] = useState(false);
-  const [selectedJobForInterview, setSelectedJobForInterview] = useState<JobPosting | null>(null);
   const [pendingApplication, setPendingApplication] = useState<JobPosting | null>(null);
   const [employerAnswers, setEmployerAnswers] = useState<string[]>([]);
+  const [showJobInterviewChoice, setShowJobInterviewChoice] = useState(false);
+  const [showJobInterview, setShowJobInterview] = useState(false);
+  const [pendingJobApplication, setPendingJobApplication] = useState<JobPosting | null>(null);
+  const [selectedInterviewMode, setSelectedInterviewMode] = useState<'voice' | 'text'>('voice');
+  const [selectedInterviewLanguage, setSelectedInterviewLanguage] = useState<'english' | 'arabic'>('english');
   const [filters, setFilters] = useState({
     workplace: [] as string[],
     country: "",
@@ -651,21 +655,9 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
   };
 
   const proceedWithApplication = (job: JobPosting) => {
-    // Check if job has employer questions
-    if (job.employerQuestions && job.employerQuestions.trim() !== '') {
-      // Show employer questions modal
-      setPendingApplication(job);
-      setShowEmployerQuestions(true);
-    } else {
-      // Submit application directly if no questions
-      submitApplication(job, []);
-    }
-  };
-
-  const handleJobInterview = (job: JobPosting) => {
-    setSelectedJobForInterview(job);
-    setShowJobInterview(true);
-    setSelectedJob(null); // Close job details panel
+    // Show job interview choice modal first
+    setPendingJobApplication(job);
+    setShowJobInterviewChoice(true);
   };
 
   const handleEmployerQuestionsSubmit = (answers: string[]) => {
@@ -693,15 +685,40 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
 
 
+  const handleJobInterviewStart = (mode: 'voice' | 'text', language: 'english' | 'arabic') => {
+    setSelectedInterviewMode(mode);
+    setSelectedInterviewLanguage(language);
+    setShowJobInterview(true);
+  };
+
+  const handleJobInterviewComplete = () => {
+    // After job interview is complete, proceed with employer questions or direct application
+    setShowJobInterview(false);
+    
+    if (pendingJobApplication) {
+      // Check if job has employer questions
+      if (pendingJobApplication.employerQuestions && pendingJobApplication.employerQuestions.trim() !== '') {
+        // Show employer questions modal
+        setPendingApplication(pendingJobApplication);
+        setShowEmployerQuestions(true);
+      } else {
+        // Submit application directly if no questions
+        submitApplication(pendingJobApplication, []);
+      }
+      setPendingJobApplication(null);
+    }
+  };
+
   const resetApplicationState = () => {
     setSelectedJob(null);
     setShowApplicationAnalysis(false);
     setApplicationAnalysis(null);
     setShowEmployerQuestions(false);
-    setShowJobInterview(false);
-    setSelectedJobForInterview(null);
     setPendingApplication(null);
     setEmployerAnswers([]);
+    setShowJobInterviewChoice(false);
+    setShowJobInterview(false);
+    setPendingJobApplication(null);
   };
 
 
@@ -1398,14 +1415,6 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         Close
                       </Button>
                       <Button
-                        variant="outline"
-                        onClick={() => handleJobInterview(selectedJob)}
-                        className="flex items-center gap-2 px-4"
-                      >
-                        <Brain className="h-4 w-4" />
-                        AI Interview
-                      </Button>
-                      <Button
                         onClick={() => proceedWithApplication(selectedJob)}
                         disabled={newApplicationMutation.isPending}
                         className="flex items-center gap-2 px-6"
@@ -1418,7 +1427,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         ) : (
                           <>
                             <ArrowRight className="h-4 w-4" />
-                            Quick Apply
+                            Apply Now
                           </>
                         )}
                       </Button>
@@ -1736,16 +1745,33 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
         jobId={pendingApplication?.recordId || ''}
       />
 
+      {/* Job Interview Choice Modal */}
+      <JobInterviewChoiceModal
+        isOpen={showJobInterviewChoice}
+        onClose={() => {
+          setShowJobInterviewChoice(false);
+          setPendingJobApplication(null);
+        }}
+        jobTitle={pendingJobApplication?.jobTitle || ''}
+        companyName={pendingJobApplication?.companyName || ''}
+        jobRecordId={pendingJobApplication?.recordId || ''}
+        onStartInterview={handleJobInterviewStart}
+      />
+
       {/* Job Interview Modal */}
       <JobInterviewModal
         isOpen={showJobInterview}
         onClose={() => {
           setShowJobInterview(false);
-          setSelectedJobForInterview(null);
+          handleJobInterviewComplete();
         }}
-        jobTitle={selectedJobForInterview?.jobTitle || ''}
-        companyName={selectedJobForInterview?.companyName || ''}
-        jobId={selectedJobForInterview?.recordId || ''}
+        jobTitle={pendingJobApplication?.jobTitle || ''}
+        companyName={pendingJobApplication?.companyName || ''}
+        jobRecordId={pendingJobApplication?.recordId || ''}
+        jobDescription={pendingJobApplication?.jobDescription || ''}
+        jobRequirements={pendingJobApplication?.skills?.join(', ') || ''}
+        mode={selectedInterviewMode}
+        language={selectedInterviewLanguage}
       />
     </Dialog>
   );

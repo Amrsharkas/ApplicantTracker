@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { ObjectStorageService } from "./objectStorage.js";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY1 });
 
 export interface ResumeAnalysis {
   skills: string[];

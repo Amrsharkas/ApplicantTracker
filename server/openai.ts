@@ -2,7 +2,7 @@ import OpenAI from "openai";
 
 // Using the latest OpenAI model gpt-4o (May 13, 2024). Note: ChatGPT-5 is not yet publicly available
 const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key"
+  apiKey: process.env.OPENAI_API_KEY1 || process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key"
 });
 
 export interface InterviewQuestion {
@@ -11,7 +11,7 @@ export interface InterviewQuestion {
 }
 
 export interface InterviewSet {
-  type: 'personal' | 'professional' | 'technical';
+  type: 'personal' | 'professional' | 'technical' | 'job-specific';
   title: string;
   description: string;
   questions: InterviewQuestion[];
@@ -764,6 +764,173 @@ Return ONLY JSON:
     return this.getFallbackPersonalQuestions();
   }
 
+  async generateJobSpecificInterview(
+    userData: any,
+    jobTitle: string,
+    jobDescription: string,
+    jobRequirements: string,
+    resumeContent?: string,
+    resumeAnalysis?: any,
+    language: string = 'english'
+  ): Promise<InterviewSet> {
+    const prompt = `You are a continuous AI interviewer conducting a job-specific interview for the position of "${jobTitle}". 
+
+${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
+
+CRITICAL: You must first analyze the candidate's profile in full detail before asking any questions. You already know about this candidate and must reference their profile naturally in your questions.
+
+JOB CONTEXT:
+- Position: ${jobTitle}
+- Description: ${jobDescription}
+- Requirements: ${jobRequirements}
+
+COMPREHENSIVE CANDIDATE PROFILE DATA:
+=== PERSONAL DETAILS ===
+${userData?.name ? `Full Name: ${userData.name}` : ''}
+${userData?.email ? `Email: ${userData.email}` : ''}
+${userData?.phone ? `Phone: ${userData.phone}` : ''}
+${userData?.birthdate ? `Date of Birth: ${new Date(userData.birthdate).toLocaleDateString()}` : ''}
+${userData?.gender ? `Gender: ${userData.gender}` : ''}
+${userData?.nationality ? `Nationality: ${userData.nationality}` : ''}
+${userData?.maritalStatus ? `Marital Status: ${userData.maritalStatus}` : ''}
+${userData?.dependents ? `Dependents: ${userData.dependents}` : ''}
+${userData?.militaryStatus ? `Military Status: ${userData.militaryStatus}` : ''}
+
+=== LOCATION & MOBILITY ===
+${userData?.country ? `Country: ${userData.country}` : ''}
+${userData?.city ? `City: ${userData.city}` : ''}
+${userData?.willingToRelocate !== undefined ? `Willing to Relocate: ${userData.willingToRelocate ? 'Yes' : 'No'}` : ''}
+
+=== WORK EXPERIENCE ===
+${userData?.workExperiences?.length ? userData.workExperiences.map((exp: any, index: number) => `
+Work Experience ${index + 1}:
+  Company: ${exp.company}
+  Position: ${exp.position}
+  Duration: ${exp.startDate} - ${exp.current ? 'Present' : exp.endDate}
+  Location: ${exp.location}
+  Type: ${exp.employmentType}
+  Responsibilities: ${exp.responsibilities || 'Not specified'}`).join('\n') : 'No work experience provided'}
+
+=== EDUCATION ===
+${userData?.degrees?.length ? userData.degrees.map((degree: any, index: number) => `
+Education ${index + 1}:
+  Institution: ${degree.institution}
+  Degree: ${degree.degree}
+  Field: ${degree.fieldOfStudy}
+  Duration: ${degree.startDate} - ${degree.current ? 'Present' : degree.endDate}
+  Location: ${degree.location}
+  GPA: ${degree.gpa || 'Not specified'}`).join('\n') : 'No education provided'}
+
+=== SKILLS ===
+${userData?.skillsList?.length ? `Skills: ${userData.skillsList.join(', ')}` : 'No skills listed'}
+
+=== RESUME ANALYSIS ===
+${resumeAnalysis ? `AI Analysis: ${JSON.stringify(resumeAnalysis, null, 2)}` : 'No resume analysis available'}
+
+${resumeContent ? `\n=== RESUME CONTENT ===\n${resumeContent}` : ''}
+
+INTERVIEW GUIDELINES:
+- Generate exactly 10 questions tailored to assess the candidate's fit for this specific job
+- Focus on skills, experience, and qualifications relevant to the job requirements
+- Ask behavioral questions, technical questions, and scenario-based questions
+- Be professional but conversational
+- Reference specific details from their profile when appropriate
+- Each question should directly relate to either the job requirements or their background
+- Avoid generic questions - make each question specific to this role and candidate
+
+QUESTION CATEGORIES TO COVER:
+1. Relevant technical skills and experience
+2. Problem-solving scenarios related to the role
+3. Cultural fit and motivation for this specific position
+4. Past experience handling similar responsibilities
+5. Understanding of the role requirements
+6. Ability to work in the company environment
+7. Career goals alignment with the position
+8. Specific examples from their background
+9. Challenges they might face in this role
+10. Questions about their interest in this particular job
+
+Return your response as a JSON object with this exact structure:
+{
+  "type": "job-specific",
+  "title": "Job Interview - [Job Title]",
+  "description": "Assessing your fit for the [Job Title] position",
+  "questions": [
+    { "question": "Question text here" },
+    { "question": "Question text here" }
+    // ... exactly 10 questions
+  ]
+}
+
+Return ONLY the JSON object, no additional text or formatting.`;
+
+    try {
+      const messages = language === 'arabic' ? [
+        { 
+          role: "system" as const, 
+          content: "انت مصري من القاهرة وبتتكلم عامية مصرية بس. استخدم كلمات زي 'إزيك' و 'عامل إيه' و 'يلا' و 'معلش' و 'ماشي' و 'كدا' و 'دي'. ممنوع تستخدم فصحى خالص. اتكلم كإنك قاعد في قهوة في وسط البلد."
+        },
+        { role: "user" as const, content: prompt }
+      ] : [
+        { role: "user" as const, content: prompt }
+      ];
+
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o",
+        messages,
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+        max_tokens: 3000
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('No response generated');
+      }
+
+      try {
+        const result = JSON.parse(content);
+        return {
+          type: 'job-specific' as const,
+          title: result.title || `Job Interview - ${jobTitle}`,
+          description: result.description || `Assessing your fit for the ${jobTitle} position`,
+          questions: result.questions || this.getFallbackJobSpecificQuestions(jobTitle)
+        };
+      } catch (parseError) {
+        console.error('Error parsing job-specific interview JSON:', parseError);
+        return {
+          type: 'job-specific' as const,
+          title: `Job Interview - ${jobTitle}`,
+          description: `Assessing your fit for the ${jobTitle} position`,
+          questions: this.getFallbackJobSpecificQuestions(jobTitle)
+        };
+      }
+    } catch (error) {
+      console.error("Error generating job-specific interview:", error);
+      return {
+        type: 'job-specific' as const,
+        title: `Job Interview - ${jobTitle}`,
+        description: `Assessing your fit for the ${jobTitle} position`,
+        questions: this.getFallbackJobSpecificQuestions(jobTitle)
+      };
+    }
+  }
+
+  private getFallbackJobSpecificQuestions(jobTitle: string): InterviewQuestion[] {
+    return [
+      { question: `What specifically interests you about the ${jobTitle} position?` },
+      { question: "Tell me about your most relevant experience for this role." },
+      { question: "How do your skills align with the requirements of this position?" },
+      { question: "Describe a challenging situation you faced that's relevant to this job." },
+      { question: "What do you know about our company and why do you want to work here?" },
+      { question: "How would you approach your first 90 days in this role?" },
+      { question: "What questions do you have about the position or company?" },
+      { question: "Describe your ideal work environment and how it relates to this role." },
+      { question: "What are your salary expectations for this position?" },
+      { question: "How do you handle pressure and tight deadlines?" }
+    ];
+  }
+
   // Generate brutally honest candidate profile for Airtable
   async generateBrutallyHonestProfile(userData: any, interviewResponses: any, resumeAnalysis: any): Promise<{
     profileSummary: string;
@@ -1134,6 +1301,7 @@ export const aiInterviewService = {
   generatePersonalInterview: aiInterviewAgent.generatePersonalInterview.bind(aiInterviewAgent),
   generateProfessionalInterview: aiInterviewAgent.generateProfessionalInterview.bind(aiInterviewAgent),
   generateTechnicalInterview: aiInterviewAgent.generateTechnicalInterview.bind(aiInterviewAgent),
+  generateJobSpecificInterview: aiInterviewAgent.generateJobSpecificInterview.bind(aiInterviewAgent),
   generateProfile: aiProfileAnalysisAgent.generateComprehensiveProfile.bind(aiProfileAnalysisAgent),
   parseResume: aiProfileAnalysisAgent.parseResume.bind(aiProfileAnalysisAgent)
 };

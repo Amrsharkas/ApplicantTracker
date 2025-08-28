@@ -7,8 +7,7 @@ import {
   FileText, 
   TrendingUp,
   MessageCircle,
-  Briefcase,
-  Crown
+  Briefcase
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useResumeRequirement } from "@/hooks/useResumeRequirement";
@@ -22,8 +21,6 @@ import { UserProfileModal } from "@/components/JobSeekerModals/UserProfileModal"
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
 import { InterviewModal } from "@/components/JobSeekerModals/InterviewModal";
 import { UpcomingInterviewModal } from "@/components/JobSeekerModals/UpcomingInterviewModal";
-import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
-import { useSubscription } from "@/contexts/SubscriptionContext";
 
 import { JobPostingsModal } from "@/components/JobSeekerModals/JobPostingsModal";
 
@@ -32,7 +29,6 @@ export default function Dashboard() {
   const logout = useLogout();
   const { toast } = useToast();
   const { t, isRTL } = useLanguage();
-  const { subscription, planName, isSubscribed } = useSubscription();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedJobDetails, setSelectedJobDetails] = useState<{title: string, id: string} | null>(null);
 
@@ -160,23 +156,6 @@ export default function Dashboard() {
             
             <div className="flex items-center space-x-4">
               <LanguageSwitcher />
-              
-              {/* Subscription Button */}
-              <button
-                onClick={() => openModal('subscription')}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
-                  isSubscribed 
-                    ? 'bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border border-yellow-200' 
-                    : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200'
-                }`}
-                title={isSubscribed ? `Current Plan: ${planName}` : 'Upgrade to Premium'}
-              >
-                <Crown className={`h-4 w-4 ${isSubscribed ? 'text-yellow-600' : 'text-blue-600'}`} />
-                <span className="text-sm font-medium">
-                  {isSubscribed ? `${planName.charAt(0).toUpperCase() + planName.slice(1)}` : 'Upgrade'}
-                </span>
-              </button>
-
               <button
                 onClick={() => openModal('userProfile')}
                 className="flex items-center space-x-2 hover:bg-gray-50 rounded-lg p-2 transition-colors"
@@ -498,10 +477,6 @@ export default function Dashboard() {
         onClose={closeModal} 
         initialJobTitle={selectedJobDetails?.title}
         initialJobId={selectedJobDetails?.id}
-      />
-      <SubscriptionModal 
-        isOpen={activeModal === 'subscription'} 
-        onClose={closeModal} 
       />
     </div>
   );
