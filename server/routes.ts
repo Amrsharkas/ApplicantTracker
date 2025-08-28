@@ -3138,76 +3138,108 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       console.log(`📋 Interview mode: ${mode}, language: ${language}`);
       console.log(`📋 Job: ${jobTitle}`);
       
-      // Get user profile for context
-      const userProfile = await storage.getComprehensiveProfile(userId);
+      // Get user profile and resume for context
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
       
-      // Generate job-specific interview instructions
-      const jobInterviewInstructions = `
+      // Get resume content and analysis from profile
+      const resumeContent = profile?.resumeContent || null;
+      let resumeAnalysis = null;
+      
+      if (userId) {
+        try {
+          const resumeUpload = await storage.getActiveResume(userId);
+          resumeAnalysis = resumeUpload?.aiAnalysis;
+        } catch (error) {
+          console.log("No resume analysis found:", error);
+        }
+      }
+
+      // Generate job-specific interview using the same AI service as regular interviews
+      const jobInterviewSet = await aiInterviewService.generateJobSpecificInterview(
+        {
+          ...user,
+          ...profile
+        },
+        jobTitle,
+        jobDescription,
+        jobRequirements,
+        resumeContent || undefined,
+        resumeAnalysis,
+        language
+      );
+
+      if (!jobInterviewSet) {
+        return res.status(500).json({
+          error: "Failed to generate job interview questions",
+          details: `Could not create job-specific interview for ${jobTitle}`
+        });
+      }
+
+      if (mode === 'voice') {
+        // For voice mode, create OpenAI realtime session with the generated questions
+        const jobInterviewInstructions = `
 You are an AI interviewer conducting a job-specific interview for the position of "${jobTitle}". 
+
+You have already generated the following ${jobInterviewSet.questions.length} questions to ask:
+${jobInterviewSet.questions.map((q, i) => `${i + 1}. ${q.question}`).join('\n')}
 
 JOB CONTEXT:
 - Position: ${jobTitle}
 - Description: ${jobDescription}
 - Requirements: ${jobRequirements}
 
-USER PROFILE CONTEXT:
-${userProfile ? JSON.stringify(userProfile, null, 2) : 'No user profile available'}
-
 INTERVIEW GUIDELINES:
-- Conduct exactly 10 questions tailored to assess the candidate's fit for this specific job
-- Focus on skills, experience, and qualifications relevant to the job requirements
-- Ask behavioral questions, technical questions, and scenario-based questions
+- Ask the questions in order, one by one
+- Wait for complete answers before asking the next question
 - Be professional but conversational
 - Language: ${language === 'arabic' ? 'Arabic (Egyptian dialect for casual conversation)' : 'English'}
-- Wait for complete answers before asking the next question
-- Number your questions (Question 1, Question 2, etc.)
-- After question 10, conclude the interview professionally
+- After all questions, conclude the interview professionally
 
-QUESTION CATEGORIES TO COVER:
-1. Relevant technical skills and experience
-2. Problem-solving scenarios related to the role
-3. Cultural fit and motivation for this specific position
-4. Past experience handling similar responsibilities
-5. Understanding of the role requirements
-6. Ability to work in the company environment
-7. Career goals alignment with the position
-8. Specific examples from their background
-9. Challenges they might face in this role
-10. Questions about their interest in this particular job
-
-Start by welcoming the candidate to the interview for the ${jobTitle} position and ask your first question. Keep each question focused and relevant to the job.
+Start by welcoming the candidate to the interview for the ${jobTitle} position and ask your first question.
 `;
 
-      // Create ephemeral token for realtime API
-      const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-realtime-preview-2024-12-17',
-          voice: 'sage',
-          instructions: jobInterviewInstructions,
-          modalities: mode === 'voice' ? ['text', 'audio'] : ['text'],
-          turn_detection: mode === 'voice' ? {
-            type: 'server_vad',
-            threshold: 0.5,
-            prefix_padding_ms: 300,
-            silence_duration_ms: 500
-          } : null
-        }),
-      });
+        // Create ephemeral token for realtime API
+        const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-realtime-preview-2024-12-17',
+            voice: 'sage',
+            instructions: jobInterviewInstructions,
+            modalities: ['text', 'audio'],
+            turn_detection: {
+              type: 'server_vad',
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 500
+            }
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error('Failed to create OpenAI realtime session');
+        if (!response.ok) {
+          throw new Error('Failed to create OpenAI realtime session');
+        }
+
+        const data = await response.json();
+        res.json(data);
+      } else {
+        // For text mode, return the interview set directly (like regular interviews)
+        res.json({
+          sessionId: `job-${userId}-${Date.now()}`,
+          questions: jobInterviewSet.questions,
+          firstQuestion: jobInterviewSet.questions[0]?.question || "Tell me about your interest in this position."
+        });
       }
-
-      const data = await response.json();
-      res.json(data);
     } catch (error) {
       console.error('Error creating job interview session:', error);
-      res.status(500).json({ message: 'Failed to create interview session' });
+      res.status(500).json({ 
+        error: 'Failed to create job interview session',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
