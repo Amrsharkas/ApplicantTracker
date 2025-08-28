@@ -713,6 +713,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Handle WebRTC SDP negotiation with ephemeral key for realtime API
+  app.post("/api/realtime/session/:ephemeralKey", async (req, res) => {
+    try {
+      const { ephemeralKey } = req.params;
+      const sdpOffer = req.body;
+      
+      console.log(`🔌 WebRTC SDP negotiation for ephemeral key: ${ephemeralKey}`);
+      
+      // Forward the SDP offer to OpenAI's realtime API
+      const response = await fetch(`https://api.openai.com/v1/realtime/sessions/${ephemeralKey}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ephemeralKey}`,
+          'Content-Type': 'application/sdp'
+        },
+        body: sdpOffer
+      });
+      
+      if (!response.ok) {
+        console.error(`WebRTC SDP negotiation failed: ${response.status}`);
+        return res.status(response.status).text(`WebRTC negotiation failed: ${response.statusText}`);
+      }
+      
+      const sdpAnswer = await response.text();
+      res.setHeader('Content-Type', 'application/sdp');
+      res.send(sdpAnswer);
+      
+    } catch (error) {
+      console.error('Error in WebRTC SDP negotiation:', error);
+      res.status(500).text('WebRTC negotiation failed');
+    }
+  });
+
   // Voice interview initialization route
   app.post("/api/interview/start-voice", requireAuth, async (req: any, res) => {
     try {
