@@ -45,7 +45,9 @@ interface JobInterviewQuestion {
 interface JobInterviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  job: JobPosting | null;
+  jobTitle: string;
+  companyName: string;
+  jobId: string;
 }
 
 interface InterviewResponse {
@@ -53,7 +55,7 @@ interface InterviewResponse {
   answer: string;
 }
 
-export default function JobInterviewModal({ isOpen, onClose, job }: JobInterviewModalProps) {
+export default function JobInterviewModal({ isOpen, onClose, jobTitle, companyName, jobId }: JobInterviewModalProps) {
   const [step, setStep] = useState<'setup' | 'interview' | 'analysis' | 'results'>('setup');
   const [interviewMethod, setInterviewMethod] = useState<'voice' | 'text'>('text');
   const [language, setLanguage] = useState<'english' | 'arabic'>('english');
@@ -65,6 +67,16 @@ export default function JobInterviewModal({ isOpen, onClose, job }: JobInterview
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [interviewStartTime, setInterviewStartTime] = useState<Date | null>(null);
+
+  // Create job object from props
+  const job = jobId ? {
+    recordId: jobId,
+    jobTitle,
+    companyName,
+    jobDescription: `${jobTitle} position at ${companyName}`,
+    location: '',
+    skills: []
+  } : null;
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -210,8 +222,8 @@ export default function JobInterviewModal({ isOpen, onClose, job }: JobInterview
     try {
       await realtimeAPI.connect({ 
         interviewType: 'job-specific',
-        jobId: job?.recordId,
-        language
+        questions: [],
+        interviewSet: { jobId: job?.recordId, language }
       });
     } catch (error) {
       console.error('Failed to start voice interview:', error);
@@ -469,7 +481,8 @@ export default function JobInterviewModal({ isOpen, onClose, job }: JobInterview
                   
                   <Button
                     variant="outline"
-                    onClick={() => realtimeAPI.isConnected ? realtimeAPI.mute() : realtimeAPI.unmute()}
+                    onClick={() => {/* Voice controls will be implemented later */}}
+                    disabled
                   >
                     {realtimeAPI.isSpeaking ? (
                       <VolumeX className="h-4 w-4" />
