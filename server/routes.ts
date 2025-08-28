@@ -720,20 +720,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sdpOffer = req.body;
       
       console.log(`🔌 WebRTC SDP negotiation for ephemeral key: ${ephemeralKey}`);
+      console.log(`🔌 Request URL: https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17`);
+      console.log(`🔌 Request body type: ${typeof sdpOffer}, length: ${JSON.stringify(sdpOffer).length}`);
       
-      // Forward the SDP offer to OpenAI's realtime API
-      const response = await fetch(`https://api.openai.com/v1/realtime/sessions/${ephemeralKey}`, {
+      // Forward the SDP offer to OpenAI's realtime API - correct endpoint format
+      const response = await fetch(`https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY1}`,
+          'Authorization': `Bearer ${ephemeralKey}`,
           'Content-Type': 'application/sdp'
         },
         body: sdpOffer
       });
       
       if (!response.ok) {
+        const errorText = await response.text();
         console.error(`WebRTC SDP negotiation failed: ${response.status}`);
-        return res.status(response.status).send(`WebRTC negotiation failed: ${response.statusText}`);
+        console.error(`Response headers:`, Object.fromEntries(response.headers.entries()));
+        console.error(`Error response:`, errorText);
+        return res.status(response.status).send(`WebRTC negotiation failed: ${response.statusText} - ${errorText}`);
       }
       
       const sdpAnswer = await response.text();
