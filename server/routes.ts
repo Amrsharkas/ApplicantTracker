@@ -733,7 +733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!response.ok) {
         console.error(`WebRTC SDP negotiation failed: ${response.status}`);
-        return res.status(response.status).text(`WebRTC negotiation failed: ${response.statusText}`);
+        return res.status(response.status).send(`WebRTC negotiation failed: ${response.statusText}`);
       }
       
       const sdpAnswer = await response.text();
@@ -742,7 +742,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
     } catch (error) {
       console.error('Error in WebRTC SDP negotiation:', error);
-      res.status(500).text('WebRTC negotiation failed');
+      res.status(500).send('WebRTC negotiation failed');
     }
   });
 
