@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
@@ -714,7 +715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Handle WebRTC SDP negotiation with ephemeral key for realtime API
-  app.post("/api/realtime/session/:ephemeralKey", async (req, res) => {
+  app.post("/api/realtime/session/:ephemeralKey", express.text({ type: 'application/sdp' }), async (req, res) => {
     try {
       const { ephemeralKey } = req.params;
       const sdpOffer = req.body;
