@@ -39,7 +39,6 @@ export interface IStorage {
   upsertApplicantProfile(profile: InsertApplicantProfile): Promise<ApplicantProfile>;
   updateApplicantProfile(userId: string, data: Partial<ApplicantProfile>): Promise<void>;
   updateProfileCompletion(userId: string): Promise<void>;
-  getComprehensiveProfile(userId: string): Promise<any>;
 
 
 
@@ -555,27 +554,6 @@ export class DatabaseStorage implements IStorage {
       .update(resumeUploads)
       .set({ isActive: true })
       .where(and(eq(resumeUploads.id, resumeId), eq(resumeUploads.userId, userId)));
-  }
-
-  async getComprehensiveProfile(userId: string): Promise<any> {
-    const profile = await this.getApplicantProfile(userId);
-    if (!profile) {
-      return null;
-    }
-    
-    return {
-      personalDetails: profile.personalDetails,
-      governmentId: profile.governmentId,
-      linksPortfolio: profile.linksPortfolio,
-      workEligibility: profile.workEligibility,
-      languages: profile.languages,
-      skills: profile.skills,
-      education: profile.education,
-      experience: profile.experience,
-      certifications: profile.certifications,
-      awards: profile.awards,
-      jobTarget: profile.jobTarget
-    };
   }
 }
 

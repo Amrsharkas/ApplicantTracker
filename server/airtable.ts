@@ -44,16 +44,6 @@ const jobMatchesBase = AIRTABLE_JOB_MATCHES_BASE_ID ? Airtable.base(AIRTABLE_JOB
 const jobPostingsBase = AIRTABLE_JOB_POSTINGS_BASE_ID ? Airtable.base(AIRTABLE_JOB_POSTINGS_BASE_ID) : null;
 const jobApplicationsBase = AIRTABLE_JOB_APPLICATIONS_BASE_ID ? Airtable.base(AIRTABLE_JOB_APPLICATIONS_BASE_ID) : null;
 
-// Job postings base ID from user request
-const JOB_POSTINGS_BASE_ID = 'appCjIvd73lvp0oLf';
-const jobPostingsAirtableBase = Airtable.base(JOB_POSTINGS_BASE_ID);
-console.log('✅ Job postings base for interviews configured:', JOB_POSTINGS_BASE_ID);
-
-// Job applications base for interview results
-const JOB_APPLICATIONS_INTERVIEW_BASE_ID = 'appEYs1fTytFXoJ7x';
-const jobApplicationsInterviewBase = Airtable.base(JOB_APPLICATIONS_INTERVIEW_BASE_ID);
-console.log('✅ Job applications base for interview results configured:', JOB_APPLICATIONS_INTERVIEW_BASE_ID);
-
 export interface AirtableUserProfile {
   name: string;
   userProfile: string;
@@ -1487,88 +1477,6 @@ export class AirtableService {
     } catch (error) {
       console.error('Error fetching upcoming interviews:', error);
       return [];
-    }
-  }
-
-  // Job-specific interview methods
-  async getJobDetails(recordId: string): Promise<{
-    jobTitle: string;
-    jobDescription: string;
-    jobRequirements: string;
-    companyName: string;
-  } | null> {
-    try {
-      console.log(`📋 Fetching job details for record ID: ${recordId}`);
-      
-      const record = await jobPostingsAirtableBase('Table 1').find(recordId);
-      const fields = record.fields;
-      
-      return {
-        jobTitle: fields['Job title'] as string || '',
-        jobDescription: fields['Job description'] as string || '',
-        jobRequirements: fields['Job requirements'] as string || fields['Requirements'] as string || '',
-        companyName: fields['Company name'] as string || fields['Company'] as string || ''
-      };
-    } catch (error) {
-      console.error('Error fetching job details:', error);
-      return null;
-    }
-  }
-
-  async submitJobInterviewResult(data: {
-    jobRecordId: string;
-    jobTitle: string;
-    companyName: string;
-    applicantId: string;
-    applicantName: string;
-    applicantEmail: string;
-    jobDescription: string;
-    interviewAnalysis: string;
-    interviewTranscript?: string;
-  }): Promise<void> {
-    try {
-      console.log(`📋 Submitting job interview result for job: ${data.jobTitle}`);
-      
-      // Submit to the job applications base with interview analysis
-      const payload = {
-        fields: {
-          "Job title": data.jobTitle,
-          "Job ID": data.jobRecordId,
-          "Job description": data.jobDescription,
-          "Company": data.companyName,
-          "Applicant Name": data.applicantName,
-          "Applicant User ID": data.applicantId,
-          "Applicant Email": data.applicantEmail,
-          "Job interview": data.interviewAnalysis,
-          "Interview transcript": data.interviewTranscript || "",
-          "Status": "Interview Completed",
-          "Application Type": "Job-Specific Interview"
-        }
-      };
-
-      console.log("Job interview Airtable payload:", JSON.stringify(payload, null, 2));
-
-      const url = `https://api.airtable.com/v0/${JOB_APPLICATIONS_INTERVIEW_BASE_ID}/Table 1`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Airtable response error:', response.status, errorText);
-        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-      }
-
-      const result = await response.json();
-      console.log('✅ Successfully submitted job interview result to Airtable:', result.id);
-    } catch (error) {
-      console.error('Error submitting job interview result to Airtable:', error);
-      throw new Error('Failed to submit job interview result to Airtable');
     }
   }
 }
