@@ -138,18 +138,29 @@ export function useJobInterviewAPI(options: JobInterviewAPIOptions = {}) {
           } else if (serverEvent.type === 'session.created') {
             console.log('🎉 Session created, triggering initial AI greeting');
             // Immediately trigger the first AI response to start the interview
-            setTimeout(() => {
-              if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
-                console.log('🤖 Sending initial response trigger to start interview');
-                const responseCreate = {
-                  type: 'response.create',
-                  response: {
-                    modalities: ['text', 'audio']
-                  }
-                };
-                dataChannelRef.current.send(JSON.stringify(responseCreate));
+            const attemptToStart = (attempts = 0) => {
+              if (attempts > 10) {
+                console.error('❌ Failed to start interview after 10 attempts');
+                return;
               }
-            }, 500);
+              
+              setTimeout(() => {
+                if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
+                  console.log('🤖 Sending initial response trigger to start interview');
+                  const responseCreate = {
+                    type: 'response.create',
+                    response: {
+                      modalities: ['text', 'audio']
+                    }
+                  };
+                  dataChannelRef.current.send(JSON.stringify(responseCreate));
+                } else {
+                  console.log(`🔄 Data channel not ready, retrying... (attempt ${attempts + 1})`);
+                  attemptToStart(attempts + 1);
+                }
+              }, 100 + (attempts * 100)); // Increasing delay: 100ms, 200ms, 300ms, etc.
+            };
+            attemptToStart();
           }
           
           options.onMessage?.(serverEvent);
@@ -180,6 +191,20 @@ export function useJobInterviewAPI(options: JobInterviewAPIOptions = {}) {
         
         setIsConnected(true);
         console.log('✅ Job interview voice connection established');
+        
+        // Additional fallback to ensure AI starts talking
+        setTimeout(() => {
+          if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
+            console.log('🤖 Fallback: Sending response trigger after connection established');
+            const responseCreate = {
+              type: 'response.create',
+              response: {
+                modalities: ['text', 'audio']
+              }
+            };
+            dataChannelRef.current.send(JSON.stringify(responseCreate));
+          }
+        }, 1000);
       } else {
         // For text interviews, just mark as connected
         setIsConnected(true);

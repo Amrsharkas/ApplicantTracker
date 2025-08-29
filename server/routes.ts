@@ -3229,7 +3229,13 @@ INTERVIEW FLOW:
 6. Language: ${language === 'arabic' ? 'Arabic (Egyptian dialect for casual conversation)' : 'English'}
 7. Conclude after all questions are completed
 
-START IMMEDIATELY: Welcome them to the interview for this specific ${jobTitle} position and ask your first question that directly relates to the job requirements.
+🚨 CRITICAL: START TALKING THE MOMENT YOU CONNECT! 
+
+Do not wait for user input. As soon as the connection is established, immediately:
+1. Say: "Hi! I'm excited to interview you for the ${jobTitle} position at ${companyName || 'this company'}. Let's dive right in."
+2. Then immediately ask your first question without any pause.
+
+This is a job interview - YOU must lead the conversation from the very beginning!
 `;
 
         // Create ephemeral token for realtime API
