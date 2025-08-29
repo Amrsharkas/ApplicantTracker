@@ -3187,22 +3187,30 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
         const jobInterviewInstructions = `
 You are an AI interviewer conducting a job-specific interview for the position of "${jobTitle}". 
 
+CRITICAL INSTRUCTIONS FOR SPEED AND DISPLAY:
+- Speak clearly and at a normal pace
+- Display your text response IMMEDIATELY while speaking
+- Keep questions concise and direct
+- Ask questions that assess their fit for this specific job role
+
 You have already generated the following ${jobInterviewSet.questions.length} questions to ask:
 ${jobInterviewSet.questions.map((q, i) => `${i + 1}. ${q.question}`).join('\n')}
 
-JOB CONTEXT:
+JOB FOCUS AREAS:
 - Position: ${jobTitle}
-- Description: ${jobDescription}
-- Requirements: ${jobRequirements}
+- Key Requirements: ${jobRequirements}
+- Role Context: ${jobDescription}
 
-INTERVIEW GUIDELINES:
-- Ask the questions in order, one by one
-- Wait for complete answers before asking the next question
-- Be professional but conversational
-- Language: ${language === 'arabic' ? 'Arabic (Egyptian dialect for casual conversation)' : 'English'}
-- After all questions, conclude the interview professionally
+INTERVIEW FLOW:
+1. Give a brief welcome (1-2 sentences max)
+2. Ask the prepared questions in order, one by one
+3. Listen to complete answers before proceeding
+4. Keep the pace moving efficiently
+5. Focus on job-specific assessment, not general background
+6. Language: ${language === 'arabic' ? 'Arabic (Egyptian dialect for casual conversation)' : 'English'}
+7. Conclude after all questions are completed
 
-Start by welcoming the candidate to the interview for the ${jobTitle} position and ask your first question.
+START IMMEDIATELY: Welcome the candidate briefly and ask your first question about their fit for this specific ${jobTitle} role.
 `;
 
         // Create ephemeral token for realtime API
@@ -3219,9 +3227,9 @@ Start by welcoming the candidate to the interview for the ${jobTitle} position a
             modalities: ['text', 'audio'],
             turn_detection: {
               type: 'server_vad',
-              threshold: 0.5,
-              prefix_padding_ms: 300,
-              silence_duration_ms: 500
+              threshold: 0.3,
+              prefix_padding_ms: 200,
+              silence_duration_ms: 800
             }
           }),
         });
@@ -3261,20 +3269,35 @@ Start by welcoming the candidate to the interview for the ${jobTitle} position a
         jobRecordId, 
         jobTitle, 
         companyName, 
-        jobDescription, 
+        jobDescription,
+        jobRequirements, 
         interviewTranscript, 
         interviewAnalysis 
       } = req.body;
       
       console.log(`📋 Submitting job interview result for user: ${userId}, job: ${jobTitle}`);
       
-      // Get user details
+      // Get user details and profile for comprehensive analysis
       const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+      
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
       
-      // Submit to Airtable
+      // Generate comprehensive job-specific analysis using AI
+      const comprehensiveAnalysis = await aiInterviewService.generateJobFitAnalysis(
+        interviewTranscript,
+        jobTitle,
+        jobDescription,
+        jobRequirements || '',
+        {
+          ...user,
+          ...profile
+        }
+      );
+      
+      // Submit to Airtable with enhanced analysis
       await airtableService.submitJobInterviewResult({
         jobRecordId,
         jobTitle,
@@ -3285,7 +3308,7 @@ Start by welcoming the candidate to the interview for the ${jobTitle} position a
           : user.email || 'Unknown',
         applicantEmail: user.email || '',
         jobDescription,
-        interviewAnalysis,
+        interviewAnalysis: comprehensiveAnalysis || interviewAnalysis,
         interviewTranscript
       });
       
