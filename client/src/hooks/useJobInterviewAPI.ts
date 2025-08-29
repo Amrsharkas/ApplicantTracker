@@ -30,6 +30,7 @@ export function useJobInterviewAPI(options: JobInterviewAPIOptions = {}) {
     jobTitle: string;
     jobDescription: string;
     jobRequirements: string;
+    companyName: string;
   }) => {
     if (isConnecting || isConnected) return;
     

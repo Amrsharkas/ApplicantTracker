@@ -3138,11 +3138,13 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   app.post('/api/job-interview/session', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const { mode, language, jobTitle, jobDescription, jobRequirements } = req.body;
+      const { mode, language, jobTitle, jobDescription, jobRequirements, companyName } = req.body;
       
       console.log(`📋 Creating job interview session for user: ${userId}`);
       console.log(`📋 Interview mode: ${mode}, language: ${language}`);
       console.log(`📋 Job: ${jobTitle}`);
+      console.log(`📋 Job Description: ${jobDescription || 'No description provided'}`);
+      console.log(`📋 Job Requirements: ${jobRequirements || 'No requirements provided'}`);
       
       // Get user profile and resume for context
       const user = await storage.getUser(userId);
@@ -3195,9 +3197,17 @@ CRITICAL INSTRUCTIONS FOR SPEED AND DISPLAY:
 
 ACTUAL JOB DETAILS FROM AIRTABLE:
 - Position: ${jobTitle}
-- Company: ${jobTitle}
-- Job Description: ${jobDescription}
-- Key Skills/Requirements: ${jobRequirements}
+- Company: ${companyName || jobTitle}
+- Job Description: ${jobDescription || `${jobTitle} position requiring relevant experience and skills`}
+- Key Skills/Requirements: ${jobRequirements || `Skills typically required for ${jobTitle} roles`}
+
+ENHANCED JOB CONTEXT FOR INTERVIEW:
+Based on this being a ${jobTitle} position, your questions should focus on:
+- Technical skills and experience specific to ${jobTitle}
+- Leadership and management abilities (if applicable)
+- Problem-solving scenarios related to this role
+- Industry knowledge and best practices
+- Past experience with similar responsibilities
 
 You have already generated the following ${jobInterviewSet.questions.length} questions to ask:
 ${jobInterviewSet.questions.map((q, i) => `${i + 1}. ${q.question}`).join('\n')}

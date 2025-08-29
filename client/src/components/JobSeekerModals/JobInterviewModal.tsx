@@ -174,7 +174,8 @@ export function JobInterviewModal({
         language,
         jobTitle,
         jobDescription,
-        jobRequirements
+        jobRequirements,
+        companyName
       });
     } catch (error) {
       console.error('Failed to start interview:', error);

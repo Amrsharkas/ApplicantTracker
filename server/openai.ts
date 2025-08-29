@@ -864,6 +864,46 @@ JOB DETAILS TO ANALYZE:
 - Description: ${jobDescription}
 - Requirements: ${jobRequirements}
 
+ENHANCED JOB-SPECIFIC CONTEXT:
+Based on this being a "${jobTitle}" position, focus your questions on the core competencies and scenarios that would actually matter in this role:
+
+${jobTitle.toLowerCase().includes('project manager') || jobTitle.toLowerCase().includes('project') ? `
+PROJECT MANAGEMENT FOCUS AREAS:
+- Project planning, timeline management, and resource allocation
+- Team leadership and stakeholder communication
+- Risk management and problem-solving in live projects
+- Budget management and cost control
+- Quality assurance and deliverable management
+- Cross-functional collaboration and conflict resolution
+` : ''}
+
+${jobTitle.toLowerCase().includes('developer') || jobTitle.toLowerCase().includes('engineer') || jobTitle.toLowerCase().includes('technical') ? `
+TECHNICAL ROLE FOCUS AREAS:
+- Programming languages and technical frameworks relevant to this position
+- Problem-solving approach to technical challenges
+- Code quality, testing, and development best practices
+- Experience with relevant tools and technologies
+- System architecture and design thinking
+` : ''}
+
+${jobTitle.toLowerCase().includes('sales') || jobTitle.toLowerCase().includes('business') || jobTitle.toLowerCase().includes('account') ? `
+BUSINESS/SALES FOCUS AREAS:
+- Customer relationship management and communication
+- Sales process understanding and achievement tracking
+- Market analysis and competitive positioning
+- Negotiation skills and deal closure experience
+- Business development and growth strategies
+` : ''}
+
+${jobTitle.toLowerCase().includes('manager') || jobTitle.toLowerCase().includes('lead') || jobTitle.toLowerCase().includes('director') ? `
+LEADERSHIP FOCUS AREAS:
+- Team management and people development
+- Strategic planning and decision-making
+- Performance management and goal setting
+- Change management and organizational skills
+- Communication and influence across all levels
+` : ''}
+
 INTERVIEW STRATEGY:
 Generate exactly 10 questions that will reveal EVERYTHING about the candidate's suitability for THIS SPECIFIC JOB ROLE. Each question should be designed to uncover:
 1. Their technical competency for the specific requirements
