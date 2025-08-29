@@ -196,6 +196,28 @@ export const interviewSessions = pgTable("interview_sessions", {
   completedAt: timestamp("completed_at"),
 });
 
+// Job-specific interview sessions table
+export const jobInterviewSessions = pgTable("job_interview_sessions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  jobId: varchar("job_id").notNull(), // Airtable job record ID
+  jobTitle: varchar("job_title").notNull(),
+  jobDescription: text("job_description"),
+  jobRequirements: text("job_requirements"),
+  companyName: varchar("company_name").notNull(),
+  interviewMethod: varchar("interview_method").notNull(), // 'voice' or 'text'
+  interviewLanguage: varchar("interview_language").notNull(), // 'english' or 'arabic'
+  questions: jsonb("questions").notNull(), // Generated interview questions
+  responses: jsonb("responses"), // User responses to questions
+  currentQuestionIndex: integer("current_question_index").default(0),
+  isCompleted: boolean("is_completed").default(false),
+  analysisResult: jsonb("analysis_result"), // AI analysis and scoring
+  summary: text("summary"), // Interview summary for Airtable
+  score: integer("score"), // Interview score (0-100)
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   profile: one(applicantProfiles, {
@@ -205,6 +227,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   matches: many(jobMatches),
   applications: many(applications),
   interviews: many(interviewSessions),
+  jobInterviews: many(jobInterviewSessions),
   resumes: many(resumeUploads),
 }));
 
@@ -256,6 +279,13 @@ export const interviewSessionsRelations = relations(interviewSessions, ({ one })
   }),
 }));
 
+export const jobInterviewSessionsRelations = relations(jobInterviewSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [jobInterviewSessions.userId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users);
 export const insertApplicantProfileSchema = createInsertSchema(applicantProfiles).omit({
@@ -284,6 +314,11 @@ export const insertResumeUploadSchema = createInsertSchema(resumeUploads).omit({
   id: true,
   uploadedAt: true,
 });
+export const insertJobInterviewSessionSchema = createInsertSchema(jobInterviewSessions).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+});
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -301,5 +336,7 @@ export type InsertApplication = z.infer<typeof insertApplicationSchema>;
 export type Application = typeof applications.$inferSelect;
 export type InsertInterviewSession = z.infer<typeof insertInterviewSessionSchema>;
 export type InterviewSession = typeof interviewSessions.$inferSelect;
+export type InsertJobInterviewSession = z.infer<typeof insertJobInterviewSessionSchema>;
+export type JobInterviewSession = typeof jobInterviewSessions.$inferSelect;
 export type InsertResumeUpload = z.infer<typeof insertResumeUploadSchema>;
 export type ResumeUpload = typeof resumeUploads.$inferSelect;
