@@ -103,13 +103,19 @@ export function useJobInterviewAPI(options: JobInterviewAPIOptions = {}) {
           } else if (serverEvent.type === 'response.audio.delta') {
             setIsSpeaking(true);
             options.onAudioStart?.();
+          } else if (serverEvent.type === 'response.text.delta') {
+            // Handle text messages for conversation display
+            console.log('📝 AI text delta:', serverEvent.delta);
+          } else if (serverEvent.type === 'response.text.done') {
+            // Handle complete text messages
+            console.log('📝 AI text complete:', serverEvent.text);
           } else if (serverEvent.type === 'input_audio_buffer.speech_started') {
             console.log('👂 User started speaking');
             setIsListening(true);
           } else if (serverEvent.type === 'input_audio_buffer.speech_stopped') {
             console.log('👂 User stopped speaking - triggering AI response');
             setIsListening(false);
-            // Trigger AI response after user stops speaking
+            // Trigger AI response after user stops speaking with shorter delay for faster responses
             setTimeout(() => {
               if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
                 console.log('🤖 Sending response trigger to AI');
@@ -121,11 +127,28 @@ export function useJobInterviewAPI(options: JobInterviewAPIOptions = {}) {
                 };
                 dataChannelRef.current.send(JSON.stringify(responseCreate));
               }
-            }, 800);
+            }, 400);
+          } else if (serverEvent.type === 'conversation.item.input_audio_transcription.completed') {
+            console.log('📝 User transcript:', serverEvent.transcript);
           } else if (serverEvent.type === 'response.audio_transcript.done' || serverEvent.type === 'response.done') {
             console.log('🎯 AI response complete - ready for next interaction');
             setIsSpeaking(false);
             setIsListening(true);
+          } else if (serverEvent.type === 'session.created') {
+            console.log('🎉 Session created, triggering initial AI greeting');
+            // Immediately trigger the first AI response to start the interview
+            setTimeout(() => {
+              if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
+                console.log('🤖 Sending initial response trigger to start interview');
+                const responseCreate = {
+                  type: 'response.create',
+                  response: {
+                    modalities: ['text', 'audio']
+                  }
+                };
+                dataChannelRef.current.send(JSON.stringify(responseCreate));
+              }
+            }, 500);
           }
           
           options.onMessage?.(serverEvent);
