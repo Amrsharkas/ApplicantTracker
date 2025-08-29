@@ -18,7 +18,9 @@ interface JobInterviewChoiceModalProps {
   jobTitle: string;
   companyName: string;
   jobRecordId: string;
-  onStartInterview: (mode: 'voice' | 'text', language: 'english' | 'arabic') => void;
+  jobDescription?: string;
+  jobRequirements?: string;
+  onStartInterview: (mode: 'voice' | 'text', language: 'english' | 'arabic', jobData?: any) => void;
 }
 
 export function JobInterviewChoiceModal({
@@ -27,6 +29,8 @@ export function JobInterviewChoiceModal({
   jobTitle,
   companyName,
   jobRecordId,
+  jobDescription,
+  jobRequirements,
   onStartInterview
 }: JobInterviewChoiceModalProps) {
   const [selectedMode, setSelectedMode] = useState<'voice' | 'text' | null>(null);
@@ -34,7 +38,13 @@ export function JobInterviewChoiceModal({
 
   const handleStartInterview = () => {
     if (selectedMode && selectedLanguage) {
-      onStartInterview(selectedMode, selectedLanguage);
+      onStartInterview(selectedMode, selectedLanguage, {
+        jobTitle,
+        companyName,
+        jobRecordId,
+        jobDescription,
+        jobRequirements
+      });
       onClose();
     }
   };

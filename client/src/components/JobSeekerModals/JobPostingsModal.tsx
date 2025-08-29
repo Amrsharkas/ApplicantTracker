@@ -685,9 +685,19 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
 
 
-  const handleJobInterviewStart = (mode: 'voice' | 'text', language: 'english' | 'arabic') => {
+  const handleJobInterviewStart = (mode: 'voice' | 'text', language: 'english' | 'arabic', jobData?: any) => {
     setSelectedInterviewMode(mode);
     setSelectedInterviewLanguage(language);
+    
+    // If job data is provided, update the pending application with complete data
+    if (jobData && pendingJobApplication) {
+      setPendingJobApplication({
+        ...pendingJobApplication,
+        jobDescription: jobData.jobDescription || pendingJobApplication.jobDescription,
+        skills: jobData.jobRequirements ? [jobData.jobRequirements] : pendingJobApplication.skills
+      });
+    }
+    
     setShowJobInterview(true);
   };
 
@@ -1755,6 +1765,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
         jobTitle={pendingJobApplication?.jobTitle || ''}
         companyName={pendingJobApplication?.companyName || ''}
         jobRecordId={pendingJobApplication?.recordId || ''}
+        jobDescription={pendingJobApplication?.jobDescription || ''}
+        jobRequirements={pendingJobApplication?.skills?.join(', ') || ''}
         onStartInterview={handleJobInterviewStart}
       />
 

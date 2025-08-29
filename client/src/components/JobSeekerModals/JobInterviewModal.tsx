@@ -138,7 +138,8 @@ export function JobInterviewModal({
           jobRecordId,
           jobTitle,
           companyName,
-          jobDescription: jobDetails?.jobDescription || '',
+          jobDescription: jobDescription || '',
+          jobRequirements: jobRequirements || '',
           interviewTranscript: transcript,
           interviewAnalysis: analysis
         })
