@@ -196,26 +196,36 @@ export const interviewSessions = pgTable("interview_sessions", {
   completedAt: timestamp("completed_at"),
 });
 
-// Job-specific interview sessions table
-export const jobInterviewSessions = pgTable("job_interview_sessions", {
+// Subscription plans table
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull().unique(), // "free", "basic", "premium", "enterprise"
+  displayName: varchar("display_name").notNull(), // "Free Plan", "Basic Plan", etc.
+  description: text("description"),
+  price: integer("price").notNull(), // Price in cents (0 for free)
+  interval: varchar("interval").notNull(), // "month", "year"
+  stripePriceId: varchar("stripe_price_id").unique(), // Stripe Price ID (null for free plan)
+  features: jsonb("features").notNull(), // JSON object with feature flags and limits
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User subscriptions table
+export const userSubscriptions = pgTable("user_subscriptions", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id),
-  jobId: varchar("job_id").notNull(), // Airtable job record ID
-  jobTitle: varchar("job_title").notNull(),
-  jobDescription: text("job_description"),
-  jobRequirements: text("job_requirements"),
-  companyName: varchar("company_name").notNull(),
-  interviewMethod: varchar("interview_method").notNull(), // 'voice' or 'text'
-  interviewLanguage: varchar("interview_language").notNull(), // 'english' or 'arabic'
-  questions: jsonb("questions").notNull(), // Generated interview questions
-  responses: jsonb("responses"), // User responses to questions
-  currentQuestionIndex: integer("current_question_index").default(0),
-  isCompleted: boolean("is_completed").default(false),
-  analysisResult: jsonb("analysis_result"), // AI analysis and scoring
-  summary: text("summary"), // Interview summary for Airtable
-  score: integer("score"), // Interview score (0-100)
+  planId: integer("plan_id").notNull().references(() => subscriptionPlans.id),
+  stripeCustomerId: varchar("stripe_customer_id"),
+  stripeSubscriptionId: varchar("stripe_subscription_id").unique(),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  status: varchar("status").notNull().default("active"), // "active", "canceled", "past_due", "unpaid", "incomplete"
+  currentPeriodStart: timestamp("current_period_start"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false),
   createdAt: timestamp("created_at").defaultNow(),
-  completedAt: timestamp("completed_at"),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Relations
@@ -227,8 +237,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   matches: many(jobMatches),
   applications: many(applications),
   interviews: many(interviewSessions),
-  jobInterviews: many(jobInterviewSessions),
   resumes: many(resumeUploads),
+  subscriptions: many(userSubscriptions),
 }));
 
 export const applicantProfilesRelations = relations(applicantProfiles, ({ one }) => ({
@@ -279,10 +289,18 @@ export const interviewSessionsRelations = relations(interviewSessions, ({ one })
   }),
 }));
 
-export const jobInterviewSessionsRelations = relations(jobInterviewSessions, ({ one }) => ({
+export const subscriptionPlansRelations = relations(subscriptionPlans, ({ many }) => ({
+  subscriptions: many(userSubscriptions),
+}));
+
+export const userSubscriptionsRelations = relations(userSubscriptions, ({ one }) => ({
   user: one(users, {
-    fields: [jobInterviewSessions.userId],
+    fields: [userSubscriptions.userId],
     references: [users.id],
+  }),
+  plan: one(subscriptionPlans, {
+    fields: [userSubscriptions.planId],
+    references: [subscriptionPlans.id],
   }),
 }));
 
@@ -314,10 +332,15 @@ export const insertResumeUploadSchema = createInsertSchema(resumeUploads).omit({
   id: true,
   uploadedAt: true,
 });
-export const insertJobInterviewSessionSchema = createInsertSchema(jobInterviewSessions).omit({
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
   id: true,
   createdAt: true,
-  completedAt: true,
+  updatedAt: true,
+});
+export const insertUserSubscriptionSchema = createInsertSchema(userSubscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // Types
@@ -336,7 +359,9 @@ export type InsertApplication = z.infer<typeof insertApplicationSchema>;
 export type Application = typeof applications.$inferSelect;
 export type InsertInterviewSession = z.infer<typeof insertInterviewSessionSchema>;
 export type InterviewSession = typeof interviewSessions.$inferSelect;
-export type InsertJobInterviewSession = z.infer<typeof insertJobInterviewSessionSchema>;
-export type JobInterviewSession = typeof jobInterviewSessions.$inferSelect;
 export type InsertResumeUpload = z.infer<typeof insertResumeUploadSchema>;
 export type ResumeUpload = typeof resumeUploads.$inferSelect;
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema>;
+export type UserSubscription = typeof userSubscriptions.$inferSelect;

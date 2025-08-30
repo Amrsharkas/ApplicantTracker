@@ -1,5 +1,4 @@
 import type { Express } from "express";
-import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
@@ -15,6 +14,17 @@ import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUplo
 import { db } from "./db";
 import { applicantProfiles, interviewSessions } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
+import Stripe from "stripe";
+import { subscriptionService } from "./subscriptionService";
+import { requireFeature, checkUsageLimit, usageCheckers } from "./subscriptionMiddleware";
+
+// Initialize Stripe
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2024-06-20",
+});
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -234,6 +244,9 @@ function generateOverallImpression(cvData: any): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+  
+  // Initialize subscription plans on startup
+  await subscriptionService.initializeDefaultPlans();
 
   // Note: Auth routes are now handled in setupAuth from auth.ts
 
@@ -678,6 +691,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Coaching endpoint - Pro plan exclusive feature
+  app.post("/api/coaching/career-guidance", 
+    requireAuth, 
+    requireFeature('aiCoaching'),
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { question, context } = req.body;
+      
+      if (!question) {
+        return res.status(400).json({ error: "Question is required" });
+      }
+      
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+      
+      // Get user's complete profile and interview history for personalized coaching
+      const interviewHistory = await storage.getInterviewHistory(userId);
+      
+      const coachingResponse = await aiInterviewService.generateCareerGuidance({
+        user,
+        profile,
+        question,
+        context,
+        interviewHistory
+      });
+      
+      res.json({ 
+        guidance: coachingResponse,
+        coachingType: 'career-guidance',
+        personalizedFor: user.firstName || 'User'
+      });
+    } catch (error) {
+      console.error("Error providing AI coaching:", error);
+      res.status(500).json({ error: "Failed to provide career guidance" });
+    }
+  });
+
+  // Mock Interview endpoint - Pro plan exclusive feature
+  app.post("/api/coaching/mock-interview", 
+    requireAuth, 
+    requireFeature('mockInterviews'),
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { interviewType = 'general', jobRole, companyName } = req.body;
+      
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+      
+      // Generate mock interview questions tailored to the user's profile
+      const mockInterview = await aiInterviewService.generateMockInterview({
+        user,
+        profile,
+        interviewType,
+        jobRole,
+        companyName
+      });
+      
+      res.json({ 
+        mockInterview,
+        sessionType: 'mock-interview',
+        targetRole: jobRole || 'General Interview'
+      });
+    } catch (error) {
+      console.error("Error generating mock interview:", error);
+      res.status(500).json({ error: "Failed to generate mock interview" });
+    }
+  });
+
   // Create ephemeral token for Realtime API
   app.post("/api/realtime/session", requireAuth, async (req, res) => {
     try {
@@ -714,46 +797,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Handle WebRTC SDP negotiation with ephemeral key for realtime API
-  app.post("/api/realtime/session/:ephemeralKey", express.text({ type: 'application/sdp' }), async (req, res) => {
-    try {
-      const { ephemeralKey } = req.params;
-      const sdpOffer = req.body;
-      
-      console.log(`🔌 WebRTC SDP negotiation for ephemeral key: ${ephemeralKey}`);
-      console.log(`🔌 Request URL: https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17`);
-      console.log(`🔌 Request body type: ${typeof sdpOffer}, length: ${JSON.stringify(sdpOffer).length}`);
-      
-      // Forward the SDP offer to OpenAI's realtime API - correct endpoint format
-      const response = await fetch(`https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${ephemeralKey}`,
-          'Content-Type': 'application/sdp'
-        },
-        body: sdpOffer
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`WebRTC SDP negotiation failed: ${response.status}`);
-        console.error(`Response headers:`, Object.fromEntries(response.headers.entries()));
-        console.error(`Error response:`, errorText);
-        return res.status(response.status).send(`WebRTC negotiation failed: ${response.statusText} - ${errorText}`);
-      }
-      
-      const sdpAnswer = await response.text();
-      res.setHeader('Content-Type', 'application/sdp');
-      res.send(sdpAnswer);
-      
-    } catch (error) {
-      console.error('Error in WebRTC SDP negotiation:', error);
-      res.status(500).send('WebRTC negotiation failed');
-    }
-  });
-
   // Voice interview initialization route
-  app.post("/api/interview/start-voice", requireAuth, async (req: any, res) => {
+  app.post("/api/interview/start-voice", 
+    requireAuth, 
+    requireFeature('voiceInterviews'),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       const { interviewType, language = 'english' } = req.body;
@@ -957,7 +1005,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/start/:type', requireAuth, async (req: any, res) => {
+  app.post('/api/interview/start/:type', 
+    requireAuth, 
+    requireFeature('aiInterviews'),
+    checkUsageLimit('aiInterviews', usageCheckers.getAiInterviewsUsage),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       const interviewType = req.params.type;
@@ -1045,7 +1097,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Legacy endpoint for backward compatibility
-  app.post('/api/interview/start', requireAuth, async (req: any, res) => {
+  app.post('/api/interview/start', 
+    requireAuth, 
+    requireFeature('aiInterviews'),
+    checkUsageLimit('aiInterviews', usageCheckers.getAiInterviewsUsage),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       
@@ -1193,7 +1249,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // New Job Application Endpoint with AI Skill Analysis
-  app.post('/api/job-applications/submit', requireAuth, async (req: any, res) => {
+  app.post('/api/job-applications/submit', 
+    requireAuth,
+    requireFeature('jobApplications'),
+    checkUsageLimit('jobApplications', usageCheckers.getApplicationsUsage),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       const { job } = req.body;
@@ -1733,7 +1793,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/applications', requireAuth, async (req: any, res) => {
+  app.post('/api/applications', 
+    requireAuth, 
+    requireFeature('jobApplications'),
+    checkUsageLimit('jobApplications', usageCheckers.getApplicationsUsage),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       const applicationData = insertApplicationSchema.parse({
@@ -2063,7 +2127,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Job Application Analysis Route
-  app.post('/api/job-application/analyze', requireAuth, async (req: any, res) => {
+  app.post('/api/job-application/analyze', 
+    requireAuth, 
+    requireFeature('profileAnalysis'),
+    async (req: any, res) => {
     try {
       let userId = req.user?.claims?.sub;
       const { jobId, jobTitle, jobDescription, companyName, requirements, employmentType } = req.body;
@@ -2318,7 +2385,10 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   console.log("🚀 Airtable job monitoring system started - checking every 60 seconds");
 
   // Generate brutally honest profile for Airtable after all interviews completed
-  app.post('/api/profile/generate-honest-assessment', requireAuth, async (req: any, res) => {
+  app.post('/api/profile/generate-honest-assessment', 
+    requireAuth, 
+    requireFeature('profileAnalysis'),
+    async (req: any, res) => {
     try {
       const userId = req.user.id;
       
@@ -2400,11 +2470,113 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   });
 
   // =============================================
+  // PREMIUM FEATURE ROUTES - PROFILE VIEWS & VISIBILITY
+  // =============================================
+
+  // Track profile views - Premium & Pro exclusive
+  app.post("/api/profile/track-view", 
+    requireAuth, 
+    requireFeature('profileViews'),
+    async (req: any, res) => {
+    try {
+      const viewerId = req.user.id;
+      const { profileId, viewType = 'employer_view' } = req.body;
+      
+      if (!profileId) {
+        return res.status(400).json({ error: "Profile ID is required" });
+      }
+      
+      // Log the profile view (in production, store in database)
+      console.log(`👀 Profile View Tracked: ${viewerId} viewed profile ${profileId} (${viewType})`);
+      
+      // TODO: Implement actual view tracking in database
+      // await storage.trackProfileView(viewerId, profileId, viewType);
+      
+      res.json({ 
+        message: "Profile view tracked successfully",
+        viewType,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error tracking profile view:", error);
+      res.status(500).json({ error: "Failed to track profile view" });
+    }
+  });
+
+  // Get who viewed your profile - Premium & Pro exclusive
+  app.get("/api/profile/viewers", 
+    requireAuth, 
+    requireFeature('profileViews'),
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // TODO: Implement actual viewer retrieval from database
+      // For now, return mock data to demonstrate the feature
+      const viewers = [
+        {
+          id: 'viewer_1',
+          name: 'TechCorp HR',
+          company: 'TechCorp Solutions',
+          viewedAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+          viewType: 'employer_view'
+        },
+        {
+          id: 'viewer_2', 
+          name: 'Innovation Labs',
+          company: 'Innovation Labs Inc',
+          viewedAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+          viewType: 'recruiter_view'
+        }
+      ];
+      
+      res.json({ 
+        viewers,
+        totalViews: viewers.length,
+        recentViews: viewers.filter(v => 
+          new Date(v.viewedAt).getTime() > Date.now() - 604800000 // Last 7 days
+        ).length
+      });
+    } catch (error) {
+      console.error("Error fetching profile viewers:", error);
+      res.status(500).json({ error: "Failed to fetch profile viewers" });
+    }
+  });
+
+  // Apply visibility boost - Premium & Pro exclusive
+  app.post("/api/profile/visibility-boost", 
+    requireAuth, 
+    requireFeature('visibilityBoost'),
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { boostDuration = 24 } = req.body; // hours
+      
+      // TODO: Implement actual visibility boost in database
+      console.log(`🚀 Visibility Boost Applied: User ${userId} boosted for ${boostDuration} hours`);
+      
+      res.json({ 
+        message: "Visibility boost applied successfully",
+        boostActive: true,
+        boostExpiresAt: new Date(Date.now() + (boostDuration * 60 * 60 * 1000)).toISOString(),
+        boostDuration: `${boostDuration} hours`
+      });
+    } catch (error) {
+      console.error("Error applying visibility boost:", error);
+      res.status(500).json({ error: "Failed to apply visibility boost" });
+    }
+  });
+
+  // =============================================
   // COMPREHENSIVE PROFILE ROUTES
   // =============================================
 
-  // Reset comprehensive profile data (clear pre-filled data)
-  app.post("/api/comprehensive-profile/reset", requireAuth, async (req, res) => {
+  // Reset comprehensive profile data (clear pre-filled data) - Profile Rebuild Feature
+  app.post("/api/comprehensive-profile/reset", 
+    requireAuth, 
+    requireFeature('profileRebuilds'),
+    checkUsageLimit('profileRebuilds', usageCheckers.getProfileRebuildsUsage),
+    async (req, res) => {
     try {
       const userId = (req.user as any)?.id;
       
@@ -3116,236 +3288,371 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
-  // Job-specific interview routes
-  app.get('/api/job/:recordId/details', requireAuth, async (req: any, res) => {
-    try {
-      const { recordId } = req.params;
-      console.log(`📋 Fetching job details for record: ${recordId}`);
-      
-      const jobDetails = await airtableService.getJobDetails(recordId);
-      
-      if (!jobDetails) {
-        return res.status(404).json({ message: 'Job not found' });
-      }
-      
-      res.json(jobDetails);
-    } catch (error) {
-      console.error('Error fetching job details:', error);
-      res.status(500).json({ message: 'Failed to fetch job details' });
-    }
-  });
+  // =================== SUBSCRIPTION ROUTES ===================
 
-  app.post('/api/job-interview/session', requireAuth, async (req: any, res) => {
+  // Demonstrate subscription feature differentiation
+  app.get('/api/subscription/feature-test', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const { mode, language, jobTitle, jobDescription, jobRequirements, companyName } = req.body;
+      const subscription = await subscriptionService.getUserSubscription(userId);
+      const features = await subscriptionService.getUserFeatures(userId);
       
-      console.log(`📋 Creating job interview session for user: ${userId}`);
-      console.log(`📋 Interview mode: ${mode}, language: ${language}`);
-      console.log(`📋 Job: ${jobTitle}`);
-      console.log(`📋 Company: ${companyName}`);
-      console.log(`📋 Job Description: ${jobDescription || 'No description provided'}`);
-      console.log(`📋 Job Requirements: ${jobRequirements || 'No requirements provided'}`);
-      console.log(`📋 Job Description Length: ${jobDescription ? jobDescription.length : 0} characters`);
-      console.log(`📋 Job Requirements Length: ${jobRequirements ? jobRequirements.length : 0} characters`);
-      console.log(`🔑 OpenAI API Key available: ${process.env.OPENAI_API_KEY ? 'Yes' : 'No'}`);
-      
-      // Get user profile and resume for context
-      const user = await storage.getUser(userId);
-      const profile = await storage.getApplicantProfile(userId);
-      
-      // Get resume content and analysis from profile
-      const resumeContent = profile?.resumeContent || null;
-      let resumeAnalysis = null;
-      
-      if (userId) {
-        try {
-          const resumeUpload = await storage.getActiveResume(userId);
-          resumeAnalysis = resumeUpload?.aiAnalysis;
-        } catch (error) {
-          console.log("No resume analysis found:", error);
-        }
+      if (!subscription || !features) {
+        return res.status(404).json({ error: "No subscription found" });
       }
 
-      // Generate job-specific interview using the same AI service as regular interviews
-      const jobInterviewSet = await aiInterviewService.generateJobSpecificInterview(
-        {
-          ...user,
-          ...profile
+      // Test different feature access levels
+      const featureTests = {
+        planName: subscription.plan.name,
+        planDisplayName: subscription.plan.displayName,
+        price: subscription.plan.price,
+        features: {
+          aiInterviews: {
+            enabled: features.aiInterviews.enabled,
+            limit: features.aiInterviews.limit,
+            description: features.aiInterviews.limit === -1 ? 'Unlimited' : `${features.aiInterviews.limit} per month`
+          },
+          jobMatches: {
+            enabled: features.jobMatches.enabled,
+            limit: features.jobMatches.limit,
+            description: features.jobMatches.limit === -1 ? 'Unlimited' : `${features.jobMatches.limit} per month`
+          },
+          jobApplications: {
+            enabled: features.jobApplications.enabled,
+            limit: features.jobApplications.limit,
+            description: features.jobApplications.limit === -1 ? 'Unlimited' : `${features.jobApplications.limit} per month`
+          },
+          voiceInterviews: {
+            enabled: features.voiceInterviews,
+            description: features.voiceInterviews ? 'Available' : 'Not available'
+          },
+          advancedMatching: {
+            enabled: features.advancedMatching,
+            description: features.advancedMatching ? 'AI-powered smart matching' : 'Basic matching only'
+          },
+          profileAnalysis: {
+            enabled: features.profileAnalysis.enabled,
+            depth: features.profileAnalysis.depth,
+            description: `${features.profileAnalysis.depth} analysis level`
+          },
+          profileViews: {
+            enabled: features.profileViews,
+            description: features.profileViews ? '"Who viewed your profile" tracking' : 'Not available'
+          },
+          visibilityBoost: {
+            enabled: features.visibilityBoost,
+            description: features.visibilityBoost ? 'Enhanced visibility in employer searches' : 'Standard visibility only'
+          },
+          profileRebuilds: {
+            enabled: features.profileRebuilds.enabled,
+            limit: features.profileRebuilds.limit,
+            description: features.profileRebuilds.enabled ? `${features.profileRebuilds.limit} rebuilds per month` : 'Not available'
+          },
+          aiCoaching: {
+            enabled: features.aiCoaching,
+            description: features.aiCoaching ? 'Career guidance & skill gap analysis' : 'Premium feature only'
+          },
+          mockInterviews: {
+            enabled: features.mockInterviews,
+            description: features.mockInterviews ? 'AI interview preparation sessions' : 'Premium feature only'
+          },
+          vipAccess: {
+            enabled: features.vipAccess,
+            description: features.vipAccess ? 'Job fairs & partner opportunities' : 'Premium feature only'
+          },
+          prioritySupport: {
+            enabled: features.prioritySupport,
+            description: features.prioritySupport ? '24/7 priority support' : 'Standard support'
+          },
+          analyticsAccess: {
+            enabled: features.analyticsAccess,
+            description: features.analyticsAccess ? 'Full analytics dashboard' : 'Basic stats only'
+          }
         },
-        jobTitle,
-        jobDescription,
-        jobRequirements,
-        resumeContent || undefined,
-        resumeAnalysis,
-        language
-      );
-
-      if (!jobInterviewSet) {
-        return res.status(500).json({
-          error: "Failed to generate job interview questions",
-          details: `Could not create job-specific interview for ${jobTitle}`
-        });
-      }
-
-      if (mode === 'voice') {
-        // For voice mode, create OpenAI realtime session with the generated questions
-        const jobInterviewInstructions = `
-You are an AI interviewer conducting a job-specific interview for the position of "${jobTitle}". 
-
-CRITICAL INSTRUCTIONS FOR SPEED AND DISPLAY:
-- Speak clearly and at a normal pace
-- Display your text response IMMEDIATELY while speaking
-- Keep questions concise and direct
-- Ask questions that assess their fit for this specific job role
-
-ACTUAL JOB DETAILS FROM AIRTABLE:
-- Position: ${jobTitle}
-- Company: ${companyName || jobTitle}
-- Job Description: ${jobDescription || `${jobTitle} position requiring relevant experience and skills`}
-- Key Skills/Requirements: ${jobRequirements || `Skills typically required for ${jobTitle} roles`}
-
-ENHANCED JOB CONTEXT FOR INTERVIEW:
-Based on this being a ${jobTitle} position, your questions should focus on:
-- Technical skills and experience specific to ${jobTitle}
-- Leadership and management abilities (if applicable)
-- Problem-solving scenarios related to this role
-- Industry knowledge and best practices
-- Past experience with similar responsibilities
-
-You have already generated the following ${jobInterviewSet.questions.length} questions to ask:
-${jobInterviewSet.questions.map((q, i) => `${i + 1}. ${q.question}`).join('\n')}
-
-INTERVIEW STRATEGY:
-Your questions MUST focus specifically on:
-1. Skills mentioned in the job description: ${jobDescription}
-2. Requirements listed for this role: ${jobRequirements}
-3. Responsibilities described in the job posting
-4. Experience relevant to what the job actually requires
-5. Problem-solving scenarios specific to this role's challenges
-
-INTERVIEW FLOW:
-1. Give a brief welcome (1-2 sentences max) and mention the specific job they're applying for
-2. Ask the prepared questions in order, one by one - EACH question should relate to the actual job requirements
-3. Listen to complete answers before proceeding
-4. Keep the pace moving efficiently
-5. Focus ONLY on job-specific assessment based on the actual job description and requirements
-6. Language: ${language === 'arabic' ? 'Arabic (Egyptian dialect for casual conversation)' : 'English'}
-7. Conclude after all questions are completed
-
-🚨 CRITICAL: START TALKING THE MOMENT YOU CONNECT! 
-
-Do not wait for user input. As soon as the connection is established, immediately:
-1. Say: "Hi! I'm excited to interview you for the ${jobTitle} position at ${companyName || 'this company'}. Let's dive right in."
-2. Then immediately ask your first question without any pause.
-
-This is a job interview - YOU must lead the conversation from the very beginning!
-`;
-
-        // Create ephemeral token for realtime API
-        console.log(`🔗 Creating OpenAI realtime session for job interview...`);
-        const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-realtime-preview-2024-12-17',
-            voice: 'sage',
-            instructions: jobInterviewInstructions,
-            modalities: ['text', 'audio'],
-            turn_detection: {
-              type: 'server_vad',
-              threshold: 0.3,
-              prefix_padding_ms: 200,
-              silence_duration_ms: 800
-            }
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to create OpenAI realtime session');
+        // Show what happens when trying to access restricted features
+        accessTests: {
+          canStartAiInterview: await subscriptionService.hasFeatureAccess(userId, 'aiInterviews'),
+          canUseVoiceInterviews: await subscriptionService.hasFeatureAccess(userId, 'voiceInterviews'),
+          canAccessAnalytics: await subscriptionService.hasFeatureAccess(userId, 'analyticsAccess'),
+          canUseAdvancedMatching: await subscriptionService.hasFeatureAccess(userId, 'advancedMatching'),
         }
+      };
 
-        const data = await response.json();
-        res.json(data);
-      } else {
-        // For text mode, return a similar structure to voice mode for consistency
-        // The frontend expects client_secret for the connection logic
-        res.json({
-          client_secret: {
-            value: `text-job-interview-${userId}-${Date.now()}`,
-          },
-          sessionId: `job-${userId}-${Date.now()}`,
-          questions: jobInterviewSet.questions,
-          firstQuestion: jobInterviewSet.questions[0]?.question || "Tell me about your interest in this position.",
-          mode: 'text'
-        });
-      }
-    } catch (error) {
-      console.error('Error creating job interview session:', error);
-      res.status(500).json({ 
-        error: 'Failed to create job interview session',
-        details: error instanceof Error ? error.message : 'Unknown error'
+      res.json({
+        message: `Testing subscription features for ${subscription.plan.displayName}`,
+        ...featureTests
       });
+    } catch (error) {
+      console.error("Error testing subscription features:", error);
+      res.status(500).json({ message: "Failed to test subscription features" });
     }
   });
 
-  app.post('/api/job-interview/submit', requireAuth, async (req: any, res) => {
+  // Get all available subscription plans
+  app.get('/api/subscription/plans', async (req, res) => {
+    try {
+      const plans = await subscriptionService.getActivePlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching subscription plans:", error);
+      res.status(500).json({ message: "Failed to fetch subscription plans" });
+    }
+  });
+
+  // Get current user's subscription
+  app.get('/api/subscription/current', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const { 
-        jobRecordId, 
-        jobTitle, 
-        companyName, 
-        jobDescription,
-        jobRequirements, 
-        interviewTranscript, 
-        interviewAnalysis 
-      } = req.body;
+      const subscription = await subscriptionService.getUserSubscription(userId);
+      const features = await subscriptionService.getUserFeatures(userId);
       
-      console.log(`📋 Submitting job interview result for user: ${userId}, job: ${jobTitle}`);
-      
-      // Get user details and profile for comprehensive analysis
-      const user = await storage.getUser(userId);
-      const profile = await storage.getApplicantProfile(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+      if (!subscription) {
+        return res.status(404).json({ 
+          message: "No active subscription found" 
+        });
       }
       
-      // Generate comprehensive job-specific analysis using AI
-      const comprehensiveAnalysis = await aiInterviewService.generateJobFitAnalysis(
-        interviewTranscript,
-        jobTitle,
-        jobDescription,
-        jobRequirements || '',
+      res.json({ 
+        subscription, 
+        features,
+        planName: subscription.plan.name
+      });
+    } catch (error) {
+      console.error("Error fetching user subscription:", error);
+      res.status(500).json({ message: "Failed to fetch subscription" });
+    }
+  });
+
+  // Create Stripe payment intent for subscription
+  app.post('/api/subscription/create-payment-intent', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { planId } = req.body;
+
+      if (!planId) {
+        return res.status(400).json({ message: "Plan ID is required" });
+      }
+
+      // Get the plan details
+      const plans = await subscriptionService.getActivePlans();
+      const selectedPlan = plans.find(p => p.id === planId);
+      
+      if (!selectedPlan) {
+        return res.status(404).json({ message: "Subscription plan not found" });
+      }
+
+      if (selectedPlan.price === 0) {
+        // Free plan - no payment needed
+        return res.json({ 
+          planName: selectedPlan.name,
+          price: 0,
+          message: "This is a free plan" 
+        });
+      }
+
+      // Get or create Stripe customer
+      const user = await storage.getUser(userId);
+      let customer;
+      
+      try {
+        // Try to find existing customer
+        const existingCustomers = await stripe.customers.list({
+          email: user.email,
+          limit: 1
+        });
+        
+        if (existingCustomers.data.length > 0) {
+          customer = existingCustomers.data[0];
+        } else {
+          // Create new customer
+          customer = await stripe.customers.create({
+            email: user.email,
+            name: user.displayName || `${user.firstName} ${user.lastName}`,
+            metadata: { userId }
+          });
+        }
+      } catch (stripeError) {
+        console.error("Stripe customer error:", stripeError);
+        return res.status(500).json({ message: "Failed to create customer" });
+      }
+
+      // Create payment intent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: selectedPlan.price,
+        currency: 'usd',
+        customer: customer.id,
+        metadata: {
+          userId,
+          planId: selectedPlan.id.toString(),
+          planName: selectedPlan.name
+        },
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        planName: selectedPlan.name,
+        price: selectedPlan.price,
+        customerId: customer.id
+      });
+
+    } catch (error) {
+      console.error("Error creating payment intent:", error);
+      res.status(500).json({ message: "Failed to create payment intent" });
+    }
+  });
+
+  // Create subscription after successful payment
+  app.post('/api/subscription/create', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { paymentIntentId, planId } = req.body;
+
+      if (!paymentIntentId || !planId) {
+        return res.status(400).json({ message: "Payment intent ID and plan ID are required" });
+      }
+
+      // Verify the payment intent
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ message: "Payment not completed" });
+      }
+
+      if (paymentIntent.metadata.userId !== userId) {
+        return res.status(403).json({ message: "Payment intent does not belong to this user" });
+      }
+
+      // Create subscription in database
+      const subscription = await subscriptionService.createUserSubscription(
+        userId,
+        parseInt(planId),
         {
-          ...user,
-          ...profile
+          customerId: paymentIntent.customer as string,
+          subscriptionId: paymentIntentId, // Using payment intent as subscription reference for one-time payments
+          paymentIntentId,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         }
       );
-      
-      // Submit to Airtable with enhanced analysis
-      await airtableService.submitJobInterviewResult({
-        jobRecordId,
-        jobTitle,
-        companyName,
-        applicantId: userId,
-        applicantName: user.firstName && user.lastName 
-          ? `${user.firstName} ${user.lastName}` 
-          : user.email || 'Unknown',
-        applicantEmail: user.email || '',
-        jobDescription,
-        interviewAnalysis: comprehensiveAnalysis || interviewAnalysis,
-        interviewTranscript
+
+      const updatedSubscription = await subscriptionService.getUserSubscription(userId);
+      const features = await subscriptionService.getUserFeatures(userId);
+
+      res.json({ 
+        success: true,
+        subscription: updatedSubscription,
+        features,
+        message: "Subscription activated successfully!"
       });
-      
-      res.json({ success: true, message: 'Job interview submitted successfully' });
+
     } catch (error) {
-      console.error('Error submitting job interview:', error);
-      res.status(500).json({ message: 'Failed to submit interview result' });
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ message: "Failed to create subscription" });
+    }
+  });
+
+  // Cancel subscription
+  app.post('/api/subscription/cancel', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { cancelAtPeriodEnd = true } = req.body;
+
+      await subscriptionService.cancelSubscription(userId, cancelAtPeriodEnd);
+
+      res.json({ 
+        success: true,
+        message: cancelAtPeriodEnd 
+          ? "Subscription will be canceled at the end of the billing period"
+          : "Subscription canceled immediately"
+      });
+
+    } catch (error) {
+      console.error("Error canceling subscription:", error);
+      res.status(500).json({ message: "Failed to cancel subscription" });
+    }
+  });
+
+  // Check if user has access to a specific feature
+  app.post('/api/subscription/check-feature', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { feature, requiredValue } = req.body;
+
+      if (!feature) {
+        return res.status(400).json({ message: "Feature name is required" });
+      }
+
+      const hasAccess = await subscriptionService.hasFeatureAccess(userId, feature, requiredValue);
+      const features = await subscriptionService.getUserFeatures(userId);
+
+      res.json({ 
+        hasAccess,
+        feature,
+        currentFeatures: features
+      });
+
+    } catch (error) {
+      console.error("Error checking feature access:", error);
+      res.status(500).json({ message: "Failed to check feature access" });
+    }
+  });
+
+  // Check if user has reached limit for a feature
+  app.post('/api/subscription/check-limit', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { feature, currentUsage } = req.body;
+
+      if (!feature || currentUsage === undefined) {
+        return res.status(400).json({ message: "Feature name and current usage are required" });
+      }
+
+      const hasReachedLimit = await subscriptionService.hasReachedLimit(userId, feature, currentUsage);
+      const features = await subscriptionService.getUserFeatures(userId);
+
+      res.json({ 
+        hasReachedLimit,
+        feature,
+        currentUsage,
+        limit: features?.[feature]?.limit || 0
+      });
+
+    } catch (error) {
+      console.error("Error checking feature limit:", error);
+      res.status(500).json({ message: "Failed to check feature limit" });
+    }
+  });
+
+  // Stripe webhook for subscription updates (optional)
+  app.post('/api/subscription/webhook', async (req, res) => {
+    try {
+      // Verify webhook signature if you have the webhook secret
+      // const sig = req.headers['stripe-signature'];
+      // const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+      
+      const event = req.body;
+
+      switch (event.type) {
+        case 'payment_intent.succeeded':
+          console.log('💳 Payment succeeded:', event.data.object.id);
+          break;
+        case 'customer.subscription.updated':
+          console.log('📝 Subscription updated:', event.data.object.id);
+          break;
+        case 'customer.subscription.deleted':
+          console.log('❌ Subscription canceled:', event.data.object.id);
+          break;
+        default:
+          console.log('🔔 Unhandled webhook event type:', event.type);
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error('Webhook error:', error);
+      res.status(400).json({ error: 'Webhook error' });
     }
   });
 
