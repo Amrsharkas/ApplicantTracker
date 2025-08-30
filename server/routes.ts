@@ -3204,6 +3204,9 @@ ACTUAL JOB DETAILS FROM AIRTABLE:
 - Job Description: ${jobDescription || `${jobTitle} position requiring relevant experience and skills`}
 - Key Skills/Requirements: ${jobRequirements || `Skills typically required for ${jobTitle} roles`}
 
+🎯 CRITICAL JOB-SPECIFIC CONTEXT:
+You are interviewing for the "${jobTitle}" position at "${companyName || 'this company'}". This is a job-specific interview that will assess the candidate's fit for this EXACT role. You'll answer 10 tailored questions designed to evaluate skills, experience, and qualifications relevant to this specific ${jobTitle} position.
+
 ENHANCED JOB CONTEXT FOR INTERVIEW:
 Based on this being a ${jobTitle} position, your questions should focus on:
 - Technical skills and experience specific to ${jobTitle}
@@ -3235,10 +3238,10 @@ INTERVIEW FLOW:
 🚨 CRITICAL: START TALKING THE MOMENT YOU CONNECT! 
 
 Do not wait for user input. As soon as the connection is established, immediately:
-1. Say: "Hi! I'm excited to interview you for the ${jobTitle} position at ${companyName || 'this company'}. Let's dive right in."
+1. Say: "Hi! Welcome to your job interview for the ${jobTitle} position at ${companyName || 'this company'}. This job-specific interview will assess your fit for this exact role. I'll be asking you 10 tailored questions designed to evaluate your skills, experience, and qualifications relevant to this ${jobTitle} position. Let's get started!"
 2. Then immediately ask your first question without any pause.
 
-This is a job interview - YOU must lead the conversation from the very beginning!
+This is a job interview - YOU must lead the conversation from the very beginning! Reference the specific job title "${jobTitle}" and company "${companyName || 'this company'}" throughout the interview.
 `;
 
         // Create ephemeral token for realtime API
