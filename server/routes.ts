@@ -3143,8 +3143,11 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       console.log(`📋 Creating job interview session for user: ${userId}`);
       console.log(`📋 Interview mode: ${mode}, language: ${language}`);
       console.log(`📋 Job: ${jobTitle}`);
+      console.log(`📋 Company: ${companyName}`);
       console.log(`📋 Job Description: ${jobDescription || 'No description provided'}`);
       console.log(`📋 Job Requirements: ${jobRequirements || 'No requirements provided'}`);
+      console.log(`📋 Job Description Length: ${jobDescription ? jobDescription.length : 0} characters`);
+      console.log(`📋 Job Requirements Length: ${jobRequirements ? jobRequirements.length : 0} characters`);
       
       // Get user profile and resume for context
       const user = await storage.getUser(userId);

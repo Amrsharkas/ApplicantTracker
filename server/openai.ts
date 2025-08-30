@@ -865,7 +865,58 @@ JOB DETAILS TO ANALYZE:
 - Requirements: ${jobRequirements}
 
 ENHANCED JOB-SPECIFIC CONTEXT:
-Based on this being a "${jobTitle}" position, focus your questions on the core competencies and scenarios that would actually matter in this role:
+Based on this being a "${jobTitle}" position, focus your questions on the core competencies and scenarios that would actually matter in this role.
+
+🎯 ROLE-SPECIFIC QUESTION GENERATION:
+You MUST create questions that are specifically tailored to this exact job title "${jobTitle}". Do not ask generic interview questions.
+
+SPECIFIC QUESTION EXAMPLES FOR "${jobTitle}":
+${jobTitle.toLowerCase().includes('project manager') ? `
+For Project Manager roles, ask questions like:
+- "Tell me about your experience managing construction/development projects from start to finish"
+- "How do you handle budget overruns and timeline delays in large projects?"  
+- "Describe a time when you had to coordinate between multiple teams and stakeholders"
+- "What project management methodologies have you used (Agile, Waterfall, etc.)?"
+- "How do you ensure quality control and safety compliance on project sites?"
+` : ''}
+
+${jobTitle.toLowerCase().includes('sales') ? `
+For Sales roles, ask questions like:
+- "Walk me through your sales process from lead generation to closing"
+- "What's your experience with CRM systems and sales pipeline management?"
+- "Tell me about your biggest sales achievement and how you accomplished it"
+- "How do you handle objections and difficult clients?"
+- "What strategies do you use to meet and exceed sales targets?"
+` : ''}
+
+${jobTitle.toLowerCase().includes('marketing') ? `
+For Marketing roles, ask questions like:
+- "Describe a successful marketing campaign you've created and executed"
+- "What digital marketing tools and platforms are you proficient with?"
+- "How do you measure and analyze marketing campaign performance?"
+- "Tell me about your experience with social media marketing and content creation"
+- "How do you stay updated with marketing trends and consumer behavior?"
+` : ''}
+
+${jobTitle.toLowerCase().includes('developer') || jobTitle.toLowerCase().includes('engineer') ? `
+For Technical roles, ask questions like:
+- "What programming languages and frameworks are you most comfortable with?"
+- "Describe a complex technical problem you solved and your approach"
+- "How do you ensure code quality and handle debugging?"
+- "What's your experience with version control and collaborative development?"
+- "How do you stay current with new technologies and best practices?"
+` : ''}
+
+${jobTitle.toLowerCase().includes('manager') || jobTitle.toLowerCase().includes('supervisor') ? `
+For Management roles, ask questions like:
+- "How do you motivate and develop team members?"
+- "Describe your approach to performance management and giving feedback"
+- "Tell me about a time you had to make a difficult decision affecting your team"
+- "How do you handle conflicts between team members?"
+- "What's your strategy for setting goals and measuring team success?"
+` : ''}
+
+CREATE SIMILAR SPECIFIC QUESTIONS FOR THIS EXACT "${jobTitle}" ROLE.
 
 ${jobTitle.toLowerCase().includes('project manager') || jobTitle.toLowerCase().includes('project') ? `
 PROJECT MANAGEMENT FOCUS AREAS:
@@ -905,7 +956,7 @@ LEADERSHIP FOCUS AREAS:
 ` : ''}
 
 INTERVIEW STRATEGY:
-Generate exactly 10 questions that will reveal EVERYTHING about the candidate's suitability for THIS SPECIFIC JOB ROLE. Each question should be designed to uncover:
+Generate exactly 10 questions that will reveal EVERYTHING about the candidate's suitability for THIS SPECIFIC "${jobTitle}" JOB ROLE. Each question should be designed to uncover:
 1. Their technical competency for the specific requirements
 2. Their experience with the exact responsibilities mentioned
 3. Their problem-solving approach for challenges they'll face in this role
