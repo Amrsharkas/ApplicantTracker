@@ -684,7 +684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY1}`,
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -3148,6 +3148,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       console.log(`📋 Job Requirements: ${jobRequirements || 'No requirements provided'}`);
       console.log(`📋 Job Description Length: ${jobDescription ? jobDescription.length : 0} characters`);
       console.log(`📋 Job Requirements Length: ${jobRequirements ? jobRequirements.length : 0} characters`);
+      console.log(`🔑 OpenAI API Key available: ${process.env.OPENAI_API_KEY ? 'Yes' : 'No'}`);
       
       // Get user profile and resume for context
       const user = await storage.getUser(userId);
@@ -3242,10 +3243,11 @@ This is a job interview - YOU must lead the conversation from the very beginning
 `;
 
         // Create ephemeral token for realtime API
+        console.log(`🔗 Creating OpenAI realtime session for job interview...`);
         const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY1}`,
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
