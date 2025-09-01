@@ -11,6 +11,7 @@ import { ResumeService } from "./resumeService";
 import multer from "multer";
 import { z } from "zod";
 import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile } from "@shared/schema";
+// pdf-parse will be dynamically imported when needed
 import { db } from "./db";
 import { applicantProfiles, interviewSessions } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
@@ -843,9 +844,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Handle different file types
         if (req.file.mimetype === 'application/pdf') {
-          // Parse PDF using pdf-parse
-          const pdfParse = require('pdf-parse');
           try {
+            // Dynamic import to avoid ES module issues
+            const pdfParseModule = await import('pdf-parse');
+            const pdfParse = pdfParseModule.default;
             const pdfData = await pdfParse(req.file.buffer);
             resumeContent = pdfData.text;
             console.log(`PDF parsed successfully, extracted ${resumeContent.length} characters`);
@@ -939,8 +941,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Handle different file types
         if (req.file.mimetype === 'application/pdf') {
-          const pdfParse = require('pdf-parse');
           try {
+            // Dynamic import to avoid ES module issues
+            const pdfParseModule = await import('pdf-parse');
+            const pdfParse = pdfParseModule.default;
             const pdfData = await pdfParse(req.file.buffer);
             resumeContent = pdfData.text;
             console.log(`📄 PDF parsed successfully, extracted ${resumeContent.length} characters`);
