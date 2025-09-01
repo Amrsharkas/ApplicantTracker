@@ -975,9 +975,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } catch (parseError) {
               console.warn('📄 PDF text extraction failed, using fallback approach:', parseError.message);
               
-              // Fallback: Accept PDF but encourage text upload for better results
-              resumeContent = `[PDF uploaded: ${req.file.originalname}]\n\nNote: For best auto-population results, please also upload a text version of your resume. PDF text extraction may be limited in this environment.`;
-              console.log(`📄 Using fallback content for PDF processing`);
+              // Fallback: Try to extract basic text from buffer as a last resort
+              try {
+                resumeContent = req.file.buffer.toString('utf8');
+                console.log(`📄 Using buffer text extraction as fallback`);
+              } catch (bufferError) {
+                resumeContent = `Note: Unable to extract text from PDF. Please upload a text version or Word document for better auto-population results.`;
+                console.log(`📄 Complete fallback - encouraging text upload`);
+              }
             }
             
             if (!resumeContent.trim()) {
@@ -2977,8 +2982,6 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   // Reset comprehensive profile data (clear pre-filled data) - Profile Rebuild Feature
   app.post("/api/comprehensive-profile/reset", 
     requireAuth, 
-    requireFeature('profileRebuilds'),
-    checkUsageLimit('profileRebuilds', usageCheckers.getProfileRebuildsUsage),
     async (req, res) => {
     try {
       const userId = (req.user as any)?.id;
