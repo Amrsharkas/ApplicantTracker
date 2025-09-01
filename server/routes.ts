@@ -2986,28 +2986,70 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     try {
       const userId = (req.user as any)?.id;
       
-      // Clear the problematic pre-filled data from the database
+      // Clear ALL profile data for a complete reset
       await db
         .update(applicantProfiles)
         .set({
-          skills_list: null,
+          // Reset personal details
+          name: null,
+          email: null,
+          phone: null,
+          birthdate: null,
+          gender: null,
+          nationality: null,
+          maritalStatus: null,
+          dependents: null,
+          militaryStatus: null,
+          country: null,
+          city: null,
+          address: null,
+          zipCode: null,
+          // Reset work eligibility
+          willingToRelocate: null,
+          workAuthorization: null,
+          visaStatus: null,
+          visaExpiryDate: null,
+          sponsorshipRequired: null,
+          preferredLocations: null,
+          workArrangement: null,
+          availabilityDate: null,
+          noticePeriod: null,
+          travelWillingness: null,
+          // Reset experience and education
+          skillsList: null,
           languages: null,
-          work_experiences: null,
+          workExperiences: null,
           degrees: null,
           certifications: null,
           achievements: null,
-          // Keep essential data but clear the pre-filled arrays
-          linkedin_url: null,
-          github_url: null,
-          website_url: null,
-          facebook_url: null,
-          twitter_url: null,
-          instagram_url: null,
-          youtube_url: null,
-          other_urls: null,
+          totalYearsOfExperience: null,
+          // Reset career info
+          summary: null,
+          careerLevel: null,
+          targetRoles: null,
+          targetIndustries: null,
+          targetCompanies: null,
+          // Reset online presence
+          linkedinUrl: null,
+          githubUrl: null,
+          websiteUrl: null,
+          facebookUrl: null,
+          twitterUrl: null,
+          instagramUrl: null,
+          youtubeUrl: null,
+          otherUrls: null,
+          // Reset salary expectations
+          salaryExpectations: null,
+          benefits: null,
+          careerGoals: null,
+          workStyle: null,
+          motivations: null,
+          dealBreakers: null,
+          // Reset resume content
+          resumeContent: null,
           // Reset completion percentage to 0 for fresh start
-          completion_percentage: 0,
-          updated_at: new Date()
+          completionPercentage: 0,
+          updatedAt: new Date()
         })
         .where(eq(applicantProfiles.userId, userId));
       
