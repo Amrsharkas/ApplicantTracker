@@ -55,14 +55,28 @@ export const applicantProfiles = pgTable("applicant_profiles", {
   dependents: integer("dependents"),
   militaryStatus: varchar("military_status"),
   
-  // Location
+  // Location & Address
   country: varchar("country"),
   city: varchar("city"),
+  address: varchar("address"), // Street address
+  zipCode: varchar("zip_code"), // Postal code
   willingToRelocate: boolean("willing_to_relocate"),
   
   // Contact Information (Essential)
   phone: varchar("phone"),
   email: varchar("email"),
+  
+  // Emergency Contact
+  emergencyContactName: varchar("emergency_contact_name"),
+  emergencyContactRelationship: varchar("emergency_contact_relationship"),
+  emergencyContactPhone: varchar("emergency_contact_phone"),
+  
+  // Government ID
+  idType: varchar("id_type"),
+  idNumber: varchar("id_number"),
+  idExpiryDate: varchar("id_expiry_date"),
+  idIssuingAuthority: varchar("id_issuing_authority"),
+  idVerified: boolean("id_verified").default(false),
   
   // Career Interests
   careerLevel: varchar("career_level"), // student, entry_level, experienced, manager, senior_management
@@ -75,10 +89,22 @@ export const applicantProfiles = pgTable("applicant_profiles", {
   preferredWorkCountries: text("preferred_work_countries").array(),
   jobSearchStatus: varchar("job_search_status"), // actively_looking, happy_but_open, specific_opportunities, not_looking, immediate_hiring
   
+  // Work Eligibility (additional fields)
+  workAuthorization: varchar("work_authorization"),
+  visaStatus: varchar("visa_status"),
+  visaExpiryDate: varchar("visa_expiry_date"),
+  sponsorshipRequired: boolean("sponsorship_required"),
+  availabilityDate: varchar("availability_date"),
+  noticePeriod: varchar("notice_period"),
+  travelWillingness: varchar("travel_willingness"),
+  
   // Experience
   totalYearsOfExperience: integer("total_years_of_experience"),
   workExperiences: jsonb("work_experiences"), // Array of experience objects
   languages: jsonb("languages"), // Array of language proficiency objects
+  
+  // Skills (enhanced)
+  skillsData: jsonb("skills_data"), // Complete skills with years of experience
   
   // Education
   currentEducationLevel: varchar("current_education_level"), // bachelors, masters, phd, high_school, vocational, diploma

@@ -3247,9 +3247,23 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
         dependents: profileData.personalDetails?.dependents,
         militaryStatus: profileData.personalDetails?.militaryStatus,
         
-        // Location
+        // Location & Address - Complete mapping
         country: profileData.personalDetails?.address?.country,
         city: profileData.personalDetails?.address?.city,
+        address: profileData.personalDetails?.address?.street,
+        zipCode: profileData.personalDetails?.address?.postalCode,
+        
+        // Emergency Contact - Complete mapping
+        emergencyContactName: profileData.personalDetails?.emergencyContact?.name,
+        emergencyContactRelationship: profileData.personalDetails?.emergencyContact?.relationship,
+        emergencyContactPhone: profileData.personalDetails?.emergencyContact?.phone,
+        
+        // Government ID - Complete mapping  
+        idType: profileData.governmentId?.idType,
+        idNumber: profileData.governmentId?.idNumber,
+        idExpiryDate: profileData.governmentId?.expiryDate,
+        idIssuingAuthority: profileData.governmentId?.issuingAuthority,
+        idVerified: profileData.governmentId?.verified,
         
         // Online Presence & Portfolio - ALL social media fields
         linkedinUrl: profileData.linksPortfolio?.linkedinUrl,
@@ -3261,19 +3275,33 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
         youtubeUrl: profileData.linksPortfolio?.youtubeUrl,
         otherUrls: profileData.linksPortfolio?.otherLinks?.map((link: any) => link.url),
         
-        // Work Eligibility & Preferences
+        // Work Eligibility & Preferences - Complete mapping
         willingToRelocate: profileData.workEligibility?.willingToRelocate,
         preferredWorkCountries: profileData.workEligibility?.preferredLocations,
         workplaceSettings: profileData.workEligibility?.workArrangement,
+        workAuthorization: profileData.workEligibility?.workAuthorization,
+        visaStatus: profileData.workEligibility?.visaStatus,
+        visaExpiryDate: profileData.workEligibility?.visaExpiryDate,
+        sponsorshipRequired: profileData.workEligibility?.sponsorshipRequired,
+        availabilityDate: profileData.workEligibility?.availabilityDate,
+        noticePeriod: profileData.workEligibility?.noticePeriod,
+        travelWillingness: profileData.workEligibility?.travelWillingness,
         
         // Languages
         languages: profileData.languages,
         
-        // Skills - Enhanced to include both technical and soft skills
+        // Skills - Enhanced to include both technical and soft skills with years of experience
         skillsList: [
           ...(profileData.skills?.technicalSkills?.map((skill: any) => skill.skill) || []),
           ...(profileData.skills?.softSkills?.map((skill: any) => skill.skill) || [])
         ],
+        // Store complete skills data with years of experience in a JSON field
+        skillsData: {
+          technicalSkills: profileData.skills?.technicalSkills || [],
+          softSkills: profileData.skills?.softSkills || [],
+          industryKnowledge: profileData.skills?.industryKnowledge || [],
+          tools: profileData.skills?.tools || []
+        },
         
         // Education - Enhanced with level detection
         degrees: profileData.education,
