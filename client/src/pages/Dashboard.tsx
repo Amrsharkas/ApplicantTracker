@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { 
@@ -8,7 +8,8 @@ import {
   TrendingUp,
   MessageCircle,
   Briefcase,
-  Crown
+  Crown,
+  Upload
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useResumeRequirement } from "@/hooks/useResumeRequirement";
@@ -35,6 +36,8 @@ export default function Dashboard() {
   const { subscription, planName, isSubscribed } = useSubscription();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedJobDetails, setSelectedJobDetails] = useState<{title: string, id: string} | null>(null);
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: profile, refetch: refetchProfile } = useQuery({
     queryKey: ["/api/candidate/profile"],
@@ -106,8 +109,74 @@ export default function Dashboard() {
     setActiveModal('jobPostings');
   };
 
+  const handleResumeUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.includes('pdf') && !file.type.includes('text')) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload a PDF or text file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please upload a file smaller than 10MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingResume(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('resume', file);
+
+      const response = await fetch('/api/resume/process-and-populate', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+
+      toast({
+        title: "Resume Processed Successfully! 🎉",
+        description: `Profile auto-populated with ${Object.keys(result.extractedFields || {}).filter(key => result.extractedFields[key]).length} sections from your resume.`,
+      });
+
+      // Refresh profile data to show updated information
+      refetchProfile();
+      refetchComprehensiveProfile();
+
+    } catch (error: any) {
+      console.error('Resume upload failed:', error);
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to process resume. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingResume(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   // Use backend-calculated completion percentage for consistency
-  const profileProgress = comprehensiveProfile?.completionPercentage || 0;
+  const profileProgress = (comprehensiveProfile as any)?.completionPercentage || 0;
   
   // Check if comprehensive profile has required fields completed (75% threshold for interviews)
   const hasCompleteProfile = profileProgress >= 75;
@@ -240,6 +309,11 @@ export default function Dashboard() {
                             : t('profileDescription')
                           }
                         </p>
+                        {!hasCompleteProfile && (
+                          <p className="text-sm text-green-600 mt-1">
+                            💡 Tip: Upload your resume and we'll extract as much information as we can to auto-fill your profile!
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center space-x-4">
@@ -247,16 +321,37 @@ export default function Dashboard() {
                         <div className="text-2xl font-bold text-gray-900">{profileProgress}%</div>
                         <div className="text-xs text-gray-500">{t('complete')}</div>
                       </div>
-                      <button
-                        onClick={() => openModal('profile')}
-                        className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                          hasCompleteProfile 
-                            ? 'bg-green-600 text-white hover:bg-green-700' 
-                            : 'bg-blue-600 text-white hover:bg-blue-700'
-                        }`}
-                      >
+                      <div className="flex space-x-2">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept=".pdf,.txt"
+                          onChange={handleResumeUpload}
+                          className="hidden"
+                        />
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploadingResume}
+                          className="px-4 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                        >
+                          {isUploadingResume ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                          <span>{isUploadingResume ? 'Uploading...' : 'Upload Resume'}</span>
+                        </button>
+                        <button
+                          onClick={() => openModal('profile')}
+                          className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                            hasCompleteProfile 
+                              ? 'bg-green-600 text-white hover:bg-green-700' 
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
+                        >
 {hasCompleteProfile ? 'Edit Profile' : t('buildProfileButton')}
-                      </button>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
