@@ -4,11 +4,9 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
-import SubscriptionDemo from "@/pages/SubscriptionDemo";
 import { useState, useEffect } from "react";
 
 import NotFound from "@/pages/not-found";
@@ -58,9 +56,6 @@ function Router() {
         {isAuthenticated ? <Dashboard /> : <Redirect to="/" />}
       </Route>
       
-      <Route path="/subscription-demo">
-        {isAuthenticated ? <SubscriptionDemo /> : <Redirect to="/" />}
-      </Route>
       
       <Route component={NotFound} />
     </Switch>
@@ -71,12 +66,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
-        <SubscriptionProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
-        </SubscriptionProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
       </LanguageProvider>
     </QueryClientProvider>
   );

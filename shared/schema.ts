@@ -222,37 +222,6 @@ export const interviewSessions = pgTable("interview_sessions", {
   completedAt: timestamp("completed_at"),
 });
 
-// Subscription plans table
-export const subscriptionPlans = pgTable("subscription_plans", {
-  id: serial("id").primaryKey(),
-  name: varchar("name").notNull().unique(), // "free", "basic", "premium", "enterprise"
-  displayName: varchar("display_name").notNull(), // "Free Plan", "Basic Plan", etc.
-  description: text("description"),
-  price: integer("price").notNull(), // Price in cents (0 for free)
-  interval: varchar("interval").notNull(), // "month", "year"
-  stripePriceId: varchar("stripe_price_id").unique(), // Stripe Price ID (null for free plan)
-  features: jsonb("features").notNull(), // JSON object with feature flags and limits
-  isActive: boolean("is_active").default(true),
-  sortOrder: integer("sort_order").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// User subscriptions table
-export const userSubscriptions = pgTable("user_subscriptions", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  planId: integer("plan_id").notNull().references(() => subscriptionPlans.id),
-  stripeCustomerId: varchar("stripe_customer_id"),
-  stripeSubscriptionId: varchar("stripe_subscription_id").unique(),
-  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
-  status: varchar("status").notNull().default("active"), // "active", "canceled", "past_due", "unpaid", "incomplete"
-  currentPeriodStart: timestamp("current_period_start"),
-  currentPeriodEnd: timestamp("current_period_end"),
-  cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
 
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -264,7 +233,6 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   applications: many(applications),
   interviews: many(interviewSessions),
   resumes: many(resumeUploads),
-  subscriptions: many(userSubscriptions),
 }));
 
 export const applicantProfilesRelations = relations(applicantProfiles, ({ one }) => ({
@@ -315,20 +283,6 @@ export const interviewSessionsRelations = relations(interviewSessions, ({ one })
   }),
 }));
 
-export const subscriptionPlansRelations = relations(subscriptionPlans, ({ many }) => ({
-  subscriptions: many(userSubscriptions),
-}));
-
-export const userSubscriptionsRelations = relations(userSubscriptions, ({ one }) => ({
-  user: one(users, {
-    fields: [userSubscriptions.userId],
-    references: [users.id],
-  }),
-  plan: one(subscriptionPlans, {
-    fields: [userSubscriptions.planId],
-    references: [subscriptionPlans.id],
-  }),
-}));
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users);
@@ -358,16 +312,6 @@ export const insertResumeUploadSchema = createInsertSchema(resumeUploads).omit({
   id: true,
   uploadedAt: true,
 });
-export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export const insertUserSubscriptionSchema = createInsertSchema(userSubscriptions).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -387,7 +331,3 @@ export type InsertInterviewSession = z.infer<typeof insertInterviewSessionSchema
 export type InterviewSession = typeof interviewSessions.$inferSelect;
 export type InsertResumeUpload = z.infer<typeof insertResumeUploadSchema>;
 export type ResumeUpload = typeof resumeUploads.$inferSelect;
-export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
-export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
-export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema>;
-export type UserSubscription = typeof userSubscriptions.$inferSelect;

@@ -15,17 +15,7 @@ import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUplo
 import { db } from "./db";
 import { applicantProfiles, interviewSessions } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
-import Stripe from "stripe";
-import { subscriptionService } from "./subscriptionService";
-import { requireFeature, checkUsageLimit, usageCheckers } from "./subscriptionMiddleware";
 
-// Initialize Stripe
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
-}
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2024-06-20",
-});
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -491,8 +481,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
   
-  // Initialize subscription plans on startup
-  await subscriptionService.initializeDefaultPlans();
 
   // Note: Auth routes are now handled in setupAuth from auth.ts
 
@@ -1102,7 +1090,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Coaching endpoint - Pro plan exclusive feature
   app.post("/api/coaching/career-guidance", 
     requireAuth, 
-    requireFeature('aiCoaching'),
     async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -1140,7 +1127,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mock Interview endpoint - Pro plan exclusive feature
   app.post("/api/coaching/mock-interview", 
     requireAuth, 
-    requireFeature('mockInterviews'),
     async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -1208,7 +1194,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Voice interview initialization route
   app.post("/api/interview/start-voice", 
     requireAuth, 
-    requireFeature('voiceInterviews'),
     async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -1415,8 +1400,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/interview/start/:type', 
     requireAuth, 
-    requireFeature('aiInterviews'),
-    checkUsageLimit('aiInterviews', usageCheckers.getAiInterviewsUsage),
+
+
     async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -1507,8 +1492,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Legacy endpoint for backward compatibility
   app.post('/api/interview/start', 
     requireAuth, 
-    requireFeature('aiInterviews'),
-    checkUsageLimit('aiInterviews', usageCheckers.getAiInterviewsUsage),
+
+
     async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -1659,8 +1644,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // New Job Application Endpoint with AI Skill Analysis
   app.post('/api/job-applications/submit', 
     requireAuth,
-    requireFeature('jobApplications'),
-    checkUsageLimit('jobApplications', usageCheckers.getApplicationsUsage),
+
+
     async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -2203,8 +2188,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/applications', 
     requireAuth, 
-    requireFeature('jobApplications'),
-    checkUsageLimit('jobApplications', usageCheckers.getApplicationsUsage),
+
+
     async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -2537,7 +2522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Job Application Analysis Route
   app.post('/api/job-application/analyze', 
     requireAuth, 
-    requireFeature('profileAnalysis'),
+
     async (req: any, res) => {
     try {
       let userId = req.user?.claims?.sub;
@@ -2795,7 +2780,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   // Generate brutally honest profile for Airtable after all interviews completed
   app.post('/api/profile/generate-honest-assessment', 
     requireAuth, 
-    requireFeature('profileAnalysis'),
+
     async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -2884,7 +2869,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   // Track profile views - Premium & Pro exclusive
   app.post("/api/profile/track-view", 
     requireAuth, 
-    requireFeature('profileViews'),
+
     async (req: any, res) => {
     try {
       const viewerId = req.user.id;
@@ -2914,7 +2899,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   // Get who viewed your profile - Premium & Pro exclusive
   app.get("/api/profile/viewers", 
     requireAuth, 
-    requireFeature('profileViews'),
+
     async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -2954,7 +2939,6 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   // Apply visibility boost - Premium & Pro exclusive
   app.post("/api/profile/visibility-boost", 
     requireAuth, 
-    requireFeature('visibilityBoost'),
     async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -3764,373 +3748,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
-  // =================== SUBSCRIPTION ROUTES ===================
 
-  // Demonstrate subscription feature differentiation
-  app.get('/api/subscription/feature-test', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const subscription = await subscriptionService.getUserSubscription(userId);
-      const features = await subscriptionService.getUserFeatures(userId);
-      
-      if (!subscription || !features) {
-        return res.status(404).json({ error: "No subscription found" });
-      }
-
-      // Test different feature access levels
-      const featureTests = {
-        planName: subscription.plan.name,
-        planDisplayName: subscription.plan.displayName,
-        price: subscription.plan.price,
-        features: {
-          aiInterviews: {
-            enabled: features.aiInterviews.enabled,
-            limit: features.aiInterviews.limit,
-            description: features.aiInterviews.limit === -1 ? 'Unlimited' : `${features.aiInterviews.limit} per month`
-          },
-          jobMatches: {
-            enabled: features.jobMatches.enabled,
-            limit: features.jobMatches.limit,
-            description: features.jobMatches.limit === -1 ? 'Unlimited' : `${features.jobMatches.limit} per month`
-          },
-          jobApplications: {
-            enabled: features.jobApplications.enabled,
-            limit: features.jobApplications.limit,
-            description: features.jobApplications.limit === -1 ? 'Unlimited' : `${features.jobApplications.limit} per month`
-          },
-          voiceInterviews: {
-            enabled: features.voiceInterviews,
-            description: features.voiceInterviews ? 'Available' : 'Not available'
-          },
-          advancedMatching: {
-            enabled: features.advancedMatching,
-            description: features.advancedMatching ? 'AI-powered smart matching' : 'Basic matching only'
-          },
-          profileAnalysis: {
-            enabled: features.profileAnalysis.enabled,
-            depth: features.profileAnalysis.depth,
-            description: `${features.profileAnalysis.depth} analysis level`
-          },
-          profileViews: {
-            enabled: features.profileViews,
-            description: features.profileViews ? '"Who viewed your profile" tracking' : 'Not available'
-          },
-          visibilityBoost: {
-            enabled: features.visibilityBoost,
-            description: features.visibilityBoost ? 'Enhanced visibility in employer searches' : 'Standard visibility only'
-          },
-          profileRebuilds: {
-            enabled: features.profileRebuilds.enabled,
-            limit: features.profileRebuilds.limit,
-            description: features.profileRebuilds.enabled ? `${features.profileRebuilds.limit} rebuilds per month` : 'Not available'
-          },
-          aiCoaching: {
-            enabled: features.aiCoaching,
-            description: features.aiCoaching ? 'Career guidance & skill gap analysis' : 'Premium feature only'
-          },
-          mockInterviews: {
-            enabled: features.mockInterviews,
-            description: features.mockInterviews ? 'AI interview preparation sessions' : 'Premium feature only'
-          },
-          vipAccess: {
-            enabled: features.vipAccess,
-            description: features.vipAccess ? 'Job fairs & partner opportunities' : 'Premium feature only'
-          },
-          prioritySupport: {
-            enabled: features.prioritySupport,
-            description: features.prioritySupport ? '24/7 priority support' : 'Standard support'
-          },
-          analyticsAccess: {
-            enabled: features.analyticsAccess,
-            description: features.analyticsAccess ? 'Full analytics dashboard' : 'Basic stats only'
-          }
-        },
-        // Show what happens when trying to access restricted features
-        accessTests: {
-          canStartAiInterview: await subscriptionService.hasFeatureAccess(userId, 'aiInterviews'),
-          canUseVoiceInterviews: await subscriptionService.hasFeatureAccess(userId, 'voiceInterviews'),
-          canAccessAnalytics: await subscriptionService.hasFeatureAccess(userId, 'analyticsAccess'),
-          canUseAdvancedMatching: await subscriptionService.hasFeatureAccess(userId, 'advancedMatching'),
-        }
-      };
-
-      res.json({
-        message: `Testing subscription features for ${subscription.plan.displayName}`,
-        ...featureTests
-      });
-    } catch (error) {
-      console.error("Error testing subscription features:", error);
-      res.status(500).json({ message: "Failed to test subscription features" });
-    }
-  });
-
-  // Get all available subscription plans
-  app.get('/api/subscription/plans', async (req, res) => {
-    try {
-      const plans = await subscriptionService.getActivePlans();
-      res.json(plans);
-    } catch (error) {
-      console.error("Error fetching subscription plans:", error);
-      res.status(500).json({ message: "Failed to fetch subscription plans" });
-    }
-  });
-
-  // Get current user's subscription
-  app.get('/api/subscription/current', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const subscription = await subscriptionService.getUserSubscription(userId);
-      const features = await subscriptionService.getUserFeatures(userId);
-      
-      if (!subscription) {
-        return res.status(404).json({ 
-          message: "No active subscription found" 
-        });
-      }
-      
-      res.json({ 
-        subscription, 
-        features,
-        planName: subscription.plan.name
-      });
-    } catch (error) {
-      console.error("Error fetching user subscription:", error);
-      res.status(500).json({ message: "Failed to fetch subscription" });
-    }
-  });
-
-  // Create Stripe payment intent for subscription
-  app.post('/api/subscription/create-payment-intent', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const { planId } = req.body;
-
-      if (!planId) {
-        return res.status(400).json({ message: "Plan ID is required" });
-      }
-
-      // Get the plan details
-      const plans = await subscriptionService.getActivePlans();
-      const selectedPlan = plans.find(p => p.id === planId);
-      
-      if (!selectedPlan) {
-        return res.status(404).json({ message: "Subscription plan not found" });
-      }
-
-      if (selectedPlan.price === 0) {
-        // Free plan - no payment needed
-        return res.json({ 
-          planName: selectedPlan.name,
-          price: 0,
-          message: "This is a free plan" 
-        });
-      }
-
-      // Get or create Stripe customer
-      const user = await storage.getUser(userId);
-      let customer;
-      
-      try {
-        // Try to find existing customer
-        const existingCustomers = await stripe.customers.list({
-          email: user.email,
-          limit: 1
-        });
-        
-        if (existingCustomers.data.length > 0) {
-          customer = existingCustomers.data[0];
-        } else {
-          // Create new customer
-          customer = await stripe.customers.create({
-            email: user.email,
-            name: user.displayName || `${user.firstName} ${user.lastName}`,
-            metadata: { userId }
-          });
-        }
-      } catch (stripeError) {
-        console.error("Stripe customer error:", stripeError);
-        return res.status(500).json({ message: "Failed to create customer" });
-      }
-
-      // Create payment intent
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: selectedPlan.price,
-        currency: 'usd',
-        customer: customer.id,
-        metadata: {
-          userId,
-          planId: selectedPlan.id.toString(),
-          planName: selectedPlan.name
-        },
-        automatic_payment_methods: {
-          enabled: true,
-        },
-      });
-
-      res.json({
-        clientSecret: paymentIntent.client_secret,
-        planName: selectedPlan.name,
-        price: selectedPlan.price,
-        customerId: customer.id
-      });
-
-    } catch (error) {
-      console.error("Error creating payment intent:", error);
-      res.status(500).json({ message: "Failed to create payment intent" });
-    }
-  });
-
-  // Create subscription after successful payment
-  app.post('/api/subscription/create', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const { paymentIntentId, planId } = req.body;
-
-      if (!paymentIntentId || !planId) {
-        return res.status(400).json({ message: "Payment intent ID and plan ID are required" });
-      }
-
-      // Verify the payment intent
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-      
-      if (paymentIntent.status !== 'succeeded') {
-        return res.status(400).json({ message: "Payment not completed" });
-      }
-
-      if (paymentIntent.metadata.userId !== userId) {
-        return res.status(403).json({ message: "Payment intent does not belong to this user" });
-      }
-
-      // Create subscription in database
-      const subscription = await subscriptionService.createUserSubscription(
-        userId,
-        parseInt(planId),
-        {
-          customerId: paymentIntent.customer as string,
-          subscriptionId: paymentIntentId, // Using payment intent as subscription reference for one-time payments
-          paymentIntentId,
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-        }
-      );
-
-      const updatedSubscription = await subscriptionService.getUserSubscription(userId);
-      const features = await subscriptionService.getUserFeatures(userId);
-
-      res.json({ 
-        success: true,
-        subscription: updatedSubscription,
-        features,
-        message: "Subscription activated successfully!"
-      });
-
-    } catch (error) {
-      console.error("Error creating subscription:", error);
-      res.status(500).json({ message: "Failed to create subscription" });
-    }
-  });
-
-  // Cancel subscription
-  app.post('/api/subscription/cancel', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const { cancelAtPeriodEnd = true } = req.body;
-
-      await subscriptionService.cancelSubscription(userId, cancelAtPeriodEnd);
-
-      res.json({ 
-        success: true,
-        message: cancelAtPeriodEnd 
-          ? "Subscription will be canceled at the end of the billing period"
-          : "Subscription canceled immediately"
-      });
-
-    } catch (error) {
-      console.error("Error canceling subscription:", error);
-      res.status(500).json({ message: "Failed to cancel subscription" });
-    }
-  });
-
-  // Check if user has access to a specific feature
-  app.post('/api/subscription/check-feature', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const { feature, requiredValue } = req.body;
-
-      if (!feature) {
-        return res.status(400).json({ message: "Feature name is required" });
-      }
-
-      const hasAccess = await subscriptionService.hasFeatureAccess(userId, feature, requiredValue);
-      const features = await subscriptionService.getUserFeatures(userId);
-
-      res.json({ 
-        hasAccess,
-        feature,
-        currentFeatures: features
-      });
-
-    } catch (error) {
-      console.error("Error checking feature access:", error);
-      res.status(500).json({ message: "Failed to check feature access" });
-    }
-  });
-
-  // Check if user has reached limit for a feature
-  app.post('/api/subscription/check-limit', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const { feature, currentUsage } = req.body;
-
-      if (!feature || currentUsage === undefined) {
-        return res.status(400).json({ message: "Feature name and current usage are required" });
-      }
-
-      const hasReachedLimit = await subscriptionService.hasReachedLimit(userId, feature, currentUsage);
-      const features = await subscriptionService.getUserFeatures(userId);
-
-      res.json({ 
-        hasReachedLimit,
-        feature,
-        currentUsage,
-        limit: features?.[feature]?.limit || 0
-      });
-
-    } catch (error) {
-      console.error("Error checking feature limit:", error);
-      res.status(500).json({ message: "Failed to check feature limit" });
-    }
-  });
-
-  // Stripe webhook for subscription updates (optional)
-  app.post('/api/subscription/webhook', async (req, res) => {
-    try {
-      // Verify webhook signature if you have the webhook secret
-      // const sig = req.headers['stripe-signature'];
-      // const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-      
-      const event = req.body;
-
-      switch (event.type) {
-        case 'payment_intent.succeeded':
-          console.log('💳 Payment succeeded:', event.data.object.id);
-          break;
-        case 'customer.subscription.updated':
-          console.log('📝 Subscription updated:', event.data.object.id);
-          break;
-        case 'customer.subscription.deleted':
-          console.log('❌ Subscription canceled:', event.data.object.id);
-          break;
-        default:
-          console.log('🔔 Unhandled webhook event type:', event.type);
-      }
-
-      res.json({ received: true });
-    } catch (error) {
-      console.error('Webhook error:', error);
-      res.status(400).json({ error: 'Webhook error' });
-    }
-  });
 
   const httpServer = createServer(app);
   return httpServer;
