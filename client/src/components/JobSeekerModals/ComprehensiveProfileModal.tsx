@@ -419,6 +419,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
 
   // Auto-save function with debouncing
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalSaveRef = useRef<NodeJS.Timeout | null>(null);
   
   const autoSave = useCallback(
     async (data: ComprehensiveProfileData) => {
@@ -438,15 +439,15 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
         clearTimeout(autoSaveTimeoutRef.current);
       }
       
-      // Set new timeout
+      // Set new timeout for 10 seconds
       autoSaveTimeoutRef.current = setTimeout(() => {
         autoSave(data);
-      }, 2000); // Wait 2 seconds before auto-saving
+      }, 10000); // Wait 10 seconds before auto-saving
     },
     [autoSave]
   );
 
-  // Auto-save on form changes with debouncing
+  // Auto-save on form changes with debouncing AND regular interval saves
   useEffect(() => {
     const subscription = form.watch((data) => {
       if (data && !isLoading) {
@@ -454,13 +455,24 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
       }
     });
 
+    // Set up interval-based autosave every 10 seconds to ensure all fields are saved
+    intervalSaveRef.current = setInterval(() => {
+      const currentData = form.getValues();
+      if (currentData && !isLoading && form.formState.isDirty) {
+        autoSave(currentData as ComprehensiveProfileData);
+      }
+    }, 10000); // Save every 10 seconds
+
     return () => {
       subscription.unsubscribe();
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
       }
+      if (intervalSaveRef.current) {
+        clearInterval(intervalSaveRef.current);
+      }
     };
-  }, [form, debouncedAutoSave, isLoading]);
+  }, [form, debouncedAutoSave, autoSave, isLoading]);
 
   // Update form with existing data when it loads (only if form is currently empty)
   useEffect(() => {
