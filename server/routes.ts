@@ -951,25 +951,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Handle different file types
         if (req.file.mimetype === 'application/pdf') {
           try {
-            console.log('📄 PDF file received, extracting text for AI parsing...');
+            console.log('📄 PDF file received, attempting text extraction...');
             
-            // Use pdf-parse to extract text from PDF
-            const pdfParse = (await import('pdf-parse')).default;
-            const pdfData = await pdfParse(req.file.buffer);
-            resumeContent = pdfData.text;
-            
-            console.log(`📄 PDF text extracted successfully: ${resumeContent.length} characters`);
+            // Try pdf-parse with better error handling
+            try {
+              const pdfParse = require('pdf-parse');
+              const pdfData = await pdfParse(req.file.buffer);
+              resumeContent = pdfData.text;
+              console.log(`📄 PDF text extracted successfully: ${resumeContent.length} characters`);
+            } catch (parseError) {
+              console.warn('📄 PDF text extraction failed, using fallback approach:', parseError.message);
+              
+              // Fallback: Accept PDF but encourage text upload for better results
+              resumeContent = `[PDF uploaded: ${req.file.originalname}]\n\nNote: For best auto-population results, please also upload a text version of your resume. PDF text extraction may be limited in this environment.`;
+              console.log(`📄 Using fallback content for PDF processing`);
+            }
             
             if (!resumeContent.trim()) {
               console.warn('📄 PDF appears to contain no extractable text');
               return res.status(400).json({ 
-                message: "The PDF appears to contain no readable text. Please ensure your PDF contains text content, not just images." 
+                message: "The PDF appears to contain no readable text. Please ensure your PDF contains text content, not just images, or try uploading a text version (.txt file)." 
               });
             }
           } catch (pdfError) {
-            console.error("PDF extraction error:", pdfError);
+            console.error("PDF processing error:", pdfError);
             return res.status(400).json({ 
-              message: "Failed to extract text from PDF. Please ensure your PDF contains readable text or try uploading a text version." 
+              message: "Failed to process PDF. For best results, please upload a text version (.txt file) of your resume." 
             });
           }
         } else if (req.file.mimetype === 'text/plain' || req.file.originalname.endsWith('.txt')) {

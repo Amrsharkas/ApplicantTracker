@@ -126,8 +126,8 @@ export default function Dashboard() {
     // Provide guidance for PDF files
     if (file.type.includes('pdf')) {
       toast({
-        title: "PDF Upload Notice",
-        description: "For best auto-population results, consider uploading a text version (.txt) of your resume. PDFs will be processed but may have limited text extraction.",
+        title: "PDF Upload Tips",
+        description: "PDF uploaded! For guaranteed auto-population, also try uploading a text (.txt) version of your resume if the PDF extraction doesn't work well.",
       });
     }
 
