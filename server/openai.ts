@@ -1122,7 +1122,15 @@ Return a JSON object with:
   }
 
   async parseResumeForProfile(resumeContent: string): Promise<any> {
-    const prompt = `You are an expert resume parser. Extract comprehensive information from this resume to automatically populate a user profile. Be thorough and extract as much relevant information as possible.
+    const prompt = `You are an expert resume parser and career analyst. Analyze the following resume text and extract ALL available information into a detailed, structured JSON format. Be thorough and comprehensive - extract every piece of information that could be useful for a job application profile.
+
+CRITICAL INSTRUCTIONS:
+1. Extract ALL information present in the resume, even if it seems minor
+2. For missing information, use null or empty arrays - DO NOT make assumptions
+3. Be precise with dates, skills, and experience details
+4. Calculate experience levels and career progression accurately
+5. Extract soft skills, technical skills, and industry knowledge separately
+6. Include all contact information and online presence details
 
 RESUME CONTENT:
 ${resumeContent}
