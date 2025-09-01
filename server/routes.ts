@@ -241,6 +241,238 @@ function generateOverallImpression(cvData: any): string {
   return impression;
 }
 
+// Helper function to map parsed resume data to profile schema
+function mapResumeDataToProfile(parsedData: any, userId: string): any {
+  const profileData: any = { userId };
+
+  // Personal Details
+  if (parsedData.personalDetails) {
+    const personal = parsedData.personalDetails;
+    if (personal.name) profileData.name = personal.name;
+    if (personal.email) profileData.email = personal.email;
+    if (personal.phone) profileData.phone = personal.phone;
+    if (personal.dateOfBirth) {
+      try {
+        // Convert date to string format for database compatibility
+        const date = new Date(personal.dateOfBirth);
+        profileData.birthdate = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      } catch (e) {
+        console.warn("Invalid date format for birthdate:", personal.dateOfBirth);
+      }
+    }
+    if (personal.nationality) profileData.nationality = personal.nationality;
+    if (personal.gender) profileData.gender = personal.gender;
+    
+    // Location
+    if (personal.location) {
+      if (personal.location.city) profileData.city = personal.location.city;
+      if (personal.location.country) profileData.country = personal.location.country;
+    }
+  }
+
+  // Work Experience
+  if (parsedData.workExperience && Array.isArray(parsedData.workExperience)) {
+    profileData.workExperiences = parsedData.workExperience.map((exp: any) => ({
+      company: exp.company || '',
+      position: exp.position || '',
+      startDate: exp.startDate || '',
+      endDate: exp.current ? '' : (exp.endDate || ''),
+      current: exp.current || false,
+      location: exp.location || '',
+      employmentType: exp.employmentType || 'full-time',
+      responsibilities: exp.responsibilities || '',
+      yearsAtPosition: exp.yearsAtPosition || 0
+    }));
+
+    // Calculate total years of experience
+    if (parsedData.careerInformation?.totalYearsOfExperience) {
+      profileData.totalYearsOfExperience = parseInt(parsedData.careerInformation.totalYearsOfExperience) || 0;
+    }
+  }
+
+  // Education
+  if (parsedData.education && Array.isArray(parsedData.education)) {
+    profileData.degrees = parsedData.education.map((edu: any) => ({
+      institution: edu.institution || '',
+      degree: edu.degree || '',
+      field: edu.fieldOfStudy || '',
+      startDate: edu.startDate || '',
+      endDate: edu.current ? '' : (edu.endDate || ''),
+      current: edu.current || false,
+      gpa: edu.gpa ? parseFloat(edu.gpa) : null,
+      location: edu.location || '',
+      honors: edu.honors || ''
+    }));
+
+    // Set current education level
+    if (parsedData.careerInformation?.currentEducationLevel) {
+      profileData.currentEducationLevel = parsedData.careerInformation.currentEducationLevel;
+    }
+  }
+
+  // Skills
+  if (parsedData.skills) {
+    const allSkills = [];
+    
+    // Combine technical and soft skills into skillsList
+    if (parsedData.skills.technicalSkills && Array.isArray(parsedData.skills.technicalSkills)) {
+      allSkills.push(...parsedData.skills.technicalSkills.map((skill: any) => skill.skill || skill));
+    }
+    if (parsedData.skills.softSkills && Array.isArray(parsedData.skills.softSkills)) {
+      allSkills.push(...parsedData.skills.softSkills.map((skill: any) => skill.skill || skill));
+    }
+    
+    if (allSkills.length > 0) {
+      profileData.skillsList = allSkills;
+    }
+
+    // Languages
+    if (parsedData.skills.languages && Array.isArray(parsedData.skills.languages)) {
+      profileData.languages = parsedData.skills.languages.map((lang: any) => ({
+        language: lang.language || '',
+        proficiency: lang.proficiency || 'intermediate',
+        certification: lang.certification || ''
+      }));
+    }
+  }
+
+  // Certifications
+  if (parsedData.certifications && Array.isArray(parsedData.certifications)) {
+    profileData.certifications = parsedData.certifications.map((cert: any) => ({
+      name: cert.name || '',
+      issuer: cert.issuer || '',
+      dateObtained: cert.dateObtained || '',
+      expiryDate: cert.expiryDate || '',
+      credentialId: cert.credentialId || ''
+    }));
+  }
+
+  // Online Presence
+  if (parsedData.onlinePresence) {
+    const online = parsedData.onlinePresence;
+    if (online.linkedinUrl) profileData.linkedinUrl = online.linkedinUrl;
+    if (online.githubUrl) profileData.githubUrl = online.githubUrl;
+    if (online.websiteUrl) profileData.websiteUrl = online.websiteUrl;
+    if (online.portfolioUrl && !profileData.websiteUrl) profileData.websiteUrl = online.portfolioUrl;
+    if (online.otherUrls && Array.isArray(online.otherUrls)) {
+      profileData.otherUrls = online.otherUrls;
+    }
+  }
+
+  // Career Information
+  if (parsedData.careerInformation) {
+    const career = parsedData.careerInformation;
+    if (career.careerLevel) profileData.careerLevel = career.careerLevel;
+    if (career.summary) profileData.summary = career.summary;
+    if (career.jobTitles && Array.isArray(career.jobTitles)) {
+      profileData.jobTitles = career.jobTitles;
+    }
+    if (career.industries && Array.isArray(career.industries)) {
+      profileData.jobCategories = career.industries;
+    }
+  }
+
+  // Achievements
+  if (parsedData.achievements) {
+    profileData.achievements = parsedData.achievements;
+  }
+
+  // Set completion percentage boost for resume-populated data
+  profileData.completionPercentage = 40; // Base completion for having resume data
+
+  return profileData;
+}
+
+// Helper function to calculate profile completion percentage
+function calculateProfileCompletion(profileData: any): number {
+  let score = 0;
+  const maxScore = 100;
+
+  // Personal details (20 points)
+  if (profileData.name) score += 5;
+  if (profileData.email) score += 5;
+  if (profileData.phone) score += 5;
+  if (profileData.city && profileData.country) score += 5;
+
+  // Work experience (25 points)
+  if (profileData.workExperiences && Array.isArray(profileData.workExperiences) && profileData.workExperiences.length > 0) {
+    score += 15;
+    if (profileData.totalYearsOfExperience) score += 10;
+  }
+
+  // Education (15 points)
+  if (profileData.degrees && Array.isArray(profileData.degrees) && profileData.degrees.length > 0) {
+    score += 15;
+  }
+
+  // Skills (15 points)
+  if (profileData.skillsList && Array.isArray(profileData.skillsList) && profileData.skillsList.length > 0) {
+    score += 15;
+  }
+
+  // Career information (10 points)
+  if (profileData.summary) score += 5;
+  if (profileData.careerLevel) score += 5;
+
+  // Online presence (10 points)
+  if (profileData.linkedinUrl || profileData.githubUrl || profileData.websiteUrl) score += 10;
+
+  // Languages (5 points)
+  if (profileData.languages && Array.isArray(profileData.languages) && profileData.languages.length > 0) {
+    score += 5;
+  }
+
+  return Math.min(score, maxScore);
+}
+
+// Helper function to generate summary of extracted fields
+function getExtractedFieldsSummary(parsedData: any): any {
+  const summary: any = {
+    personalInfo: false,
+    workExperience: false,
+    education: false,
+    skills: false,
+    onlinePresence: false,
+    certifications: false,
+    languages: false
+  };
+
+  if (parsedData.personalDetails && (parsedData.personalDetails.name || parsedData.personalDetails.email || parsedData.personalDetails.phone)) {
+    summary.personalInfo = true;
+  }
+
+  if (parsedData.workExperience && Array.isArray(parsedData.workExperience) && parsedData.workExperience.length > 0) {
+    summary.workExperience = true;
+    summary.workExperienceCount = parsedData.workExperience.length;
+  }
+
+  if (parsedData.education && Array.isArray(parsedData.education) && parsedData.education.length > 0) {
+    summary.education = true;
+    summary.educationCount = parsedData.education.length;
+  }
+
+  if (parsedData.skills && (parsedData.skills.technicalSkills || parsedData.skills.softSkills)) {
+    summary.skills = true;
+    summary.skillsCount = (parsedData.skills.technicalSkills?.length || 0) + (parsedData.skills.softSkills?.length || 0);
+  }
+
+  if (parsedData.onlinePresence && (parsedData.onlinePresence.linkedinUrl || parsedData.onlinePresence.githubUrl || parsedData.onlinePresence.websiteUrl)) {
+    summary.onlinePresence = true;
+  }
+
+  if (parsedData.certifications && Array.isArray(parsedData.certifications) && parsedData.certifications.length > 0) {
+    summary.certifications = true;
+    summary.certificationsCount = parsedData.certifications.length;
+  }
+
+  if (parsedData.skills?.languages && Array.isArray(parsedData.skills.languages) && parsedData.skills.languages.length > 0) {
+    summary.languages = true;
+    summary.languagesCount = parsedData.skills.languages.length;
+  }
+
+  return summary;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -687,6 +919,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error uploading resume:", error);
       res.status(500).json({ 
         message: "Failed to upload resume. Please try again." 
+      });
+    }
+  });
+
+  // Enhanced Resume Processing with Auto Profile Population
+  app.post('/api/resume/process-and-populate', requireAuth, upload.single('resume'), async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      let resumeContent = '';
+      
+      try {
+        console.log(`Processing file for auto-population: ${req.file.originalname}, mimetype: ${req.file.mimetype}, size: ${req.file.size}`);
+        
+        // Handle different file types
+        if (req.file.mimetype === 'application/pdf') {
+          const pdfParse = require('pdf-parse');
+          try {
+            const pdfData = await pdfParse(req.file.buffer);
+            resumeContent = pdfData.text;
+            console.log(`📄 PDF parsed successfully, extracted ${resumeContent.length} characters`);
+          } catch (pdfError) {
+            console.error("PDF parsing error:", pdfError);
+            return res.status(400).json({ 
+              message: "Failed to extract text from PDF. Please ensure your PDF contains readable text." 
+            });
+          }
+        } else if (req.file.mimetype === 'text/plain' || req.file.originalname.endsWith('.txt')) {
+          resumeContent = req.file.buffer.toString('utf-8');
+          console.log(`📄 Text file parsed successfully, ${resumeContent.length} characters`);
+        } else {
+          return res.status(400).json({ 
+            message: "Unsupported file type. Please upload a PDF or text file for auto-population." 
+          });
+        }
+      } catch (parseError) {
+        console.error("Error processing resume file:", parseError);
+        return res.status(500).json({ 
+          message: "Failed to process resume file. Please try again." 
+        });
+      }
+
+      if (!resumeContent.trim()) {
+        return res.status(400).json({ 
+          message: "No text content could be extracted from the resume. Please check the file and try again." 
+        });
+      }
+
+      // Parse resume with enhanced AI extraction
+      let parsedResumeData = {};
+      try {
+        console.log(`🤖 Starting enhanced AI parsing for auto-population...`);
+        parsedResumeData = await aiInterviewService.parseResumeForProfile(resumeContent);
+        console.log(`✅ AI parsing completed, extracted:`, Object.keys(parsedResumeData));
+      } catch (aiError) {
+        console.error("Enhanced AI parsing failed:", aiError);
+        return res.status(500).json({ 
+          message: "Failed to analyze resume content. Please try again." 
+        });
+      }
+
+      // Map parsed data to profile schema
+      const profileData = mapResumeDataToProfile(parsedResumeData, userId);
+      
+      // Get existing profile to preserve any manually entered data
+      const existingProfile = await storage.getApplicantProfile(userId);
+      
+      // Merge with existing profile, giving precedence to resume data for empty/null fields
+      const mergedProfile = {
+        ...existingProfile,
+        ...profileData,
+        // Always update these fields from resume
+        resumeContent: resumeContent.substring(0, 10000),
+        updatedAt: new Date(),
+        // Calculate completion percentage after population
+        completionPercentage: calculateProfileCompletion(profileData)
+      };
+
+      // Update profile in database
+      const updatedProfile = await storage.upsertApplicantProfile(mergedProfile);
+      await storage.updateProfileCompletion(userId);
+
+      // Create resume record for tracking
+      const resumeData = {
+        userId,
+        filename: `${Date.now()}_${req.file.originalname}`,
+        originalName: req.file.originalname,
+        filePath: `/temp/${req.file.originalname}`, // Temporary path
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        extractedText: resumeContent,
+        aiAnalysis: parsedResumeData
+      };
+
+      try {
+        const resumeRecord = await storage.createResumeUpload(resumeData);
+        await storage.setActiveResume(userId, resumeRecord.id);
+      } catch (resumeError) {
+        console.warn("Failed to create resume record, but profile was updated:", resumeError);
+      }
+
+      res.json({ 
+        message: "Resume processed and profile automatically populated successfully!",
+        profile: updatedProfile,
+        extractedFields: getExtractedFieldsSummary(parsedResumeData),
+        completionPercentage: mergedProfile.completionPercentage,
+        aiParsed: true
+      });
+    } catch (error) {
+      console.error("Error in enhanced resume processing:", error);
+      res.status(500).json({ 
+        message: "Failed to process resume and populate profile. Please try again." 
       });
     }
   });

@@ -1109,7 +1109,7 @@ Return a JSON object with:
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" }
       });
@@ -1117,6 +1117,140 @@ Return a JSON object with:
       return JSON.parse(response.choices[0].message.content || '{}');
     } catch (error) {
       console.error("Error parsing resume:", error);
+      return {};
+    }
+  }
+
+  async parseResumeForProfile(resumeContent: string): Promise<any> {
+    const prompt = `You are an expert resume parser. Extract comprehensive information from this resume to automatically populate a user profile. Be thorough and extract as much relevant information as possible.
+
+RESUME CONTENT:
+${resumeContent}
+
+Extract and return a JSON object with the following comprehensive structure:
+
+{
+  "personalDetails": {
+    "name": "Full name from resume",
+    "email": "Email address",
+    "phone": "Phone number",
+    "location": {
+      "city": "Current city",
+      "country": "Current country",
+      "fullAddress": "Complete address if available"
+    },
+    "dateOfBirth": "Date of birth if mentioned (YYYY-MM-DD format)",
+    "nationality": "Nationality if mentioned",
+    "gender": "Gender if mentioned"
+  },
+  "workExperience": [
+    {
+      "company": "Company name",
+      "position": "Job title/role",
+      "startDate": "Start date (YYYY-MM-DD or YYYY-MM)",
+      "endDate": "End date (YYYY-MM-DD or YYYY-MM) or null if current",
+      "current": false,
+      "location": "Work location",
+      "employmentType": "full-time/part-time/contract/internship",
+      "responsibilities": "Key responsibilities and achievements",
+      "yearsAtPosition": "Calculated years at this position"
+    }
+  ],
+  "education": [
+    {
+      "institution": "School/University name",
+      "degree": "Degree type (Bachelor's, Master's, PhD, etc.)",
+      "fieldOfStudy": "Major/field of study",
+      "startDate": "Start date",
+      "endDate": "End date or expected graduation",
+      "current": false,
+      "gpa": "GPA if mentioned",
+      "location": "Institution location",
+      "honors": "Academic honors or distinctions"
+    }
+  ],
+  "skills": {
+    "technicalSkills": [
+      {
+        "skill": "Technical skill name",
+        "level": "beginner/intermediate/advanced/expert",
+        "yearsOfExperience": "Estimated years based on experience"
+      }
+    ],
+    "softSkills": [
+      {
+        "skill": "Soft skill name",
+        "level": "intermediate"
+      }
+    ],
+    "languages": [
+      {
+        "language": "Language name",
+        "proficiency": "native/fluent/conversational/basic",
+        "certification": "Any language certification mentioned"
+      }
+    ]
+  },
+  "certifications": [
+    {
+      "name": "Certification name",
+      "issuer": "Issuing organization",
+      "dateObtained": "Date obtained",
+      "expiryDate": "Expiry date if applicable",
+      "credentialId": "Credential ID if mentioned"
+    }
+  ],
+  "onlinePresence": {
+    "linkedinUrl": "LinkedIn profile URL",
+    "githubUrl": "GitHub profile URL",
+    "websiteUrl": "Personal website URL",
+    "portfolioUrl": "Portfolio website URL",
+    "otherUrls": ["Any other professional URLs"]
+  },
+  "careerInformation": {
+    "totalYearsOfExperience": "Calculated total years of work experience",
+    "currentEducationLevel": "bachelor/master/phd/high_school/vocational/diploma",
+    "careerLevel": "entry_level/mid_level/senior_level/executive based on experience",
+    "jobTitles": ["List of job titles they've held"],
+    "industries": ["Industries they've worked in"],
+    "summary": "Professional summary or objective from resume"
+  },
+  "achievements": "Notable achievements, awards, or accomplishments mentioned",
+  "projects": [
+    {
+      "name": "Project name",
+      "description": "Project description",
+      "technologies": ["Technologies used"],
+      "url": "Project URL if available"
+    }
+  ]
+}
+
+EXTRACTION GUIDELINES:
+- Extract ALL available information, even if fields seem optional
+- For dates, try to parse into standardized formats (YYYY-MM-DD or YYYY-MM)
+- Calculate years of experience based on work history
+- Infer skill levels based on experience duration and context
+- For current positions/education, set "current": true and "endDate": null
+- Be conservative with skill level assessments - prefer "intermediate" unless clear expertise is shown
+- Extract any URLs, social media profiles, or online presence information
+- Look for certifications, licenses, awards, or special achievements
+- If information is not available, use null or empty arrays rather than making assumptions
+
+Return only the JSON object, no additional text.`;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.1, // Low temperature for consistent extraction
+        max_tokens: 2000
+      });
+
+      return JSON.parse(response.choices[0].message.content || '{}');
+    } catch (error) {
+      console.error("Error parsing resume for profile:", error);
       return {};
     }
   }
@@ -1135,5 +1269,6 @@ export const aiInterviewService = {
   generateProfessionalInterview: aiInterviewAgent.generateProfessionalInterview.bind(aiInterviewAgent),
   generateTechnicalInterview: aiInterviewAgent.generateTechnicalInterview.bind(aiInterviewAgent),
   generateProfile: aiProfileAnalysisAgent.generateComprehensiveProfile.bind(aiProfileAnalysisAgent),
-  parseResume: aiProfileAnalysisAgent.parseResume.bind(aiProfileAnalysisAgent)
+  parseResume: aiProfileAnalysisAgent.parseResume.bind(aiProfileAnalysisAgent),
+  parseResumeForProfile: aiProfileAnalysisAgent.parseResumeForProfile.bind(aiProfileAnalysisAgent)
 };
