@@ -11,7 +11,7 @@ import { ResumeService } from "./resumeService";
 import multer from "multer";
 import { z } from "zod";
 import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile } from "@shared/schema";
-import { PDFDocument } from "pdf-lib";
+// Dynamic import for pdf-parse will be used when needed
 import { db } from "./db";
 import { applicantProfiles, interviewSessions } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
@@ -951,18 +951,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Handle different file types
         if (req.file.mimetype === 'application/pdf') {
           try {
-            // For now, we'll accept PDFs but note that text extraction is limited
-            // In production, you might want to use a more sophisticated PDF parsing service
-            console.log('📄 PDF file received, processing for profile auto-population...');
+            console.log('📄 PDF file received, extracting text for AI parsing...');
             
-            // Since we can't easily extract text from PDF in this environment,
-            // we'll inform the user and suggest they use a text file instead
-            resumeContent = `PDF file uploaded: ${req.file.originalname}. For best results with auto-population, please upload a text version of your resume.`;
-            console.log(`📄 PDF processed, will continue with manual profile building`);
+            // Use pdf-parse to extract text from PDF
+            const pdfParse = (await import('pdf-parse')).default;
+            const pdfData = await pdfParse(req.file.buffer);
+            resumeContent = pdfData.text;
+            
+            console.log(`📄 PDF text extracted successfully: ${resumeContent.length} characters`);
+            
+            if (!resumeContent.trim()) {
+              console.warn('📄 PDF appears to contain no extractable text');
+              return res.status(400).json({ 
+                message: "The PDF appears to contain no readable text. Please ensure your PDF contains text content, not just images." 
+              });
+            }
           } catch (pdfError) {
-            console.error("PDF processing error:", pdfError);
+            console.error("PDF extraction error:", pdfError);
             return res.status(400).json({ 
-              message: "Failed to process PDF. Please try uploading a text version of your resume for auto-population." 
+              message: "Failed to extract text from PDF. Please ensure your PDF contains readable text or try uploading a text version." 
             });
           }
         } else if (req.file.mimetype === 'text/plain' || req.file.originalname.endsWith('.txt')) {
@@ -990,8 +997,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let parsedResumeData = {};
       try {
         console.log(`🤖 Starting enhanced AI parsing for auto-population...`);
+        console.log(`🤖 Resume content sample (first 200 chars): ${resumeContent.substring(0, 200)}...`);
+        
         parsedResumeData = await aiInterviewService.parseResumeForProfile(resumeContent);
-        console.log(`✅ AI parsing completed, extracted:`, Object.keys(parsedResumeData));
+        console.log(`✅ AI parsing completed, extracted sections:`, Object.keys(parsedResumeData));
+        console.log(`✅ Parsed data summary:`, JSON.stringify(parsedResumeData, null, 2).substring(0, 500) + '...');
       } catch (aiError) {
         console.error("Enhanced AI parsing failed:", aiError);
         return res.status(500).json({ 

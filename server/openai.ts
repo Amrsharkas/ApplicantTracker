@@ -83,7 +83,7 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
         model: "gpt-4o",
         messages,
         temperature: 0.7,
-        max_tokens: 200
+        max_completion_tokens: 200
       });
 
       return response.choices[0].message.content?.trim() || this.getFallbackWelcomeMessage(userData?.firstName, language);
@@ -1007,7 +1007,7 @@ A tough, fair recruiter who just finished an in-depth interview—credible, nuan
         ],
         response_format: { type: "json_object" },
         temperature: 0.1,
-        max_tokens: 1500
+        max_completion_tokens: 1500
       });
 
       const profile = JSON.parse(response.choices[0].message.content || '{}');
@@ -1245,7 +1245,7 @@ Return only the JSON object, no additional text.`;
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         temperature: 0.1, // Low temperature for consistent extraction
-        max_tokens: 2000
+        max_completion_tokens: 2000
       });
 
       return JSON.parse(response.choices[0].message.content || '{}');
