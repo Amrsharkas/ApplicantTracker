@@ -385,30 +385,6 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Reset profile mutation
-  const resetProfileMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest('/api/comprehensive-profile/reset', { method: 'POST' });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Profile Reset",
-        description: "Your profile has been reset to start fresh.",
-      });
-      // Reset the form to default values
-      form.reset();
-      // Refetch the profile data
-      queryClient.invalidateQueries({ queryKey: ["/api/comprehensive-profile"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Reset Failed",
-        description: "Failed to reset profile. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Form initialization with truly empty default values to avoid false completion scores
   const form = useForm<ComprehensiveProfileData>({
@@ -711,29 +687,16 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
               <User className="h-5 w-5" />
               <span>Build Your Complete Profile</span>
             </DialogTitle>
-            <div className="flex items-center space-x-4">
-              {/* Temporary Reset Button for Testing */}
-              <Button 
-                type="button" 
-                variant="destructive" 
-                size="sm"
-                onClick={() => resetProfileMutation.mutate()}
-                disabled={resetProfileMutation.isPending}
-              >
-                {resetProfileMutation.isPending ? "Resetting..." : "Reset Profile"}
-              </Button>
-              
-              <div className="flex items-center space-x-2 text-sm text-gray-500">
-                {isAutoSaving && (
-                  <div className="flex items-center space-x-1">
-                    <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-600"></div>
-                    <span>Saving...</span>
-                  </div>
-                )}
-                {lastSaved && !isAutoSaving && (
-                  <span>Last saved: {lastSaved.toLocaleTimeString()}</span>
-                )}
-              </div>
+            <div className="flex items-center space-x-2 text-sm text-gray-500">
+              {isAutoSaving && (
+                <div className="flex items-center space-x-1">
+                  <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-600"></div>
+                  <span>Saving...</span>
+                </div>
+              )}
+              {lastSaved && !isAutoSaving && (
+                <span>Last saved: {lastSaved.toLocaleTimeString()}</span>
+              )}
             </div>
           </div>
         </DialogHeader>
