@@ -426,6 +426,19 @@ function calculateProfileCompletion(profileData: any): number {
   return Math.min(score, maxScore);
 }
 
+// Basic fallback extraction for when AI parsing fails
+function extractBasicInfo(resumeText: string): any {
+  const emailMatch = resumeText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  const phoneMatch = resumeText.match(/[\+]?[1-9][\d]{0,15}/);
+  const nameLines = resumeText.split('\n').slice(0, 3);
+  
+  return {
+    name: nameLines[0]?.trim() || null,
+    email: emailMatch ? emailMatch[0] : null,
+    phone: phoneMatch ? phoneMatch[0] : null
+  };
+}
+
 // Helper function to generate summary of extracted fields
 function getExtractedFieldsSummary(parsedData: any): any {
   const summary: any = {
@@ -1008,7 +1021,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         parsedResumeData = await aiInterviewService.parseResumeForProfile(resumeContent);
         console.log(`✅ AI parsing completed, extracted sections:`, Object.keys(parsedResumeData));
-        console.log(`✅ Parsed data summary:`, JSON.stringify(parsedResumeData, null, 2).substring(0, 500) + '...');
+        console.log(`✅ Full parsed data:`, JSON.stringify(parsedResumeData, null, 2));
+        
+        // Check if parsing returned empty or invalid data
+        if (!parsedResumeData || Object.keys(parsedResumeData).length === 0) {
+          console.warn('⚠️ AI parsing returned empty data, attempting fallback extraction...');
+          // Basic fallback parsing for text content
+          parsedResumeData = {
+            personalDetails: extractBasicInfo(resumeContent),
+            rawContent: resumeContent
+          };
+        }
       } catch (aiError) {
         console.error("Enhanced AI parsing failed:", aiError);
         return res.status(500).json({ 

@@ -1248,6 +1248,7 @@ EXTRACTION GUIDELINES:
 Return only the JSON object, no additional text.`;
 
     try {
+      console.log(`🔧 Making OpenAI API call with GPT-5...`);
       const response = await openai.chat.completions.create({
         model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
         messages: [{ role: "user", content: prompt }],
@@ -1256,9 +1257,13 @@ Return only the JSON object, no additional text.`;
         max_completion_tokens: 2000
       });
 
-      return JSON.parse(response.choices[0].message.content || '{}');
+      console.log(`🔧 OpenAI response received, parsing JSON...`);
+      const result = JSON.parse(response.choices[0].message.content || '{}');
+      console.log(`🔧 Parsed JSON result:`, result);
+      return result;
     } catch (error) {
       console.error("Error parsing resume for profile:", error);
+      console.error("Full error details:", JSON.stringify(error, null, 2));
       return {};
     }
   }
