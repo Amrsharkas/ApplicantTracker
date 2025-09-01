@@ -245,18 +245,24 @@ function ResumeUploadSection({ onProfilePopulated }: { onProfilePopulated: () =>
         setUploadProgress(prev => Math.min(prev + 10, 90));
       }, 100);
 
-      const response = await apiRequest('/api/resume/process-and-populate', {
+      const response = await fetch('/api/resume/process-and-populate', {
         method: 'POST',
         body: formData,
       });
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
 
       clearInterval(progressInterval);
       setUploadProgress(100);
-      setUploadResult(response);
+      setUploadResult(result);
 
       toast({
         title: "Resume Processed Successfully! 🎉",
-        description: `Profile auto-populated with ${Object.keys(response.extractedFields || {}).filter(key => response.extractedFields[key]).length} sections from your resume.`,
+        description: `Profile auto-populated with ${Object.keys(result.extractedFields || {}).filter(key => result.extractedFields[key]).length} sections from your resume.`,
       });
 
       // Notify parent component that profile was populated
@@ -345,7 +351,7 @@ function ResumeUploadSection({ onProfilePopulated }: { onProfilePopulated: () =>
               <span className="text-sm font-medium text-green-800">Profile Auto-Populated!</span>
             </div>
             <div className="text-xs text-green-700 space-y-1">
-              <p>✅ Completion: {uploadResult.completionPercentage}%</p>
+              <p>✅ Completion: {uploadResult?.completionPercentage || 0}%</p>
               {uploadResult.extractedFields?.personalInfo && <p>✅ Personal Information</p>}
               {uploadResult.extractedFields?.workExperience && <p>✅ Work Experience ({uploadResult.extractedFields.workExperienceCount} positions)</p>}
               {uploadResult.extractedFields?.education && <p>✅ Education ({uploadResult.extractedFields.educationCount} degrees)</p>}
@@ -584,7 +590,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
       });
       
       // Use the fresh backend completion percentage for consistency
-      const progressPercentage = freshData?.completionPercentage || data?.completionPercentage || 0;
+      const progressPercentage = (freshData as any)?.completionPercentage || (data as any)?.completionPercentage || 0;
       toast({
         title: "Profile progress saved!",
         description: `Your profile is ${progressPercentage}% complete. ${progressPercentage >= 75 ? 'Interviews are now unlocked!' : 'Continue building to unlock interviews at 75%.'}`,
