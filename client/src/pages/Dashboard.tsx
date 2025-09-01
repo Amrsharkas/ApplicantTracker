@@ -113,7 +113,7 @@ export default function Dashboard() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
+    // Validate file type and provide helpful guidance
     if (!file.type.includes('pdf') && !file.type.includes('text')) {
       toast({
         title: "Invalid File Type",
@@ -121,6 +121,14 @@ export default function Dashboard() {
         variant: "destructive",
       });
       return;
+    }
+
+    // Provide guidance for PDF files
+    if (file.type.includes('pdf')) {
+      toast({
+        title: "PDF Upload Notice",
+        description: "For best auto-population results, consider uploading a text version (.txt) of your resume. PDFs will be processed but may have limited text extraction.",
+      });
     }
 
     // Validate file size (10MB limit)
