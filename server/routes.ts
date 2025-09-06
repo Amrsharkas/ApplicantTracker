@@ -232,6 +232,40 @@ function generateOverallImpression(cvData: any): string {
   return impression;
 }
 
+// Helper function to sanitize text content for database storage
+function sanitizeTextForDatabase(text: string): string {
+  if (!text) return '';
+  
+  // Remove null bytes and other invalid UTF-8 sequences
+  return text
+    .replace(/\0/g, '') // Remove null bytes
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove other control characters
+    .trim();
+}
+
+// Helper function to sanitize JSON data for database storage
+function sanitizeJsonForDatabase(data: any): any {
+  if (!data) return data;
+  
+  if (typeof data === 'string') {
+    return sanitizeTextForDatabase(data);
+  }
+  
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeJsonForDatabase(item));
+  }
+  
+  if (typeof data === 'object') {
+    const sanitized: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      sanitized[key] = sanitizeJsonForDatabase(value);
+    }
+    return sanitized;
+  }
+  
+  return data;
+}
+
 // Helper function to map parsed resume data to profile schema
 function mapResumeDataToProfile(parsedData: any, userId: string): any {
   const profileData: any = { userId };
@@ -947,56 +981,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let resumeContent = '';
       
       try {
-        console.log(`Processing file for auto-population: ${req.file.originalname}, mimetype: ${req.file.mimetype}, size: ${req.file.size}`);
-        
-        // Handle different file types
-        if (req.file.mimetype === 'application/pdf') {
-          try {
-            console.log('📄 PDF file received, attempting text extraction...');
-            
-            // Try pdf-parse with better error handling
-            try {
-              const pdfParse = require('pdf-parse');
-              const pdfData = await pdfParse(req.file.buffer);
-              resumeContent = pdfData.text;
-              console.log(`📄 PDF text extracted successfully: ${resumeContent.length} characters`);
-            } catch (parseError) {
-              console.warn('📄 PDF text extraction failed, using fallback approach:', parseError.message);
-              
-              // Fallback: Try to extract basic text from buffer as a last resort
-              try {
-                resumeContent = req.file.buffer.toString('utf8');
-                console.log(`📄 Using buffer text extraction as fallback`);
-              } catch (bufferError) {
-                resumeContent = `Note: Unable to extract text from PDF. Please upload a text version or Word document for better auto-population results.`;
-                console.log(`📄 Complete fallback - encouraging text upload`);
-              }
-            }
-            
-            if (!resumeContent.trim()) {
-              console.warn('📄 PDF appears to contain no extractable text');
-              return res.status(400).json({ 
-                message: "The PDF appears to contain no readable text. Please ensure your PDF contains text content, not just images, or try uploading a text version (.txt file)." 
-              });
-            }
-          } catch (pdfError) {
-            console.error("PDF processing error:", pdfError);
-            return res.status(400).json({ 
-              message: "Failed to process PDF. For best results, please upload a text version (.txt file) of your resume." 
-            });
-          }
-        } else if (req.file.mimetype === 'text/plain' || req.file.originalname.endsWith('.txt')) {
-          resumeContent = req.file.buffer.toString('utf-8');
-          console.log(`📄 Text file parsed successfully, ${resumeContent.length} characters`);
-        } else {
-          return res.status(400).json({ 
-            message: "Unsupported file type. Please upload a PDF or text file for auto-population." 
-          });
-        }
+        console.log(`Processing file via OpenAI extraction: ${req.file.originalname}, mimetype: ${req.file.mimetype}, size: ${req.file.size}`);
+        // Avoid local OCR/PDF parsing. Let OpenAI read the file directly and return plaintext.
+        resumeContent = await aiProfileAnalysisAgent.extractResumeTextWithOpenAI({
+          buffer: req.file.buffer,
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype
+        });
+        resumeContent = sanitizeTextForDatabase(resumeContent);
       } catch (parseError) {
-        console.error("Error processing resume file:", parseError);
+        console.error("OpenAI file extraction failed:", parseError);
         return res.status(500).json({ 
-          message: "Failed to process resume file. Please try again." 
+          message: "Failed to extract text from resume. Please try again." 
         });
       }
 
@@ -1006,11 +1002,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Additional validation for extracted text quality
+      if (resumeContent.length < 100) {
+        console.warn(`⚠️ Very short resume content extracted: ${resumeContent.length} characters`);
+        console.warn(`⚠️ Content preview: "${resumeContent.substring(0, 200)}"`);
+        
+        return res.status(400).json({ 
+          message: "The extracted text from your resume is too short to process effectively. This might be an image-based PDF or the file may be corrupted. Please try uploading a text version (.txt) of your resume." 
+        });
+      }
+
+      // Check if the content looks like actual resume text
+      const hasResumeKeywords = /(experience|education|skills|work|job|university|degree|company|position|resume|cv)/i.test(resumeContent);
+      if (!hasResumeKeywords && resumeContent.length < 500) {
+        console.warn(`⚠️ Extracted content doesn't appear to be resume text`);
+        console.warn(`⚠️ Content preview: "${resumeContent.substring(0, 300)}"`);
+        
+        return res.status(400).json({ 
+          message: "The extracted content doesn't appear to be a resume. Please ensure you're uploading a resume file with text content (not just images)." 
+        });
+      }
+
       // Parse resume with enhanced AI extraction
       let parsedResumeData = {};
       try {
         console.log(`🤖 Starting enhanced AI parsing for auto-population...`);
+        console.log(`🤖 Resume content length: ${resumeContent.length} characters`);
         console.log(`🤖 Resume content sample (first 200 chars): ${resumeContent.substring(0, 200)}...`);
+        
+        // Log the full content for debugging (you can remove this in production)
+        console.log('🤖 Full resume content for AI processing:');
+        console.log(resumeContent);
         
         parsedResumeData = await aiInterviewService.parseResumeForProfile(resumeContent);
         console.log(`✅ AI parsing completed, extracted sections:`, Object.keys(parsedResumeData));
