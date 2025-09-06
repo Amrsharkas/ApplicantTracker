@@ -38,7 +38,7 @@ export function getSession() {
     saveUninitialized: true, // Changed to true to help with OIDC flow
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       maxAge: sessionTtl,
       sameSite: 'lax' // Added for better OIDC compatibility
     },

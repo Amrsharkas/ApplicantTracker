@@ -12,6 +12,9 @@ app.use((req, res, next) => {
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
+  // Debug logging for all requests
+  console.log(`[DEBUG] ${req.method} ${path} - ${req.ip} - ${req.get('User-Agent')?.substring(0, 50)}`);
+
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
     capturedJsonResponse = bodyJson;
@@ -63,13 +66,12 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
+  // Serve the app on port 3000 (changed from 5000 to avoid AirPlay conflict)
   // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
+  const port = 3000;
   server.listen({
     port,
-    host: "localhost",
+    host: "0.0.0.0",
   }, () => {
     log(`serving on port ${port}`);
   });

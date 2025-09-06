@@ -2748,34 +2748,40 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
-  // Set up automatic Airtable monitoring (every 30 seconds)
-  setInterval(async () => {
-    try {
-      console.log("⏰ Running Airtable monitoring check...");
-      
-      // Monitor platojobmatches table for job matches (creates job matches)
-      const newJobMatches = await airtableService.checkForNewJobMatches();
-      
-      if (newJobMatches.length > 0) {
-        console.log(`🎯 Found ${newJobMatches.length} new job matches in job matches table`);
+  // Set up automatic Airtable monitoring (only in production or when explicitly enabled)
+  const enableAutoMonitoring = process.env.NODE_ENV === 'production' || process.env.ENABLE_AIRTABLE_MONITORING === 'true';
+  
+  if (enableAutoMonitoring) {
+    setInterval(async () => {
+      try {
+        console.log("⏰ Running Airtable monitoring check...");
         
-        for (const jobMatch of newJobMatches) {
-          try {
-            await airtableService.processJobMatch(jobMatch);
-            console.log(`✅ Auto-created job match for user ${jobMatch.userId}: ${jobMatch.jobTitle}`);
-          } catch (error) {
-            console.error(`❌ Failed to create job match for user ${jobMatch.userId}:`, error);
+        // Monitor platojobmatches table for job matches (creates job matches)
+        const newJobMatches = await airtableService.checkForNewJobMatches();
+        
+        if (newJobMatches.length > 0) {
+          console.log(`🎯 Found ${newJobMatches.length} new job matches in job matches table`);
+          
+          for (const jobMatch of newJobMatches) {
+            try {
+              await airtableService.processJobMatch(jobMatch);
+              console.log(`✅ Auto-created job match for user ${jobMatch.userId}: ${jobMatch.jobTitle}`);
+            } catch (error) {
+              console.error(`❌ Failed to create job match for user ${jobMatch.userId}:`, error);
+            }
           }
+        } else {
+          console.log("🔍 No new job matches found in current monitoring cycle");
         }
-      } else {
-        console.log("🔍 No new job matches found in current monitoring cycle");
+      } catch (error) {
+        console.error("❌ Airtable monitoring error:", error);
       }
-    } catch (error) {
-      console.error("❌ Airtable monitoring error:", error);
-    }
-  }, 60000); // Check every 60 seconds (1 minute)
+    }, 60000); // Check every 60 seconds (1 minute)
 
-  console.log("🚀 Airtable job monitoring system started - checking every 60 seconds");
+    console.log("🚀 Airtable job monitoring system started - checking every 60 seconds");
+  } else {
+    console.log("ℹ️ Airtable auto-monitoring disabled in development. Use /api/admin/process-airtable-jobs to manually process.");
+  }
 
   // Generate brutally honest profile for Airtable after all interviews completed
   app.post('/api/profile/generate-honest-assessment', 
