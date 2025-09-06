@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { toFile } from "openai/uploads";
 
 // Using the latest OpenAI model gpt-4o (May 13, 2024). Note: ChatGPT-5 is not yet publicly available
 const openai = new OpenAI({ 
@@ -36,6 +37,7 @@ export interface GeneratedProfile {
   careerGoals: string;
   workStyle: string;
   summary: string;
+  brutallyHonestProfile?: any;
 }
 
 // AI Agent 1: Interview Conductor - analyzes resume/profile and conducts personalized interviews
@@ -361,7 +363,7 @@ ${conversationStyle}
 KEY THEMES FROM PREVIOUS INTERVIEWS: ${keyThemes.join(', ')}
 
 QUESTIONS ALREADY ASKED (DO NOT REPEAT):
-${previousQuestions.map(q => `- ${q}`).join('\n')}
+${previousQuestions.map((q: string) => `- ${q}`).join('\n')}
 
 CRITICAL INSTRUCTIONS:
 1. You are the SAME interviewer who knows their full profile AND previous answers
@@ -535,7 +537,7 @@ ${conversationStyle}
 KEY THEMES FROM ALL PREVIOUS INTERVIEWS: ${keyThemes.join(', ')}
 
 QUESTIONS ALREADY ASKED (DO NOT REPEAT):
-${previousQuestions.map(q => `- ${q}`).join('\n')}
+${previousQuestions.map((q: string) => `- ${q}`).join('\n')}
 
 CRITICAL INSTRUCTIONS:
 1. You are the SAME interviewer who knows their full profile AND all previous answers
@@ -908,6 +910,62 @@ Return JSON with:
 
 // AI Agent 2: Profile Analyzer - creates comprehensive user analysis from resume, profile, and interview responses
 export class AIProfileAnalysisAgent {
+  // Extract plain text from an uploaded resume file by letting OpenAI read the file directly
+  // and return the raw text content. This avoids local OCR/PDF parsing.
+  async extractResumeTextWithOpenAI(file: { buffer: Buffer; originalname: string; mimetype: string }): Promise<string> {
+    try {
+      const uploaded = await openai.files.create({
+        file: await toFile(file.buffer, file.originalname, { type: file.mimetype }),
+        purpose: "assistants"
+      });
+
+      const extractionPrompt = "Extract and return the full plain text from this resume file. Preserve reading order and line breaks. Do not summarize, translate, or add any commentary. Output ONLY the raw plaintext.";
+
+      // Use Responses API to have the model read the uploaded file and emit plaintext
+      // Using a cost-effective model for extraction; downstream structured parsing will use GPT-5
+      const response: any = await (openai as any).responses.create({
+        model: "gpt-4o-mini",
+        input: [
+          {
+            role: "user",
+            content: [
+              { type: "input_text", text: extractionPrompt },
+              { type: "input_file", file_id: uploaded.id }
+            ]
+          }
+        ],
+        // Allow long outputs for multi-page resumes
+        max_output_tokens: 64000
+      });
+
+      // Best-effort extraction of output text across SDK versions
+      let text = "";
+      if (response?.output_text) {
+        text = response.output_text;
+      } else if (Array.isArray(response?.output)) {
+        for (const item of response.output) {
+          if (Array.isArray(item?.content)) {
+            for (const c of item.content) {
+              if (c?.type === "output_text" && typeof c?.text === "string") {
+                text += c.text;
+              } else if (c?.type === "text" && typeof c?.text === "string") {
+                text += c.text;
+              }
+            }
+          }
+        }
+      }
+
+      // Optional: cleanup the uploaded file
+      try { await openai.files.delete(uploaded.id as any); } catch (_) { /* ignore */ }
+
+      return (text || "").trim();
+    } catch (error) {
+      console.error("Failed to extract resume text via OpenAI file reading:", error);
+      return "";
+    }
+  }
+
   async generateComprehensiveProfile(
     userData: any,
     resumeContent: string | null,
@@ -1122,149 +1180,246 @@ Return a JSON object with:
   }
 
   async parseResumeForProfile(resumeContent: string): Promise<any> {
-    const prompt = `You are an expert resume parser and career analyst. Analyze the following resume text and extract ALL available information into a detailed, structured JSON format. Be thorough and comprehensive - extract every piece of information that could be useful for a job application profile.
-
-CRITICAL INSTRUCTIONS:
-1. Extract ALL information present in the resume, even if it seems minor
-2. For missing information, use null or empty arrays - DO NOT make assumptions
-3. Be precise with dates, skills, and experience details
-4. Calculate experience levels and career progression accurately
-5. Extract soft skills, technical skills, and industry knowledge separately
-6. Include all contact information and online presence details
-
-RESUME CONTENT:
-${resumeContent}
-
-Extract and return a JSON object with the following comprehensive structure:
-
-{
-  "personalDetails": {
-    "name": "Full name from resume",
-    "email": "Email address",
-    "phone": "Phone number",
-    "location": {
-      "city": "Current city",
-      "country": "Current country",
-      "fullAddress": "Complete address if available"
-    },
-    "dateOfBirth": "Date of birth if mentioned (YYYY-MM-DD format)",
-    "nationality": "Nationality if mentioned",
-    "gender": "Gender if mentioned"
-  },
-  "workExperience": [
-    {
-      "company": "Company name",
-      "position": "Job title/role",
-      "startDate": "Start date (YYYY-MM-DD or YYYY-MM)",
-      "endDate": "End date (YYYY-MM-DD or YYYY-MM) or null if current",
-      "current": false,
-      "location": "Work location",
-      "employmentType": "full-time/part-time/contract/internship",
-      "responsibilities": "Key responsibilities and achievements",
-      "yearsAtPosition": "Calculated years at this position"
-    }
-  ],
-  "education": [
-    {
-      "institution": "School/University name",
-      "degree": "Degree type (Bachelor's, Master's, PhD, etc.)",
-      "fieldOfStudy": "Major/field of study",
-      "startDate": "Start date",
-      "endDate": "End date or expected graduation",
-      "current": false,
-      "gpa": "GPA if mentioned",
-      "location": "Institution location",
-      "honors": "Academic honors or distinctions"
-    }
-  ],
-  "skills": {
-    "technicalSkills": [
-      {
-        "skill": "Technical skill name",
-        "level": "beginner/intermediate/advanced/expert",
-        "yearsOfExperience": "Estimated years based on experience"
-      }
-    ],
-    "softSkills": [
-      {
-        "skill": "Soft skill name",
-        "level": "intermediate"
-      }
-    ],
-    "languages": [
-      {
-        "language": "Language name",
-        "proficiency": "native/fluent/conversational/basic",
-        "certification": "Any language certification mentioned"
-      }
-    ]
-  },
-  "certifications": [
-    {
-      "name": "Certification name",
-      "issuer": "Issuing organization",
-      "dateObtained": "Date obtained",
-      "expiryDate": "Expiry date if applicable",
-      "credentialId": "Credential ID if mentioned"
-    }
-  ],
-  "onlinePresence": {
-    "linkedinUrl": "LinkedIn profile URL",
-    "githubUrl": "GitHub profile URL",
-    "websiteUrl": "Personal website URL",
-    "portfolioUrl": "Portfolio website URL",
-    "otherUrls": ["Any other professional URLs"]
-  },
-  "careerInformation": {
-    "totalYearsOfExperience": "Calculated total years of work experience",
-    "currentEducationLevel": "bachelor/master/phd/high_school/vocational/diploma",
-    "careerLevel": "entry_level/mid_level/senior_level/executive based on experience",
-    "jobTitles": ["List of job titles they've held"],
-    "industries": ["Industries they've worked in"],
-    "summary": "Professional summary or objective from resume"
-  },
-  "achievements": "Notable achievements, awards, or accomplishments mentioned",
-  "projects": [
-    {
-      "name": "Project name",
-      "description": "Project description",
-      "technologies": ["Technologies used"],
-      "url": "Project URL if available"
-    }
-  ]
-}
-
-EXTRACTION GUIDELINES:
-- Extract ALL available information, even if fields seem optional
-- For dates, try to parse into standardized formats (YYYY-MM-DD or YYYY-MM)
-- Calculate years of experience based on work history
-- Infer skill levels based on experience duration and context
-- For current positions/education, set "current": true and "endDate": null
-- Be conservative with skill level assessments - prefer "intermediate" unless clear expertise is shown
-- Extract any URLs, social media profiles, or online presence information
-- Look for certifications, licenses, awards, or special achievements
-- If information is not available, use null or empty arrays rather than making assumptions
-
-Return only the JSON object, no additional text.`;
+    // Define a JSON Schema for strict extraction
+    const resumeProfileSchema: any = {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        personalDetails: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            name: { type: ["string", "null"] },
+            email: { type: ["string", "null"] },
+            phone: { type: ["string", "null"] },
+            location: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                city: { type: ["string", "null"] },
+                country: { type: ["string", "null"] },
+                fullAddress: { type: ["string", "null"] }
+              },
+              required: ["city", "country", "fullAddress"]
+            },
+            dateOfBirth: { type: ["string", "null"] },
+            nationality: { type: ["string", "null"] },
+            gender: { type: ["string", "null"] }
+          },
+          required: ["name", "email", "phone", "location", "dateOfBirth", "nationality", "gender"]
+        },
+        workExperience: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              company: { type: ["string", "null"] },
+              position: { type: ["string", "null"] },
+              startDate: { type: ["string", "null"] },
+              endDate: { type: ["string", "null"] },
+              current: { type: ["boolean", "null"] },
+              location: { type: ["string", "null"] },
+              employmentType: { type: ["string", "null"] },
+              responsibilities: { type: ["string", "null"] },
+              yearsAtPosition: { type: ["string", "number", "null"] }
+            },
+            required: ["company", "position", "startDate", "endDate", "current", "location", "employmentType", "responsibilities", "yearsAtPosition"]
+          }
+        },
+        education: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              institution: { type: ["string", "null"] },
+              degree: { type: ["string", "null"] },
+              fieldOfStudy: { type: ["string", "null"] },
+              startDate: { type: ["string", "null"] },
+              endDate: { type: ["string", "null"] },
+              current: { type: ["boolean", "null"] },
+              gpa: { type: ["string", "null"] },
+              location: { type: ["string", "null"] },
+              honors: { type: ["string", "null"] }
+            },
+            required: ["institution", "degree", "fieldOfStudy", "startDate", "endDate", "current", "gpa", "location", "honors"]
+          }
+        },
+        skills: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            technicalSkills: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  skill: { type: ["string", "null"] },
+                  level: { type: ["string", "null"] },
+                  yearsOfExperience: { type: ["string", "number", "null"] }
+                },
+                required: ["skill", "level", "yearsOfExperience"]
+              }
+            },
+            softSkills: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  skill: { type: ["string", "null"] },
+                  level: { type: ["string", "null"] }
+                },
+                required: ["skill", "level"]
+              }
+            },
+            languages: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  language: { type: ["string", "null"] },
+                  proficiency: { type: ["string", "null"] },
+                  certification: { type: ["string", "null"] }
+                },
+                required: ["language", "proficiency", "certification"]
+              }
+            }
+          },
+          required: ["technicalSkills", "softSkills", "languages"]
+        },
+        certifications: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              name: { type: ["string", "null"] },
+              issuer: { type: ["string", "null"] },
+              dateObtained: { type: ["string", "null"] },
+              expiryDate: { type: ["string", "null"] },
+              credentialId: { type: ["string", "null"] }
+            },
+            required: ["name", "issuer", "dateObtained", "expiryDate", "credentialId"]
+          }
+        },
+        onlinePresence: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            linkedinUrl: { type: ["string", "null"] },
+            githubUrl: { type: ["string", "null"] },
+            websiteUrl: { type: ["string", "null"] },
+            portfolioUrl: { type: ["string", "null"] },
+            otherUrls: { type: "array", items: { type: "string" } }
+          },
+          required: ["linkedinUrl", "githubUrl", "websiteUrl", "portfolioUrl", "otherUrls"]
+        },
+        careerInformation: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            totalYearsOfExperience: { type: ["string", "number", "null"] },
+            currentEducationLevel: { type: ["string", "null"] },
+            careerLevel: { type: ["string", "null"] },
+            jobTitles: { type: "array", items: { type: "string" } },
+            industries: { type: "array", items: { type: "string" } },
+            summary: { type: ["string", "null"] }
+          },
+          required: ["totalYearsOfExperience", "currentEducationLevel", "careerLevel", "jobTitles", "industries", "summary"]
+        },
+        achievements: { type: ["string", "null"] },
+        projects: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              name: { type: ["string", "null"] },
+              description: { type: ["string", "null"] },
+              technologies: { type: "array", items: { type: "string" } },
+              url: { type: ["string", "null"] }
+            },
+            required: ["name", "description", "technologies", "url"]
+          }
+        }
+      },
+      required: [
+        "personalDetails",
+        "workExperience",
+        "education",
+        "skills",
+        "certifications",
+        "onlinePresence",
+        "careerInformation",
+        "achievements",
+        "projects"
+      ]
+    };
 
     try {
-      console.log(`🔧 Making OpenAI API call with GPT-5...`);
-      const response = await openai.chat.completions.create({
-        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        temperature: 0.1, // Low temperature for consistent extraction
-        max_completion_tokens: 2000
+      const instruction = `You are an expert resume parser and career analyst. Extract ALL available information into the provided JSON schema. Use nulls/empty arrays for missing info. Be precise; do not invent data.`;
+
+      const response: any = await (openai as any).responses.create({
+        model: "gpt-5",
+        input: [
+          {
+            role: "user",
+            content: [
+              { type: "input_text", text: instruction },
+              { type: "input_text", text: `RESUME CONTENT:\n${resumeContent}` }
+            ]
+          }
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "ApplicantProfile",
+            schema: resumeProfileSchema,
+            strict: true
+          }
+        },
+        max_output_tokens: 4000
       });
 
-      console.log(`🔧 OpenAI response received, parsing JSON...`);
-      const result = JSON.parse(response.choices[0].message.content || '{}');
-      console.log(`🔧 Parsed JSON result:`, result);
-      return result;
+      let text = "";
+      if (response?.output_text) {
+        text = response.output_text;
+      } else if (Array.isArray(response?.output)) {
+        for (const item of response.output) {
+          if (Array.isArray(item?.content)) {
+            for (const c of item.content) {
+              if (c?.type === "output_text" && typeof c?.text === "string") text += c.text;
+              else if (c?.type === "text" && typeof c?.text === "string") text += c.text;
+            }
+          }
+        }
+      }
+
+      const parsed = text ? JSON.parse(text) : {};
+      return parsed;
     } catch (error) {
-      console.error("Error parsing resume for profile:", error);
+      console.error("Error parsing resume for profile (Responses API):", error);
       console.error("Full error details:", JSON.stringify(error, null, 2));
-      return {};
+      // Fallback to simple chat completion JSON mode as last resort
+      try {
+        const fallback = await openai.chat.completions.create({
+          model: "gpt-5",
+          messages: [
+            { role: "system", content: "Return only valid JSON matching the requested structure." },
+            { role: "user", content: `Extract structured JSON for this resume:\n${resumeContent}` }
+          ],
+          response_format: { type: "json_object" },
+          max_completion_tokens: 2000
+        });
+        return JSON.parse(fallback.choices[0].message.content || "{}");
+      } catch (fallbackError) {
+        console.error("Fallback parsing also failed:", fallbackError);
+        return {};
+      }
     }
   }
 }
