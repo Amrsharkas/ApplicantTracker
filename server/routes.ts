@@ -1321,6 +1321,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Interview routes
+  // Start a job-specific practice interview (no persistence to Airtable schedules)
+  app.post('/api/interview/start-job-practice', 
+    requireAuth,
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { job, language = 'english' } = req.body || {};
+
+      if (!job || !job.jobTitle) {
+        return res.status(400).json({ message: 'Job details required' });
+      }
+
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+
+      // Generate job-specific practice set
+      const practiceSet = await aiInterviewService.generateJobPracticeInterview({
+        ...user,
+        ...profile
+      }, job, language);
+
+      // Create a temporary interview session to reuse existing modal flow
+      const session = await storage.createInterviewSession({
+        userId,
+        interviewType: 'job-practice',
+        sessionData: {
+          questions: practiceSet.questions || [],
+          responses: [],
+          currentQuestionIndex: 0,
+          interviewSet: practiceSet,
+          context: { job }
+        },
+        isCompleted: false
+      });
+
+      const firstQuestion = Array.isArray(practiceSet.questions) && practiceSet.questions.length > 0
+        ? (typeof practiceSet.questions[0] === 'string' ? practiceSet.questions[0] : practiceSet.questions[0]?.question || '')
+        : '';
+
+      res.json({
+        sessionId: session.id,
+        interviewType: 'job-practice',
+        interviewSet: practiceSet,
+        questions: practiceSet.questions,
+        firstQuestion,
+        userProfile: { ...user, ...profile }
+      });
+    } catch (error) {
+      console.error('Error starting job practice interview:', error);
+      res.status(500).json({ message: 'Failed to start job practice interview' });
+    }
+  });
   app.post('/api/interview/welcome', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;

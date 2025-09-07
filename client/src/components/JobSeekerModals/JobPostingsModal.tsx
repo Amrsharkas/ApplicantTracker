@@ -63,6 +63,7 @@ interface JobPostingsModalProps {
   onClose: () => void;
   initialJobTitle?: string;
   initialJobId?: string;
+  onStartJobPractice?: (job: JobPosting) => void;
 }
 
 const funnyNoJobsMessages = [
@@ -78,7 +79,7 @@ const funnyNoJobsMessages = [
   "🍕 No jobs yet, but that just means more time to grab a snack before the opportunities flood in!"
 ];
 
-export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobId }: JobPostingsModalProps) {
+export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobId, onStartJobPractice }: JobPostingsModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [viewedJobDetails, setViewedJobDetails] = useState<Set<string>>(new Set());
@@ -1385,6 +1386,28 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         onClick={() => setSelectedJob(null)}
                       >
                         Close
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          if (selectedJob) {
+                            if (onStartJobPractice) {
+                              onStartJobPractice(selectedJob);
+                            } else {
+                              // Fallback: fire API directly
+                              fetch('/api/interview/start-job-practice', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({ job: selectedJob })
+                              }).then(() => {}).catch(() => {});
+                            }
+                          }
+                        }}
+                        className="flex items-center gap-2 px-6"
+                      >
+                        <Zap className="h-4 w-4" />
+                        Practice Interview
                       </Button>
                       <Button
                         onClick={() => proceedWithApplication(selectedJob)}

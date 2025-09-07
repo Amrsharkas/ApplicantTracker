@@ -971,8 +971,24 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   }, [messages, voiceTranscript]);
 
   useEffect(() => {
-    if (existingSession && typeof existingSession === 'object' && 'isCompleted' in existingSession && existingSession.isCompleted && !currentSession) {
-      setCurrentSession(existingSession as InterviewSession);
+    if (existingSession && typeof existingSession === 'object' && !currentSession) {
+      const session = existingSession as InterviewSession;
+      setCurrentSession(session);
+      // If there's an active session (e.g., job-practice) and it's not completed, start text mode with first question
+      if (!session.isCompleted) {
+        const questions = session.sessionData?.questions || [];
+        const firstQuestionObj = questions[0];
+        const questionContent = typeof firstQuestionObj === 'string'
+          ? firstQuestionObj
+          : firstQuestionObj?.question || firstQuestionObj?.text || 'Question 1';
+        setMode('text');
+        setMessages([{
+          type: 'question',
+          content: questionContent,
+          timestamp: new Date()
+        }]);
+        setCurrentQuestionIndex(0);
+      }
     }
   }, [existingSession, currentSession]);
 

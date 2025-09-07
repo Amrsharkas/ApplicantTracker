@@ -1436,6 +1436,81 @@ export const aiInterviewService = {
   generatePersonalInterview: aiInterviewAgent.generatePersonalInterview.bind(aiInterviewAgent),
   generateProfessionalInterview: aiInterviewAgent.generateProfessionalInterview.bind(aiInterviewAgent),
   generateTechnicalInterview: aiInterviewAgent.generateTechnicalInterview.bind(aiInterviewAgent),
+  // New: job-specific practice interview
+  generateJobPracticeInterview: async (userData: any, jobDetails: any, language: string = 'english') => {
+    const jobTitle = jobDetails?.jobTitle || 'the role';
+    const companyName = jobDetails?.companyName || 'the company';
+    const jobDescription = jobDetails?.jobDescription || '';
+    const requiredSkills = Array.isArray(jobDetails?.skills) && jobDetails.skills.length > 0
+      ? jobDetails.skills.join(', ')
+      : '';
+
+    const prompt = `You are an expert interviewer helping a candidate practice specifically for a job they just applied to.
+
+JOB DETAILS:
+- Title: ${jobTitle}
+- Company: ${companyName}
+- Required skills: ${requiredSkills || 'Not explicitly listed'}
+- Description:\n${jobDescription}
+
+Based on these job details and the candidate's profile (assume you know it), create 7 sharp, role-specific practice questions that:
+- Focus on responsibilities and skills explicitly relevant to this job
+- Probe for concrete outcomes, metrics, and decision-making
+- Avoid generic prompts; be targeted to the described role
+- Sequence questions progressively (from calibration to deep dives)
+
+Return ONLY JSON:
+{
+  "questions": [
+    {"question": "...", "context": "why this matters for the role"},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."}
+  ]
+}`;
+
+    const messages = language === 'arabic' ? [
+      { role: "system" as const, content: "انت مصري من القاهرة وبتتكلم عامية مصرية بس. الأسئلة لازم تكون عملية ومناسبة للوظيفة، وتركز على نتائج ومقاييس." },
+      { role: "user" as const, content: prompt }
+    ] : [
+      { role: "user" as const, content: prompt }
+    ];
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages,
+        response_format: { type: "json_object" },
+        temperature: 0.6
+      });
+      const result = JSON.parse(response.choices[0].message.content || '{}');
+      return {
+        type: 'job-practice',
+        title: `Practice Interview for ${jobTitle}`,
+        description: `Targeted practice based on ${companyName} - ${jobTitle}`,
+        questions: result.questions || []
+      };
+    } catch (error) {
+      console.error('Error generating job practice interview:', error);
+      return {
+        type: 'job-practice',
+        title: `Practice Interview for ${jobTitle}`,
+        description: `Targeted practice based on ${companyName} - ${jobTitle}`,
+        questions: [
+          { question: `Walk me through a project most relevant to ${jobTitle}. What measurable outcomes did you deliver?`, context: 'Align past work to the role' },
+          { question: `Which of the listed skills (${requiredSkills || 'core skills'}) is your strongest? Provide a detailed example.`, context: 'Skill depth' },
+          { question: `Describe a time you handled a responsibility similar to those in the description.`, context: 'Role responsibilities' },
+          { question: `If you joined ${companyName}, what would your 30/60/90-day plan look like?`, context: 'Impact plan' },
+          { question: `Tell me about a decision with trade-offs similar to this role. How did you choose?`, context: 'Decision-making' },
+          { question: `What metric would you own in this role and how would you move it?`, context: 'Metrics ownership' },
+          { question: `What gaps do you see compared to the description and how would you address them?`, context: 'Self-awareness' }
+        ]
+      };
+    }
+  },
   generateProfile: aiProfileAnalysisAgent.generateComprehensiveProfile.bind(aiProfileAnalysisAgent),
   parseResume: aiProfileAnalysisAgent.parseResume.bind(aiProfileAnalysisAgent),
   parseResumeForProfile: aiProfileAnalysisAgent.parseResumeForProfile.bind(aiProfileAnalysisAgent)
