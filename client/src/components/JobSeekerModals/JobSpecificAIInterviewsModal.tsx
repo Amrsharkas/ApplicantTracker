@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Building, ExternalLink, MapPin, Mic, RefreshCw, Star, X, Zap, ArrowLeft } from "lucide-react";
+import { Building, ExternalLink, MapPin, RefreshCw, Star, X, ArrowLeft, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
@@ -27,11 +27,18 @@ interface JobSpecificAIInterviewsModalProps {
   onStartJobPracticeVoice?: (job: InvitedJob) => void;
 }
 
+import { JobSpecificInterviewOptionsModal } from "./JobSpecificInterviewOptionsModal";
+import { JobSpecificInterviewModal } from "./JobSpecificInterviewModal";
+
 export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPractice, onStartJobPracticeVoice }: JobSpecificAIInterviewsModalProps) {
   const { toast } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedJob, setSelectedJob] = useState<InvitedJob | null>(null);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [interviewOpen, setInterviewOpen] = useState(false);
+  const [interviewMode, setInterviewMode] = useState<'text' | 'voice'>('text');
+  const [interviewLanguage, setInterviewLanguage] = useState<'english' | 'arabic'>('english');
 
   const { data: items = [], refetch, isLoading, error } = useQuery({
     queryKey: ["/api/job-specific-ai-interviews"],
@@ -178,35 +185,11 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                             </Button>
                             <Button
                               size="sm"
-                              onClick={() => {
-                                if (onStartJobPractice) {
-                                  onStartJobPractice(job);
-                                } else {
-                                  fetch('/api/interview/start-job-practice', {
-                                    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ job })
-                                  }).then(() => {}).catch(() => {});
-                                }
-                              }}
+                              onClick={() => { setSelectedJob(job); setOptionsOpen(true); }}
                               className="flex items-center gap-1"
                             >
-                              <Zap className="h-3 w-3" />
-                              Practice Interview
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                if (onStartJobPracticeVoice) {
-                                  onStartJobPracticeVoice(job);
-                                } else {
-                                  fetch('/api/interview/start-job-practice-voice', {
-                                    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ job })
-                                  }).then(() => {}).catch(() => {});
-                                }
-                              }}
-                              className="flex items-center gap-1"
-                            >
-                              <Mic className="h-3 w-3" />
-                              Voice Practice
+                              <Play className="h-3 w-3" />
+                              Start interview
                             </Button>
                           </div>
                         </div>
@@ -312,39 +295,11 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                     <Button variant="outline" onClick={() => setSelectedJob(null)}>Close</Button>
                     <Button
                       variant="secondary"
-                      onClick={() => {
-                        if (selectedJob) {
-                          if (onStartJobPractice) {
-                            onStartJobPractice(selectedJob);
-                          } else {
-                            fetch('/api/interview/start-job-practice', {
-                              method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ job: selectedJob })
-                            }).then(() => {}).catch(() => {});
-                          }
-                        }
-                      }}
+                      onClick={() => { setOptionsOpen(true); }}
                       className="flex items-center gap-2 px-6"
                     >
-                      <Zap className="h-4 w-4" />
-                      Practice Interview
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        if (selectedJob) {
-                          if (onStartJobPracticeVoice) {
-                            onStartJobPracticeVoice(selectedJob);
-                          } else {
-                            fetch('/api/interview/start-job-practice-voice', {
-                              method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ job: selectedJob })
-                            }).then(() => {}).catch(() => {});
-                          }
-                        }
-                      }}
-                      className="flex items-center gap-2 px-6"
-                    >
-                      <Mic className="h-4 w-4" />
-                      Voice Practice
+                      <Play className="h-4 w-4" />
+                      Start interview
                     </Button>
                   </div>
                 </div>
@@ -352,6 +307,44 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
             </motion.div>
           )}
         </AnimatePresence>
+
+        <JobSpecificInterviewOptionsModal
+          isOpen={optionsOpen}
+          onClose={() => setOptionsOpen(false)}
+          job={selectedJob}
+          onConfirm={async ({ mode, language }) => {
+            try {
+              const endpoint = mode === 'voice' ? '/api/interview/start-job-practice-voice' : '/api/interview/start-job-practice';
+              const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ job: selectedJob, language })
+              });
+              if (!res.ok) throw new Error('Failed to start');
+              // leave options open until interview modal opens
+              // Let parent open interview modal if handlers were passed
+              if (mode === 'voice') {
+                setInterviewMode('voice');
+              } else {
+                setInterviewMode('text');
+              }
+              setInterviewLanguage(language);
+              setInterviewOpen(true);
+              setOptionsOpen(false);
+            } catch (e: any) {
+              // Simple toast; reuse parent toast
+            }
+          }}
+        />
+
+        <JobSpecificInterviewModal
+          isOpen={interviewOpen}
+          onClose={() => setInterviewOpen(false)}
+          job={selectedJob}
+          mode={interviewMode}
+          language={interviewLanguage}
+        />
       </DialogContent>
     </Dialog>
   );

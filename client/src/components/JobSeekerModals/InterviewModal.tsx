@@ -1187,11 +1187,13 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         </Card>
       </div>
       
-      <div className="flex justify-start">
-        <Button variant="outline" onClick={() => setMode('types')}>
-          ← Back to Interview Types
-        </Button>
-      </div>
+      {currentSession?.interviewType !== 'job-practice' && (
+        <div className="flex justify-start">
+          <Button variant="outline" onClick={() => setMode('types')}>
+            ← Back to Interview Types
+          </Button>
+        </div>
+      )}
     </div>
   );
 
@@ -1281,9 +1283,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             }}
           />
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => setMode('types')}>
-              ← Back to Interview Types
-            </Button>
+            {currentSession?.interviewType !== 'job-practice' && (
+              <Button variant="outline" onClick={() => setMode('types')}>
+                ← Back to Interview Types
+              </Button>
+            )}
             <div className="flex space-x-2">
               {isInterviewConcluded ? (
                 <Button 
@@ -1446,9 +1450,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       )}
 
       <div className="flex justify-between">
-        <Button variant="outline" onClick={() => setMode('types')}>
-          ← Back to Interview Types
-        </Button>
+        {currentSession?.interviewType !== 'job-practice' && (
+          <Button variant="outline" onClick={() => setMode('types')}>
+            ← Back to Interview Types
+          </Button>
+        )}
         <div className="space-x-2">
           {realtimeAPI.isConnected && (
             <Button

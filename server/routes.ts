@@ -2348,6 +2348,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // End all active interview sessions for the logged-in user
+  app.get('/api/interview/end-all-sessions', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const sessions = await storage.getAllInterviewSessions(userId);
+      let endedCount = 0;
+
+      for (const s of sessions) {
+        if (!s.isCompleted) {
+          const sessionData = (s.sessionData as any) || {};
+          const updatedSessionData = { ...sessionData, isComplete: true };
+          await storage.updateInterviewSession(s.id, {
+            sessionData: updatedSessionData,
+            isCompleted: true,
+            completedAt: new Date()
+          } as any);
+          endedCount++;
+        }
+      }
+
+      console.log(`🛑 Ended ${endedCount} active interview session(s) for user ${userId}`);
+      res.json({ success: true, endedCount });
+    } catch (error) {
+      console.error('Error ending all interview sessions:', error);
+      res.status(500).json({ message: 'Failed to end all interview sessions' });
+    }
+  });
+
 
 
   app.post('/api/interview/voice-submit', requireAuth, async (req: any, res) => {

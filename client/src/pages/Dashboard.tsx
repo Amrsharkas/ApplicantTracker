@@ -660,28 +660,8 @@ export default function Dashboard() {
       <JobSpecificAIInterviewsModal
         isOpen={activeModal === 'jobSpecificAI'}
         onClose={closeModal}
-        onStartJobPractice={async (job) => {
-          try {
-            const res = await fetch('/api/interview/start-job-practice', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ job })
-            });
-            if (!res.ok) throw new Error('Failed to start');
-            setActiveModal('interview');
-          } catch (e: any) {
-            toast({ title: 'Failed to start interview', description: e?.message || 'Please try again', variant: 'destructive' });
-          }
-        }}
-        onStartJobPracticeVoice={async (job) => {
-          try {
-            const res = await fetch('/api/interview/start-job-practice-voice', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ job })
-            });
-            if (!res.ok) throw new Error('Failed to start');
-            setActiveModal('interview');
-          } catch (e: any) {
-            toast({ title: 'Failed to start voice interview', description: e?.message || 'Please try again', variant: 'destructive' });
-          }
-        }}
+        onStartJobPractice={async () => { setActiveModal('interview'); }}
+        onStartJobPracticeVoice={async () => { setActiveModal('interview'); }}
       />
       <JobPostingsModal 
         isOpen={activeModal === 'jobPostings'} 
