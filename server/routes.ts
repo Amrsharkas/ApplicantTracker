@@ -693,6 +693,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn('⚠️ Auto-population from OpenAI file_id failed, continuing to redirect:', autoPopulateError);
       }
 
+      // Update platojobmatchAIinterview table: set user_id for all records with matching token
+      try {
+        const MATCH_BASE_ID = process.env.AIRTABLE_MATCH_AI_INTERVIEW_BASE_ID || process.env.AIRTABLE_JOB_MATCHES_BASE_ID;
+        const MATCH_TABLE = process.env.AIRTABLE_MATCH_AI_INTERVIEW_TABLE_NAME || 'Table 1';
+        if (!MATCH_BASE_ID) {
+          console.warn('⚠️ No Airtable base configured for platojobmatchAIinterview (set AIRTABLE_MATCH_AI_INTERVIEW_BASE_ID)');
+        } else {
+          const filterFormula = `({token} = "${token}")`;
+          const listUrl = `https://api.airtable.com/v0/${MATCH_BASE_ID}/${encodeURIComponent(MATCH_TABLE)}?filterByFormula=${encodeURIComponent(filterFormula)}&pageSize=100`;
+          const listResp = await fetch(listUrl, { headers: {
+            'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+            'Content-Type': 'application/json'
+          } });
+          if (listResp.ok) {
+            const data = await listResp.json();
+            const records = Array.isArray(data?.records) ? data.records : [];
+            if (records.length > 0) {
+              console.log(`🔄 Updating ${records.length} record(s) in platojobmatchAIinterview with user_id=${user.id}`);
+              for (const rec of records) {
+                try {
+                  const updateUrl = `https://api.airtable.com/v0/${MATCH_BASE_ID}/${encodeURIComponent(MATCH_TABLE)}/${rec.id}`;
+                  const updateResp = await fetch(updateUrl, {
+                    method: 'PATCH',
+                    headers: {
+                      'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ fields: { "user_id": user.id } })
+                  });
+                  if (!updateResp.ok) {
+                    console.warn(`❌ Failed to update record ${rec.id} user_id:`, await updateResp.text());
+                  }
+                } catch (updateErr) {
+                  console.warn(`❌ Error updating record ${rec?.id}:`, updateErr);
+                }
+              }
+            } else {
+              console.log('ℹ️ No matching records found in platojobmatchAIinterview for provided token');
+            }
+          } else {
+            console.warn('❌ Failed to list platojobmatchAIinterview records:', listResp.status, await listResp.text());
+          }
+        }
+      } catch (matchUpdateError) {
+        console.warn('⚠️ Failed to update platojobmatchAIinterview user_id records:', matchUpdateError);
+      }
+
       return res.redirect('/dashboard');
     } catch (error) {
       console.error('Error in ai-interview-initation:', error);
