@@ -25,6 +25,7 @@ import { UpcomingInterviewModal } from "@/components/JobSeekerModals/UpcomingInt
 import { InvitedJobsModal } from "@/components/JobSeekerModals/InvitedJobsModal";
 
 import { JobPostingsModal } from "@/components/JobSeekerModals/JobPostingsModal";
+import { JobSpecificAIInterviewsModal } from "@/components/JobSeekerModals/JobSpecificAIInterviewsModal";
 
 export default function Dashboard() {
   const { user, isLoading } = useAuth();
@@ -398,7 +399,7 @@ export default function Dashboard() {
         </div>
 
         {/* Job Features - Only show if interview is complete or profile is 80%+ */}
-        {showFullDashboard && (
+        {!showFullDashboard && (
           <div className="space-y-8">
             <div className="border-t border-gray-200 pt-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-8">{t('jobDashboard')}</h3>
@@ -441,6 +442,25 @@ export default function Dashboard() {
                   </p>
                 </button>
               </div>
+
+              {/* Job specific AI interviews - New widget (above upcoming) */}
+              <button
+                onClick={() => openModal('jobSpecificAI')}
+                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-6"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                      <Briefcase className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <h4 className="text-xl font-bold">Job specific AI interviews</h4>
+                      <p className="text-emerald-100">See job invites tailored for you and practice</p>
+                    </div>
+                  </div>
+                  <div className="text-white text-2xl">→</div>
+                </div>
+              </button>
 
               {/* Upcoming Interview - Always show */}
               <button
@@ -613,6 +633,32 @@ export default function Dashboard() {
       />
       <InvitedJobsModal
         isOpen={activeModal === 'invitedJobs'}
+        onClose={closeModal}
+        onStartJobPractice={async (job) => {
+          try {
+            const res = await fetch('/api/interview/start-job-practice', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ job })
+            });
+            if (!res.ok) throw new Error('Failed to start');
+            setActiveModal('interview');
+          } catch (e: any) {
+            toast({ title: 'Failed to start interview', description: e?.message || 'Please try again', variant: 'destructive' });
+          }
+        }}
+        onStartJobPracticeVoice={async (job) => {
+          try {
+            const res = await fetch('/api/interview/start-job-practice-voice', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ job })
+            });
+            if (!res.ok) throw new Error('Failed to start');
+            setActiveModal('interview');
+          } catch (e: any) {
+            toast({ title: 'Failed to start voice interview', description: e?.message || 'Please try again', variant: 'destructive' });
+          }
+        }}
+      />
+      <JobSpecificAIInterviewsModal
+        isOpen={activeModal === 'jobSpecificAI'}
         onClose={closeModal}
         onStartJobPractice={async (job) => {
           try {

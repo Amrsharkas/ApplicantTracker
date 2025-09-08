@@ -2677,6 +2677,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Job-specific AI interview invitations for the logged-in user
+  app.get('/api/job-specific-ai-interviews', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+
+      const MATCH_BASE_ID = process.env.AIRTABLE_MATCH_AI_INTERVIEW_BASE_ID || process.env.AIRTABLE_JOB_MATCHES_BASE_ID;
+      const MATCH_TABLE = process.env.AIRTABLE_MATCH_AI_INTERVIEW_TABLE_NAME || 'Table 1';
+
+      if (!MATCH_BASE_ID) {
+        console.warn('⚠️ No Airtable base configured for platojobmatchAIinterview (set AIRTABLE_MATCH_AI_INTERVIEW_BASE_ID)');
+        return res.json([]);
+      }
+
+      const filterFormula = `({user_id} = "${userId}")`;
+      const url = `https://api.airtable.com/v0/${MATCH_BASE_ID}/${encodeURIComponent(MATCH_TABLE)}?filterByFormula=${encodeURIComponent(filterFormula)}&pageSize=100`;
+
+      // Use the same API key approach as elsewhere in this file
+      const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
+      const resp = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!resp.ok) {
+        console.error('❌ Failed to fetch job-specific AI interviews from Airtable:', resp.status, await resp.text());
+        return res.json([]);
+      }
+
+      const data = await resp.json();
+      const records: any[] = Array.isArray(data?.records) ? data.records : [];
+      console.log("records", records);
+      const results = records.map((record: any) => {
+        const fields = record.fields || {};
+        const fieldKeys = Object.keys(fields);
+
+        // Try to find title/description/company across naming variations
+        const titleField = fieldKeys.find(k => k.toLowerCase().includes('job') && k.toLowerCase().includes('title'))
+          || fieldKeys.find(k => k.toLowerCase().includes('title'));
+        const descField = fieldKeys.find(k => k.toLowerCase().includes('description'))
+          || fieldKeys.find(k => k.toLowerCase().includes('desc'));
+        const companyField = fieldKeys.find(k => k.toLowerCase().includes('company'))
+          || fieldKeys.find(k => k.toLowerCase().includes('employer'));
+
+        return {
+          recordId: record.id,
+          jobTitle: titleField ? fields[titleField] : (fields['Job title'] || fields['Job Title'] || 'Untitled Position'),
+          jobDescription: descField ? fields[descField] : (fields['Job description'] || fields['Job Description'] || ''),
+          companyName: companyField ? fields[companyField] : (fields['Company name'] || fields['Company Name'] || fields['Company'] || 'Unknown Company'),
+        };
+      });
+
+      return res.json(results);
+    } catch (error) {
+      console.error('Error fetching job-specific AI interviews:', error);
+      return res.status(500).json({ message: 'Failed to fetch job-specific AI interviews' });
+    }
+  });
+
   // Cache for parsed employer questions (5-minute expiration)
   const employerQuestionsCache = new Map<string, {
     questions: any[];
