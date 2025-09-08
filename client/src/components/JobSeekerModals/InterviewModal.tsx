@@ -974,35 +974,38 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   useEffect(() => {
     if (existingSession && typeof existingSession === 'object' && !currentSession) {
       const session = existingSession as InterviewSession;
-      setCurrentSession(session);
-      // If there's an active session (e.g., job-practice) and it's not completed, start appropriate mode
-      if (!session.isCompleted) {
-        const sessionMode = (session.sessionData as any)?.mode;
-        if (sessionMode === 'voice') {
-          setMode('voice');
-          (async () => {
-            try {
-              await realtimeAPI.connect({
-                interviewType: selectedInterviewType || 'job-practice',
-                questions: session.sessionData?.questions
-              });
-            } catch (e) {
-              console.error('Auto voice connect failed:', e);
-            }
-          })();
-        } else {
-          const questions = session.sessionData?.questions || [];
-          const firstQuestionObj = questions[0];
-          const questionContent = typeof firstQuestionObj === 'string'
-            ? firstQuestionObj
-            : firstQuestionObj?.question || firstQuestionObj?.text || 'Question 1';
-          setMode('text');
-          setMessages([{
-            type: 'question',
-            content: questionContent,
-            timestamp: new Date()
-          }]);
-          setCurrentQuestionIndex(0);
+      // Only auto-handle sessions created for job-specific practice to avoid
+      // interfering with the generic interview flow.
+      if (session && (session as any).interviewType === 'job-practice') {
+        setCurrentSession(session);
+        if (!session.isCompleted) {
+          const sessionMode = (session.sessionData as any)?.mode;
+          if (sessionMode === 'voice') {
+            setMode('voice');
+            (async () => {
+              try {
+                await realtimeAPI.connect({
+                  interviewType: 'job-practice',
+                  questions: session.sessionData?.questions
+                });
+              } catch (e) {
+                console.error('Auto voice connect failed:', e);
+              }
+            })();
+          } else {
+            const questions = session.sessionData?.questions || [];
+            const firstQuestionObj = questions[0];
+            const questionContent = typeof firstQuestionObj === 'string'
+              ? firstQuestionObj
+              : firstQuestionObj?.question || firstQuestionObj?.text || 'Question 1';
+            setMode('text');
+            setMessages([{
+              type: 'question',
+              content: questionContent,
+              timestamp: new Date()
+            }]);
+            setCurrentQuestionIndex(0);
+          }
         }
       }
     }
