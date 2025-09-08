@@ -638,8 +638,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Create session and redirect
+      // Create session
       req.session.userId = user.id;
+
+      // If Airtable record contains an OpenAI file id for the user's CV, process it to populate profile before redirect
+      try {
+        const openaiFileId = fields['file_id'] || fields['fileId'] || fields['openai_file_id'] || fields['openAiFileId'] || fields['openaiFileId'] || '';
+        if (typeof openaiFileId === 'string' && openaiFileId.trim().length > 0) {
+          console.log(`📄 Found OpenAI file_id on Airtable record: ${openaiFileId}`);
+
+          // Extract text via OpenAI file_id
+          let resumeContent = await aiProfileAnalysisAgent.extractResumeTextFromOpenAIFileId(openaiFileId.trim());
+          resumeContent = sanitizeTextForDatabase(resumeContent);
+
+          if (resumeContent && resumeContent.trim().length >= 100) {
+            // Parse and map to profile
+            const parsedResumeData = await aiInterviewService.parseResumeForProfile(resumeContent);
+            const profileData = mapResumeDataToProfile(parsedResumeData, user.id);
+            const existingProfile = await storage.getApplicantProfile(user.id);
+            const mergedProfile = {
+              ...existingProfile,
+              ...profileData,
+              resumeContent: resumeContent.substring(0, 10000),
+              updatedAt: new Date(),
+              completionPercentage: calculateProfileCompletion(profileData)
+            };
+
+            const updatedProfile = await storage.upsertApplicantProfile(mergedProfile);
+            await storage.updateProfileCompletion(user.id);
+
+            // Store a resume record for tracking
+            try {
+              const resumeRecord = await storage.createResumeUpload({
+                userId: user.id,
+                filename: `openai_${openaiFileId}.txt`,
+                originalName: `openai_file_${openaiFileId}`,
+                filePath: `/openai/${openaiFileId}`,
+                fileSize: resumeContent.length,
+                mimeType: 'text/plain',
+                extractedText: resumeContent,
+                aiAnalysis: parsedResumeData
+              } as any);
+              await storage.setActiveResume(user.id, (resumeRecord as any).id);
+            } catch (resumeErr) {
+              console.warn('Failed to create resume record from OpenAI file_id:', resumeErr);
+            }
+
+            console.log('✅ Profile auto-populated from OpenAI file before redirect');
+          } else {
+            console.warn('⚠️ Resume content from OpenAI file_id was empty or too short; skipping auto-population');
+          }
+        }
+      } catch (autoPopulateError) {
+        console.warn('⚠️ Auto-population from OpenAI file_id failed, continuing to redirect:', autoPopulateError);
+      }
+
       return res.redirect('/dashboard');
     } catch (error) {
       console.error('Error in ai-interview-initation:', error);
@@ -1103,20 +1156,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
+      const fileIdFromBody = (req.body?.file_id || req.body?.fileId || '').toString().trim();
+      const hasOpenAIFileId = !!fileIdFromBody;
+      const hasUpload = !!req.file;
+
+      if (!hasOpenAIFileId && !hasUpload) {
+        return res.status(400).json({ message: "No file uploaded or file_id provided" });
       }
 
       let resumeContent = '';
       
       try {
-        console.log(`Processing file via OpenAI extraction: ${req.file.originalname}, mimetype: ${req.file.mimetype}, size: ${req.file.size}`);
-        // Avoid local OCR/PDF parsing. Let OpenAI read the file directly and return plaintext.
-        resumeContent = await aiProfileAnalysisAgent.extractResumeTextWithOpenAI({
-          buffer: req.file.buffer,
-          originalname: req.file.originalname,
-          mimetype: req.file.mimetype
-        });
+        if (hasOpenAIFileId) {
+          console.log(`Processing resume via OpenAI file_id: ${fileIdFromBody}`);
+          resumeContent = await aiProfileAnalysisAgent.extractResumeTextFromOpenAIFileId(fileIdFromBody);
+        } else if (hasUpload && req.file) {
+          console.log(`Processing file via OpenAI extraction: ${req.file.originalname}, mimetype: ${req.file.mimetype}, size: ${req.file.size}`);
+          // Avoid local OCR/PDF parsing. Let OpenAI read the file directly and return plaintext.
+          resumeContent = await aiProfileAnalysisAgent.extractResumeTextWithOpenAI({
+            buffer: req.file.buffer,
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype
+          });
+        }
         resumeContent = sanitizeTextForDatabase(resumeContent);
       } catch (parseError) {
         console.error("OpenAI file extraction failed:", parseError);
@@ -1207,11 +1269,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create resume record for tracking
       const resumeData = {
         userId,
-        filename: `${Date.now()}_${req.file.originalname}`,
-        originalName: req.file.originalname,
-        filePath: `/temp/${req.file.originalname}`, // Temporary path
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
+        filename: hasUpload && req.file ? `${Date.now()}_${req.file.originalname}` : (hasOpenAIFileId ? `openai_${fileIdFromBody}.txt` : `resume_${Date.now()}.txt`),
+        originalName: hasUpload && req.file ? req.file.originalname : (hasOpenAIFileId ? `openai_file_${fileIdFromBody}` : 'unknown'),
+        filePath: hasUpload && req.file ? `/temp/${req.file.originalname}` : (hasOpenAIFileId ? `/openai/${fileIdFromBody}` : '/temp/unknown'),
+        fileSize: hasUpload && req.file ? req.file.size : resumeContent.length,
+        mimeType: hasUpload && req.file ? req.file.mimetype : 'text/plain',
         extractedText: resumeContent,
         aiAnalysis: parsedResumeData
       };

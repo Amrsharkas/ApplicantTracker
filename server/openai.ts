@@ -966,6 +966,49 @@ export class AIProfileAnalysisAgent {
     }
   }
 
+  // Extract plain text directly from an existing OpenAI file by its file_id
+  async extractResumeTextFromOpenAIFileId(fileId: string): Promise<string> {
+    try {
+      const extractionPrompt = "Extract and return the full plain text from this resume file. Preserve reading order and line breaks. Do not summarize, translate, or add any commentary. Output ONLY the raw plaintext.";
+
+      const response: any = await (openai as any).responses.create({
+        model: "gpt-4o-mini",
+        input: [
+          {
+            role: "user",
+            content: [
+              { type: "input_text", text: extractionPrompt },
+              { type: "input_file", file_id: fileId }
+            ]
+          }
+        ],
+        max_output_tokens: 64000
+      });
+
+      let text = "";
+      if (response?.output_text) {
+        text = response.output_text;
+      } else if (Array.isArray(response?.output)) {
+        for (const item of response.output) {
+          if (Array.isArray(item?.content)) {
+            for (const c of item.content) {
+              if (c?.type === "output_text" && typeof c?.text === "string") {
+                text += c.text;
+              } else if (c?.type === "text" && typeof c?.text === "string") {
+                text += c.text;
+              }
+            }
+          }
+        }
+      }
+
+      return (text || "").trim();
+    } catch (error) {
+      console.error("Failed to extract resume text from file_id via OpenAI:", error);
+      return "";
+    }
+  }
+
   async generateComprehensiveProfile(
     userData: any,
     resumeContent: string | null,
