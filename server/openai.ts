@@ -1441,9 +1441,88 @@ export const aiInterviewService = {
     const jobTitle = jobDetails?.jobTitle || 'the role';
     const companyName = jobDetails?.companyName || 'the company';
     const jobDescription = jobDetails?.jobDescription || '';
-    const requiredSkills = Array.isArray(jobDetails?.skills) && jobDetails.skills.length > 0
-      ? jobDetails.skills.join(', ')
-      : '';
+    const providedSkills: string[] = Array.isArray(jobDetails?.skills) ? jobDetails.skills : [];
+
+    // Extract skills from job description if not provided
+    let extractedSkills: string[] = [];
+    try {
+      const skillPatterns = [
+        /(?:skills?|requirements?|qualifications?|experience)[:\s]*([^.]*)/gi,
+        /(?:proficiency|knowledge|expertise)\s+(?:in|with|of)[:\s]*([^.]*)/gi,
+        /(?:must have|required|essential)[:\s]*([^.]*)/gi
+      ];
+
+      skillPatterns.forEach((pattern: RegExp) => {
+        const matches: RegExpMatchArray | null = jobDescription.match(pattern);
+        if (matches) {
+          matches.forEach((match: string) => {
+            const text = match.replace(/(?:skills?|requirements?|qualifications?|experience|proficiency|knowledge|expertise|must have|required|essential)[:\s]*/gi, '');
+            const parts: string[] = text.split(/[,;•\-\n]/)
+              .map((s: string) => s.trim().toLowerCase())
+              .filter((s: string) => s.length > 2 && s.length < 40);
+            extractedSkills.push(...parts);
+          });
+        }
+      });
+      const stopWords = new Set(['and','or','with','in','of','the','to','for','on','a','an']);
+      extractedSkills = Array.from(new Set(extractedSkills)).filter((s) => !stopWords.has(s));
+    } catch {}
+
+    const combinedSkills = Array.from(new Set([
+      ...providedSkills.map((s: string) => s.trim()),
+      ...extractedSkills.map((s: string) => s.trim())
+    ].filter(Boolean as unknown as (value: string | undefined) => value is string)));
+    const requiredSkills = combinedSkills.join(', ');
+
+    // Rough responsibilities extraction for better grounding
+    const responsibilities = (jobDescription.match(/(^|\n)\s*(?:[-•])\s+.+/g) || [])
+      .map((line: string) => line.replace(/^[\s\n]*[-•]\s*/, '').trim())
+      .slice(0, 10);
+
+    // Build candidate profile block from available user data
+    const safeJoin = (arr: unknown, sep: string = ', '): string => Array.isArray(arr) ? (arr.filter(Boolean) as string[]).join(sep) : '';
+    const experienceLines: string[] = Array.isArray((userData as any)?.workExperiences)
+      ? ((userData as any).workExperiences as any[]).map((exp: any) => {
+          const position: string = typeof exp?.position === 'string' ? exp.position : '';
+          const company: string = typeof exp?.company === 'string' ? exp.company : '';
+          const dateRange: string = [exp?.startDate, exp?.endDate].filter(Boolean).join(' - ');
+          const responsibilitiesText: string = typeof exp?.responsibilities === 'string' ? exp.responsibilities : '';
+          return `• ${position}${company ? ` at ${company}` : ''}${dateRange ? ` (${dateRange})` : ''}${responsibilitiesText ? `\n  Responsibilities: ${responsibilitiesText}` : ''}`.trim();
+        })
+      : [];
+    const educationLines: string[] = Array.isArray((userData as any)?.degrees)
+      ? ((userData as any).degrees as any[]).map((deg: any) => {
+          const degree: string = typeof deg?.degree === 'string' ? deg.degree : '';
+          const field: string = typeof deg?.field === 'string' ? deg.field : '';
+          const institution: string = typeof deg?.institution === 'string' ? deg.institution : '';
+          const dateRange: string = [deg?.startDate, deg?.endDate].filter(Boolean).join(' - ');
+          return `• ${degree}${field ? ` in ${field}` : ''}${institution ? ` from ${institution}` : ''}${dateRange ? ` (${dateRange})` : ''}`.trim();
+        })
+      : [];
+    const languageLines: string[] = Array.isArray((userData as any)?.languages)
+      ? ((userData as any).languages as any[]).map((lang: any) => {
+          const language: string = typeof lang?.language === 'string' ? lang.language : '';
+          const proficiency: string = typeof lang?.proficiency === 'string' ? lang.proficiency : '';
+          return `• ${language}${proficiency ? `: ${proficiency}` : ''}`;
+        })
+      : [];
+    const portfolioLines: string[] = [
+      (userData as any)?.linkedinUrl,
+      (userData as any)?.githubUrl,
+      (userData as any)?.websiteUrl
+    ]
+      .filter((v: unknown): v is string => typeof v === 'string' && v.trim().length > 0)
+      .map((url: string) => `• ${url}`);
+    const skillsList: string = safeJoin((userData as any)?.skillsList, ', ');
+    const targetJobTitles: string = safeJoin((userData as any)?.jobTitles, ', ');
+    const targetIndustries: string = safeJoin((userData as any)?.jobCategories, ', ');
+    const aiProfileRaw: unknown = (userData as any)?.aiProfile;
+    const aiProfileFormatted: string = typeof aiProfileRaw === 'string'
+      ? aiProfileRaw
+      : (typeof (aiProfileRaw as any)?.formattedProfile === 'string' ? (aiProfileRaw as any).formattedProfile : '');
+    const aiProfileExcerpt: string = aiProfileFormatted ? aiProfileFormatted.slice(0, 1200) : '';
+
+    const candidateProfileBlock = `\nCANDIDATE PROFILE DATA:\nName: ${(userData as any)?.name || ''}\nSummary: ${(userData as any)?.summary || ''}\nTarget Roles: ${targetJobTitles}\nTarget Industries: ${targetIndustries}\nSkills: ${skillsList}\nExperience:\n${experienceLines.join('\n')}\nEducation:\n${educationLines.join('\n')}\nLanguages:\n${languageLines.join('\n')}\nPortfolio:\n${portfolioLines.join('\n')}\n${aiProfileExcerpt ? `\nAI Profile Excerpt:\n${aiProfileExcerpt}\n` : ''}`;
 
     const prompt = `You are an expert interviewer helping a candidate practice specifically for a job they just applied to.
 
@@ -1452,12 +1531,17 @@ JOB DETAILS:
 - Company: ${companyName}
 - Required skills: ${requiredSkills || 'Not explicitly listed'}
 - Description:\n${jobDescription}
+${responsibilities.length ? `\nTop responsibilities parsed from the post:\n- ${responsibilities.join('\n- ')}` : ''}
+
+${candidateProfileBlock}
 
 Based on these job details and the candidate's profile (assume you know it), create 7 sharp, role-specific practice questions that:
 - Focus on responsibilities and skills explicitly relevant to this job
 - Probe for concrete outcomes, metrics, and decision-making
 - Avoid generic prompts; be targeted to the described role
 - Sequence questions progressively (from calibration to deep dives)
+ - Explicitly reference at least one listed skill or responsibility in each question
+ - Personalize using the candidate's background above; if a listed skill is missing in their profile, create a bridging/hypothetical relevant to their experience
 
 Return ONLY JSON:
 {

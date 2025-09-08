@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmployerQuestionsModal } from "./EmployerQuestionsModal";
-import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft } from "lucide-react";
+import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft, Mic } from "lucide-react";
 
 // Country-City data structure
 const COUNTRIES_CITIES = {
@@ -64,6 +64,7 @@ interface JobPostingsModalProps {
   initialJobTitle?: string;
   initialJobId?: string;
   onStartJobPractice?: (job: JobPosting) => void;
+  onStartJobPracticeVoice?: (job: JobPosting) => void;
 }
 
 const funnyNoJobsMessages = [
@@ -79,7 +80,7 @@ const funnyNoJobsMessages = [
   "🍕 No jobs yet, but that just means more time to grab a snack before the opportunities flood in!"
 ];
 
-export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobId, onStartJobPractice }: JobPostingsModalProps) {
+export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobId, onStartJobPractice, onStartJobPracticeVoice }: JobPostingsModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [viewedJobDetails, setViewedJobDetails] = useState<Set<string>>(new Set());
@@ -1408,6 +1409,27 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                       >
                         <Zap className="h-4 w-4" />
                         Practice Interview
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          if (selectedJob) {
+                            if (onStartJobPracticeVoice) {
+                              onStartJobPracticeVoice(selectedJob);
+                            } else {
+                              fetch('/api/interview/start-job-practice-voice', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({ job: selectedJob })
+                              }).then(() => {}).catch(() => {});
+                            }
+                          }
+                        }}
+                        className="flex items-center gap-2 px-6"
+                      >
+                        <Mic className="h-4 w-4" />
+                        Voice Practice
                       </Button>
                       <Button
                         onClick={() => proceedWithApplication(selectedJob)}

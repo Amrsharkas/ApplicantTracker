@@ -22,6 +22,7 @@ import { UserProfileModal } from "@/components/JobSeekerModals/UserProfileModal"
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
 import { InterviewModal } from "@/components/JobSeekerModals/InterviewModal";
 import { UpcomingInterviewModal } from "@/components/JobSeekerModals/UpcomingInterviewModal";
+import { InvitedJobsModal } from "@/components/JobSeekerModals/InvitedJobsModal";
 
 import { JobPostingsModal } from "@/components/JobSeekerModals/JobPostingsModal";
 
@@ -484,6 +485,25 @@ export default function Dashboard() {
                 </div>
               </button>
 
+              {/* Invited Jobs - Full Width */}
+              <button
+                onClick={() => openModal('invitedJobs')}
+                className="w-full mt-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                      <Briefcase className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <h4 className="text-xl font-bold">Invited Jobs</h4>
+                      <p className="text-green-100">View jobs you’re invited to and apply</p>
+                    </div>
+                  </div>
+                  <div className="text-white text-2xl">→</div>
+                </div>
+              </button>
+
               {/* Small Stats Section */}
               <div className="mt-8 pt-6 border-t border-gray-200">
                 <h4 className="text-sm font-medium text-gray-500 mb-3">{t('quickStats')}</h4>
@@ -544,6 +564,20 @@ export default function Dashboard() {
                   <strong>Step 1:</strong> Build your complete profile including personal details, education, work experience, skills, and career preferences.<br/>
                   <strong>Step 2:</strong> Complete your AI interview to generate your comprehensive professional analysis.
                 </div>
+                <div className="mt-4">
+                  <button
+                    onClick={() => openModal('jobPostings')}
+                    className="px-4 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700"
+                  >
+                    Browse Job Postings
+                  </button>
+                  <button
+                    onClick={() => openModal('invitedJobs')}
+                    className="ml-3 px-4 py-2 rounded-lg font-medium transition-colors bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                    Invited Jobs
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -577,11 +611,82 @@ export default function Dashboard() {
         isOpen={activeModal === 'upcomingInterview'} 
         onClose={closeModal} 
       />
+      <InvitedJobsModal
+        isOpen={activeModal === 'invitedJobs'}
+        onClose={closeModal}
+        onStartJobPractice={async (job) => {
+          try {
+            const res = await fetch('/api/interview/start-job-practice', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ job })
+            });
+            if (!res.ok) throw new Error('Failed to start');
+            setActiveModal('interview');
+          } catch (e: any) {
+            toast({ title: 'Failed to start interview', description: e?.message || 'Please try again', variant: 'destructive' });
+          }
+        }}
+        onStartJobPracticeVoice={async (job) => {
+          try {
+            const res = await fetch('/api/interview/start-job-practice-voice', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ job })
+            });
+            if (!res.ok) throw new Error('Failed to start');
+            setActiveModal('interview');
+          } catch (e: any) {
+            toast({ title: 'Failed to start voice interview', description: e?.message || 'Please try again', variant: 'destructive' });
+          }
+        }}
+      />
       <JobPostingsModal 
         isOpen={activeModal === 'jobPostings'} 
         onClose={closeModal} 
         initialJobTitle={selectedJobDetails?.title}
         initialJobId={selectedJobDetails?.id}
+        onStartJobPractice={(job) => {
+          (async () => {
+            try {
+              const res = await fetch('/api/interview/start-job-practice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ job })
+              });
+              if (!res.ok) {
+                throw new Error(`Failed to start practice interview (${res.status})`);
+              }
+              // Open after session is created so modal query loads it immediately
+              setActiveModal('interview');
+            } catch (err: any) {
+              toast({
+                title: 'Practice Interview Failed',
+                description: err?.message || 'Could not start a practice interview for this job.',
+                variant: 'destructive'
+              });
+            }
+          })();
+        }}
+        onStartJobPracticeVoice={(job) => {
+          (async () => {
+            try {
+              const res = await fetch('/api/interview/start-job-practice-voice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ job })
+              });
+              if (!res.ok) {
+                throw new Error(`Failed to start voice practice interview (${res.status})`);
+              }
+              setActiveModal('interview');
+            } catch (err: any) {
+              toast({
+                title: 'Voice Practice Failed',
+                description: err?.message || 'Could not start a voice practice interview for this job.',
+                variant: 'destructive'
+              });
+            }
+          })();
+        }}
       />
     </div>
   );

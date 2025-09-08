@@ -1321,6 +1321,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Interview routes
+  // Start a job-specific practice interview (voice)
+  app.post('/api/interview/start-job-practice-voice', 
+    requireAuth,
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { job, language = 'english' } = req.body || {};
+
+      if (!job || !job.jobTitle) {
+        return res.status(400).json({ message: 'Job details required' });
+      }
+
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+
+      // Generate job-specific practice set
+      const practiceSet = await aiInterviewService.generateJobPracticeInterview({
+        ...user,
+        ...profile
+      }, job, language);
+
+      // Create a session indicating voice mode
+      const session = await storage.createInterviewSession({
+        userId,
+        interviewType: 'job-practice',
+        sessionData: {
+          questions: practiceSet.questions || [],
+          responses: [],
+          currentQuestionIndex: 0,
+          interviewSet: practiceSet,
+          context: { job },
+          mode: 'voice'
+        },
+        isCompleted: false
+      });
+
+      // Prepare welcome message similar to other voice start endpoints
+      const welcomeMessage = await aiInterviewService.generateWelcomeMessage({
+        ...user,
+        ...profile
+      }, language);
+
+      const firstQuestion = Array.isArray(practiceSet.questions) && practiceSet.questions.length > 0
+        ? (typeof practiceSet.questions[0] === 'string' ? practiceSet.questions[0] : practiceSet.questions[0]?.question || '')
+        : '';
+
+      res.json({
+        sessionId: session.id,
+        interviewType: 'job-practice',
+        interviewSet: practiceSet,
+        questions: practiceSet.questions,
+        firstQuestion,
+        welcomeMessage,
+        userProfile: { ...user, ...profile }
+      });
+    } catch (error) {
+      console.error('Error starting job practice voice interview:', error);
+      res.status(500).json({ message: 'Failed to start job practice voice interview' });
+    }
+  });
   // Start a job-specific practice interview (no persistence to Airtable schedules)
   app.post('/api/interview/start-job-practice', 
     requireAuth,
@@ -2145,6 +2205,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/upcoming-interviews', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      const email = user?.email || '';
+      if (email) {
+        const applications = await airtableService.getApplicationsForEmail(email);
+        return res.json(applications);
+      }
       const interviews = await airtableService.getUpcomingInterviews(userId);
       res.json(interviews);
     } catch (error) {

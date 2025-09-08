@@ -1479,6 +1479,39 @@ export class AirtableService {
       return [];
     }
   }
+
+  // Fetch applications/invitations by candidate email from platojobapplications base (Table 1)
+  async getApplicationsForEmail(email: string): Promise<any[]> {
+    if (!jobApplicationsBase) {
+      console.warn('Job applications base not configured');
+      return [];
+    }
+
+    try {
+      console.log(`📋 Fetching applications for email: ${email}`);
+      const records = await jobApplicationsBase(JOB_APPLICATIONS_TABLE).select({
+        filterByFormula: `{email} = '${email}'`,
+        sort: [{ field: 'applicationDate', direction: 'desc' }]
+      }).all();
+
+      return records.map((record) => {
+        const fields = record.fields as any;
+        return {
+          recordId: record.id,
+          jobTitle: fields['jobTitle'] || fields['Job Title'] || 'Untitled Position',
+          companyName: fields['companyName'] || fields['Company Name'] || 'Unknown Company',
+          applicationDate: fields['applicationDate'] || fields['Application Date'] || null,
+          score: typeof fields['score'] === 'number' ? fields['score'] : undefined,
+          status: fields['Invitation Status'] || fields['Status'] || undefined,
+          jobDescription: fields['Job Description'] || '',
+          skills: Array.isArray(fields['Skills']) ? fields['Skills'] : undefined
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching applications by email:', error);
+      return [];
+    }
+  }
 }
 
 export const airtableService = new AirtableService();
