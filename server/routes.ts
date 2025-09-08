@@ -1938,25 +1938,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isComplete = sessionData.responses.length >= questions.length;
 
       if (isComplete) {
-        // Mark this specific interview type as completed
         const interviewType = session.interviewType || 'personal';
+
+        // Special handling for job-specific practice interviews
+        if (interviewType === 'job-practice') {
+          try {
+            // Gather context for scoring
+            const job = (sessionData?.context && sessionData.context.job) || {};
+            console.log("job fore debug", job);
+            const jobTitle = job.jobTitle || job.title || 'Job Title';
+            const companyName = job.companyName || job.company || 'Company';
+            const jobDescription = job.jobDescription || job.description || '';
+            const qaPairs = (sessionData.responses || []).map((r: any, idx: number) => `Q${idx + 1}: ${r.question}\nA${idx + 1}: ${r.answer}`).join('\n\n');
+            const prompt = `You are an expert technical hiring panel. Score this candidate's job-specific interview strictly from 0 to 100 based on the role's requirements and the candidate's answers. Return ONLY a JSON object with keys score (0-100 integer) and rationale (1-2 concise sentences).\n\nJOB TITLE: ${jobTitle} at ${companyName}\nJOB DESCRIPTION:\n${jobDescription}\n\nINTERVIEW QA:\n${qaPairs}`;
+
+            const completion = await aiInterviewAgent.openai.chat.completions.create({
+              model: 'gpt-4o',
+              messages: [{ role: 'user', content: prompt }],
+              temperature: 0.2,
+              max_completion_tokens: 250,
+              response_format: { type: 'json_object' } as any
+            });
+
+            let score = 70;
+            let rationale: string | null = null;
+            const content = completion.choices?.[0]?.message?.content || '{}';
+            console.log('🔎 OpenAI scoring raw content:', content);
+            const tryParse = (text: string): { score?: number; rationale?: string } | null => {
+              // Try direct JSON parse
+              try {
+                const parsed = JSON.parse(text);
+                console.log('🔎 Parsed JSON (direct):', parsed);
+                return parsed;
+              } catch {}
+              // Strip markdown code fences
+              const stripped = text
+                .replace(/^```json\s*/i, '')
+                .replace(/^```\s*/i, '')
+                .replace(/```\s*$/i, '')
+                .trim();
+              try {
+                const parsed2 = JSON.parse(stripped);
+                console.log('🔎 Parsed JSON (stripped):', parsed2);
+                return parsed2;
+              } catch {}
+              // Extract first JSON object substring
+              try {
+                const start = stripped.indexOf('{');
+                const end = stripped.lastIndexOf('}');
+                if (start !== -1 && end !== -1 && end > start) {
+                  const sub = stripped.slice(start, end + 1);
+                  const parsed3 = JSON.parse(sub);
+                  console.log('🔎 Parsed JSON (substring):', parsed3);
+                  return parsed3;
+                }
+              } catch {}
+              // Fallbacks
+              const m = stripped.match(/\bscore\b\s*[:=]\s*(\d{1,3})/i) || stripped.match(/\b(\d{1,3})\b/);
+              const s = m && m[1] ? parseInt(m[1], 10) : NaN;
+              const r = (stripped.match(/"?rationale"?\s*[:=]\s*"([^"]+)"/i) || [null, null])[1];
+              return { score: isNaN(s) ? undefined : s, rationale: r || undefined };
+            };
+            const parsedAny = tryParse(content) || {} as any;
+            if (typeof parsedAny.score === 'number') {
+              score = Math.max(0, Math.min(100, Math.round(parsedAny.score)));
+            } else {
+              console.warn('⚠️ Could not parse score, using default 70');
+            }
+            if (typeof parsedAny.rationale === 'string') {
+              rationale = parsedAny.rationale;
+            }
+
+            // Update Airtable record: find first by Job title + Company + user_id
+            const MATCH_BASE_ID = process.env.AIRTABLE_MATCH_AI_INTERVIEW_BASE_ID || process.env.AIRTABLE_JOB_MATCHES_BASE_ID;
+            const MATCH_TABLE = process.env.AIRTABLE_MATCH_AI_INTERVIEW_TABLE_NAME || 'Table 1';
+            const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
+            if (MATCH_BASE_ID) {
+              try {
+                const filterFormula = `AND({Job title} = "${jobTitle}", {Company} = "${companyName}", {user_id} = "${userId}")`;
+                const listUrl = `https://api.airtable.com/v0/${MATCH_BASE_ID}/${encodeURIComponent(MATCH_TABLE)}?filterByFormula=${encodeURIComponent(filterFormula)}&pageSize=1`;
+                console.log('🔎 Airtable query debug:', { MATCH_BASE_ID, MATCH_TABLE, filterFormula, listUrl });
+                const listResp = await fetch(listUrl, { headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}`, 'Content-Type': 'application/json' } });
+                if (listResp.ok) {
+                  const data = await listResp.json();
+                  console.log('🔎 Airtable list response count:', Array.isArray(data?.records) ? data.records.length : 'n/a');
+                  const target = Array.isArray(data?.records) && data.records.length > 0 ? data.records[0] : null;
+                  if (target) {
+                    console.log('🔎 First record preview:', { id: target.id, fieldKeys: Object.keys(target.fields || {}) });
+                    console.log('🔎 First record fields snapshot:', target.fields);
+                  }
+                  if (target?.id) {
+                    const updateUrl = `https://api.airtable.com/v0/${MATCH_BASE_ID}/${encodeURIComponent(MATCH_TABLE)}/${target.id}`;
+                    const payload = { fields: { score, Status: 'completed', 'Interview Comments': rationale || '' } };
+                    console.log('🔎 Airtable update debug:', { updateUrl, payload });
+                    const updResp = await fetch(updateUrl, {
+                      method: 'PATCH',
+                      headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify(payload)
+                    });
+                    const updText = await updResp.text();
+                    console.log('🔎 Airtable update result:', updResp.status, updText);
+                  } else {
+                    console.warn('⚠️ No matching Airtable record found for job-specific interview update');
+                  }
+                } else {
+                  const listText = await listResp.text();
+                  console.warn('⚠️ Airtable list error:', listResp.status, listText);
+                }
+              } catch (e) {
+                console.warn('⚠️ Error updating Airtable job-specific score/status:', e);
+              }
+            }
+
+            // Mark session completed
+            await storage.updateInterviewSession(session.id, {
+              sessionData: { ...sessionData, isComplete: true },
+              isCompleted: true,
+              completedAt: new Date()
+            });
+
+            return res.json({ isComplete: true, jobPractice: true, score });
+          } catch (scoringError) {
+            console.error('Error scoring job-specific interview:', scoringError);
+            // Still mark session complete even if scoring fails
+            await storage.updateInterviewSession(session.id, {
+              sessionData: { ...sessionData, isComplete: true },
+              isCompleted: true,
+              completedAt: new Date()
+            });
+            return res.json({ isComplete: true, jobPractice: true, score: null });
+          }
+        }
+
+        // Generic interview completion path
         await storage.updateInterviewCompletion(userId, interviewType);
 
-        // Update the interview session as completed
         await storage.updateInterviewSession(session.id, {
           sessionData: { ...sessionData, isComplete: true },
           isCompleted: true,
           completedAt: new Date()
         });
 
-        // Check if all 3 interviews are completed
         const updatedProfile = await storage.getApplicantProfile(userId);
         const allInterviewsCompleted = updatedProfile?.personalInterviewCompleted && 
                                      updatedProfile?.professionalInterviewCompleted && 
                                      updatedProfile?.technicalInterviewCompleted;
 
         if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
-          // Generate final comprehensive profile only after ALL 3 interviews are complete
           console.log(`🎯 All 3 interviews completed for user ${userId}. Generating final profile...`);
           const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService);
 
@@ -1967,10 +2095,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: `${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed! All interviews finished - your comprehensive profile has been generated.`
           });
         } else {
-          // Individual interview complete - STORE TEMPORARILY, don't send to Airtable yet
-          console.log(`📝 ${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed for user ${userId}. Storing responses temporarily...`);
-          
-          // Determine next interview type
           let nextInterviewType = null;
           if (interviewType === 'personal' && !updatedProfile?.professionalInterviewCompleted) {
             nextInterviewType = 'professional';
