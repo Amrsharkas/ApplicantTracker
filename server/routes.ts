@@ -15,6 +15,8 @@ import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUplo
 import { db } from "./db";
 import { applicantProfiles, interviewSessions } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
+import { scrypt, randomBytes } from "crypto";
+import { promisify } from "util";
 
 
 const upload = multer({ 
@@ -517,6 +519,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
 
   // Note: Auth routes are now handled in setupAuth from auth.ts
+
+  // AI Interview initiation via Airtable token
+  app.get('/ai-interview-initation', async (req: any, res) => {
+    try {
+      const token = (req.query.token || '').toString().trim();
+      if (!token) {
+        return res.status(400).json({ error: 'Missing token' });
+      }
+
+      const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
+      const AIRTABLE_USERS_BASE_ID = process.env.AIRTABLE_USERS_BASE_ID;
+      const AIRTABLE_USERS_TABLE_NAME = process.env.AIRTABLE_USERS_TABLE_NAME || 'Table 2';
+
+      if (!AIRTABLE_USERS_BASE_ID) {
+        console.warn('AIRTABLE_USERS_BASE_ID not configured');
+        return res.status(500).json({ error: 'Airtable users base not configured' });
+      }
+
+      const headers = {
+        'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+        'Content-Type': 'application/json'
+      } as any;
+
+      // Try to fetch the record by record ID first
+      let airtableRecord: any | null = null;
+      const possibleTables = [AIRTABLE_USERS_TABLE_NAME, 'Users', 'Table 1'];
+      let lastError: any = null;
+
+      for (const tableName of possibleTables) {
+        try {
+          const byIdUrl = `https://api.airtable.com/v0/${AIRTABLE_USERS_BASE_ID}/${encodeURIComponent(tableName)}/${encodeURIComponent(token)}`;
+          const byIdResp = await fetch(byIdUrl, { headers });
+          if (byIdResp.ok) {
+            airtableRecord = await byIdResp.json();
+            break;
+          }
+        } catch (e) {
+          lastError = e;
+        }
+      }
+
+      // If not found by ID, search by Token field variations
+      if (!airtableRecord) {
+        const tokenFields = [ 'token'];
+        for (const tableName of possibleTables) {
+          for (const fieldName of tokenFields) {
+            try {
+              const formula = `({${fieldName}} = "${token}")`;
+              const searchUrl = `https://api.airtable.com/v0/${AIRTABLE_USERS_BASE_ID}/${encodeURIComponent(tableName)}?maxRecords=1&filterByFormula=${encodeURIComponent(formula)}`;
+              const resp = await fetch(searchUrl, { headers });
+              if (resp.ok) {
+                const data = await resp.json();
+                if (data.records && data.records.length > 0) {
+                  airtableRecord = data.records[0];
+                  break;
+                }
+              } else {
+                lastError = await resp.text();
+              }
+            } catch (e) {
+              lastError = e;
+            }
+          }
+          console.log("record foundxx ");
+          console.log(airtableRecord);
+          if (airtableRecord) break;
+        }
+      }
+
+      if (!airtableRecord) {
+        console.error('Airtable user record not found for token', token, lastError);
+        return res.status(404).json({ error: 'Invalid or expired token' });
+      }
+
+      const fields = airtableRecord.fields || {};
+      const email = fields['email'] || fields['Email'] || fields['E-mail'] || fields['userEmail'];
+      const firstName = fields['first_name'];
+      const lastName = fields['last_name'];
+      const name = fields['name'] || fields['Name'] || `${firstName || ''} ${lastName || ''}`.trim();
+      const username = fields['username'] || fields['Username'] || undefined;
+
+      if (!email) {
+        return res.status(400).json({ error: 'Airtable record missing email' });
+      }
+
+      // Find or create user
+      let user = await storage.getUserByEmail(email);
+
+      if (!user) {
+        // Hash a random password
+        const scryptAsync = promisify(scrypt);
+        const rawPassword = randomBytes(16).toString('hex');
+        const salt = randomBytes(16).toString('hex');
+        const buf = (await scryptAsync(rawPassword, salt, 64)) as Buffer;
+        const hashedPassword = `${buf.toString('hex')}.${salt}`;
+
+        const userId = randomBytes(16).toString('hex');
+        user = await storage.createUser({
+          id: userId,
+          email,
+          password: hashedPassword,
+          firstName: firstName || (name ? name.split(' ')[0] : ''),
+          lastName: lastName || (name ? name.split(' ').slice(1).join(' ') : ''),
+          username,
+          role: 'applicant'
+        });
+
+        // Create minimal applicant profile
+        try {
+          await storage.upsertApplicantProfile({
+            userId: user.id,
+            name: name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+            email: email
+          } as any);
+        } catch (profileError) {
+          console.warn('Failed to create initial applicant profile:', profileError);
+        }
+      }
+
+      // Create session and redirect
+      req.session.userId = user.id;
+      return res.redirect('/dashboard');
+    } catch (error) {
+      console.error('Error in ai-interview-initation:', error);
+      return res.status(500).json({ error: 'Failed to initiate interview' });
+    }
+  });
 
   // Debug endpoint for authentication issues
   app.get('/api/auth/debug', (req: any, res) => {
