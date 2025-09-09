@@ -1950,13 +1950,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const companyName = job.companyName || job.company || 'Company';
             const jobDescription = job.jobDescription || job.description || '';
             const qaPairs = (sessionData.responses || []).map((r: any, idx: number) => `Q${idx + 1}: ${r.question}\nA${idx + 1}: ${r.answer}`).join('\n\n');
-            const prompt = `You are an expert technical hiring panel. Score this candidate's job-specific interview strictly from 0 to 100 based on the role's requirements and the candidate's answers. Return ONLY a JSON object with keys score (0-100 integer) and rationale (1-2 concise sentences).\n\nJOB TITLE: ${jobTitle} at ${companyName}\nJOB DESCRIPTION:\n${jobDescription}\n\nINTERVIEW QA:\n${qaPairs}`;
+            const prompt = `Act as a professional recruiter. You will be given: (1) a set of job-specific questions (2) a user’s responses to those same questions. Your task is to:
+
+Compare the user’s answers to the ideal guidelines which you create with what would generally be the optimal answer to a specific question
+
+Highlight areas where the user’s answers align well with the expectations.
+
+Identify gaps, weaknesses, or missing details in the user’s responses.
+
+Provide constructive, recruiter-style feedback on how the candidate could improve their answers to better match the role’s requirements.
+
+Give an overall evaluation of the candidate’s suitability for the job on a scale of 1-100, with a clear reasoning behind your conclusion."* (Dont be too generous in scoring or too harsh, be very honest)
+
+\n\nJOB TITLE: ${jobTitle} at ${companyName}\nJOB DESCRIPTION:\n${jobDescription}\n\nINTERVIEW QA:\n${qaPairs}
+
+Return ONLY a JSON object with keys 
+score (0-100 integer) 
+rationale should be markdown structured as follows:
+
+Question: [Job-specific question]
+
+Ideal Answer Benchmark: [Guideline]
+
+User’s Answer: [Candidate’s response]
+
+Comparison & Feedback: [Detailed recruiter-style analysis]
+
+Overall Evaluation: [Summary judgment on candidate’s fit]
+
+`
+            // const prompt = `You are an expert technical hiring panel. Score this candidate's job-specific interview strictly from 0 to 100 based on the role's requirements and the candidate's answers. Return ONLY a JSON object with keys score (0-100 integer) and rationale (1-2 concise sentences).\n\nJOB TITLE: ${jobTitle} at ${companyName}\nJOB DESCRIPTION:\n${jobDescription}\n\nINTERVIEW QA:\n${qaPairs}`;
 
             const completion = await aiInterviewAgent.openai.chat.completions.create({
               model: 'gpt-4o',
               messages: [{ role: 'user', content: prompt }],
               temperature: 0.2,
-              max_completion_tokens: 250,
+              max_completion_tokens: 4000,
               response_format: { type: 'json_object' } as any
             });
 
@@ -2007,6 +2036,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             if (typeof parsedAny.rationale === 'string') {
               rationale = parsedAny.rationale;
+            } else {
+              // Fallback: store raw content for debugging to Airtable comments
+              const strippedRaw = content
+                .replace(/^```json\s*/i, '')
+                .replace(/^```\s*/i, '')
+                .replace(/```\s*$/i, '')
+                .trim();
+              rationale = strippedRaw.slice(0, 15000); // keep under Airtable limits
             }
 
             // Update Airtable record: find first by Job title + Company + user_id
@@ -2029,12 +2066,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
                   if (target?.id) {
                     const updateUrl = `https://api.airtable.com/v0/${MATCH_BASE_ID}/${encodeURIComponent(MATCH_TABLE)}/${target.id}`;
-                    const payload = { fields: { score, Status: 'completed', 'Interview Comments': rationale || '' } };
-                    console.log('🔎 Airtable update debug:', { updateUrl, payload });
+                    // Dynamically detect field names to avoid case/name mismatch
+                    const targetFieldKeys = Object.keys(target.fields || {});
+                    const scoreKey = targetFieldKeys.find(k => k.toLowerCase() === 'score') || 'score';
+                    const statusKey = targetFieldKeys.find(k => k.toLowerCase() === 'status') || 'Status';
+                    const commentsKey = targetFieldKeys.find(k => k.toLowerCase().includes('interview comments'))
+                      || targetFieldKeys.find(k => k.toLowerCase() === 'comments')
+                      || targetFieldKeys.find(k => k.toLowerCase().includes('comments'))
+                      || 'Interview Comments';
+                    const payload: any = { fields: { [scoreKey]: score, [statusKey]: 'completed' } };
+                    if (rationale) {
+                      payload.fields[commentsKey] = rationale;
+                    }
+                    console.log('🔎 Airtable update debug:', { updateUrl, payload, detected: { scoreKey, statusKey, commentsKey } });
                     const updResp = await fetch(updateUrl, {
                       method: 'PATCH',
                       headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}`, 'Content-Type': 'application/json' },
-                      body: JSON.stringify(payload)
+                      body: JSON.stringify({ ...payload, typecast: true })
                     });
                     const updText = await updResp.text();
                     console.log('🔎 Airtable update result:', updResp.status, updText);
