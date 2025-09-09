@@ -99,7 +99,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl max-h-[95vh] p-0 flex flex-col">
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -130,7 +130,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full flex-1 min-h-0 flex flex-col">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
           <div className="px-4 pt-4">
             <TabsList>
               <TabsTrigger value="pending">Pending interviews</TabsTrigger>
@@ -151,7 +151,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
           </div>
 
           {/* List Area */}
-          <TabsContent value="pending" className="flex-1 min-h-0 overflow-y-auto p-4 m-0">
+          <TabsContent value="pending" className="flex-1 overflow-y-auto p-4 min-h-0 m-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -221,7 +221,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
           )}
           </TabsContent>
 
-          <TabsContent value="completed" className="flex-1 min-h-0 overflow-y-auto p-4 m-0">
+          <TabsContent value="completed" className="flex-1 overflow-y-auto p-4 min-h-0 m-0">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
