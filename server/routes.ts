@@ -2833,6 +2833,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/job-specific-ai-interviews', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const statusFilter = (req.query.status || '').toString().toLowerCase();
 
       const MATCH_BASE_ID = process.env.AIRTABLE_MATCH_AI_INTERVIEW_BASE_ID || process.env.AIRTABLE_JOB_MATCHES_BASE_ID;
       const MATCH_TABLE = process.env.AIRTABLE_MATCH_AI_INTERVIEW_TABLE_NAME || 'Table 1';
@@ -2842,7 +2843,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
-      const filterFormula = `({user_id} = "${userId}")`;
+      let filterFormula = `({user_id} = "${userId}")`;
+      if (statusFilter === 'pending' || statusFilter === 'completed') {
+        filterFormula = `AND({user_id} = "${userId}", {Status} = "${statusFilter}")`;
+      }
       const url = `https://api.airtable.com/v0/${MATCH_BASE_ID}/${encodeURIComponent(MATCH_TABLE)}?filterByFormula=${encodeURIComponent(filterFormula)}&pageSize=100`;
 
       // Use the same API key approach as elsewhere in this file
@@ -2873,12 +2877,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           || fieldKeys.find(k => k.toLowerCase().includes('desc'));
         const companyField = fieldKeys.find(k => k.toLowerCase().includes('company'))
           || fieldKeys.find(k => k.toLowerCase().includes('employer'));
+        const statusField = fieldKeys.find(k => k.toLowerCase() === 'status');
+        const scoreField = fieldKeys.find(k => k.toLowerCase() === 'score');
+        const commentsField = fieldKeys.find(k => k.toLowerCase().includes('interview comments')) || fieldKeys.find(k => k.toLowerCase().includes('comments'));
 
         return {
           recordId: record.id,
           jobTitle: titleField ? fields[titleField] : (fields['Job title'] || fields['Job Title'] || 'Untitled Position'),
           jobDescription: descField ? fields[descField] : (fields['Job description'] || fields['Job Description'] || ''),
           companyName: companyField ? fields[companyField] : (fields['Company name'] || fields['Company Name'] || fields['Company'] || 'Unknown Company'),
+          status: statusField ? fields[statusField] : (fields['Status'] || ''),
+          score: typeof (scoreField ? fields[scoreField] : fields['score']) === 'number' ? (scoreField ? fields[scoreField] : fields['score']) : undefined,
+          interviewComments: commentsField ? fields[commentsField] : (fields['Interview Comments'] || '')
         };
       });
 

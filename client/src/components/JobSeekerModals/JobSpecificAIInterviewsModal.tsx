@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Building, ExternalLink, MapPin, RefreshCw, Star, X, ArrowLeft, Play } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
@@ -18,6 +19,9 @@ interface InvitedJob {
   companyName: string;
   location?: string;
   skills?: string[];
+  status?: string;
+  score?: number;
+  interviewComments?: string;
 }
 
 interface JobSpecificAIInterviewsModalProps {
@@ -40,9 +44,11 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
   const [interviewMode, setInterviewMode] = useState<'text' | 'voice'>('text');
   const [interviewLanguage, setInterviewLanguage] = useState<'english' | 'arabic'>('english');
 
+  const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
+
   const { data: items = [], refetch, isLoading, error } = useQuery({
-    queryKey: ["/api/job-specific-ai-interviews"],
-    queryFn: async () => apiRequest("/api/job-specific-ai-interviews"),
+    queryKey: ["/api/job-specific-ai-interviews", activeTab],
+    queryFn: async () => apiRequest(`/api/job-specific-ai-interviews?status=${activeTab}`),
     enabled: isOpen,
     onError: (err: Error) => {
       if (isUnauthorizedError(err)) {
@@ -124,20 +130,28 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
           </DialogTitle>
         </DialogHeader>
 
-        {/* Search Bar (no sidebar) */}
-        <div className="p-4 border-b bg-white flex-shrink-0">
-          <div className="relative">
-            <Input
-              placeholder="Search by title, company, or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-3"
-            />
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+          <div className="px-4 pt-4">
+            <TabsList>
+              <TabsTrigger value="pending">Pending interviews</TabsTrigger>
+              <TabsTrigger value="completed">Finished interviews</TabsTrigger>
+            </TabsList>
           </div>
-        </div>
 
-        {/* List Area */}
-        <div className="flex-1 overflow-y-auto p-4 min-h-0">
+          {/* Search Bar (per tab) */}
+          <div className="p-4 border-b bg-white flex-shrink-0">
+            <div className="relative">
+              <Input
+                placeholder="Search by title, company, or description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-3"
+              />
+            </div>
+          </div>
+
+          {/* List Area */}
+          <TabsContent value="pending" className="flex-1 overflow-y-auto p-4 min-h-0 m-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -205,7 +219,48 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
               ))}
             </div>
           )}
-        </div>
+          </TabsContent>
+
+          <TabsContent value="completed" className="flex-1 overflow-y-auto p-4 min-h-0 m-0">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12 text-red-600">Failed to load finished interviews</div>
+            ) : invitedJobs.length === 0 ? (
+              <div className="text-center py-12 text-slate-500">No finished interviews yet.</div>
+            ) : (
+              <div className="space-y-4">
+                {invitedJobs.map((job) => (
+                  <motion.div key={job.recordId} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="font-semibold text-blue-600 text-lg">{job.jobTitle}</h3>
+                              <Badge variant="secondary" className="text-xs">Completed</Badge>
+                            </div>
+                            <div className="flex items-center gap-2 mb-2 text-gray-600">
+                              <span className="text-gray-900 font-medium">{job.companyName}</span>
+                            </div>
+                            {typeof job.score === 'number' && (
+                              <div className="mb-2 text-sm"><span className="font-medium">Score:</span> {job.score}</div>
+                            )}
+                            {job.interviewComments && (
+                              <div className="text-sm text-gray-700 whitespace-pre-wrap"><span className="font-medium">Interview Comments:</span> {job.interviewComments}</div>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
 
         {/* Details Drawer */}
         <AnimatePresence>
