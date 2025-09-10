@@ -147,12 +147,15 @@ export class ObjectStorageService {
   async deleteAllResumeFiles(): Promise<void> {
     try {
       const privateObjectDir = this.getPrivateObjectDir();
-      const { bucketName } = parseObjectPath(`${privateObjectDir}/resumes/`);
+      const { bucketName, objectName } = parseObjectPath(`${privateObjectDir}/resumes/`);
       const bucket = objectStorageClient.bucket(bucketName);
       
-      // List all files under the resumes/ prefix
+      // Use the proper object path prefix from PRIVATE_OBJECT_DIR
+      const resumePrefix = objectName ? `${objectName}/resumes/` : 'resumes/';
+      
+      // List all files under the proper resumes prefix
       const [files] = await bucket.getFiles({
-        prefix: 'resumes/'
+        prefix: resumePrefix
       });
       
       console.log(`Found ${files.length} resume files to delete`);

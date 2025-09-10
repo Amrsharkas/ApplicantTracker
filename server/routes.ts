@@ -3275,7 +3275,30 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   });
 
   // ADMIN ONLY: Complete data wipe for production launch
-  app.post('/api/admin/wipe-all-user-data', async (req, res) => {
+  // ⚠️ SECURITY CRITICAL: This endpoint requires admin auth + secret header
+  app.post('/api/admin/wipe-all-user-data', requireAuth, async (req: any, res) => {
+    // Multiple security layers for this destructive operation
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    // Require special admin wipe secret for additional protection
+    const adminWipeSecret = process.env.ADMIN_WIPE_SECRET;
+    if (!adminWipeSecret) {
+      return res.status(500).json({ error: 'Admin wipe not configured' });
+    }
+    
+    if (req.headers['x-admin-wipe-secret'] !== adminWipeSecret) {
+      return res.status(403).json({ error: 'Invalid admin wipe authorization' });
+    }
+    
+    // Require explicit confirmation
+    if (req.body.confirm !== 'WIPE_ALL_USER_DATA') {
+      return res.status(400).json({ 
+        error: 'Missing confirmation',
+        required: 'Send { "confirm": "WIPE_ALL_USER_DATA" } in request body'
+      });
+    }
     try {
       console.log('🗑️ Starting comprehensive user data wipe...');
       const objectStorage = new ObjectStorageService();

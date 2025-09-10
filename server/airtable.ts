@@ -3,7 +3,7 @@ import { storage } from './storage';
 import { aiProfileAnalysisAgent } from './openai';
 
 // Configure Airtable
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'pat770a3TZsbDther.a2b72657b27da4390a5215e27f053a3f0a643d66b43168adb6817301ad5051c0';
+const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = 'app3tA4UpKQCT2s17'; // platouserprofiles base
 const AIRTABLE_JOB_MATCHES_BASE_ID = process.env.AIRTABLE_JOB_MATCHES_BASE_ID; // platojobmatches base
 const AIRTABLE_JOB_POSTINGS_BASE_ID = process.env.AIRTABLE_JOB_POSTINGS_BASE_ID; // platojobpostings base
@@ -11,6 +11,10 @@ const AIRTABLE_JOB_APPLICATIONS_BASE_ID = 'appEYs1fTytFXoJ7x'; // platojobapplic
 const TABLE_NAME = 'Table 1'; // For user profiles
 const JOB_MATCHES_TABLE = 'Table 1'; // For job matches in the dedicated base
 const JOB_APPLICATIONS_TABLE = 'Table 1'; // For job applications
+
+if (!AIRTABLE_API_KEY) {
+  console.error('❌ AIRTABLE_API_KEY not configured. Airtable integration will be disabled for security.');
+}
 
 if (!AIRTABLE_BASE_ID) {
   console.warn('AIRTABLE_BASE_ID not configured. Airtable integration will be disabled.');
@@ -34,10 +38,14 @@ if (!AIRTABLE_JOB_APPLICATIONS_BASE_ID) {
   console.log('✅ Job applications base configured:', AIRTABLE_JOB_APPLICATIONS_BASE_ID);
 }
 
-Airtable.configure({
-  endpointUrl: 'https://api.airtable.com',
-  apiKey: AIRTABLE_API_KEY
-});
+if (AIRTABLE_API_KEY) {
+  Airtable.configure({
+    endpointUrl: 'https://api.airtable.com',
+    apiKey: AIRTABLE_API_KEY
+  });
+} else {
+  console.error('❌ Cannot configure Airtable: API key not provided');
+}
 
 const base = AIRTABLE_BASE_ID ? Airtable.base(AIRTABLE_BASE_ID) : null;
 const jobMatchesBase = AIRTABLE_JOB_MATCHES_BASE_ID ? Airtable.base(AIRTABLE_JOB_MATCHES_BASE_ID) : null;
