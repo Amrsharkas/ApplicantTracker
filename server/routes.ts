@@ -13,7 +13,7 @@ import { z } from "zod";
 import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile } from "@shared/schema";
 // Dynamic import for pdf-parse will be used when needed
 import { db } from "./db";
-import { applicantProfiles, interviewSessions } from "@shared/schema";
+import { applicantProfiles, interviewSessions, resumeUploads, jobMatches, applications, sessions, users } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
