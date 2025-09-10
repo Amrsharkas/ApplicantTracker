@@ -1512,6 +1512,136 @@ export class AirtableService {
       return [];
     }
   }
+
+  // Delete all user profiles from Airtable
+  async deleteAllUserProfiles(): Promise<number> {
+    if (!base) {
+      console.warn('Airtable base not configured, skipping user profile deletion');
+      return 0;
+    }
+
+    try {
+      console.log('🗑️ Starting deletion of all user profiles from Airtable...');
+      let deletedCount = 0;
+      const recordsToDelete = [];
+
+      // Fetch all records in batches
+      await base(TABLE_NAME).select().eachPage((records, fetchNextPage) => {
+        records.forEach(record => {
+          recordsToDelete.push(record.id);
+        });
+        fetchNextPage();
+      });
+
+      console.log(`📋 Found ${recordsToDelete.length} user profile records to delete`);
+
+      // Delete records in batches of 10 (Airtable limit)
+      for (let i = 0; i < recordsToDelete.length; i += 10) {
+        const batch = recordsToDelete.slice(i, i + 10);
+        try {
+          await base(TABLE_NAME).destroy(batch);
+          deletedCount += batch.length;
+          console.log(`✅ Deleted batch of ${batch.length} user profile records`);
+          
+          // Rate limiting - wait 200ms between batches
+          if (i + 10 < recordsToDelete.length) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+        } catch (batchError) {
+          console.error(`❌ Failed to delete batch starting at index ${i}:`, batchError);
+        }
+      }
+
+      console.log(`🎉 Successfully deleted ${deletedCount} user profile records from Airtable`);
+      return deletedCount;
+    } catch (error) {
+      console.error('❌ Error deleting user profiles from Airtable:', error);
+      throw error;
+    }
+  }
+
+  // Delete all job matches from Airtable
+  async deleteAllJobMatches(): Promise<number> {
+    let deletedCount = 0;
+
+    try {
+      console.log('🗑️ Starting deletion of all job matches from Airtable...');
+
+      // Delete from dedicated job matches base
+      if (jobMatchesBase) {
+        console.log('📋 Deleting from dedicated job matches base...');
+        const recordsToDelete = [];
+
+        await jobMatchesBase(JOB_MATCHES_TABLE).select().eachPage((records, fetchNextPage) => {
+          records.forEach(record => {
+            recordsToDelete.push(record.id);
+          });
+          fetchNextPage();
+        });
+
+        console.log(`📋 Found ${recordsToDelete.length} job match records to delete`);
+
+        // Delete records in batches of 10
+        for (let i = 0; i < recordsToDelete.length; i += 10) {
+          const batch = recordsToDelete.slice(i, i + 10);
+          try {
+            await jobMatchesBase(JOB_MATCHES_TABLE).destroy(batch);
+            deletedCount += batch.length;
+            console.log(`✅ Deleted batch of ${batch.length} job match records`);
+            
+            // Rate limiting
+            if (i + 10 < recordsToDelete.length) {
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
+          } catch (batchError) {
+            console.error(`❌ Failed to delete job match batch starting at index ${i}:`, batchError);
+          }
+        }
+      } else {
+        console.warn('Job matches base not configured, skipping job matches deletion');
+      }
+
+      // Also delete from job applications base
+      if (jobApplicationsBase) {
+        console.log('📋 Deleting from job applications base...');
+        const applicationRecordsToDelete = [];
+
+        await jobApplicationsBase(JOB_APPLICATIONS_TABLE).select().eachPage((records, fetchNextPage) => {
+          records.forEach(record => {
+            applicationRecordsToDelete.push(record.id);
+          });
+          fetchNextPage();
+        });
+
+        console.log(`📋 Found ${applicationRecordsToDelete.length} job application records to delete`);
+
+        // Delete records in batches of 10
+        for (let i = 0; i < applicationRecordsToDelete.length; i += 10) {
+          const batch = applicationRecordsToDelete.slice(i, i + 10);
+          try {
+            await jobApplicationsBase(JOB_APPLICATIONS_TABLE).destroy(batch);
+            deletedCount += batch.length;
+            console.log(`✅ Deleted batch of ${batch.length} job application records`);
+            
+            // Rate limiting
+            if (i + 10 < recordsToDelete.length) {
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
+          } catch (batchError) {
+            console.error(`❌ Failed to delete job application batch starting at index ${i}:`, batchError);
+          }
+        }
+      } else {
+        console.warn('Job applications base not configured, skipping job applications deletion');
+      }
+
+      console.log(`🎉 Successfully deleted ${deletedCount} records from Airtable`);
+      return deletedCount;
+    } catch (error) {
+      console.error('❌ Error deleting job matches from Airtable:', error);
+      throw error;
+    }
+  }
 }
 
 export const airtableService = new AirtableService();

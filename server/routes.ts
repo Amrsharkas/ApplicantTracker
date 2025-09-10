@@ -3274,6 +3274,157 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
+  // ADMIN ONLY: Complete data wipe for production launch
+  app.post('/api/admin/wipe-all-user-data', async (req, res) => {
+    try {
+      console.log('🗑️ Starting comprehensive user data wipe...');
+      const objectStorage = new ObjectStorageService();
+      
+      const summary = {
+        resumeFilesDeleted: 0,
+        databaseRecordsDeleted: {
+          sessions: 0,
+          users: 0,
+          profiles: 0,
+          interviews: 0,
+          resumes: 0,
+          applications: 0,
+          matches: 0
+        },
+        airtableRecordsDeleted: 0,
+        errors: []
+      };
+
+      // Step 1: Delete all resume files from object storage
+      try {
+        console.log('🗑️ Step 1: Deleting resume files from object storage...');
+        const resumeFiles = await db.select().from(resumeUploads);
+        
+        for (const resume of resumeFiles) {
+          try {
+            await objectStorage.deleteResumeFile(resume.filePath);
+            summary.resumeFilesDeleted++;
+          } catch (error) {
+            console.error(`❌ Failed to delete resume file ${resume.filePath}:`, error);
+            summary.errors.push(`Failed to delete resume file: ${resume.filePath}`);
+          }
+        }
+        
+        // Also try bulk delete method
+        try {
+          await objectStorage.deleteAllResumeFiles();
+        } catch (bulkError) {
+          console.warn('Bulk delete failed, individual deletes may have worked:', bulkError);
+        }
+        
+        console.log(`✅ Deleted ${summary.resumeFilesDeleted} resume files`);
+      } catch (error) {
+        console.error('❌ Error during resume file deletion:', error);
+        summary.errors.push(`Resume file deletion error: ${error.message}`);
+      }
+
+      // Step 2: Clear database tables in proper order (child -> parent)
+      try {
+        console.log('🗑️ Step 2: Clearing database tables...');
+        
+        // Delete job matches (references users and jobs)
+        const jobMatchesCount = await db.delete(jobMatches).execute();
+        summary.databaseRecordsDeleted.matches = jobMatchesCount.rowCount || 0;
+        console.log(`✅ Deleted ${summary.databaseRecordsDeleted.matches} job matches`);
+        
+        // Delete applications (references users and jobs)
+        const applicationsCount = await db.delete(applications).execute();
+        summary.databaseRecordsDeleted.applications = applicationsCount.rowCount || 0;
+        console.log(`✅ Deleted ${summary.databaseRecordsDeleted.applications} applications`);
+        
+        // Delete interview sessions (references users)
+        const interviewsCount = await db.delete(interviewSessions).execute();
+        summary.databaseRecordsDeleted.interviews = interviewsCount.rowCount || 0;
+        console.log(`✅ Deleted ${summary.databaseRecordsDeleted.interviews} interview sessions`);
+        
+        // Delete resume uploads (references users)
+        const resumesCount = await db.delete(resumeUploads).execute();
+        summary.databaseRecordsDeleted.resumes = resumesCount.rowCount || 0;
+        console.log(`✅ Deleted ${summary.databaseRecordsDeleted.resumes} resume uploads`);
+        
+        // Delete applicant profiles (references users)
+        const profilesCount = await db.delete(applicantProfiles).execute();
+        summary.databaseRecordsDeleted.profiles = profilesCount.rowCount || 0;
+        console.log(`✅ Deleted ${summary.databaseRecordsDeleted.profiles} applicant profiles`);
+        
+        // Delete sessions
+        const sessionsCount = await db.delete(sessions).execute();
+        summary.databaseRecordsDeleted.sessions = sessionsCount.rowCount || 0;
+        console.log(`✅ Deleted ${summary.databaseRecordsDeleted.sessions} sessions`);
+        
+        // Delete users (parent table)
+        const usersCount = await db.delete(users).execute();
+        summary.databaseRecordsDeleted.users = usersCount.rowCount || 0;
+        console.log(`✅ Deleted ${summary.databaseRecordsDeleted.users} users`);
+        
+      } catch (error) {
+        console.error('❌ Error during database deletion:', error);
+        summary.errors.push(`Database deletion error: ${error.message}`);
+      }
+
+      // Step 3: Clear Airtable user data
+      try {
+        console.log('🗑️ Step 3: Clearing Airtable user data...');
+        
+        // Clear user profiles from Airtable
+        try {
+          const deletedProfiles = await airtableService.deleteAllUserProfiles();
+          summary.airtableRecordsDeleted += deletedProfiles;
+          console.log(`✅ Deleted ${deletedProfiles} user profiles from Airtable`);
+        } catch (airtableError) {
+          console.error('❌ Failed to clear Airtable profiles:', airtableError);
+          summary.errors.push(`Airtable profiles deletion error: ${airtableError.message}`);
+        }
+        
+        // Clear job matches from Airtable
+        try {
+          const deletedMatches = await airtableService.deleteAllJobMatches();
+          summary.airtableRecordsDeleted += deletedMatches;
+          console.log(`✅ Deleted ${deletedMatches} job matches from Airtable`);
+        } catch (airtableError) {
+          console.error('❌ Failed to clear Airtable matches:', airtableError);
+          summary.errors.push(`Airtable matches deletion error: ${airtableError.message}`);
+        }
+        
+      } catch (error) {
+        console.error('❌ Error during Airtable deletion:', error);
+        summary.errors.push(`Airtable deletion error: ${error.message}`);
+      }
+
+      const totalRecords = Object.values(summary.databaseRecordsDeleted).reduce((a, b) => a + b, 0);
+      
+      console.log('🎉 Data wipe completed!');
+      console.log('📊 Summary:', {
+        totalDatabaseRecords: totalRecords,
+        resumeFiles: summary.resumeFilesDeleted,
+        airtableRecords: summary.airtableRecordsDeleted,
+        errors: summary.errors.length
+      });
+      
+      res.json({
+        success: true,
+        message: 'User data wipe completed successfully',
+        summary: {
+          ...summary,
+          totalDatabaseRecords: totalRecords
+        }
+      });
+      
+    } catch (error) {
+      console.error('🚨 Critical error during data wipe:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Data wipe failed',
+        error: error.message
+      });
+    }
+  });
+
   // Debug endpoint to check Airtable connection
   app.get('/api/debug-airtable', async (req, res) => {
     try {
