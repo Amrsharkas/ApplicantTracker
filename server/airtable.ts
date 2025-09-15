@@ -90,6 +90,7 @@ export interface AirtableJobPosting {
   skills?: string[];
   postedDate?: string;
   employerQuestions?: string;
+  aiPrompt?: string;
 }
 
 export interface AirtableJobApplication {
@@ -1316,7 +1317,8 @@ export class AirtableService {
           experienceLevel: fields['Experience Level'] || 'Mid Level',
           skills: fields['Skills'] ? (Array.isArray(fields['Skills']) ? fields['Skills'] : fields['Skills'].split(',').map((s: string) => s.trim())) : [],
           postedDate: fields['Posted Date'] || fields['Date Posted'] || fields['Date'] || new Date().toISOString(),
-          employerQuestions: fields['Employer Questions'] || undefined
+          employerQuestions: fields['Employer Questions'] || undefined,
+          aiPrompt: fields['AI Prompt'] || fields['aiPrompt'] || fields['Ai Prompt'] || undefined
         };
 
         jobPostings.push(jobPosting);

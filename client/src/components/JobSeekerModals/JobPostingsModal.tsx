@@ -50,6 +50,7 @@ interface JobPosting {
   skills?: string[];
   postedDate?: string;
   employerQuestions?: string;
+  aiPrompt?: string;
 }
 
 interface AIMatchResponse {
@@ -1312,6 +1313,18 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         ))}
                       </div>
                     </div>
+
+                    {/* AI Prompt */}
+                    {selectedJob.aiPrompt && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">AI Prompt</h3>
+                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                          <p className="text-purple-800 text-sm leading-relaxed whitespace-pre-wrap">
+                            {selectedJob.aiPrompt}
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Skills & Requirements */}
                     {selectedJob.skills && selectedJob.skills.length > 0 && (
