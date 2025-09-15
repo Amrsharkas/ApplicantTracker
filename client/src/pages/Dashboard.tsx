@@ -185,7 +185,7 @@ export default function Dashboard() {
   const profileProgress = (comprehensiveProfile as any)?.completionPercentage || 0;
   
   // Check if comprehensive profile has required fields completed (75% threshold for interviews)
-  const hasCompleteProfile = profileProgress >= 99;
+  const hasCompleteProfile = profileProgress >= 75;
   
   // More strict interview completion check - require ALL three interviews AND aiProfileGenerated
   const hasCompletedPersonalInterview = (profile as any)?.personalInterviewCompleted;
@@ -592,7 +592,7 @@ export default function Dashboard() {
         )}
 
         {/* Instruction Message for Uncompleted Steps */}
-        {!showFullDashboard && (
+        {showFullDashboard && (
           <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
             <div className="flex items-start space-x-3 rtl:space-x-reverse">
               <MessageCircle className="h-6 w-6 text-blue-600 mt-0.5" />
