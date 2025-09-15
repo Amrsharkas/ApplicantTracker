@@ -185,7 +185,7 @@ export default function Dashboard() {
   const profileProgress = (comprehensiveProfile as any)?.completionPercentage || 0;
   
   // Check if comprehensive profile has required fields completed (75% threshold for interviews)
-  const hasCompleteProfile = profileProgress >= 75;
+  const hasCompleteProfile = profileProgress >= 99;
   
   // More strict interview completion check - require ALL three interviews AND aiProfileGenerated
   const hasCompletedPersonalInterview = (profile as any)?.personalInterviewCompleted;
@@ -285,9 +285,9 @@ export default function Dashboard() {
                     ? 'border-green-200 bg-green-50' 
                     : 'border-blue-200 shadow-md'
                 }`}>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center space-x-4 rtl:space-x-reverse">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
+                      <div className={`min-w-10 min-h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
                         hasCompleteProfile ? 'bg-green-600' : 'bg-blue-600'
                       }`}>
                         {hasCompleteProfile ? '✓' : '1'}
@@ -312,7 +312,7 @@ export default function Dashboard() {
                         <div className="text-2xl font-bold text-gray-900">{profileProgress}%</div>
                         <div className="text-xs text-gray-500">{t('complete')}</div>
                       </div>
-                      <div className="flex space-x-2 rtl:space-x-reverse">
+                      <div className="flex space-x-2 rtl:space-x-reverse ">
                         <input
                           ref={fileInputRef}
                           type="file"
