@@ -15,7 +15,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { 
+import { useLanguage } from "@/contexts/LanguageContext";
+import {
   User, MapPin, GraduationCap, Briefcase, Award, Settings, Globe, FileText,
   Upload, Plus, X, Shield, Languages, Target, Star, CheckCircle2, AlertCircle
 } from "lucide-react";
@@ -207,6 +208,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { t } = useLanguage();
 
 
   // Form initialization with truly empty default values to avoid false completion scores
@@ -281,8 +283,8 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
         salaryExpectations: {
           minSalary: undefined,
           maxSalary: undefined,
-          currency: "EGP",
-          period: "monthly",
+          currency: t("egyptianPound"),
+          period: t("monthly"),
           negotiable: undefined, // Changed from true to undefined to avoid false completion
         },
         benefits: {
@@ -391,8 +393,8 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
       // Use the fresh backend completion percentage for consistency
       const progressPercentage = (freshData as any)?.completionPercentage || (data as any)?.completionPercentage || 0;
       toast({
-        title: "Profile progress saved!",
-        description: `Your profile is ${progressPercentage}% complete. ${progressPercentage >= 75 ? 'Interviews are now unlocked!' : 'Continue building to unlock interviews at 75%.'}`,
+        title: t("profileProgress"),
+        description: t("profileComplete", { percentage: progressPercentage }),
       });
       onClose();
     },
@@ -400,8 +402,8 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
       console.error('Profile save error:', error);
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: t("auth.unauthorized"),
+          description: t("auth.loggingOut"),
           variant: "destructive",
         });
         setTimeout(() => {
@@ -410,8 +412,8 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
         return;
       }
       toast({
-        title: "Error saving profile",
-        description: error.message || "Please check all required fields and try again.",
+        title: t("errorSavingProfile"),
+        description: error.message || t("pleaseCheckFieldsTryAgain"),
         variant: "destructive",
       });
     },
@@ -500,17 +502,17 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
   }
 
   const tabTriggers = [
-    { value: "personal", label: "Personal", icon: User },
-    { value: "government", label: "ID", icon: Shield },
-    { value: "links", label: "Links", icon: Globe },
-    { value: "eligibility", label: "Eligibility", icon: MapPin },
-    { value: "languages", label: "Languages", icon: Languages },
-    { value: "skills", label: "Skills", icon: Settings },
-    { value: "education", label: "Education", icon: GraduationCap },
-    { value: "experience", label: "Experience", icon: Briefcase },
-    { value: "certifications", label: "Certs", icon: Award },
-    { value: "awards", label: "Awards", icon: Star },
-    { value: "target", label: "Job Target", icon: Target },
+    { value: "personal", label: t("personalDetails"), icon: User },
+    { value: "government", label: t("governmentIdSubmission"), icon: Shield },
+    { value: "links", label: t("linksPortfolio"), icon: Globe },
+    { value: "eligibility", label: t("workEligibility"), icon: MapPin },
+    { value: "languages", label: t("languages"), icon: Languages },
+    { value: "skills", label: t("skills"), icon: Settings },
+    { value: "education", label: t("education"), icon: GraduationCap },
+    { value: "experience", label: t("workExperience"), icon: Briefcase },
+    { value: "certifications", label: t("certifications"), icon: Award },
+    { value: "awards", label: t("awards"), icon: Star },
+    { value: "target", label: t("jobTarget"), icon: Target },
   ];
 
   return (
@@ -520,17 +522,17 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center space-x-2 rtl:space-x-reverse">
               <User className="h-5 w-5" />
-              <span>Build Your Complete Profile</span>
+              <span>{t("buildProfile")}</span>
             </DialogTitle>
             <div className="flex items-center space-x-2 rtl:space-x-reverse text-sm text-gray-500">
               {isAutoSaving && (
                 <div className="flex items-center space-x-1 rtl:space-x-reverse">
                   <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-600"></div>
-                  <span>Saving...</span>
+                  <span>{t("saving")}</span>
                 </div>
               )}
               {lastSaved && !isAutoSaving && (
-                <span>Last saved: {lastSaved.toLocaleTimeString()}</span>
+                <span>{t("lastSaved")}: {lastSaved.toLocaleTimeString()}</span>
               )}
             </div>
           </div>
@@ -560,7 +562,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse">
                       <User className="h-5 w-5" />
-                      <span>Personal Details</span>
+                      <span>{t("personalDetails")}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -570,9 +572,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="personalDetails.firstName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>First Name *</FormLabel>
+                            <FormLabel>{t("firstName")} *</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Enter first name" />
+                              <Input {...field} placeholder={t("enterFirstName")} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -583,9 +585,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="personalDetails.lastName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Last Name *</FormLabel>
+                            <FormLabel>{t("lastName")} *</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Enter last name" />
+                              <Input {...field} placeholder={t("enterLastName")} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -596,9 +598,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="personalDetails.email"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Email *</FormLabel>
+                            <FormLabel>{t("email")} *</FormLabel>
                             <FormControl>
-                              <Input {...field} type="email" placeholder="Enter email" />
+                              <Input {...field} type="email" placeholder={t("enterEmail")} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -609,9 +611,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="personalDetails.phone"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Phone *</FormLabel>
+                            <FormLabel>{t("phone")} *</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Enter phone number" />
+                              <Input {...field} placeholder={t("enterPhone")} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -622,7 +624,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="personalDetails.dateOfBirth"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Date of Birth</FormLabel>
+                            <FormLabel>{t("dateOfBirth")}</FormLabel>
                             <FormControl>
                               <Input {...field} type="date" />
                             </FormControl>
@@ -635,19 +637,19 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="personalDetails.gender"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Gender</FormLabel>
+                            <FormLabel>{t("gender")}</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select gender" />
+                                  <SelectValue placeholder={t("selectGender")} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="male">Male</SelectItem>
-                                <SelectItem value="female">Female</SelectItem>
-                                <SelectItem value="non-binary">Non-binary</SelectItem>
-                                <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
+                                <SelectItem value="male">{t("male")}</SelectItem>
+                                <SelectItem value="female">{t("female")}</SelectItem>
+                                <SelectItem value="non-binary">{t("nonBinary")}</SelectItem>
+                                <SelectItem value="prefer-not-to-say">{t("preferNotToSay")}</SelectItem>
+                                <SelectItem value="other">{t("other")}</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -659,9 +661,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="personalDetails.nationality"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Nationality</FormLabel>
+                            <FormLabel>{t("nationality")}</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Enter nationality" />
+                              <Input {...field} placeholder={t("enterNationality")} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -671,16 +673,16 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
 
                     {/* Address Section */}
                     <div className="border-t pt-4">
-                      <h4 className="text-lg font-medium mb-3">Address</h4>
+                      <h4 className="text-lg font-medium mb-3">{t("address")}</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
                           name="personalDetails.address.street"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Street Address</FormLabel>
+                              <FormLabel>{t("streetAddress")}</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter street address" />
+                                <Input {...field} placeholder={t("enterStreetAddress")} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -691,9 +693,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           name="personalDetails.address.city"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>City</FormLabel>
+                              <FormLabel>{t("city")}</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter city" />
+                                <Input {...field} placeholder={t("enterCity")} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -704,9 +706,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           name="personalDetails.address.state"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>State/Province</FormLabel>
+                              <FormLabel>{t("stateProvince")}</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter state/province" />
+                                <Input {...field} placeholder={t("enterStateProvince")} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -717,9 +719,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           name="personalDetails.address.country"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Country</FormLabel>
+                              <FormLabel>{t("country")}</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter country" />
+                                <Input {...field} placeholder={t("enterCountry")} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -730,9 +732,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           name="personalDetails.address.postalCode"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Postal Code</FormLabel>
+                              <FormLabel>{t("postalCode")}</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter postal code" />
+                                <Input {...field} placeholder={t("enterPostalCode")} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -743,16 +745,16 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
 
                     {/* Emergency Contact Section */}
                     <div className="border-t pt-4">
-                      <h4 className="text-lg font-medium mb-3">Emergency Contact</h4>
+                      <h4 className="text-lg font-medium mb-3">{t("emergencyContact")}</h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <FormField
                           control={form.control}
                           name="personalDetails.emergencyContact.name"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Name</FormLabel>
+                              <FormLabel>{t("name")}</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Emergency contact name" />
+                                <Input {...field} placeholder={t("emergencyContactName")} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -763,9 +765,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           name="personalDetails.emergencyContact.relationship"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Relationship</FormLabel>
+                              <FormLabel>{t("relationship")}</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Relationship to you" />
+                                <Input {...field} placeholder={t("relationshipToYou")} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -776,9 +778,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           name="personalDetails.emergencyContact.phone"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Phone</FormLabel>
+                              <FormLabel>{t("phone")}</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Emergency contact phone" />
+                                <Input {...field} placeholder={t("emergencyContactPhone")} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -796,7 +798,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse">
                       <Target className="h-5 w-5" />
-                      <span>Job Target & Fit</span>
+                      <span>{t("jobTarget")}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -806,22 +808,22 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="jobTarget.careerLevel"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Career Level</FormLabel>
+                            <FormLabel>{t("careerLevel")}</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select career level" />
+                                  <SelectValue placeholder={t("selectCareerLevel")} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="entry">Entry Level</SelectItem>
-                                <SelectItem value="junior">Junior</SelectItem>
-                                <SelectItem value="mid">Mid-Level</SelectItem>
-                                <SelectItem value="senior">Senior</SelectItem>
-                                <SelectItem value="lead">Lead</SelectItem>
-                                <SelectItem value="manager">Manager</SelectItem>
-                                <SelectItem value="director">Director</SelectItem>
-                                <SelectItem value="executive">Executive</SelectItem>
+                                <SelectItem value="entry">{t("entryLevel")}</SelectItem>
+                                <SelectItem value="junior">{t("junior")}</SelectItem>
+                                <SelectItem value="mid">{t("midLevel")}</SelectItem>
+                                <SelectItem value="senior">{t("senior")}</SelectItem>
+                                <SelectItem value="lead">{t("lead")}</SelectItem>
+                                <SelectItem value="manager">{t("manager")}</SelectItem>
+                                <SelectItem value="director">{t("director")}</SelectItem>
+                                <SelectItem value="executive">{t("executive")}</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -832,19 +834,19 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
 
                     {/* Salary Expectations */}
                     <div className="border-t pt-4">
-                      <h4 className="text-lg font-medium mb-3">Salary Expectations</h4>
+                      <h4 className="text-lg font-medium mb-3">{t("salaryExpectations")}</h4>
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <FormField
                           control={form.control}
                           name="jobTarget.salaryExpectations.minSalary"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Minimum Salary</FormLabel>
+                              <FormLabel>{t("minimumSalary")}</FormLabel>
                               <FormControl>
-                                <Input 
-                                  {...field} 
-                                  type="number" 
-                                  placeholder="0"
+                                <Input
+                                  {...field}
+                                  type="number"
+                                  placeholder={t("enterZero")}
                                   value={field.value || ""}
                                   onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                                  
@@ -859,12 +861,12 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           name="jobTarget.salaryExpectations.maxSalary"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Maximum Salary</FormLabel>
+                              <FormLabel>{t("maximumSalary")}</FormLabel>
                               <FormControl>
-                                <Input 
-                                  {...field} 
-                                  type="number" 
-                                  placeholder="0"
+                                <Input
+                                  {...field}
+                                  type="number"
+                                  placeholder={t("enterZero")}
                                   value={field.value || ""}
                                   onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                                  
@@ -879,20 +881,20 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           name="jobTarget.salaryExpectations.currency"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Currency</FormLabel>
+                              <FormLabel>{t("currency")}</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
-                                    <SelectValue placeholder="Currency" />
+                                    <SelectValue placeholder={t("currency")} />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="EGP">EGP</SelectItem>
-                                  <SelectItem value="USD">USD</SelectItem>
-                                  <SelectItem value="EUR">EUR</SelectItem>
-                                  <SelectItem value="GBP">GBP</SelectItem>
-                                  <SelectItem value="SAR">SAR</SelectItem>
-                                  <SelectItem value="AED">AED</SelectItem>
+                                  <SelectItem value="EGP">{t("egyptianPound")}</SelectItem>
+                                  <SelectItem value="USD">{t("usDollar")}</SelectItem>
+                                  <SelectItem value="EUR">{t("euro")}</SelectItem>
+                                  <SelectItem value="GBP">{t("britishPound")}</SelectItem>
+                                  <SelectItem value="SAR">{t("saudiRiyal")}</SelectItem>
+                                  <SelectItem value="AED">{t("uaeDirham")}</SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -904,16 +906,16 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           name="jobTarget.salaryExpectations.period"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Period</FormLabel>
+                              <FormLabel>{t("period")}</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
-                                    <SelectValue placeholder="Period" />
+                                    <SelectValue placeholder={t("period")} />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="monthly">Monthly</SelectItem>
-                                  <SelectItem value="annually">Annually</SelectItem>
+                                  <SelectItem value="monthly">{t("monthly")}</SelectItem>
+                                  <SelectItem value="annually">{t("annually")}</SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -934,7 +936,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                                 />
                               </FormControl>
                               <div className="space-y-1 leading-none">
-                                <FormLabel>Salary is negotiable</FormLabel>
+                                <FormLabel>{t("salaryIsNegotiable")}</FormLabel>
                               </div>
                             </FormItem>
                           )}
@@ -949,13 +951,13 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="jobTarget.careerGoals"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Career Goals</FormLabel>
+                            <FormLabel>{t("careerGoals")}</FormLabel>
                             <FormControl>
-                              <Textarea 
-                                {...field} 
-                                rows={4} 
-                                placeholder="Describe your career goals and aspirations..."
-                               
+                              <Textarea
+                                {...field}
+                                rows={4}
+                                placeholder={t("describeCareerGoalsAspirations")}
+                              
                               />
                             </FormControl>
                             <FormMessage />
@@ -967,13 +969,13 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="jobTarget.workStyle"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Work Style</FormLabel>
+                            <FormLabel>{t("workStyle")}</FormLabel>
                             <FormControl>
-                              <Textarea 
-                                {...field} 
-                                rows={3} 
-                                placeholder="Describe your preferred work style and environment..."
-                               
+                              <Textarea
+                                {...field}
+                                rows={3}
+                                placeholder={t("describePreferredWorkStyle")}
+                              
                               />
                             </FormControl>
                             <FormMessage />
@@ -985,13 +987,13 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="jobTarget.motivations"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>What Motivates You</FormLabel>
+                            <FormLabel>{t("whatMotivatesYou")}</FormLabel>
                             <FormControl>
-                              <Textarea 
-                                {...field} 
-                                rows={3} 
-                                placeholder="What drives and motivates you in your career..."
-                               
+                              <Textarea
+                                {...field}
+                                rows={3}
+                                placeholder={t("whatDrivesMotivatesCareer")}
+                              
                               />
                             </FormControl>
                             <FormMessage />
@@ -1003,13 +1005,13 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="jobTarget.dealBreakers"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Deal Breakers</FormLabel>
+                            <FormLabel>{t("dealBreakers")}</FormLabel>
                             <FormControl>
-                              <Textarea 
-                                {...field} 
-                                rows={3} 
-                                placeholder="What would be deal breakers for you in a job..."
-                               
+                              <Textarea
+                                {...field}
+                                rows={3}
+                                placeholder={t("dealBreakersJob")}
+                              
                               />
                             </FormControl>
                             <FormMessage />
@@ -1027,7 +1029,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse">
                       <Shield className="h-5 w-5" />
-                      <span>Government ID Submission</span>
+                      <span>{t("governmentIdSubmission")}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1037,18 +1039,18 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="governmentId.idType"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>ID Type</FormLabel>
+                            <FormLabel>{t("idType")}</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select ID type" />
+                                  <SelectValue placeholder={t("selectIdType")} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="passport">Passport</SelectItem>
-                                <SelectItem value="national-id">National ID</SelectItem>
-                                <SelectItem value="driving-license">Driving License</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
+                                <SelectItem value="passport">{t("passport")}</SelectItem>
+                                <SelectItem value="national-id">{t("nationalId")}</SelectItem>
+                                <SelectItem value="driving-license">{t("drivingLicense")}</SelectItem>
+                                <SelectItem value="other">{t("other")}</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -1060,9 +1062,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="governmentId.idNumber"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>ID Number</FormLabel>
+                            <FormLabel>{t("idNumber")}</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Enter ID number" />
+                              <Input {...field} placeholder={t("enterIdNumber")} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1073,7 +1075,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="governmentId.expiryDate"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Expiry Date</FormLabel>
+                            <FormLabel>{t("expiryDate")}</FormLabel>
                             <FormControl>
                               <Input {...field} type="date" />
                             </FormControl>
@@ -1086,9 +1088,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="governmentId.issuingAuthority"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Issuing Authority</FormLabel>
+                            <FormLabel>{t("issuingAuthority")}</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Issuing authority" />
+                              <Input {...field} placeholder={t("enterIssuingAuthority")} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1105,7 +1107,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse">
                       <Globe className="h-5 w-5" />
-                      <span>Links & Portfolio</span>
+                      <span>{t("linksPortfolio")}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1115,9 +1117,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="linksPortfolio.linkedinUrl"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>LinkedIn URL</FormLabel>
+                            <FormLabel>{t("linkedinUrl")}</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="https://linkedin.com/in/yourprofile" />
+                              <Input {...field} placeholder={t("linkedinUrlPlaceholder")} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1128,9 +1130,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="linksPortfolio.githubUrl"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>GitHub URL</FormLabel>
+                            <FormLabel>{t("githubUrl")}</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="https://github.com/yourusername" />
+                              <Input {...field} placeholder={t("githubUrlPlaceholder")} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1141,9 +1143,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="linksPortfolio.portfolioUrl"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Portfolio URL</FormLabel>
+                            <FormLabel>{t("portfolioUrl")}</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="https://yourportfolio.com" />
+                              <Input {...field} placeholder={t("portfolioUrlPlaceholder")} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1154,9 +1156,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="linksPortfolio.personalWebsite"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Personal Website</FormLabel>
+                            <FormLabel>{t("personalWebsite")}</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="https://yourwebsite.com" />
+                              <Input {...field} placeholder={t("personalWebsitePlaceholder")} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1167,9 +1169,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="linksPortfolio.behanceUrl"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Behance URL</FormLabel>
+                            <FormLabel>{t("behanceUrl")}</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="https://behance.net/yourprofile" />
+                              <Input {...field} placeholder={t("behanceUrlPlaceholder")} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1180,9 +1182,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="linksPortfolio.dribbbleUrl"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Dribbble URL</FormLabel>
+                            <FormLabel>{t("dribbbleUrl")}</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="https://dribbble.com/yourprofile" />
+                              <Input {...field} placeholder={t("dribbbleUrlPlaceholder")} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1199,7 +1201,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse">
                       <MapPin className="h-5 w-5" />
-                      <span>Work Eligibility & Preferences</span>
+                      <span>{t("workEligibility")}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1209,19 +1211,19 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="workEligibility.workAuthorization"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Work Authorization</FormLabel>
+                            <FormLabel>{t("workAuthorization")}</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select authorization status" />
+                                  <SelectValue placeholder={t("selectAuthorizationStatus")} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="citizen">Citizen</SelectItem>
-                                <SelectItem value="permanent-resident">Permanent Resident</SelectItem>
-                                <SelectItem value="work-visa">Work Visa</SelectItem>
-                                <SelectItem value="student-visa">Student Visa</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
+                                <SelectItem value="citizen">{t("citizen")}</SelectItem>
+                                <SelectItem value="permanent-resident">{t("permanentResident")}</SelectItem>
+                                <SelectItem value="work-visa">{t("workVisa")}</SelectItem>
+                                <SelectItem value="student-visa">{t("studentVisa")}</SelectItem>
+                                <SelectItem value="other">{t("other")}</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -1233,18 +1235,18 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="workEligibility.workArrangement"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Work Arrangement Preference</FormLabel>
+                            <FormLabel>{t("workArrangementPreference")}</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select preference" />
+                                  <SelectValue placeholder={t("selectPreference")} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="onsite">Onsite</SelectItem>
-                                <SelectItem value="remote">Remote</SelectItem>
-                                <SelectItem value="hybrid">Hybrid</SelectItem>
-                                <SelectItem value="flexible">Flexible</SelectItem>
+                                <SelectItem value="onsite">{t("onsite")}</SelectItem>
+                                <SelectItem value="remote">{t("remote")}</SelectItem>
+                                <SelectItem value="hybrid">{t("hybrid")}</SelectItem>
+                                <SelectItem value="flexible">{t("flexible")}</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -1256,7 +1258,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="workEligibility.availabilityDate"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Availability Date</FormLabel>
+                            <FormLabel>{t("availabilityDate")}</FormLabel>
                             <FormControl>
                               <Input {...field} type="date" />
                             </FormControl>
@@ -1269,9 +1271,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         name="workEligibility.noticePeriod"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Notice Period</FormLabel>
+                            <FormLabel>{t("noticePeriod")}</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="e.g., 2 weeks, 1 month" />
+                              <Input {...field} placeholder={t("noticePeriodExample")} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1291,7 +1293,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               />
                             </FormControl>
                             <div className="space-y-1 leading-none">
-                              <FormLabel>Willing to relocate for the right opportunity</FormLabel>
+                              <FormLabel>{t("willingToRelocate")}</FormLabel>
                             </div>
                           </FormItem>
                         )}
@@ -1308,7 +1310,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               />
                             </FormControl>
                             <div className="space-y-1 leading-none">
-                              <FormLabel>Require visa sponsorship</FormLabel>
+                              <FormLabel>{t("requireVisaSponsorship")}</FormLabel>
                             </div>
                           </FormItem>
                         )}
@@ -1325,7 +1327,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                     <CardTitle className="flex items-center justify-between">
                       <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <Languages className="h-5 w-5" />
-                        <span>Languages</span>
+                        <span>{t("languages")}</span>
                       </div>
                       <Button
                         type="button"
@@ -1334,7 +1336,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         onClick={() => appendLanguage({ language: "", proficiency: "conversational", certification: "" })}
                       >
                         <Plus className="w-4 h-4 mr-1" />
-                        Add Language
+                        {t("addLanguage")}
                       </Button>
                     </CardTitle>
                   </CardHeader>
@@ -1358,9 +1360,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`languages.${index}.language`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Language *</FormLabel>
+                                <FormLabel>{t("language")} *</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="e.g., English, Arabic" />
+                                  <Input {...field} placeholder={t("languageExample")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1371,18 +1373,18 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`languages.${index}.proficiency`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Proficiency</FormLabel>
+                                <FormLabel>{t("proficiency")}</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
                                     <SelectTrigger>
-                                      <SelectValue placeholder="Select proficiency" />
+                                      <SelectValue placeholder={t("selectProficiency")} />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    <SelectItem value="basic">Basic</SelectItem>
-                                    <SelectItem value="conversational">Conversational</SelectItem>
-                                    <SelectItem value="fluent">Fluent</SelectItem>
-                                    <SelectItem value="native">Native</SelectItem>
+                                    <SelectItem value="basic">{t("basic")}</SelectItem>
+                                    <SelectItem value="conversational">{t("conversational")}</SelectItem>
+                                    <SelectItem value="fluent">{t("fluent")}</SelectItem>
+                                    <SelectItem value="native">{t("native")}</SelectItem>
                                   </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -1394,9 +1396,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`languages.${index}.certification`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Certification</FormLabel>
+                                <FormLabel>{t("certification")}</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="e.g., IELTS, TOEFL" />
+                                  <Input {...field} placeholder={t("certificationExample")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1415,14 +1417,14 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse">
                       <Settings className="h-5 w-5" />
-                      <span>Skills</span>
+                      <span>{t("skills")}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* Technical Skills */}
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-lg font-medium">Technical Skills *</h4>
+                        <h4 className="text-lg font-medium">{t("technicalSkills")} *</h4>
                         <Button
                           type="button"
                           variant="outline"
@@ -1430,7 +1432,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           onClick={() => appendTechnicalSkill({ skill: "", level: "intermediate", yearsOfExperience: 0 })}
                         >
                           <Plus className="w-4 h-4 mr-1" />
-                          Add Skill
+                          {t("addSkill")}
                         </Button>
                       </div>
                       {technicalSkillFields.map((field, index) => (
@@ -1452,9 +1454,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               name={`skills.technicalSkills.${index}.skill`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Skill *</FormLabel>
+                                  <FormLabel>{t("skill")} *</FormLabel>
                                   <FormControl>
-                                    <Input {...field} placeholder="e.g., JavaScript, Python" />
+                                    <Input {...field} placeholder={t("technicalSkillExample")} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -1465,18 +1467,18 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               name={`skills.technicalSkills.${index}.level`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Level</FormLabel>
+                                  <FormLabel>{t("level")}</FormLabel>
                                   <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                       <SelectTrigger>
-                                        <SelectValue placeholder="Select level" />
+                                        <SelectValue placeholder={t("selectLevel")} />
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      <SelectItem value="beginner">Beginner</SelectItem>
-                                      <SelectItem value="intermediate">Intermediate</SelectItem>
-                                      <SelectItem value="advanced">Advanced</SelectItem>
-                                      <SelectItem value="expert">Expert</SelectItem>
+                                      <SelectItem value="beginner">{t("beginner")}</SelectItem>
+                                      <SelectItem value="intermediate">{t("intermediate")}</SelectItem>
+                                      <SelectItem value="advanced">{t("advanced")}</SelectItem>
+                                      <SelectItem value="expert">{t("expert")}</SelectItem>
                                     </SelectContent>
                                   </Select>
                                   <FormMessage />
@@ -1488,16 +1490,16 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               name={`skills.technicalSkills.${index}.yearsOfExperience`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Years of Experience</FormLabel>
+                                  <FormLabel>{t("yearsOfExperience")}</FormLabel>
                                   <FormControl>
-                                    <Input 
-                                      {...field} 
-                                      type="number" 
-                                      placeholder="0"
-                                      value={field.value || ""}
-                                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
-                                     
-                                    />
+                                    <Input
+                                       {...field}
+                                       type="number"
+                                       placeholder={t("enterZero")}
+                                       value={field.value || ""}
+                                       onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
+                                       
+                                     />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -1511,7 +1513,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                     {/* Soft Skills */}
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-lg font-medium">Soft Skills *</h4>
+                        <h4 className="text-lg font-medium">{t("softSkills")} *</h4>
                         <Button
                           type="button"
                           variant="outline"
@@ -1519,7 +1521,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           onClick={() => appendSoftSkill({ skill: "", level: "intermediate" })}
                         >
                           <Plus className="w-4 h-4 mr-1" />
-                          Add Skill
+                          {t("addSkill")}
                         </Button>
                       </div>
                       {softSkillFields.map((field, index) => (
@@ -1541,9 +1543,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               name={`skills.softSkills.${index}.skill`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Skill *</FormLabel>
+                                  <FormLabel>{t("skill")} *</FormLabel>
                                   <FormControl>
-                                    <Input {...field} placeholder="e.g., Communication, Leadership" />
+                                    <Input {...field} placeholder={t("softSkillExample")} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -1554,18 +1556,18 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                               name={`skills.softSkills.${index}.level`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Level</FormLabel>
+                                  <FormLabel>{t("level")}</FormLabel>
                                   <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                       <SelectTrigger>
-                                        <SelectValue placeholder="Select level" />
+                                        <SelectValue placeholder={t("selectLevel")} />
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      <SelectItem value="beginner">Beginner</SelectItem>
-                                      <SelectItem value="intermediate">Intermediate</SelectItem>
-                                      <SelectItem value="advanced">Advanced</SelectItem>
-                                      <SelectItem value="expert">Expert</SelectItem>
+                                      <SelectItem value="beginner">{t("beginner")}</SelectItem>
+                                      <SelectItem value="intermediate">{t("intermediate")}</SelectItem>
+                                      <SelectItem value="advanced">{t("advanced")}</SelectItem>
+                                      <SelectItem value="expert">{t("expert")}</SelectItem>
                                     </SelectContent>
                                   </Select>
                                   <FormMessage />
@@ -1587,18 +1589,18 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                     <CardTitle className="flex items-center justify-between">
                       <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <GraduationCap className="h-5 w-5" />
-                        <span>Education</span>
+                        <span>{t("education")}</span>
                       </div>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => appendEducation({ 
-                          institution: "", 
-                          degree: "", 
-                          fieldOfStudy: "", 
-                          startDate: "", 
-                          endDate: "", 
+                        onClick={() => appendEducation({
+                          institution: "",
+                          degree: "",
+                          fieldOfStudy: "",
+                          startDate: "",
+                          endDate: "",
                           current: false,
                           gpa: "",
                           honors: "",
@@ -1608,7 +1610,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         })}
                       >
                         <Plus className="w-4 h-4 mr-1" />
-                        Add Education
+                        {t("addEducation")}
                       </Button>
                     </CardTitle>
                   </CardHeader>
@@ -1632,9 +1634,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`education.${index}.institution`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Institution *</FormLabel>
+                                <FormLabel>{t("institution")} *</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="University/College name" />
+                                  <Input {...field} placeholder={t("institutionPlaceholder")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1645,9 +1647,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`education.${index}.degree`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Degree *</FormLabel>
+                                <FormLabel>{t("degree")} *</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Bachelor's, Master's, etc." />
+                                  <Input {...field} placeholder={t("degreePlaceholder")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1658,9 +1660,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`education.${index}.fieldOfStudy`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Field of Study</FormLabel>
+                                <FormLabel>{t("fieldOfStudy")}</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Computer Science, Business, etc." />
+                                  <Input {...field} placeholder={t("fieldOfStudyPlaceholder")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1671,9 +1673,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`education.${index}.location`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Location</FormLabel>
+                                <FormLabel>{t("location")}</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="City, Country" />
+                                  <Input {...field} placeholder={t("locationPlaceholder")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1684,7 +1686,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`education.${index}.startDate`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Start Date</FormLabel>
+                                <FormLabel>{t("startDate")}</FormLabel>
                                 <FormControl>
                                   <Input {...field} type="date" />
                                 </FormControl>
@@ -1697,7 +1699,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`education.${index}.endDate`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>End Date</FormLabel>
+                                <FormLabel>{t("endDate")}</FormLabel>
                                 <FormControl>
                                   <Input {...field} type="date" />
                                 </FormControl>
@@ -1710,9 +1712,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`education.${index}.gpa`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>GPA</FormLabel>
+                                <FormLabel>{t("gpa")}</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="3.8/4.0" />
+                                  <Input {...field} placeholder={t("gpaPlaceholder")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1732,7 +1734,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                                   />
                                 </FormControl>
                                 <div className="space-y-1 leading-none">
-                                  <FormLabel>Currently studying here</FormLabel>
+                                  <FormLabel>{t("currentlyStudyingHere")}</FormLabel>
                                 </div>
                               </FormItem>
                             )}
@@ -1742,9 +1744,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`education.${index}.relevantCoursework`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Relevant Coursework</FormLabel>
+                                <FormLabel>{t("relevantCoursework")}</FormLabel>
                                 <FormControl>
-                                  <Textarea {...field} rows={2} placeholder="List relevant courses..." />
+                                  <Textarea {...field} rows={2} placeholder={t("listRelevantCourses")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1764,19 +1766,19 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                     <CardTitle className="flex items-center justify-between">
                       <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <Briefcase className="h-5 w-5" />
-                        <span>Work Experience</span>
+                        <span>{t("workExperience")}</span>
                       </div>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => appendExperience({ 
-                          company: "", 
-                          position: "", 
+                        onClick={() => appendExperience({
+                          company: "",
+                          position: "",
                           department: "",
                           employmentType: undefined,
-                          startDate: "", 
-                          endDate: "", 
+                          startDate: "",
+                          endDate: "",
                           current: false,
                           location: "",
                           responsibilities: "",
@@ -1786,13 +1788,13 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           reportingTo: "",
                           salary: {
                             amount: 0,
-                            currency: "EGP",
-                            period: "monthly",
+                            currency: t("egyptianPound"),
+                            period: t("monthly"),
                           },
                         })}
                       >
                         <Plus className="w-4 h-4 mr-1" />
-                        Add Experience
+                        {t("addExperience")}
                       </Button>
                     </CardTitle>
                   </CardHeader>
@@ -1816,9 +1818,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`experience.${index}.company`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Company *</FormLabel>
+                                <FormLabel>{t("company")} *</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Company name" />
+                                  <Input {...field} placeholder={t("companyPlaceholder")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1829,9 +1831,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`experience.${index}.position`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Position *</FormLabel>
+                                <FormLabel>{t("position")} *</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Job title" />
+                                  <Input {...field} placeholder={t("positionPlaceholder")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1842,19 +1844,19 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`experience.${index}.employmentType`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Employment Type</FormLabel>
+                                <FormLabel>{t("employmentType")}</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
                                     <SelectTrigger>
-                                      <SelectValue placeholder="Select type" />
+                                      <SelectValue placeholder={t("selectType")} />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    <SelectItem value="full-time">Full-time</SelectItem>
-                                    <SelectItem value="part-time">Part-time</SelectItem>
-                                    <SelectItem value="contract">Contract</SelectItem>
-                                    <SelectItem value="freelance">Freelance</SelectItem>
-                                    <SelectItem value="internship">Internship</SelectItem>
+                                    <SelectItem value="full-time">{t("fullTime")}</SelectItem>
+                                    <SelectItem value="part-time">{t("partTime")}</SelectItem>
+                                    <SelectItem value="contract">{t("contract")}</SelectItem>
+                                    <SelectItem value="freelance">{t("freelance")}</SelectItem>
+                                    <SelectItem value="internship">{t("internship")}</SelectItem>
                                   </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -1866,9 +1868,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`experience.${index}.location`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Location</FormLabel>
+                                <FormLabel>{t("location")}</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="City, Country" />
+                                  <Input {...field} placeholder={t("locationPlaceholder")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1879,7 +1881,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`experience.${index}.startDate`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Start Date</FormLabel>
+                                <FormLabel>{t("startDate")}</FormLabel>
                                 <FormControl>
                                   <Input {...field} type="date" />
                                 </FormControl>
@@ -1892,7 +1894,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`experience.${index}.endDate`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>End Date</FormLabel>
+                                <FormLabel>{t("endDate")}</FormLabel>
                                 <FormControl>
                                   <Input {...field} type="date" />
                                 </FormControl>
@@ -1914,7 +1916,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                                   />
                                 </FormControl>
                                 <div className="space-y-1 leading-none">
-                                  <FormLabel>Currently working here</FormLabel>
+                                  <FormLabel>{t("currentlyWorkingHere")}</FormLabel>
                                 </div>
                               </FormItem>
                             )}
@@ -1924,9 +1926,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`experience.${index}.responsibilities`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Key Responsibilities & Achievements *</FormLabel>
+                                <FormLabel>{t("keyResponsibilitiesAchievements")} *</FormLabel>
                                 <FormControl>
-                                  <Textarea {...field} rows={4} placeholder="Describe your key responsibilities, achievements, and impact..." />
+                                  <Textarea {...field} rows={4} placeholder={t("describeKeyResponsibilitiesAchievements")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1946,17 +1948,17 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                     <CardTitle className="flex items-center justify-between">
                       <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <Award className="h-5 w-5" />
-                        <span>Certifications & Licenses</span>
+                        <span>{t("certifications")}</span>
                       </div>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => appendCertification({ 
-                          name: "", 
-                          issuingOrganization: "", 
-                          issueDate: "", 
-                          expiryDate: "", 
+                        onClick={() => appendCertification({
+                          name: "",
+                          issuingOrganization: "",
+                          issueDate: "",
+                          expiryDate: "",
                           credentialId: "",
                           credentialUrl: "",
                           skills: [],
@@ -1964,7 +1966,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         })}
                       >
                         <Plus className="w-4 h-4 mr-1" />
-                        Add Certification
+                        {t("addCertification")}
                       </Button>
                     </CardTitle>
                   </CardHeader>
@@ -1986,9 +1988,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`certifications.${index}.name`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Certification Name *</FormLabel>
+                                <FormLabel>{t("certificationName")} *</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="AWS Certified Developer" />
+                                  <Input {...field} placeholder={t("certificationNamePlaceholder")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1999,9 +2001,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`certifications.${index}.issuingOrganization`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Issuing Organization</FormLabel>
+                                <FormLabel>{t("issuingOrganization")}</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Amazon Web Services" />
+                                  <Input {...field} placeholder={t("issuingOrganizationPlaceholder")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -2012,7 +2014,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`certifications.${index}.issueDate`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Issue Date</FormLabel>
+                                <FormLabel>{t("issueDate")}</FormLabel>
                                 <FormControl>
                                   <Input {...field} type="date" />
                                 </FormControl>
@@ -2025,7 +2027,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`certifications.${index}.expiryDate`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Expiry Date</FormLabel>
+                                <FormLabel>{t("expiryDate")}</FormLabel>
                                 <FormControl>
                                   <Input {...field} type="date" />
                                 </FormControl>
@@ -2038,9 +2040,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`certifications.${index}.credentialId`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Credential ID</FormLabel>
+                                <FormLabel>{t("credentialId")}</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Certificate ID" />
+                                  <Input {...field} placeholder={t("credentialIdPlaceholder")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -2051,9 +2053,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`certifications.${index}.credentialUrl`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Credential URL</FormLabel>
+                                <FormLabel>{t("credentialUrl")}</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Verification URL" />
+                                  <Input {...field} placeholder={t("credentialUrlPlaceholder")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -2062,10 +2064,10 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         </div>
                         <div className="mt-4">
                           <div className="border rounded-lg p-4">
-                            <h5 className="font-medium mb-2">Certificate File</h5>
+                            <h5 className="font-medium mb-2">{t("certificateFile")}</h5>
                             <Button type="button" variant="outline" size="sm">
                               <Upload className="h-4 w-4 mr-2" />
-                              Upload Certificate
+                              {t("uploadCertificate")}
                             </Button>
                           </div>
                         </div>
@@ -2082,23 +2084,23 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                     <CardTitle className="flex items-center justify-between">
                       <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <Star className="h-5 w-5" />
-                        <span>Awards & Achievements</span>
+                        <span>{t("awards")}</span>
                       </div>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => appendAward({ 
-                          title: "", 
-                          issuer: "", 
-                          dateReceived: "", 
-                          description: "", 
+                        onClick={() => appendAward({
+                          title: "",
+                          issuer: "",
+                          dateReceived: "",
+                          description: "",
                           category: undefined,
                           certificateFile: "",
                         })}
                       >
                         <Plus className="w-4 h-4 mr-1" />
-                        Add Award
+                        {t("addAward")}
                       </Button>
                     </CardTitle>
                   </CardHeader>
@@ -2120,9 +2122,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`awards.${index}.title`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Award Title *</FormLabel>
+                                <FormLabel>{t("awardTitle")} *</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Employee of the Month" />
+                                  <Input {...field} placeholder={t("awardTitlePlaceholder")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -2133,9 +2135,9 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`awards.${index}.issuer`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Issuing Organization</FormLabel>
+                                <FormLabel>{t("issuingOrganization")}</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Company/Organization name" />
+                                  <Input {...field} placeholder={t("issuerPlaceholder")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -2146,7 +2148,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`awards.${index}.dateReceived`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Date Received</FormLabel>
+                                <FormLabel>{t("dateReceived")}</FormLabel>
                                 <FormControl>
                                   <Input {...field} type="date" />
                                 </FormControl>
@@ -2159,20 +2161,20 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`awards.${index}.category`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Category</FormLabel>
+                                <FormLabel>{t("category")}</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
                                     <SelectTrigger>
-                                      <SelectValue placeholder="Select category" />
+                                      <SelectValue placeholder={t("selectCategory")} />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    <SelectItem value="academic">Academic</SelectItem>
-                                    <SelectItem value="professional">Professional</SelectItem>
-                                    <SelectItem value="community">Community</SelectItem>
-                                    <SelectItem value="sports">Sports</SelectItem>
-                                    <SelectItem value="artistic">Artistic</SelectItem>
-                                    <SelectItem value="other">Other</SelectItem>
+                                    <SelectItem value="academic">{t("academic")}</SelectItem>
+                                    <SelectItem value="professional">{t("professional")}</SelectItem>
+                                    <SelectItem value="community">{t("community")}</SelectItem>
+                                    <SelectItem value="sports">{t("sports")}</SelectItem>
+                                    <SelectItem value="artistic">{t("artistic")}</SelectItem>
+                                    <SelectItem value="other">{t("other")}</SelectItem>
                                   </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -2186,19 +2188,19 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             name={`awards.${index}.description`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Description</FormLabel>
+                                <FormLabel>{t("description")}</FormLabel>
                                 <FormControl>
-                                  <Textarea {...field} rows={3} placeholder="Describe the award and what you achieved..." />
+                                  <Textarea {...field} rows={3} placeholder={t("describeAwardAchievement")} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
                           <div className="border rounded-lg p-4">
-                            <h5 className="font-medium mb-2">Certificate File</h5>
+                            <h5 className="font-medium mb-2">{t("certificateFile")}</h5>
                             <Button type="button" variant="outline" size="sm">
                               <Upload className="h-4 w-4 mr-2" />
-                              Upload Certificate
+                              {t("uploadCertificate")}
                             </Button>
                           </div>
                         </div>
@@ -2212,18 +2214,18 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
 
             <div className="flex justify-between items-center pt-6 border-t">
               <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
+                {t("cancel")}
               </Button>
               <div className="flex space-x-2 rtl:space-x-reverse">
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   variant="secondary"
                   onClick={() => autoSave(form.getValues())}
                   disabled={isAutoSaving}
                 >
-                  {isAutoSaving ? "Saving..." : "Save Draft"}
+                  {isAutoSaving ? t("saving") : t("saveDraft")}
                 </Button>
-                <Button 
+                <Button
                   type="button"
                   disabled={saveProfileMutation.isPending}
                   onClick={async (e) => {
@@ -2239,14 +2241,14 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                     } catch (error) {
                       console.error('Error during save:', error);
                       toast({
-                        title: "Save Error",
-                        description: "There was an error saving your profile. Please try again.",
+                        title: t("saveError"),
+                        description: t("saveErrorDescription"),
                         variant: "destructive",
                       });
                     }
                   }}
                 >
-                  {saveProfileMutation.isPending ? "Saving..." : "Save Progress"}
+                  {saveProfileMutation.isPending ? t("saving") : t("saveProgress")}
                 </Button>
               </div>
             </div>
