@@ -114,7 +114,7 @@ export function InvitedJobsModal({ isOpen, onClose, onStartJobPractice, onStartJ
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="flex gap-2 justify-end">
+                      <div className="flex gap-2 justify-end rtl:space-x-reverse">
                         <Button
                           variant="secondary"
                           onClick={async () => {

@@ -346,7 +346,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                 </div>
 
                 <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 shadow-lg">
-                  <div className="flex items-center justify-end gap-3">
+                  <div className="flex items-center justify-end gap-3 rtl:space-x-reverse">
                     <Button variant="outline" onClick={() => setSelectedJob(null)}>Close</Button>
                     <Button
                       variant="secondary"

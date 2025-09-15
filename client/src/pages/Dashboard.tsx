@@ -224,7 +224,7 @@ export default function Dashboard() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 rtl:space-x-reverse">
               <div className="bg-blue-600 text-white p-2 rounded-lg">
                 <TrendingUp className="h-5 w-5" />
               </div>
@@ -233,13 +233,13 @@ export default function Dashboard() {
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 rtl:space-x-reverse">
               <LanguageSwitcher />
               
 
               <button
                 onClick={() => openModal('userProfile')}
-                className="flex items-center space-x-2 hover:bg-gray-50 rounded-lg p-2 transition-colors"
+                className="flex items-center space-x-2 rtl:space-x-reverse hover:bg-gray-50 rounded-lg p-2 transition-colors"
                 title="Edit user profile"
               >
                 <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center">
@@ -286,7 +286,7 @@ export default function Dashboard() {
                     : 'border-blue-200 shadow-md'
                 }`}>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-4 rtl:space-x-reverse">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
                         hasCompleteProfile ? 'bg-green-600' : 'bg-blue-600'
                       }`}>
@@ -307,12 +307,12 @@ export default function Dashboard() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
+                    <div className="flex items-center space-x-4 rtl:space-x-reverse">
+                      <div className="text-end">
                         <div className="text-2xl font-bold text-gray-900">{profileProgress}%</div>
                         <div className="text-xs text-gray-500">{t('complete')}</div>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-2 rtl:space-x-reverse">
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -323,7 +323,7 @@ export default function Dashboard() {
                         <button
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isUploadingResume}
-                          className="px-4 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                          className="px-4 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 rtl:space-x-reverse"
                         >
                           {isUploadingResume ? (
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -356,7 +356,7 @@ export default function Dashboard() {
                       : 'border-purple-200 shadow-md'
                 }`}>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-4 rtl:space-x-reverse">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
                         !hasCompleteProfile
                           ? 'bg-gray-400' 
@@ -408,9 +408,9 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <button
                   onClick={() => openModal('matches')}
-                  className="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-left group transform hover:scale-105"
+                  className="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
                 >
-                  <div className="flex items-center space-x-4 mb-4">
+                  <div className="flex items-center space-x-4 rtl:space-x-reverse mb-4">
                     <div className="bg-white bg-opacity-20 rounded-lg p-3">
                       <Target className="h-8 w-8 text-white" />
                     </div>
@@ -426,9 +426,9 @@ export default function Dashboard() {
 
                 <button
                   onClick={() => openModal('jobPostings')}
-                  className="bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-left group transform hover:scale-105"
+                  className="bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
                 >
-                  <div className="flex items-center space-x-4 mb-4">
+                  <div className="flex items-center space-x-4 rtl:space-x-reverse mb-4">
                     <div className="bg-white bg-opacity-20 rounded-lg p-3">
                       <Briefcase className="h-8 w-8 text-white" />
                     </div>
@@ -454,13 +454,13 @@ export default function Dashboard() {
                 disabled={!hasCompletedAllInterviews}
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-4 rtl:space-x-reverse">
                     <div className={`bg-white bg-opacity-20 rounded-lg p-3 ${
                       !hasCompletedAllInterviews ? 'opacity-50' : ''
                     }`}>
                       <Briefcase className="h-6 w-6 text-white" />
                     </div>
-                    <div className="text-left">
+                    <div className="text-start">
                       <h4 className="text-xl font-bold">{t('dashboard.jobSpecificAI')}</h4>
                       <p className={`${
                         hasCompletedAllInterviews ? 'text-emerald-100' : 'text-gray-300'
@@ -478,7 +478,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className={`text-2xl ${hasCompletedAllInterviews ? 'text-white' : 'text-gray-300'}`}>
-                    →
+                    {isRTL ? '←' : '→'}
                   </div>
                 </div>
               </button>
@@ -489,11 +489,11 @@ export default function Dashboard() {
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-6"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-4 rtl:space-x-reverse">
                     <div className="bg-white bg-opacity-20 rounded-lg p-3">
                       <MessageCircle className="h-6 w-6 text-white" />
                     </div>
-                    <div className="text-left">
+                    <div className="text-start">
                       <h4 className="text-xl font-bold">{t('upcomingInterviews')}</h4>
                       <p className="text-blue-100">
                         {(upcomingInterviews as any[]).length > 0 
@@ -503,7 +503,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-white text-2xl">→</div>
+                  <div className="text-white text-2xl">{isRTL ? '←' : '→'}</div>
                 </div>
               </button>
 
@@ -513,16 +513,16 @@ export default function Dashboard() {
                 className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-4 rtl:space-x-reverse">
                     <div className="bg-white bg-opacity-20 rounded-lg p-3">
                       <FileText className="h-6 w-6 text-white" />
                     </div>
-                    <div className="text-left">
+                    <div className="text-start">
                       <h4 className="text-xl font-bold">{t('myApplications')}</h4>
                       <p className="text-purple-100">{t('trackApplicationStatus')}</p>
                     </div>
                   </div>
-                  <div className="text-white text-2xl">→</div>
+                  <div className="text-white text-2xl">{isRTL ? '←' : '→'}</div>
                 </div>
               </button>
 
@@ -532,34 +532,34 @@ export default function Dashboard() {
                 className="w-full mt-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-4 rtl:space-x-reverse">
                     <div className="bg-white bg-opacity-20 rounded-lg p-3">
                       <Briefcase className="h-6 w-6 text-white" />
                     </div>
-                    <div className="text-left">
+                    <div className="text-start">
                       <h4 className="text-xl font-bold">{t('dashboard.invitedJobs')}</h4>
                       <p className="text-green-100">{t('dashboard.invitedJobsDescription')}</p>
                     </div>
                   </div>
-                  <div className="text-white text-2xl">→</div>
+                  <div className="text-white text-2xl">{isRTL ? '←' : '→'}</div>
                 </div>
               </button>
 
               {/* Small Stats Section */}
               <div className="mt-8 pt-6 border-t border-gray-200">
                 <h4 className="text-sm font-medium text-gray-500 mb-3">{t('quickStats')}</h4>
-                <div className="flex items-center space-x-8 text-sm">
-                  <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-8 rtl:space-x-reverse text-sm">
+                  <div className="flex items-center space-x-2 rtl:space-x-reverse">
                     <Target className="h-3 w-3 text-green-600" />
                     <span className="text-gray-600">{t('jobMatchesLabel')}:</span>
                     <span className="font-medium text-gray-900">{(matches as any[]).length}</span>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 rtl:space-x-reverse">
                     <FileText className="h-3 w-3 text-purple-600" />
                     <span className="text-gray-600">{t('applicationsLabel')}:</span>
                     <span className="font-medium text-gray-900">{(applications as any[]).length}</span>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 rtl:space-x-reverse">
                     <User className="h-3 w-3 text-blue-600" />
                     <span className="text-gray-600">{t('profileCompletionLabel')}:</span>
                     <span className="font-medium text-gray-900">{profileProgress}%</span>
@@ -571,7 +571,7 @@ export default function Dashboard() {
               <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
                 <div className="text-center">
                   <h5 className="text-xs font-medium text-gray-500 mb-3">{t('whyJobSeekingChallenging')}</h5>
-                  <div className="flex justify-center items-center space-x-8 text-xs">
+                  <div className="flex justify-center items-center space-x-8 rtl:space-x-reverse text-xs">
                     <div className="text-center">
                       <div className="text-lg font-bold text-red-600">{t('sixMonths')}</div>
                       <p className="text-gray-600">{t('avgJobSearchTime')}</p>
@@ -594,7 +594,7 @@ export default function Dashboard() {
         {/* Instruction Message for Uncompleted Steps */}
         {!showFullDashboard && (
           <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-            <div className="flex items-start space-x-3">
+            <div className="flex items-start space-x-3 rtl:space-x-reverse">
               <MessageCircle className="h-6 w-6 text-blue-600 mt-0.5" />
               <div>
                 <h3 className="text-lg font-semibold text-blue-900 mb-2">{t('dashboard.getStartedWithPlato')}</h3>
@@ -614,7 +614,7 @@ export default function Dashboard() {
                   </button>
                   <button
                     onClick={() => openModal('invitedJobs')}
-                    className="ml-3 px-4 py-2 rounded-lg font-medium transition-colors bg-emerald-600 text-white hover:bg-emerald-700"
+                    className="me-3 px-4 py-2 rounded-lg font-medium transition-colors bg-emerald-600 text-white hover:bg-emerald-700"
                   >
                     {t('dashboard.invitedJobs')}
                   </button>

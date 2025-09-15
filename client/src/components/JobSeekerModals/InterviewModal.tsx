@@ -215,8 +215,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     onError: (error) => {
       console.error('Voice interview error:', error);
       toast({
-        title: 'Voice Interview Error',
-        description: 'There was an issue with the voice interview. Please try text mode instead.',
+        title: t('interview.voiceInterviewError') || 'Voice Interview Error',
+        description: t('interview.voiceInterviewErrorDescription') || 'There was an issue with the voice interview. Please try text mode instead.',
         variant: 'destructive'
       });
       setMode('text');
@@ -229,8 +229,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error as Error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: t('auth.unauthorized') || "Unauthorized",
+          description: t('auth.loggingOut') || "You are logged out. Logging in again...",
           variant: "destructive",
         });
         setTimeout(() => {
@@ -308,8 +308,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       
       if (isUnauthorizedError(error as Error)) {
         toast({
-          title: "Unauthorized", 
-          description: "You are logged out. Logging in again...",
+          title: t('auth.unauthorized') || "Unauthorized",
+          description: t('auth.loggingOut') || "You are logged out. Logging in again...",
           variant: "destructive",
         });
         setTimeout(() => {
@@ -319,8 +319,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       }
       
       toast({
-        title: "Error",
-        description: "Failed to start interview. Please try again.",
+        title: t('interview.startError') || "Error",
+        description: t('interview.startErrorDescription') || "Failed to start interview. Please try again.",
         variant: "destructive",
       });
       setMode('select');
@@ -345,8 +345,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         if (data.allInterviewsCompleted) {
           // Final completion - show profile generation success
           toast({
-            title: "All Interviews Complete!",
-            description: "Your comprehensive AI profile has been generated successfully.",
+            title: t('interview.allInterviewsComplete') || "All Interviews Complete!",
+            description: t('interview.profileGeneratedSuccessfully') || "Your comprehensive AI profile has been generated successfully.",
           });
           
           // Reset to interview types view to show all completed
@@ -355,8 +355,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         } else if (data.nextInterviewType) {
           // Continue to next interview type automatically
           toast({
-            title: "Interview Section Complete",
-            description: `Moving to ${data.nextInterviewType} interview...`,
+            title: t('interview.interviewSectionComplete') || "Interview Section Complete",
+            description: `${t('interview.movingTo') || 'Moving to'} ${data.nextInterviewType} ${t('interview.interview') || 'interview'}...`,
           });
           
           // Automatically start next interview
@@ -367,8 +367,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         } else {
           // Individual interview complete with no next type
           toast({
-            title: "Interview Section Complete!",
-            description: "Continue with the remaining interviews to complete your profile.",
+            title: t('interview.interviewSectionComplete') || "Interview Section Complete!",
+            description: t('interview.continueRemainingInterviews') || "Continue with the remaining interviews to complete your profile.",
           });
         }
       } else if (data.nextQuestion) {
@@ -400,8 +400,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to process your response",
+        title: t('interview.processResponseError') || "Error",
+        description: t('interview.processResponseErrorDescription') || "Failed to process your response",
         variant: "destructive",
       });
     },
@@ -423,8 +423,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       if (data.allInterviewsCompleted) {
         // Final completion - show profile generation success
         toast({
-          title: "All Interviews Complete!",
-          description: "Your comprehensive AI profile has been generated successfully.",
+          title: t('interview.allInterviewsComplete') || "All Interviews Complete!",
+          description: t('interview.profileGeneratedSuccessfully') || "Your comprehensive AI profile has been generated successfully.",
         });
         
         // Reset to interview types view to show all completed
@@ -433,8 +433,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       } else if (data.nextInterviewType) {
         // Continue to next interview type automatically
         toast({
-          title: "Interview Section Complete",
-          description: `Moving to ${data.nextInterviewType} interview...`,
+          title: t('interview.interviewSectionComplete') || "Interview Section Complete",
+          description: `${t('interview.movingTo') || 'Moving to'} ${data.nextInterviewType} ${t('interview.interview') || 'interview'}...`,
         });
         
         // Automatically start next interview
@@ -445,8 +445,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       } else {
         // Individual interview complete with no next type
         toast({
-          title: "Interview Section Complete!",
-          description: "Continue with the remaining interviews to complete your profile.",
+          title: t('interview.interviewSectionComplete') || "Interview Section Complete!",
+          description: t('interview.continueRemainingInterviews') || "Continue with the remaining interviews to complete your profile.",
         });
       }
       
@@ -454,8 +454,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     },
     onError: (error) => {
       toast({
-        title: "Submission Failed",
-        description: "There was an issue submitting your interview. Please try again.",
+        title: t('interview.submissionFailed') || "Submission Failed",
+        description: t('interview.submissionFailedDescription') || "There was an issue submitting your interview. Please try again.",
         variant: "destructive",
       });
     },
@@ -516,15 +516,15 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       if (data.allInterviewsCompleted) {
         // Final completion - show profile generation success and close modal
         toast({
-          title: "All Interviews Complete!",
-          description: "Your comprehensive AI profile has been generated successfully.",
+          title: t('interview.allInterviewsComplete') || "All Interviews Complete!",
+          description: t('interview.profileGeneratedSuccessfully') || "Your comprehensive AI profile has been generated successfully.",
         });
         onClose();
       } else if (data.nextInterviewType) {
         // Continue to next interview type automatically
         toast({
-          title: "Interview Section Complete",
-          description: `Moving to ${data.nextInterviewType} interview...`,
+          title: t('interview.interviewSectionComplete') || "Interview Section Complete",
+          description: `${t('interview.movingTo') || 'Moving to'} ${data.nextInterviewType} ${t('interview.interview') || 'interview'}...`,
         });
         
         // Automatically start next interview
@@ -535,8 +535,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       } else {
         // Individual interview complete with no next type
         toast({
-          title: "Interview Complete!",
-          description: "Your voice interview has been processed successfully.",
+          title: t('interview.voiceInterviewComplete') || "Interview Complete!",
+          description: t('interview.voiceInterviewProcessedSuccessfully') || "Your voice interview has been processed successfully.",
         });
         
         // Reset to interview types view
@@ -550,8 +550,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
-        title: "Processing Failed",
-        description: `There was an issue processing your interview: ${errorMessage}`,
+        title: t('interview.processingFailed') || "Processing Failed",
+        description: `${t('interview.processingFailedDescription') || 'There was an issue processing your interview'}: ${errorMessage}`,
         variant: "destructive",
       });
     },
@@ -618,8 +618,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     } catch (error) {
       console.error('Error processing answer:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to process your answer. Please try again.',
+        title: t('interview.processAnswerError') || 'Error',
+        description: t('interview.processAnswerErrorDescription') || 'Failed to process your answer. Please try again.',
         variant: 'destructive'
       });
     }
@@ -671,8 +671,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       if (completionData.allInterviewsCompleted) {
         // Final completion - show profile generation success
         toast({
-          title: "All Interviews Complete!",
-          description: "Your comprehensive AI profile has been generated successfully.",
+          title: t('interview.allInterviewsComplete') || "All Interviews Complete!",
+          description: t('interview.profileGeneratedSuccessfully') || "Your comprehensive AI profile has been generated successfully.",
         });
         
         // Reset to interview types view to show all completed
@@ -681,8 +681,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       } else {
         // Individual interview complete - no profile generated yet
         toast({
-          title: "Interview Section Complete!",
-          description: "Continue with the remaining interviews to complete your profile.",
+          title: t('interview.interviewSectionComplete') || "Interview Section Complete!",
+          description: t('interview.continueRemainingInterviews') || "Continue with the remaining interviews to complete your profile.",
         });
         setMode('types');
         setSelectedInterviewType('');
@@ -691,8 +691,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     } catch (error) {
       console.error('Error completing interview:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to complete interview. Please try again.',
+        title: t('interview.completeInterviewError') || 'Error',
+        description: t('interview.completeInterviewErrorDescription') || 'Failed to complete interview. Please try again.',
         variant: 'destructive'
       });
     }
@@ -701,8 +701,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const startVoiceInterview = async () => {
     if (!selectedInterviewType) {
       toast({
-        title: 'Error',
-        description: 'Please select an interview type first.',
+        title: t('interview.selectInterviewTypeError') || 'Error',
+        description: t('interview.selectInterviewTypeErrorDescription') || 'Please select an interview type first.',
         variant: 'destructive'
       });
       return;
@@ -717,7 +717,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     // Show loading message
     const loadingMessage: InterviewMessage = {
       type: 'question',
-      content: 'Starting your voice interview... Connecting to AI interviewer...',
+      content: t('interview.startingVoiceInterviewConnecting') || 'Starting your voice interview... Connecting to AI interviewer...',
       timestamp: new Date()
     };
     setMessages([loadingMessage]);
@@ -781,8 +781,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       
       setIsStartingInterview(false);
       toast({
-        title: "Voice Interview Started",
-        description: "You can now speak naturally with the AI interviewer.",
+        title: t('interview.voiceInterviewStarted') || "Voice Interview Started",
+        description: t('interview.voiceInterviewStartedDescription') || "You can now speak naturally with the AI interviewer.",
       });
     } catch (error) {
       setIsStartingInterview(false);
@@ -791,8 +791,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       
       toast({
-        title: 'Connection Failed',
-        description: `Could not start voice interview: ${errorMessage}. Please try text mode.`,
+        title: t('interview.connectionFailed') || 'Connection Failed',
+        description: `${t('interview.couldNotStartVoiceInterview') || 'Could not start voice interview'}: ${errorMessage}. ${t('interview.tryTextMode') || 'Please try text mode'}.`,
         variant: 'destructive'
       });
       setMode('select');
@@ -802,8 +802,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const startTextInterview = async () => {
     if (!selectedInterviewType) {
       toast({
-        title: 'Error',
-        description: 'Please select an interview type first.',
+        title: t('interview.selectInterviewTypeError') || 'Error',
+        description: t('interview.selectInterviewTypeErrorDescription') || 'Please select an interview type first.',
         variant: 'destructive'
       });
       return;
@@ -818,7 +818,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     // Show loading message immediately
     const loadingMessage: InterviewMessage = {
       type: 'question',
-      content: 'Starting your text interview... Please wait while I prepare your personalized questions.',
+      content: t('interview.startingTextInterview') || 'Starting your text interview... Please wait while I prepare your personalized questions.',
       timestamp: new Date()
     };
     setMessages([loadingMessage]);
@@ -898,8 +898,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       
       setIsStartingInterview(false);
       toast({
-        title: "Text Interview Started",
-        description: "You can now type your responses to the interview questions.",
+        title: t('interview.textInterviewStarted') || "Text Interview Started",
+        description: t('interview.textInterviewStartedDescription') || "You can now type your responses to the interview questions.",
       });
     } catch (error) {
       setIsStartingInterview(false);
@@ -908,8 +908,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       
       toast({
-        title: 'Failed to Start Interview',
-        description: `Could not start text interview: ${errorMessage}. Please try again.`,
+        title: t('interview.failedToStartInterview') || 'Failed to Start Interview',
+        description: `${t('interview.couldNotStartTextInterview') || 'Could not start text interview'}: ${errorMessage}. ${t('interview.pleaseTryAgain') || 'Please try again'}.`,
         variant: 'destructive'
       });
       setMode('select');
@@ -953,8 +953,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     // Prevent closing during active AI speech or processing
     if (isAiSpeaking || isProcessingInterview || isStartingInterview) {
       toast({
-        title: "Interview in Progress",
-        description: "Please wait for the current interaction to complete before closing.",
+        title: t('interview.interviewInProgress') || "Interview in Progress",
+        description: t('interview.waitBeforeClosing') || "Please wait for the current interaction to complete before closing.",
         variant: "default",
       });
       return;
@@ -997,7 +997,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             const firstQuestionObj = questions[0];
             const questionContent = typeof firstQuestionObj === 'string'
               ? firstQuestionObj
-              : firstQuestionObj?.question || firstQuestionObj?.text || 'Question 1';
+              : firstQuestionObj?.question || firstQuestionObj?.text || t('interview.question1') || 'Question 1';
             setMode('text');
             setMessages([{
               type: 'question',
@@ -1021,24 +1021,24 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       ? (interviewTypesData as any).interviewTypes || [] : [
       {
         type: 'personal',
-        title: 'Personal Interview',
-        description: 'Understanding your personal self, background, and history',
+        title: t('interview.personalInterview') || 'Personal Interview',
+        description: t('interview.personalInterviewDescription') || 'Understanding your personal self, background, and history',
         completed: personalCompleted,
         locked: false,
         questions: 5
       },
       {
         type: 'professional',
-        title: 'Professional Interview',
-        description: 'Exploring your career background and professional experience',
+        title: t('interview.professionalInterview') || 'Professional Interview',
+        description: t('interview.professionalInterviewDescription') || 'Exploring your career background and professional experience',
         completed: professionalCompleted,
         locked: !personalCompleted,
         questions: 7
       },
       {
         type: 'technical',
-        title: 'Technical Interview',
-        description: 'Dynamic assessment based on your field - problem solving and IQ evaluation',
+        title: t('interview.technicalInterview') || 'Technical Interview',
+        description: t('interview.technicalInterviewDescription') || 'Dynamic assessment based on your field - problem solving and IQ evaluation',
         completed: technicalCompleted,
         locked: !personalCompleted || !professionalCompleted,
         questions: 11
@@ -1075,14 +1075,14 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               }}
             >
               <CardContent className="flex items-center justify-between p-4">
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-4 rtl:space-x-reverse">
                   <div className="flex-shrink-0">
                     {interview.type === 'personal' && <User className="h-8 w-8 text-blue-600" />}
                     {interview.type === 'professional' && <Briefcase className="h-8 w-8 text-green-600" />}
                     {interview.type === 'technical' && <Target className="h-8 w-8 text-purple-600" />}
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-medium flex items-center space-x-2">
+                    <h4 className="font-medium flex items-center space-x-2 rtl:space-x-reverse">
                       <span>{interview.title}</span>
                       {interview.completed && <CheckCircle className="h-4 w-4 text-green-600" />}
                       {interview.locked && !interview.completed && (
@@ -1096,24 +1096,24 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                       {interview.questions} questions
                       {interview.locked && !interview.completed && (
                         <span className="text-xs text-orange-600 ml-2">
-                          • Complete previous interviews first
+                          • {t('interview.completePreviousInterviews') || 'Complete previous interviews first'}
                         </span>
                       )}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 rtl:space-x-reverse">
                   {interview.completed ? (
                     <Badge variant="default" className="bg-green-100 text-green-700">
-                      Completed
+                      {t('interview.completed') || 'Completed'}
                     </Badge>
                   ) : interview.locked ? (
                     <Badge variant="outline" className="text-gray-500">
-                      Locked
+                      {t('interview.locked') || 'Locked'}
                     </Badge>
                   ) : (
                     <Badge variant="outline">
-                      Start
+                      {t('interview.start') || 'Start'}
                     </Badge>
                   )}
                 </div>
@@ -1136,7 +1136,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       
       {/* Language Selection */}
       <div className="space-y-3">
-        <div className="flex items-center justify-center space-x-2">
+        <div className="flex items-center justify-center space-x-2 rtl:space-x-reverse">
           <Languages className="h-4 w-4 text-muted-foreground" />
           <label className="text-sm font-medium">{t('interview.selectLanguage')}</label>
         </div>
@@ -1214,7 +1214,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       {currentSession?.interviewType !== 'job-practice' && (
         <div className="flex justify-start">
           <Button variant="outline" onClick={() => setMode('types')}>
-            ← Back to Interview Types
+            ← {t('interview.backToInterviewTypes') || 'Back to Interview Types'}
           </Button>
         </div>
       )}
@@ -1240,7 +1240,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                 : 'bg-green-50 border-l-4 border-green-400 ml-8'
             }`}
           >
-            <div className="flex items-start space-x-2">
+            <div className="flex items-start space-x-2 rtl:space-x-reverse">
               {message.type === 'question' ? (
                 <User className="h-4 w-4 mt-1 text-blue-600" />
               ) : (
@@ -1264,11 +1264,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         {/* Loading indicator when processing responses */}
         {(respondMutation.isPending || startInterviewMutation.isPending) && (
           <div className="p-3 rounded-lg bg-gray-50 border-l-4 border-gray-400">
-            <div className="flex items-start space-x-2">
+            <div className="flex items-start space-x-2 rtl:space-x-reverse">
               <div className="h-4 w-4 mt-1 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
               <div className="flex-1">
                 <p className="text-sm text-gray-600">
-                  {startInterviewMutation.isPending ? 'Preparing questions...' : 'Processing your response...'}
+                  {startInterviewMutation.isPending ? t('interview.preparingQuestions') || 'Preparing questions...' : t('interview.processingYourResponse') || 'Processing your response...'}
                 </p>
               </div>
             </div>
@@ -1282,12 +1282,12 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         <div className="space-y-4">
           <Card className="border-green-200 bg-green-50">
             <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 rtl:space-x-reverse">
                 <div className="h-2 w-2 bg-green-500 rounded-full" />
                 <span className="text-sm font-medium text-green-700">Interview Complete!</span>
               </div>
               <p className="text-sm text-green-600 mt-1">
-                Interview section completed successfully! Continue with remaining interviews to complete your profile.
+                {t('interview.interviewSectionCompletedSuccessfully') || 'Interview section completed successfully! Continue with remaining interviews to complete your profile.'}
               </p>
             </CardContent>
           </Card>
@@ -1309,24 +1309,24 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           <div className="flex justify-between">
             {currentSession?.interviewType !== 'job-practice' && (
               <Button variant="outline" onClick={() => setMode('types')}>
-                ← Back to Interview Types
+                ← {t('interview.backToInterviewTypes') || 'Back to Interview Types'}
               </Button>
             )}
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 rtl:space-x-reverse">
               {isInterviewConcluded ? (
                 <Button 
                   onClick={() => processInterviewCompletion()}
                   disabled={isProcessingInterview}
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  {isProcessingInterview ? 'Submitting...' : 'Submit Interview'}
+                  {isProcessingInterview ? t('interview.submitting') || 'Submitting...' : t('interview.submitInterview') || 'Submit Interview'}
                 </Button>
               ) : (
                 <Button 
                   onClick={handleSubmitAnswer}
                   disabled={!currentAnswer.trim() || respondMutation.isPending}
                 >
-                  {respondMutation.isPending ? 'Processing...' : 'Submit Answer'}
+                  {respondMutation.isPending ? t('interview.processing') || 'Processing...' : t('interview.submitAnswer') || 'Submit Answer'}
                 </Button>
               )}
             </div>
@@ -1340,11 +1340,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Voice Interview</h3>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 rtl:space-x-reverse">
           {realtimeAPI.isConnected && (
-            <Badge variant="default" className="flex items-center space-x-1">
+            <Badge variant="default" className="flex items-center space-x-1 rtl:space-x-reverse">
               <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-              <span>Live</span>
+              {t('interview.live') || 'Live'}
             </Badge>
           )}
         </div>
@@ -1373,22 +1373,22 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             <div className="space-y-2">
               <p className="font-medium">
                 {isStartingInterview 
-                  ? 'Starting Interview...' 
-                  : isAiSpeaking 
-                    ? 'AI is Speaking...' 
-                    : realtimeAPI.isConnected 
-                      ? 'AI Interview Active' 
-                      : 'Connecting...'
+                  ? t('interview.startingInterview') || 'Starting Interview...'
+                  : isAiSpeaking
+                    ? t('interview.aiIsSpeaking') || 'AI is Speaking...'
+                    : realtimeAPI.isConnected
+                      ? t('interview.aiInterviewActive') || 'AI Interview Active'
+                      : t('interview.connecting') || 'Connecting...'
                 }
               </p>
               <p className="text-sm text-muted-foreground">
                 {isStartingInterview 
-                  ? 'Preparing your personalized questions...'
-                  : isAiSpeaking 
-                    ? 'Please wait for the AI to finish speaking before responding'
-                    : realtimeAPI.isConnected 
-                      ? `Speak naturally - the AI will guide you through ${getQuestionCount(selectedInterviewType)} ${selectedInterviewType} questions`
-                      : 'Setting up your voice interview...'
+                  ? t('interview.preparingYourPersonalizedQuestions') || 'Preparing your personalized questions...'
+                  : isAiSpeaking
+                    ? t('interview.waitForAiToFinishSpeaking') || 'Please wait for the AI to finish speaking before responding'
+                    : realtimeAPI.isConnected
+                      ? `${t('interview.speakNaturally') || 'Speak naturally'} - ${t('interview.aiWillGuideYou') || 'the AI will guide you through'} ${getQuestionCount(selectedInterviewType)} ${selectedInterviewType} ${t('interview.questions') || 'questions'}`
+                      : t('interview.settingUpVoiceInterview') || 'Setting up your voice interview...'
                 }
               </p>
             </div>
@@ -1399,7 +1399,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       {voiceTranscript && (
         <Card className="border-blue-200 bg-blue-50">
           <CardContent className="p-4">
-            <div className="flex items-start space-x-2">
+            <div className="flex items-start space-x-2 rtl:space-x-reverse">
               <User className="h-4 w-4 mt-1 text-blue-600" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-blue-800">AI Interviewer</p>
@@ -1420,7 +1420,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               : 'border-green-200 bg-green-50 ml-8'
           }`}>
             <CardContent className="p-3">
-              <div className="flex items-start space-x-2">
+              <div className="flex items-start space-x-2 rtl:space-x-reverse">
                 {item.role === 'assistant' ? (
                   <User className="h-4 w-4 mt-1 text-blue-600" />
                 ) : (
@@ -1428,7 +1428,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                 )}
                 <div className="flex-1">
                   <p className={`text-sm font-medium ${item.role === 'assistant' ? 'text-blue-800' : 'text-green-800'}`}>
-                    {item.role === 'assistant' ? 'AI Interviewer' : 'You'}
+                    {item.role === 'assistant' ? t('interview.aiInterviewer') || 'AI Interviewer' : t('interview.you') || 'You'}
                   </p>
                   <p className={`text-sm ${item.role === 'assistant' ? 'text-blue-700' : 'text-green-700'}`}>
                     {item.content}
@@ -1443,7 +1443,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         {isAiSpeaking && (
           <Card className="border-orange-200 bg-orange-50">
             <CardContent className="p-3">
-              <div className="flex items-start space-x-2">
+              <div className="flex items-start space-x-2 rtl:space-x-reverse">
                 <div className="h-4 w-4 mt-1 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-orange-800">AI Interviewer</p>
@@ -1459,12 +1459,12 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         <div className="space-y-4">
           <Card className="border-green-200 bg-green-50">
             <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 rtl:space-x-reverse">
                 <div className="h-2 w-2 bg-green-500 rounded-full" />
                 <span className="text-sm font-medium text-green-700">Voice Interview Complete!</span>
               </div>
               <p className="text-sm text-green-600 mt-1">
-                Interview section completed successfully! Continue with remaining interviews to complete your profile.
+                {t('interview.interviewSectionCompletedSuccessfully') || 'Interview section completed successfully! Continue with remaining interviews to complete your profile.'}
               </p>
             </CardContent>
           </Card>
@@ -1476,10 +1476,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       <div className="flex justify-between">
         {currentSession?.interviewType !== 'job-practice' && (
           <Button variant="outline" onClick={() => setMode('types')}>
-            ← Back to Interview Types
+            ← {t('interview.backToInterviewTypes') || 'Back to Interview Types'}
           </Button>
         )}
-        <div className="space-x-2">
+        <div className="space-x-2 rtl:space-x-reverse">
           {realtimeAPI.isConnected && (
             <Button
               variant={isInterviewConcluded ? "default" : "destructive"}
@@ -1505,17 +1505,17 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               {isProcessingInterview || processVoiceInterviewMutation.isPending ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Processing Interview...
+                  {t('interview.processingInterview') || 'Processing Interview...'}
                 </>
               ) : isInterviewConcluded || conversationHistory.filter(msg => msg.role === 'user').length >= 3 ? (
                 <>
                   <CheckCircle className="h-4 w-4 mr-2" />
-                  Submit Interview
+                  {t('interview.submitInterview') || 'Submit Interview'}
                 </>
               ) : (
                 <>
                   <PhoneOff className="h-4 w-4 mr-2" />
-                  Hang Up
+                  {t('interview.hangUp') || 'Hang Up'}
                 </>
               )}
             </Button>
@@ -1530,7 +1530,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>AI Interview</DialogTitle>
+            <DialogTitle>{t('interview.aiInterview') || 'AI Interview'}</DialogTitle>
           </DialogHeader>
           
           {mode === 'types' && renderInterviewTypes()}
@@ -1548,8 +1548,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           queryClient.invalidateQueries({ queryKey: ['/api/interview/resume-check'] });
           queryClient.invalidateQueries({ queryKey: ['/api/interview/types'] });
           toast({
-            title: "Success",
-            description: "Resume uploaded successfully! You can now start interviews.",
+            title: t('interview.success') || "Success",
+            description: t('interview.resumeUploadedSuccessfully') || "Resume uploaded successfully! You can now start interviews.",
             variant: "default",
           });
         }}

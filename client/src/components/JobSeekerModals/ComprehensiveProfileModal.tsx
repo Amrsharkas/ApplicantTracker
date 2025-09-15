@@ -518,13 +518,13 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
       <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center space-x-2">
+            <DialogTitle className="flex items-center space-x-2 rtl:space-x-reverse">
               <User className="h-5 w-5" />
               <span>Build Your Complete Profile</span>
             </DialogTitle>
-            <div className="flex items-center space-x-2 text-sm text-gray-500">
+            <div className="flex items-center space-x-2 rtl:space-x-reverse text-sm text-gray-500">
               {isAutoSaving && (
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center space-x-1 rtl:space-x-reverse">
                   <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-600"></div>
                   <span>Saving...</span>
                 </div>
@@ -558,7 +558,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
               <TabsContent value="personal" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
+                    <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse">
                       <User className="h-5 w-5" />
                       <span>Personal Details</span>
                     </CardTitle>
@@ -794,7 +794,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
               <TabsContent value="target" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
+                    <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse">
                       <Target className="h-5 w-5" />
                       <span>Job Target & Fit</span>
                     </CardTitle>
@@ -926,7 +926,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                           control={form.control}
                           name="jobTarget.salaryExpectations.negotiable"
                           render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormItem className="flex flex-row items-start space-x-3 rtl:space-x-reverse space-y-0">
                               <FormControl>
                                 <Checkbox
                                   checked={field.value}
@@ -1025,7 +1025,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
               <TabsContent value="government" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
+                    <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse">
                       <Shield className="h-5 w-5" />
                       <span>Government ID Submission</span>
                     </CardTitle>
@@ -1103,7 +1103,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
               <TabsContent value="links" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
+                    <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse">
                       <Globe className="h-5 w-5" />
                       <span>Links & Portfolio</span>
                     </CardTitle>
@@ -1197,7 +1197,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
               <TabsContent value="eligibility" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
+                    <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse">
                       <MapPin className="h-5 w-5" />
                       <span>Work Eligibility & Preferences</span>
                     </CardTitle>
@@ -1283,7 +1283,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         control={form.control}
                         name="workEligibility.willingToRelocate"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormItem className="flex flex-row items-start space-x-3 rtl:space-x-reverse space-y-0">
                             <FormControl>
                               <Checkbox
                                 checked={field.value}
@@ -1300,7 +1300,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                         control={form.control}
                         name="workEligibility.sponsorshipRequired"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormItem className="flex flex-row items-start space-x-3 rtl:space-x-reverse space-y-0">
                             <FormControl>
                               <Checkbox
                                 checked={field.value}
@@ -1323,7 +1323,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <Languages className="h-5 w-5" />
                         <span>Languages</span>
                       </div>
@@ -1413,7 +1413,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
               <TabsContent value="skills" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
+                    <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse">
                       <Settings className="h-5 w-5" />
                       <span>Skills</span>
                     </CardTitle>
@@ -1585,7 +1585,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <GraduationCap className="h-5 w-5" />
                         <span>Education</span>
                       </div>
@@ -1724,7 +1724,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             control={form.control}
                             name={`education.${index}.current`}
                             render={({ field }) => (
-                              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormItem className="flex flex-row items-start space-x-3 rtl:space-x-reverse space-y-0">
                                 <FormControl>
                                   <Checkbox
                                     checked={field.value}
@@ -1762,7 +1762,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <Briefcase className="h-5 w-5" />
                         <span>Work Experience</span>
                       </div>
@@ -1906,7 +1906,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                             control={form.control}
                             name={`experience.${index}.current`}
                             render={({ field }) => (
-                              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormItem className="flex flex-row items-start space-x-3 rtl:space-x-reverse space-y-0">
                                 <FormControl>
                                   <Checkbox
                                     checked={field.value}
@@ -1944,7 +1944,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <Award className="h-5 w-5" />
                         <span>Certifications & Licenses</span>
                       </div>
@@ -2080,7 +2080,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <Star className="h-5 w-5" />
                         <span>Awards & Achievements</span>
                       </div>
@@ -2214,7 +2214,7 @@ export function ComprehensiveProfileModal({ isOpen, onClose }: ComprehensiveProf
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <div className="flex space-x-2">
+              <div className="flex space-x-2 rtl:space-x-reverse">
                 <Button 
                   type="button" 
                   variant="secondary"

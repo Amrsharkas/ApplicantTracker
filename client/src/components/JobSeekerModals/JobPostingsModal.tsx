@@ -792,7 +792,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                 {expandedFilters.workplace && (
                   <div className="mt-2 space-y-2 pl-2">
                     {['On-site', 'Remote', 'Hybrid'].map((option) => (
-                      <div key={option} className="flex items-center space-x-2">
+                      <div key={option} className="flex items-center space-x-2 rtl:space-x-reverse">
                         <Checkbox
                           id={`workplace-${option}`}
                           checked={filters.workplace.includes(option)}
@@ -1381,7 +1381,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         {selectedJob.location || 'Remote'}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 rtl:space-x-reverse">
                       <Button
                         variant="outline"
                         onClick={() => setSelectedJob(null)}

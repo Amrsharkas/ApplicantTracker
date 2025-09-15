@@ -320,7 +320,7 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
                       })()}
                     </div>
 
-                    <div className="flex items-center gap-2 mt-4">
+                    <div className="flex items-center gap-2 rtl:space-x-reverse mt-4">
                       <Button 
                         onClick={() => handleJoinInterview(interview.interviewLink)}
                         className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"

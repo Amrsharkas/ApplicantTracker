@@ -115,7 +115,7 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
+          <DialogTitle className="flex items-center space-x-2 rtl:space-x-reverse">
             <User className="h-5 w-5" />
             <span>Edit User Profile</span>
           </DialogTitle>
@@ -172,7 +172,7 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center space-x-2">
+                      <FormLabel className="flex items-center space-x-2 rtl:space-x-reverse">
                         <Mail className="h-4 w-4" />
                         <span>Email Address</span>
                       </FormLabel>
@@ -200,7 +200,7 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
 
                 <div className="border-t pt-4 mt-6">
                   <div className="text-sm text-gray-600 mb-4">
-                    <div className="flex items-center space-x-2 mb-1">
+                    <div className="flex items-center space-x-2 rtl:space-x-reverse mb-1">
                       <Calendar className="h-4 w-4" />
                       <span>Member since: {new Date(user?.createdAt).toLocaleDateString()}</span>
                     </div>
@@ -210,7 +210,7 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
                   </div>
                 </div>
 
-                <div className="flex justify-end space-x-2 pt-4">
+                <div className="flex justify-end space-x-2 rtl:space-x-reverse pt-4">
                   <Button type="button" variant="outline" onClick={onClose}>
                     Cancel
                   </Button>
