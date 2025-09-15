@@ -114,7 +114,7 @@ function CompanyCarousel({ t }: { t: (key: string) => string }) {
         </div>
       </div>
 
-      <div className="flex justify-center space-x-3 mt-4">
+      <div className="flex justify-center space-x-3 rtl:space-x-reverse mt-4">
         {companyLogos.map((_, index) => (
           <button
             key={index}
@@ -176,7 +176,7 @@ export default function Landing() {
               Plato
             </motion.div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 rtl:space-x-reverse">
               <LanguageSwitcher />
               <Button 
                 onClick={openAuthModal}

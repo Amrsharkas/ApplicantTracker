@@ -174,7 +174,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
             </div>
 
             <div className="p-3 rounded-lg bg-blue-50 border-l-4 border-blue-400">
-              <div className="flex items-start space-x-2">
+              <div className="flex items-start space-x-2 rtl:space-x-reverse">
                 <User className="h-4 w-4 mt-1 text-blue-600" />
                 <p className="text-sm">{currentQuestion}</p>
               </div>

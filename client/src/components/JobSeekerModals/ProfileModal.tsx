@@ -207,7 +207,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         
         <div className="max-h-[75vh] overflow-y-auto space-y-6">
           {/* Profile Header */}
-          <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl">
+          <div className="flex items-center space-x-4 rtl:space-x-reverse p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl">
             <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
               <User className="w-8 h-8 text-white" />
             </div>
@@ -488,7 +488,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                 </Card>
               )}
 
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex justify-end space-x-3 rtl:space-x-reverse pt-4">
                 <Button
                   type="button"
                   variant="outline"

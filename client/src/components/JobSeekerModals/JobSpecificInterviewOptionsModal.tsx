@@ -53,11 +53,11 @@ export function JobSpecificInterviewOptionsModal({ isOpen, onClose, job, onConfi
           <div className={isSubmitting ? 'opacity-60 pointer-events-none' : ''}>
             <div className="text-sm font-medium mb-2">Interview style</div>
             <RadioGroup value={mode} onValueChange={(v) => setMode(v as any)} className="grid grid-cols-2 gap-3">
-              <div className="flex items-center space-x-2 border rounded-md p-3">
+              <div className="flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3">
                 <RadioGroupItem value="text" id="mode-text" />
                 <Label htmlFor="mode-text">Text</Label>
               </div>
-              <div className="flex items-center space-x-2 border rounded-md p-3">
+              <div className="flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3">
                 <RadioGroupItem value="voice" id="mode-voice" />
                 <Label htmlFor="mode-voice">Voice</Label>
               </div>
@@ -67,11 +67,11 @@ export function JobSpecificInterviewOptionsModal({ isOpen, onClose, job, onConfi
           <div className={isSubmitting ? 'opacity-60 pointer-events-none' : ''}>
             <div className="text-sm font-medium mb-2">Language</div>
             <RadioGroup value={language} onValueChange={(v) => setLanguage(v as any)} className="grid grid-cols-2 gap-3">
-              <div className="flex items-center space-x-2 border rounded-md p-3">
+              <div className="flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3">
                 <RadioGroupItem value="english" id="lang-en" />
                 <Label htmlFor="lang-en">English</Label>
               </div>
-              <div className="flex items-center space-x-2 border rounded-md p-3">
+              <div className="flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3">
                 <RadioGroupItem value="arabic" id="lang-ar" />
                 <Label htmlFor="lang-ar">Arabic</Label>
               </div>
