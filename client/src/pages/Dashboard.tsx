@@ -114,8 +114,8 @@ export default function Dashboard() {
     // Validate file type and provide helpful guidance
     if (!file.type.includes('pdf') && !file.type.includes('text')) {
       toast({
-        title: "Invalid File Type",
-        description: "Please upload a PDF or text file.",
+        title: t('dashboard.invalidFileType'),
+        description: t('dashboard.invalidFileTypeDescription'),
         variant: "destructive",
       });
       return;
@@ -124,16 +124,16 @@ export default function Dashboard() {
     // Provide guidance for PDF files
     if (file.type.includes('pdf')) {
       toast({
-        title: "PDF Upload Tips",
-        description: "PDF uploaded! For guaranteed auto-population, also try uploading a text (.txt) version of your resume if the PDF extraction doesn't work well.",
+        title: t('dashboard.pdfUploadTips'),
+        description: t('dashboard.pdfUploadTipsDescription'),
       });
     }
 
     // Validate file size (10MB limit)
     if (file.size > 10 * 1024 * 1024) {
       toast({
-        title: "File Too Large",
-        description: "Please upload a file smaller than 10MB.",
+        title: t('dashboard.fileTooLarge'),
+        description: t('dashboard.fileTooLargeDescription'),
         variant: "destructive",
       });
       return;
@@ -157,8 +157,8 @@ export default function Dashboard() {
       const result = await response.json();
 
       toast({
-        title: "Resume Processed Successfully! 🎉",
-        description: `Profile auto-populated with ${Object.keys(result.extractedFields || {}).filter(key => result.extractedFields[key]).length} sections from your resume.`,
+        title: t('dashboard.resumeProcessedSuccessfully'),
+        description: t('dashboard.resumeProcessedDescription', { sections: Object.keys(result.extractedFields || {}).filter(key => result.extractedFields[key]).length }),
       });
 
       // Refresh profile data to show updated information
@@ -168,8 +168,8 @@ export default function Dashboard() {
     } catch (error: any) {
       console.error('Resume upload failed:', error);
       toast({
-        title: "Upload Failed",
-        description: error.message || "Failed to process resume. Please try again.",
+        title: t('dashboard.uploadFailed'),
+        description: error.message || t('dashboard.uploadFailedDescription'),
         variant: "destructive",
       });
     } finally {
@@ -207,8 +207,8 @@ export default function Dashboard() {
       
       if (!hasShownWelcomeToast) {
         toast({
-          title: "Ready to Find Your Perfect Role! 🎉",
-          description: "Your profile is complete and your AI interview has generated a comprehensive professional analysis. Use the tools below to discover opportunities that match your unique skills and career goals.",
+          title: t('dashboard.readyToFindRole'),
+          description: t('dashboard.readyToFindRoleDescription'),
           duration: 8000, // Show for 8 seconds
         });
         
@@ -229,7 +229,7 @@ export default function Dashboard() {
                 <TrendingUp className="h-5 w-5" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Plato</h1>
+                <h1 className="text-xl font-bold text-gray-900">{t('plato')}</h1>
               </div>
             </div>
             
@@ -275,7 +275,7 @@ export default function Dashboard() {
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('welcome')}</h2>
               <p className="text-gray-600 mb-6">
-                Complete both steps below to unlock personalized job matching and access your full dashboard:
+                {t('dashboard.completeSteps')}
               </p>
               
               <div className="space-y-4">
@@ -330,7 +330,7 @@ export default function Dashboard() {
                           ) : (
                             <Upload className="h-4 w-4" />
                           )}
-                          <span>{isUploadingResume ? 'Uploading...' : 'Upload Resume'}</span>
+                          <span>{isUploadingResume ? t('dashboard.uploading') : t('dashboard.uploadResume')}</span>
                         </button>
                         <button
                           onClick={() => openModal('profile')}
@@ -371,8 +371,8 @@ export default function Dashboard() {
                         <p className="text-gray-600">
                           {!hasCompleteProfile
                             ? t('interviewDescription')
-                            : hasCompletedInterview 
-                              ? 'Excellent! Your AI interview is complete.' 
+                            : hasCompletedInterview
+                              ? t('dashboard.excellentInterviewComplete')
                               : t('step2')
                           }
                         </p>
@@ -389,7 +389,7 @@ export default function Dashboard() {
                             : 'bg-purple-600 text-white hover:bg-purple-700'
                       }`}
                     >
-{hasCompletedInterview ? 'Review Interview' : t('startInterview')}
+{hasCompletedInterview ? t('dashboard.reviewInterview') : t('startInterview')}
                     </button>
                   </div>
                 </div>
@@ -446,19 +446,40 @@ export default function Dashboard() {
               {/* Job specific AI interviews - New widget (above upcoming) */}
               <button
                 onClick={() => openModal('jobSpecificAI')}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-6"
+                className={`w-full rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-6 ${
+                  hasCompletedAllInterviews
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white'
+                    : 'bg-gradient-to-r from-gray-400 to-gray-500 text-gray-200 cursor-not-allowed opacity-70'
+                }`}
+                disabled={!hasCompletedAllInterviews}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                    <div className={`bg-white bg-opacity-20 rounded-lg p-3 ${
+                      !hasCompletedAllInterviews ? 'opacity-50' : ''
+                    }`}>
                       <Briefcase className="h-6 w-6 text-white" />
                     </div>
                     <div className="text-left">
-                      <h4 className="text-xl font-bold">Job specific AI interviews</h4>
-                      <p className="text-emerald-100">See job invites tailored for you and practice</p>
+                      <h4 className="text-xl font-bold">{t('dashboard.jobSpecificAI')}</h4>
+                      <p className={`${
+                        hasCompletedAllInterviews ? 'text-emerald-100' : 'text-gray-300'
+                      }`}>
+                        {hasCompletedAllInterviews
+                          ? t('dashboard.jobSpecificAIDescription')
+                          : 'Complete all 3 interviews first to unlock job-specific interviews'
+                        }
+                      </p>
+                      {!hasCompletedAllInterviews && (
+                        <p className="text-xs text-gray-300 mt-1">
+                          🔒 Complete Personal, Professional, and Technical interviews to unlock
+                        </p>
+                      )}
                     </div>
                   </div>
-                  <div className="text-white text-2xl">→</div>
+                  <div className={`text-2xl ${hasCompletedAllInterviews ? 'text-white' : 'text-gray-300'}`}>
+                    →
+                  </div>
                 </div>
               </button>
 
@@ -516,8 +537,8 @@ export default function Dashboard() {
                       <Briefcase className="h-6 w-6 text-white" />
                     </div>
                     <div className="text-left">
-                      <h4 className="text-xl font-bold">Invited Jobs</h4>
-                      <p className="text-green-100">View jobs you’re invited to and apply</p>
+                      <h4 className="text-xl font-bold">{t('dashboard.invitedJobs')}</h4>
+                      <p className="text-green-100">{t('dashboard.invitedJobsDescription')}</p>
                     </div>
                   </div>
                   <div className="text-white text-2xl">→</div>
@@ -576,26 +597,26 @@ export default function Dashboard() {
             <div className="flex items-start space-x-3">
               <MessageCircle className="h-6 w-6 text-blue-600 mt-0.5" />
               <div>
-                <h3 className="text-lg font-semibold text-blue-900 mb-2">Get Started with Plato</h3>
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">{t('dashboard.getStartedWithPlato')}</h3>
                 <p className="text-blue-800 mb-3">
-                  Complete both steps above to unlock your personalized job dashboard with matches, applications, and career insights.
+                  {t('dashboard.getStartedWithPlatoDescription')}
                 </p>
                 <div className="text-sm text-blue-700">
-                  <strong>Step 1:</strong> Build your complete profile including personal details, education, work experience, skills, and career preferences.<br/>
-                  <strong>Step 2:</strong> Complete your AI interview to generate your comprehensive professional analysis.
+                  {t('dashboard.step1Description')}<br/>
+                  {t('dashboard.step2Description')}
                 </div>
                 <div className="mt-4">
                   <button
                     onClick={() => openModal('jobPostings')}
                     className="px-4 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700"
                   >
-                    Browse Job Postings
+                    {t('dashboard.browseJobPostings')}
                   </button>
                   <button
                     onClick={() => openModal('invitedJobs')}
                     className="ml-3 px-4 py-2 rounded-lg font-medium transition-colors bg-emerald-600 text-white hover:bg-emerald-700"
                   >
-                    Invited Jobs
+                    {t('dashboard.invitedJobs')}
                   </button>
                 </div>
               </div>

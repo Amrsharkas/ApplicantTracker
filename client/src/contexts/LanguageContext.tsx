@@ -203,13 +203,45 @@ const translations = {
       english: "English",
       arabic: "العربية"
     },
+    
+    // Dashboard
+    dashboard: {
+      invalidFileType: "Invalid File Type",
+      invalidFileTypeDescription: "Please upload a PDF or text file.",
+      pdfUploadTips: "PDF Upload Tips",
+      pdfUploadTipsDescription: "PDF uploaded! For guaranteed auto-population, also try uploading a text (.txt) version of your resume if the PDF extraction doesn't work well.",
+      fileTooLarge: "File Too Large",
+      fileTooLargeDescription: "Please upload a file smaller than 10MB.",
+      resumeProcessedSuccessfully: "Resume Processed Successfully! 🎉",
+      resumeProcessedDescription: "Profile auto-populated with {{sections}} sections from your resume.",
+      uploadFailed: "Upload Failed",
+      uploadFailedDescription: "Failed to process resume. Please try again.",
+      editingProfile: "Editing Profile...",
+      readyToFindRole: "Ready to Find Your Perfect Role! 🎉",
+      readyToFindRoleDescription: "Your profile is complete and your AI interview has generated a comprehensive professional analysis. Use the tools below to discover opportunities that match your unique skills and career goals.",
+      completeSteps: "Complete both steps below to unlock personalized job matching and access your full dashboard:",
+      uploadResume: "Upload Resume",
+      uploading: "Uploading...",
+      editProfile: "Edit Profile",
+      excellentInterviewComplete: "Excellent! Your AI interview is complete.",
+      reviewInterview: "Review Interview",
+      jobSpecificAI: "Job specific AI interviews",
+      jobSpecificAIDescription: "See job invites tailored for you and practice",
+      invitedJobs: "Invited Jobs",
+      invitedJobsDescription: "View jobs you're invited to and apply",
+      browseJobPostings: "Browse Job Postings",
+      getStartedWithPlato: "Get Started with Plato",
+      getStartedWithPlatoDescription: "Complete both steps above to unlock your personalized job dashboard with matches, applications, and career insights.",
+      step1Description: "Step 1: Build your complete profile including personal details, education, work experience, skills, and career preferences.",
+      step2Description: "Step 2: Complete your AI interview to generate your comprehensive professional analysis."
+    },
   },
   ar: {
     // Navigation & General
-    welcome: "مرحباً بك في أفلاطون!",
+    welcome: "مرحباً بك في بلاتو!",
     buildProfile: "أنشئ ملفك الشخصي الكامل",
     takeInterview: "خذ مقابلة الذكاء الاصطناعي",
-    getStarted: "ابدأ مع أفلاطون",
+    getStarted: "ابدأ مع بلاتو",
     complete: "مكتمل",
     startInterview: "ابدأ المقابلة",
     buildProfileButton: "أنشئ الملف الشخصي",
@@ -262,6 +294,9 @@ const translations = {
       english: "English",
       arabic: "العربية"
     },
+    
+    // Brand name
+    plato: "بلاتو",
     
     // Profile completion
     profileProgress: "تم حفظ تقدم الملف الشخصي!",
@@ -393,6 +428,38 @@ const translations = {
       usernameMinLength: "يجب أن يكون اسم المستخدم ٣ أحرف على الأقل",
       passwordsDontMatch: "كلمات المرور غير متطابقة",
       welcomeToPlato: "أهلاً بك في بلاتو"
+    },
+    
+    // Dashboard
+    dashboard: {
+      invalidFileType: "نوع ملف غير صالح",
+      invalidFileTypeDescription: "يرجى رفع ملف PDF أو نصي.",
+      pdfUploadTips: "نصائح رفع PDF",
+      pdfUploadTipsDescription: "تم رفع PDF! للحصول على التعبئة التلقائية التامة، جرب أيضاً رفع نسخة نصية (.txt) من سيرتك الذاتية إذا لم يعمل استخراج PDF بشكل جيد.",
+      fileTooLarge: "ملف كبير جداً",
+      fileTooLargeDescription: "يرجى رفع ملف أصغر من 10 ميجابايت.",
+      resumeProcessedSuccessfully: "تم معالجة السيرة الذاتية بنجاح! 🎉",
+      resumeProcessedDescription: "تم ملء الملف الشخصي تلقائياً بـ {{sections}} من أقسام سيرتك الذاتية.",
+      uploadFailed: "فشل الرفع",
+      uploadFailedDescription: "فشل معالجة السيرة الذاتية. يرجى المحاولة مرة أخرى.",
+      editingProfile: "جاري تعديل الملف الشخصي...",
+      readyToFindRole: "جاري البحث عن دورك المثالي! 🎉",
+      readyToFindRoleDescription: "ملفك الشخصي مكتمل ومقابلة الذكاء الاصطناعي قد أنشأت تحليلاً مهنياً شاملاً. استخدم الأدوات أدناه لاكتشاف الفرص التي تتوافق مع مهاراتك وأهدافك المهنية الفريدة.",
+      completeSteps: "أكمل الخطوتين التاليتين لفتح المطابقة الوظيفية المخصصة والوصول إلى لوحة التحكم الكاملة:",
+      uploadResume: "رفع السيرة الذاتية",
+      uploading: "جاري الرفع...",
+      editProfile: "تعديل الملف الشخصي",
+      excellentInterviewComplete: "ممتاز! مقابلة الذكاء الاصطناعي مكتملة.",
+      reviewInterview: "مراجعة المقابلة",
+      jobSpecificAI: "مقابلات الذكاء الاصطناعي الخاصة بالوظائف",
+      jobSpecificAIDescription: "شاهد دعوات وظيفية مخصصة لك وتمرن عليها",
+      invitedJobs: "الوظائف المدعوة إليها",
+      invitedJobsDescription: "شاهد الوظائف التي تمت دعوتك إليها وتقدم لها",
+      browseJobPostings: "تصفح الوظائف المعلنة",
+      getStartedWithPlato: "ابدأ مع بلاتو",
+      getStartedWithPlatoDescription: "أكمل الخطوتين أعلاه لفتح لوحة تحكم وظيفية مخصصة مع المطابقات والطلبات والرؤى المهنية.",
+      step1Description: "الخطوة 1: أنشئ ملفك الشخصي الكامل بما في التفاصيل الشخصية والتعليم وخبرة العمل والمهارات والتفضيلات المهنية.",
+      step2Description: "الخطوة 2: أكمل مقابلة الذكاء الاصطناعي لإنشاء تحليلك المهني الشامل."
     },
   }
 };
