@@ -1733,32 +1733,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user has uploaded a resume (required for interviews)
       const activeResume = await storage.getActiveResume(userId);
       if (!activeResume) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Resume required before starting interviews",
           requiresResume: true
         });
       }
+
+      // Check completion status for each interview type
+      const personalCompleted = profile?.personalInterviewCompleted || false;
+      const professionalCompleted = profile?.professionalInterviewCompleted || false;
+      const technicalCompleted = profile?.technicalInterviewCompleted || false;
 
       const types = [
         {
           type: 'personal',
           title: 'Personal Interview',
           description: 'Understanding your background, values, and personal journey',
-          completed: profile?.personalInterviewCompleted || false,
+          completed: personalCompleted,
+          locked: false, // Personal interview is always available
           questions: 5
         },
         {
-          type: 'professional', 
+          type: 'professional',
           title: 'Professional Interview',
           description: 'Exploring your career journey, achievements, and professional expertise',
-          completed: profile?.professionalInterviewCompleted || false,
+          completed: professionalCompleted,
+          locked: !personalCompleted, // Locked until personal interview is completed
           questions: 7
         },
         {
           type: 'technical',
-          title: 'Technical Interview', 
+          title: 'Technical Interview',
           description: 'Assessing your technical abilities and problem-solving skills',
-          completed: profile?.technicalInterviewCompleted || false,
+          completed: technicalCompleted,
+          locked: !personalCompleted || !professionalCompleted, // Locked until both personal and professional are completed
           questions: 11
         }
       ];
@@ -1770,8 +1778,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/start/:type', 
-    requireAuth, 
+  app.post('/api/interview/start/:type',
+    requireAuth,
 
 
     async (req: any, res) => {
@@ -1788,7 +1796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user has uploaded a resume (required for interviews)
       const activeResume = await storage.getActiveResume(userId);
       if (!activeResume) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Resume required before starting interviews",
           requiresResume: true
         });
@@ -1796,6 +1804,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
+
+      // Enforce interview order: personal -> professional -> technical
+      if (interviewType === 'professional' && !profile?.personalInterviewCompleted) {
+        return res.status(400).json({
+          message: "Please complete the Personal Interview first before starting the Professional Interview",
+          requiresPrevious: 'personal'
+        });
+      }
+
+      if (interviewType === 'technical' && (!profile?.personalInterviewCompleted || !profile?.professionalInterviewCompleted)) {
+        return res.status(400).json({
+          message: "Please complete both Personal and Professional Interviews first before starting the Technical Interview",
+          requiresPrevious: interviewType === 'technical' ? ['personal', 'professional'] : 'personal'
+        });
+      }
 
       // Get resume content and analysis from active resume
       let resumeContent = profile?.resumeContent || null;

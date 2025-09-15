@@ -1017,13 +1017,14 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     const professionalCompleted = userProfile?.professionalInterviewCompleted || false;
     const technicalCompleted = userProfile?.technicalInterviewCompleted || false;
     
-    const interviewTypes = (interviewTypesData && typeof interviewTypesData === 'object' && 'interviewTypes' in interviewTypesData) 
+    const interviewTypes = (interviewTypesData && typeof interviewTypesData === 'object' && 'interviewTypes' in interviewTypesData)
       ? (interviewTypesData as any).interviewTypes || [] : [
       {
         type: 'personal',
         title: 'Personal Interview',
         description: 'Understanding your personal self, background, and history',
         completed: personalCompleted,
+        locked: false,
         questions: 5
       },
       {
@@ -1031,6 +1032,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         title: 'Professional Interview',
         description: 'Exploring your career background and professional experience',
         completed: professionalCompleted,
+        locked: !personalCompleted,
         questions: 7
       },
       {
@@ -1038,6 +1040,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         title: 'Technical Interview',
         description: 'Dynamic assessment based on your field - problem solving and IQ evaluation',
         completed: technicalCompleted,
+        locked: !personalCompleted || !professionalCompleted,
         questions: 11
       }
     ];
@@ -1047,19 +1050,28 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         <div className="text-center space-y-3">
           <h3 className="text-lg font-semibold">Choose Your Interview</h3>
           <p className="text-sm text-muted-foreground">
-            Complete all 3 interviews to generate your comprehensive AI profile
+            Complete all 3 interviews in order to generate your comprehensive AI profile
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Interviews must be completed in this order: Personal → Professional → Technical
           </p>
         </div>
         
         <div className="space-y-4">
           {interviewTypes.map((interview: InterviewType) => (
-            <Card 
+            <Card
               key={interview.type}
               id={`interview-${interview.type}-button`}
-              className={`cursor-pointer hover:bg-accent/50 transition-colors ${interview.completed ? 'border-green-300 bg-green-50' : ''}`}
+              className={`transition-colors ${
+                interview.locked
+                  ? 'opacity-60 cursor-not-allowed border-gray-200 bg-gray-50'
+                  : 'cursor-pointer hover:bg-accent/50'
+              } ${interview.completed ? 'border-green-300 bg-green-50' : ''}`}
               onClick={() => {
-                setSelectedInterviewType(interview.type);
-                setMode('select');
+                if (!interview.locked) {
+                  setSelectedInterviewType(interview.type);
+                  setMode('select');
+                }
               }}
             >
               <CardContent className="flex items-center justify-between p-4">
@@ -1073,12 +1085,20 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                     <h4 className="font-medium flex items-center space-x-2">
                       <span>{interview.title}</span>
                       {interview.completed && <CheckCircle className="h-4 w-4 text-green-600" />}
+                      {interview.locked && !interview.completed && (
+                        <span className="text-xs text-gray-500">(Locked)</span>
+                      )}
                     </h4>
                     <p className="text-sm text-muted-foreground">
                       {interview.description}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {interview.questions} questions
+                      {interview.locked && !interview.completed && (
+                        <span className="text-xs text-orange-600 ml-2">
+                          • Complete previous interviews first
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -1086,6 +1106,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                   {interview.completed ? (
                     <Badge variant="default" className="bg-green-100 text-green-700">
                       Completed
+                    </Badge>
+                  ) : interview.locked ? (
+                    <Badge variant="outline" className="text-gray-500">
+                      Locked
                     </Badge>
                   ) : (
                     <Badge variant="outline">
