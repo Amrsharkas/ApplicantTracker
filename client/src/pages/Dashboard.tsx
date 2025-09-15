@@ -399,7 +399,7 @@ export default function Dashboard() {
         </div>
 
         {/* Job Features - Only show if interview is complete or profile is 80%+ */}
-        {!showFullDashboard && (
+        {showFullDashboard && (
           <div className="space-y-8">
             <div className="border-t border-gray-200 pt-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-8">{t('jobDashboard')}</h3>
@@ -592,7 +592,7 @@ export default function Dashboard() {
         )}
 
         {/* Instruction Message for Uncompleted Steps */}
-        {showFullDashboard && (
+        {!showFullDashboard && (
           <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
             <div className="flex items-start space-x-3 rtl:space-x-reverse">
               <MessageCircle className="h-6 w-6 text-blue-600 mt-0.5" />
