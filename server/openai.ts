@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { toFile } from "openai/uploads";
+import { wrapOpenAIRequest } from "./openaiTracker";
 
 // Using the latest OpenAI model gpt-4o (May 13, 2024). Note: ChatGPT-5 is not yet publicly available
 const openai = new OpenAI({ 
@@ -81,12 +82,19 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
         { role: "user" as const, content: prompt }
       ];
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-        temperature: 0.7,
-        max_completion_tokens: 200
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages,
+          temperature: 0.7,
+          max_completion_tokens: 200
+        }),
+        {
+          requestType: "generateWelcomeMessage",
+          model: "gpt-4o",
+          userId: userData?.id,
+        }
+      );
 
       return response.choices[0].message.content?.trim() || this.getFallbackWelcomeMessage(userData?.firstName, language);
     } catch (error) {
@@ -248,12 +256,19 @@ Return ONLY JSON:
         { role: "user" as const, content: prompt }
       ];
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-        response_format: { type: "json_object" },
-        temperature: 0.7
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.7
+        }),
+        {
+          requestType: "generatePersonalInterview",
+          model: "gpt-4o",
+          userId: userData?.id,
+        }
+      );
 
       const result = JSON.parse(response.choices[0].message.content || '{}');
       return {
@@ -424,12 +439,19 @@ Return ONLY JSON:
         { role: "user" as const, content: prompt }
       ];
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-        response_format: { type: "json_object" },
-        temperature: 0.7
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.7
+        }),
+        {
+          requestType: "generateProfessionalInterview",
+          model: "gpt-4o",
+          userId: userData?.id,
+        }
+      );
 
       const result = JSON.parse(response.choices[0].message.content || '{}');
       return {
@@ -606,12 +628,19 @@ Return ONLY JSON:
         { role: "user" as const, content: prompt }
       ];
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-        response_format: { type: "json_object" },
-        temperature: 0.7
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.7
+        }),
+        {
+          requestType: "generateTechnicalInterview",
+          model: "gpt-4o",
+          userId: userData?.id,
+        }
+      );
 
       const result = JSON.parse(response.choices[0].message.content || '{}');
       return {
@@ -823,21 +852,28 @@ Provide a comprehensive assessment in JSON format:
 Be thorough, honest, and evidence-based. This assessment will help employers make informed hiring decisions.`;
 
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: "You are a brutally honest HR expert who provides evidence-based candidate assessments for employers. Your assessments are known for their accuracy and honesty."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.2, // Lower temperature for consistent, honest assessments
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          messages: [
+            {
+              role: "system",
+              content: "You are a brutally honest HR expert who provides evidence-based candidate assessments for employers. Your assessments are known for their accuracy and honesty."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.2, // Lower temperature for consistent, honest assessments
+        }),
+        {
+          requestType: "generateBrutallyHonestProfile",
+          model: "gpt-4o",
+          userId: userData?.id,
+        }
+      );
 
       const analysis = JSON.parse(response.choices[0].message.content || "{}");
       return analysis;
@@ -884,11 +920,18 @@ Return JSON with:
 }`;
 
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" }
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" }
+        }),
+        {
+          requestType: "analyzeJobApplication",
+          model: "gpt-4o",
+          userId: userProfile?.userId,
+        }
+      );
 
       const analysis = JSON.parse(response.choices[0].message.content || '{}');
       
@@ -914,10 +957,16 @@ export class AIProfileAnalysisAgent {
   // and return the raw text content. This avoids local OCR/PDF parsing.
   async extractResumeTextWithOpenAI(file: { buffer: Buffer; originalname: string; mimetype: string }): Promise<string> {
     try {
-      const uploaded = await openai.files.create({
-        file: await toFile(file.buffer, file.originalname, { type: file.mimetype }),
-        purpose: "assistants"
-      });
+      const uploaded = await wrapOpenAIRequest(
+        async () => openai.files.create({
+          file: await toFile(file.buffer, file.originalname, { type: file.mimetype }),
+          purpose: "assistants"
+        }),
+        {
+          requestType: "extractResumeTextWithOpenAI",
+          model: "gpt-4o-mini",
+        }
+      );
 
       const extractionPrompt = "Extract and return the full plain text from this resume file. Preserve reading order and line breaks. Do not summarize, translate, or add any commentary. Output ONLY the raw plaintext.";
 
@@ -971,19 +1020,25 @@ export class AIProfileAnalysisAgent {
     try {
       const extractionPrompt = "Extract and return the full plain text from this resume file. Preserve reading order and line breaks. Do not summarize, translate, or add any commentary. Output ONLY the raw plaintext.";
 
-      const response: any = await (openai as any).responses.create({
-        model: "gpt-4o-mini",
-        input: [
-          {
-            role: "user",
-            content: [
-              { type: "input_text", text: extractionPrompt },
-              { type: "input_file", file_id: fileId }
-            ]
-          }
-        ],
-        max_output_tokens: 64000
-      });
+      const response: any = await wrapOpenAIRequest(
+        () => (openai as any).responses.create({
+          model: "gpt-4o-mini",
+          input: [
+            {
+              role: "user",
+              content: [
+                { type: "input_text", text: extractionPrompt },
+                { type: "input_file", file_id: fileId }
+              ]
+            }
+          ],
+          max_output_tokens: 64000
+        }),
+        {
+          requestType: "extractResumeTextFromOpenAIFileId",
+          model: "gpt-4o-mini",
+        }
+      );
 
       let text = "";
       if (response?.output_text) {
@@ -1094,22 +1149,29 @@ ${conversationHistory}
 A tough, fair recruiter who just finished an in-depth interview—credible, nuanced, trustworthy, with no marketing fluff.`;
 
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert career analyst. Provide detailed, accurate professional assessments based on all available candidate data."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.1,
-        max_completion_tokens: 1500
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: "You are an expert career analyst. Provide detailed, accurate professional assessments based on all available candidate data."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.1,
+          max_completion_tokens: 1500
+        }),
+        {
+          requestType: "generateComprehensiveProfile",
+          model: "gpt-4o",
+          userId: userData?.id,
+        }
+      );
 
       const profile = JSON.parse(response.choices[0].message.content || '{}');
       
@@ -1209,11 +1271,17 @@ Return a JSON object with:
 }`;
 
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" }
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" }
+        }),
+        {
+          requestType: "parseResume",
+          model: "gpt-5",
+        }
+      );
 
       return JSON.parse(response.choices[0].message.content || '{}');
     } catch (error) {
@@ -1406,27 +1474,33 @@ Return a JSON object with:
     try {
       const instruction = `You are an expert resume parser and career analyst. Extract ALL available information into the provided JSON schema. Use nulls/empty arrays for missing info. Be precise; do not invent data.`;
 
-      const response: any = await (openai as any).responses.create({
-        model: "gpt-5",
-        input: [
-          {
-            role: "user",
-            content: [
-              { type: "input_text", text: instruction },
-              { type: "input_text", text: `RESUME CONTENT:\n${resumeContent}` }
-            ]
-          }
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "ApplicantProfile",
-            schema: resumeProfileSchema,
-            strict: true
-          }
-        },
-        max_output_tokens: 4000
-      });
+      const response: any = await wrapOpenAIRequest(
+        () => (openai as any).responses.create({
+          model: "gpt-5",
+          input: [
+            {
+              role: "user",
+              content: [
+                { type: "input_text", text: instruction },
+                { type: "input_text", text: `RESUME CONTENT:\n${resumeContent}` }
+              ]
+            }
+          ],
+          text: {
+            format: {
+              type: "json_schema",
+              name: "ApplicantProfile",
+              schema: resumeProfileSchema,
+              strict: true
+            }
+          },
+          max_output_tokens: 4000
+        }),
+        {
+          requestType: "parseResumeForProfile",
+          model: "gpt-5",
+        }
+      );
 
       let text = "";
       if (response?.output_text) {
@@ -1449,15 +1523,21 @@ Return a JSON object with:
       console.error("Full error details:", JSON.stringify(error, null, 2));
       // Fallback to simple chat completion JSON mode as last resort
       try {
-        const fallback = await openai.chat.completions.create({
-          model: "gpt-5",
-          messages: [
-            { role: "system", content: "Return only valid JSON matching the requested structure." },
-            { role: "user", content: `Extract structured JSON for this resume:\n${resumeContent}` }
-          ],
-          response_format: { type: "json_object" },
-          max_completion_tokens: 2000
-        });
+        const fallback = await wrapOpenAIRequest(
+          () => openai.chat.completions.create({
+            model: "gpt-5",
+            messages: [
+              { role: "system", content: "Return only valid JSON matching the requested structure." },
+              { role: "user", content: `Extract structured JSON for this resume:\n${resumeContent}` }
+            ],
+            response_format: { type: "json_object" },
+            max_completion_tokens: 2000
+          }),
+          {
+            requestType: "parseResumeForProfile-fallback",
+            model: "gpt-5",
+          }
+        );
         return JSON.parse(fallback.choices[0].message.content || "{}");
       } catch (fallbackError) {
         console.error("Fallback parsing also failed:", fallbackError);
@@ -1610,12 +1690,19 @@ Return ONLY JSON:
     ];
 
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-        response_format: { type: "json_object" },
-        temperature: 0.6
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.6
+        }),
+        {
+          requestType: "generateJobPracticeInterview",
+          model: "gpt-4o",
+          userId: userData?.id,
+        }
+      );
       const result = JSON.parse(response.choices[0].message.content || '{}');
       return {
         type: 'job-practice',

@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { wrapOpenAIRequest } from "./openaiTracker.js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -15,12 +16,13 @@ export class EmployerQuestionService {
 
     try {
       // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: `Analyze the text and determine if it contains multiple numbered questions or is one single question.
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: `Analyze the text and determine if it contains multiple numbered questions or is one single question.
 
 RULES:
 - If the text contains explicit numbering (1., 2., 3., etc. or 1), 2), 3), etc.), split into separate questions
@@ -36,18 +38,23 @@ Format:
 }
 
 If no valid questions are found, return an empty array.`
-          },
-          {
-            role: "user",
-            content: `Analyze this text and determine if it's one question or multiple numbered questions:
+            },
+            {
+              role: "user",
+              content: `Analyze this text and determine if it's one question or multiple numbered questions:
 """
 ${employerQuestionsText}
 """`
-          }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.1
-      });
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.1
+        }),
+        {
+          requestType: "parseEmployerQuestions",
+          model: "gpt-4o",
+        }
+      );
 
       const result = JSON.parse(response.choices[0].message.content || '{"questions": []}');
       console.log('OpenAI response for employer questions:', result);
@@ -137,12 +144,13 @@ ${employerQuestionsText}
       }));
 
       // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert HR evaluator. Analyze user answers to employer questions and provide constructive feedback.
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: `You are an expert HR evaluator. Analyze user answers to employer questions and provide constructive feedback.
 
 For each question-answer pair, consider:
 1. Relevance to the question
@@ -165,15 +173,20 @@ Respond with JSON in this format:
   ],
   "overallAssessment": "Strong candidate responses with clear communication..."
 }`
-          },
-          {
-            role: "user",
-            content: `Please evaluate these question-answer pairs:\n\n${JSON.stringify(evaluationData, null, 2)}`
-          }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.3
-      });
+            },
+            {
+              role: "user",
+              content: `Please evaluate these question-answer pairs:\n\n${JSON.stringify(evaluationData, null, 2)}`
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.3
+        }),
+        {
+          requestType: "evaluateUserAnswers",
+          model: "gpt-4o",
+        }
+      );
 
       const result = JSON.parse(response.choices[0].message.content || '{}');
       

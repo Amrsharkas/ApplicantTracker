@@ -10,13 +10,14 @@ import { ObjectStorageService } from "./objectStorage";
 import { ResumeService } from "./resumeService";
 import multer from "multer";
 import { z } from "zod";
-import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile } from "@shared/schema";
+import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests } from "@shared/schema";
 // Dynamic import for pdf-parse will be used when needed
 import { db } from "./db";
 import { applicantProfiles, interviewSessions, resumeUploads, jobMatches, applications, sessions, users } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
+import { wrapOpenAIRequest } from "./openaiTracker";
 
 
 const upload = multer({ 
@@ -760,6 +761,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
     console.log('🔍 Auth debug info:', authInfo);
     res.json(authInfo);
+  });
+
+  app.get('/api/openai/requests', requireAuth, async (req: any, res) => {
+    try {
+      const requests = await db.select().from(openaiRequests).orderBy(openaiRequests.createdAt);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching OpenAI requests:", error);
+      res.status(500).json({ message: "Failed to fetch OpenAI requests" });
+    }
   });
 
   app.put('/api/auth/user', requireAuth, async (req: any, res) => {
@@ -1975,13 +1986,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const qaPairs = (sessionData.responses || []).map((r: any, idx: number) => `Q${idx + 1}: ${r.question}\nA${idx + 1}: ${r.answer}`).join('\n\n');
             const prompt = `You are an expert technical hiring panel. Score this candidate's job-specific interview strictly from 0 to 100 based on the role's requirements and the candidate's answers. Return ONLY a JSON object with keys score (0-100 integer) and rationale (1-2 concise sentences).\n\nJOB TITLE: ${jobTitle} at ${companyName}\nJOB DESCRIPTION:\n${jobDescription}\n\nINTERVIEW QA:\n${qaPairs}`;
 
-            const completion = await aiInterviewAgent.openai.chat.completions.create({
-              model: 'gpt-4o',
-              messages: [{ role: 'user', content: prompt }],
-              temperature: 0.2,
-              max_completion_tokens: 250,
-              response_format: { type: 'json_object' } as any
-            });
+            const completion = await wrapOpenAIRequest(
+              () => aiInterviewAgent.openai.chat.completions.create({
+                model: 'gpt-4o',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.2,
+                max_completion_tokens: 250,
+                response_format: { type: 'json_object' } as any
+              }),
+              {
+                requestType: "scoreJobSpecificInterview",
+                model: "gpt-4o",
+                userId: userId,
+              }
+            );
 
             let score = 70;
             let rationale: string | null = null;
@@ -3223,15 +3241,22 @@ Response format (JSON):
 IMPORTANT: Only include items in missingRequirements that the user clearly lacks. Be specific and factual.`;
 
       console.log('🤖 Sending comprehensive job analysis request to OpenAI...');
-      const response = await aiInterviewAgent.openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          { role: "system", content: "You are a professional career counselor who analyzes job matches comprehensively using all available user data. Be direct, honest, and constructive." },
-          { role: "user", content: analysisPrompt }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.3,
-      });
+      const response = await wrapOpenAIRequest(
+        () => aiInterviewAgent.openai.chat.completions.create({
+          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          messages: [
+            { role: "system", content: "You are a professional career counselor who analyzes job matches comprehensively using all available user data. Be direct, honest, and constructive." },
+            { role: "user", content: analysisPrompt }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.3,
+        }),
+        {
+          requestType: "analyzeJobApplication",
+          model: "gpt-4o",
+          userId: userId,
+        }
+      );
 
       console.log('✅ OpenAI analysis response received');
       const analysis = JSON.parse(response.choices[0].message.content || '{}');

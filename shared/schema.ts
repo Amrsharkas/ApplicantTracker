@@ -331,3 +331,26 @@ export type InsertInterviewSession = z.infer<typeof insertInterviewSessionSchema
 export type InterviewSession = typeof interviewSessions.$inferSelect;
 export type InsertResumeUpload = z.infer<typeof insertResumeUploadSchema>;
 export type ResumeUpload = typeof resumeUploads.$inferSelect;
+
+// OpenAI API requests tracking table for cost and token usage
+export const openaiRequests = pgTable("openai_requests", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  requestType: varchar("request_type").notNull(), // Type of request (e.g., 'scoring', 'analysis', 'chat')
+  model: varchar("model").notNull(), // OpenAI model used (e.g., 'gpt-4', 'gpt-3.5-turbo')
+  promptTokens: integer("prompt_tokens").notNull().default(0),
+  completionTokens: integer("completion_tokens").notNull().default(0),
+  totalTokens: integer("total_tokens").notNull().default(0),
+  cost: real("cost").notNull().default(0), // Estimated cost in USD
+  requestData: jsonb("request_data"), // Full request data as JSON
+  responseData: jsonb("response_data"), // Full response data as JSON
+  status: varchar("status").notNull().default("success"), // success, error, pending
+  errorMessage: text("error_message"), // Error message if request failed
+  userId: varchar("user_id").references(() => users.id), // User who made the request
+  organizationId: varchar("organization_id"), // Organization context
+  metadata: jsonb("metadata"), // Additional metadata as JSON
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type OpenAIRequest = typeof openaiRequests.$inferSelect;
+export type InsertOpenAIRequest = typeof openaiRequests.$inferInsert;
