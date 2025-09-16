@@ -1485,6 +1485,7 @@ export const aiInterviewService = {
     const companyName = jobDetails?.companyName || 'the company';
     const jobDescription = jobDetails?.jobDescription || '';
     const providedSkills: string[] = Array.isArray(jobDetails?.skills) ? jobDetails.skills : [];
+    const aiPromptContext = jobDetails.aiPrompt || ''
 
     // Extract skills from job description if not provided
     let extractedSkills: string[] = [];
@@ -1583,8 +1584,10 @@ Based on these job details and the candidate's profile (assume you know it), cre
 - Probe for concrete outcomes, metrics, and decision-making
 - Avoid generic prompts; be targeted to the described role
 - Sequence questions progressively (from calibration to deep dives)
- - Explicitly reference at least one listed skill or responsibility in each question
- - Personalize using the candidate's background above; if a listed skill is missing in their profile, create a bridging/hypothetical relevant to their experience
+- Explicitly reference at least one listed skill or responsibility in each question
+- Personalize using the candidate's background above; if a listed skill is missing in their profile, create a bridging/hypothetical relevant to their experience
+
+${aiPromptContext}
 
 Return ONLY JSON:
 {

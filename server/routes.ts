@@ -2903,6 +2903,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const statusField = fieldKeys.find(k => k.toLowerCase() === 'status');
         const scoreField = fieldKeys.find(k => k.toLowerCase() === 'score');
         const commentsField = fieldKeys.find(k => k.toLowerCase().includes('interview comments')) || fieldKeys.find(k => k.toLowerCase().includes('comments'));
+        const aiPromptField = fieldKeys.find(k => k.toLowerCase().includes('ai prompt')) || fieldKeys.find(k => k.toLowerCase().includes('ai prompt'));
 
         return {
           recordId: record.id,
@@ -2911,7 +2912,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           companyName: companyField ? fields[companyField] : (fields['Company name'] || fields['Company Name'] || fields['Company'] || 'Unknown Company'),
           status: statusField ? fields[statusField] : (fields['Status'] || ''),
           score: typeof (scoreField ? fields[scoreField] : fields['score']) === 'number' ? (scoreField ? fields[scoreField] : fields['score']) : undefined,
-          interviewComments: commentsField ? fields[commentsField] : (fields['Interview Comments'] || '')
+          interviewComments: commentsField ? fields[commentsField] : (fields['Interview Comments'] || ''),
+          aiPrompt: aiPromptField ? fields[aiPromptField] : (fields['AI Prompt'] || ''),
         };
       });
 
