@@ -319,9 +319,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateInterviewSession(id: number, data: Partial<InterviewSession>): Promise<void> {
+    const existingSession = await db.select().from(interviewSessions).where(eq(interviewSessions.id, id)).limit(1);
+    const existingSessionData = existingSession[0]?.sessionData || {};
+
+    const updatedData = { ...data };
+    if (data.sessionData) {
+      // @ts-ignore
+      updatedData.sessionData = { ...existingSessionData, ...data.sessionData };
+    }
+
     await db
       .update(interviewSessions)
-      .set(data)
+      .set(updatedData)
       .where(eq(interviewSessions.id, id));
   }
 
@@ -363,7 +372,7 @@ export class DatabaseStorage implements IStorage {
 
     // Build comprehensive context with full conversation history
     const context = {
-      previousInterviews: completedInterviews.map(session => ({
+      previousInterviews: completedInterviews.map((session: InterviewSession) => ({
         type: session.interviewType,
         sessionData: session.sessionData,
         completedAt: session.completedAt,

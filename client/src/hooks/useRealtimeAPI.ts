@@ -290,8 +290,19 @@ This focused approach ensures we understand them comprehensively while respectin
     }
   }, [isConnecting, isConnected, options, toast]);
   
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback((conversationHistory: any[]) => {
     if (peerConnectionRef.current) {
+      // Send completion event before closing
+      fetch('/api/interview/complete-voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          interviewType: options.interviewType,
+          conversationHistory,
+        }),
+      });
+
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
     }
@@ -336,7 +347,7 @@ This focused approach ensures we understand them comprehensively while respectin
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      disconnect();
+      disconnect([]);
     };
   }, [disconnect]);
   

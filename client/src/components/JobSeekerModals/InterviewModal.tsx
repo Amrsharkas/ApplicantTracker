@@ -961,7 +961,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     }
     
     if (realtimeAPI.isConnected) {
-      realtimeAPI.disconnect();
+      realtimeAPI.disconnect(conversationHistory);
     }
     resetInterview();
     onClose();
@@ -1495,7 +1495,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                     processVoiceInterviewMutation.mutate();
                   } else {
                     // Just hang up
-                    realtimeAPI.disconnect();
+                    realtimeAPI.disconnect(conversationHistory);
                     setMode('select');
                   }
                 }

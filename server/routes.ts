@@ -2430,10 +2430,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const session = await storage.createInterviewSession({
         userId,
         interviewType: interviewType || 'personal',
-        sessionData: { 
+        sessionData: {
           questions: conversationHistory.map(item => ({ question: item.question })),
           responses: conversationHistory,
-          currentQuestionIndex: conversationHistory.length 
+          currentQuestionIndex: conversationHistory.length,
+          conversationHistory: conversationHistory
         },
         isCompleted: true,
         generatedProfile: null // Don't save individual profiles
