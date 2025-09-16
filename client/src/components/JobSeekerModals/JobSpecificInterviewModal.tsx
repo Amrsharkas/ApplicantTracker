@@ -46,8 +46,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   // Voice realtime
   const realtimeAPI = useRealtimeAPI({
     onMessage: (event) => {
-      console.log('JobSpecificInterviewModal Realtime event:', event);
-
+  
       if (event.type === 'response.audio_transcript.done') {
         const aiText = event.transcript;
         if (aiText) {
@@ -90,8 +89,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         // Fetch current session – job-practice already started by options modal
         const res = await fetch('/api/interview/session', { credentials: 'include' });
         const data = await res.json();
-        console.log('JobSpecificInterviewModal: session data:', data);
-        if (!data || data.interviewType !== 'job-practice') {
+          if (!data || data.interviewType !== 'job-practice') {
           toast({ title: 'Interview not found', description: 'Please start the job-specific interview again.', variant: 'destructive' });
           setLoading(false);
           return;
@@ -216,13 +214,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
             </div>
 
             <div className="max-h-96 overflow-y-auto space-y-4">
-              {/* Debug info */}
-              <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
-                Debug: {session.sessionData.responses?.length || 0} responses found
-                <br />
-                Session Data: {JSON.stringify(session.sessionData, null, 2)}
-              </div>
-
+    
               {/* Display previous Q&A pairs */}
               {session.sessionData.responses?.map((response, index) => (
                 <div key={index} className="space-y-3">
