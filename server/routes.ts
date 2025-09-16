@@ -2422,7 +2422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Mark this specific interview type as completed
-      if (interviewType) {
+      if (interviewType != "job-practice") {
         await storage.updateInterviewCompletion(userId, interviewType);
       }
 
