@@ -46,10 +46,38 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   // Voice realtime
   const realtimeAPI = useRealtimeAPI({
     onMessage: (event) => {
-      const role = event.role === 'user' ? 'user' : 'assistant';
-      const text = typeof event.content === 'string' ? event.content : '';
-      if (text) {
-        setConversationHistory(prev => [...prev, { role, content: text }]);
+      console.log('JobSpecificInterviewModal Realtime event:', event);
+
+      if (event.type === 'response.audio_transcript.done') {
+        const aiText = event.transcript;
+        if (aiText) {
+          setConversationHistory(prev => {
+            // Prevent duplicate AI messages
+            const isDuplicate = prev.some(msg =>
+              msg.role === 'assistant' && msg.content === aiText
+            );
+            if (isDuplicate) {
+              return prev;
+            }
+            return [...prev, { role: 'assistant', content: aiText }];
+          });
+        }
+      }
+
+      if (event.type === 'conversation.item.input_audio_transcription.completed') {
+        const userText = event.transcript;
+        if (userText) {
+          setConversationHistory(prev => {
+            // Prevent duplicate user messages
+            const isDuplicate = prev.some(msg =>
+              msg.role === 'user' && msg.content === userText
+            );
+            if (isDuplicate) {
+              return prev;
+            }
+            return [...prev, { role: 'user', content: userText }];
+          });
+        }
       }
     }
   });
@@ -62,12 +90,23 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         // Fetch current session – job-practice already started by options modal
         const res = await fetch('/api/interview/session', { credentials: 'include' });
         const data = await res.json();
+        console.log('JobSpecificInterviewModal: session data:', data);
         if (!data || data.interviewType !== 'job-practice') {
           toast({ title: 'Interview not found', description: 'Please start the job-specific interview again.', variant: 'destructive' });
           setLoading(false);
           return;
         }
         setSession(data);
+
+        // Initialize conversation history from existing responses
+        if (data?.sessionData?.responses) {
+          const history: { role: 'user' | 'assistant'; content: string }[] = [];
+          for (const response of data.sessionData.responses) {
+            history.push({ role: 'assistant', content: response.question });
+            history.push({ role: 'user', content: response.answer });
+          }
+          setConversationHistory(history);
+        }
 
         if (mode === 'voice' && data?.sessionData?.questions) {
           // Connect voice session
@@ -121,6 +160,9 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           currentQuestionIndex: (prev.sessionData.responses?.length || 0) + 1
         }
       } : prev);
+
+      // Also update conversation history for voice mode consistency
+      setConversationHistory(prev => [...prev, { role: 'assistant', content: currentQuestion }, { role: 'user', content: currentAnswer }]);
       setCurrentAnswer("");
     } catch (e: any) {
       toast({ title: 'Error', description: e?.message || 'Failed to submit answer', variant: 'destructive' });
@@ -173,10 +215,47 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               <Badge variant="outline">Question {(session.sessionData.responses?.length || 0) + 1} of {session.sessionData.questions?.length || 5}</Badge>
             </div>
 
-            <div className="p-3 rounded-lg bg-blue-50 border-l-4 border-blue-400">
-              <div className="flex items-start space-x-2 rtl:space-x-reverse">
-                <User className="h-4 w-4 mt-1 text-blue-600" />
-                <p className="text-sm">{currentQuestion}</p>
+            <div className="max-h-96 overflow-y-auto space-y-4">
+              {/* Debug info */}
+              <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
+                Debug: {session.sessionData.responses?.length || 0} responses found
+                <br />
+                Session Data: {JSON.stringify(session.sessionData, null, 2)}
+              </div>
+
+              {/* Display previous Q&A pairs */}
+              {session.sessionData.responses?.map((response, index) => (
+                <div key={index} className="space-y-3">
+                  <div className="p-3 rounded-lg bg-blue-50 border-l-4 border-blue-400">
+                    <div className="flex items-start space-x-2 rtl:space-x-reverse">
+                      <User className="h-4 w-4 mt-1 text-blue-600" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-blue-800">Question {index + 1}</p>
+                        <p className="text-sm text-blue-700">{response.question}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-green-50 border-l-4 border-green-400 ml-8">
+                    <div className="flex items-start space-x-2 rtl:space-x-reverse">
+                      <MessageCircle className="h-4 w-4 mt-1 text-green-600" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-green-800">Your Answer</p>
+                        <p className="text-sm text-green-700">{response.answer}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Current question */}
+              <div className="p-3 rounded-lg bg-blue-50 border-l-4 border-blue-400">
+                <div className="flex items-start space-x-2 rtl:space-x-reverse">
+                  <User className="h-4 w-4 mt-1 text-blue-600" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-blue-800">Question {(session.sessionData.responses?.length || 0) + 1}</p>
+                    <p className="text-sm text-blue-700">{currentQuestion}</p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -201,6 +280,43 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
 
             <div className="p-3 rounded-md border bg-slate-50 text-sm text-slate-600">
               {realtimeAPI.isConnected ? 'You are connected. Speak naturally to answer questions.' : 'Connecting to voice interview...'}
+            </div>
+
+            {/* Conversation history for voice mode */}
+            <div className="h-48 overflow-y-auto space-y-2 p-2 border rounded-lg bg-gray-50">
+              {conversationHistory.length > 0 ? (
+                conversationHistory.map((item, index) => (
+                  <div key={`${item.role}-${index}`} className={`p-3 rounded-lg ${
+                    item.role === 'assistant'
+                      ? 'border-blue-200 bg-blue-50'
+                      : 'border-green-200 bg-green-50 ml-8'
+                  }`}>
+                    <div className="flex items-start space-x-2 rtl:space-x-reverse">
+                      {item.role === 'assistant' ? (
+                        <User className="h-4 w-4 mt-1 text-blue-600" />
+                      ) : (
+                        <MessageCircle className="h-4 w-4 mt-1 text-green-600" />
+                      )}
+                      <div className="flex-1">
+                        <p className={`text-sm font-medium ${
+                          item.role === 'assistant' ? 'text-blue-800' : 'text-green-800'
+                        }`}>
+                          {item.role === 'assistant' ? 'AI Interviewer' : 'You'}
+                        </p>
+                        <p className={`text-sm ${
+                          item.role === 'assistant' ? 'text-blue-700' : 'text-green-700'
+                        }`}>
+                          {item.content}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-slate-500 py-8">
+                  <p className="text-sm">No conversation yet. Start speaking when connected...</p>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-2">
