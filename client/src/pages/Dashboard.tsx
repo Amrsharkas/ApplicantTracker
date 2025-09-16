@@ -218,32 +218,6 @@ export default function Dashboard() {
     }
   }, [showFullDashboard, (profile as any)?.aiProfileGenerated, (user as any)?.id, toast]);
 
-  // End all interview sessions on dashboard load
-  useEffect(() => {
-    const endAllSessions = async () => {
-      try {
-        const response = await fetch('/api/interview/end-all-sessions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          console.error('Failed to end all sessions:', response.statusText);
-        }
-      } catch (error) {
-        console.error('Error ending all sessions:', error);
-      }
-    };
-
-    // Only call if user is authenticated
-    if (user) {
-      endAllSessions();
-    }
-  }, [user]);
-
   return (
     <div className={`min-h-screen bg-gray-50 ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
