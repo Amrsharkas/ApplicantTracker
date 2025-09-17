@@ -19,7 +19,9 @@ export default function AIInterviewInitiation() {
             description: "Missing initiation token. Please check your link and try again.",
             variant: "destructive",
           });
-          window.location.href = '/';
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 3000);
           return;
         }
 
@@ -51,7 +53,9 @@ export default function AIInterviewInitiation() {
             description: errorData.error || "Failed to initiate interview process. Please try again.",
             variant: "destructive",
           });
-          window.location.href = '/';
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 3000);
         }
       } catch (error) {
         console.error('Error during AI interview initiation:', error);
@@ -60,7 +64,9 @@ export default function AIInterviewInitiation() {
           description: "Unable to connect to the server. Please check your internet connection and try again.",
           variant: "destructive",
         });
-        window.location.href = '/';
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 3000);
       } finally {
         setIsProcessing(false);
       }
