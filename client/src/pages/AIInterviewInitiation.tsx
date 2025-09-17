@@ -24,7 +24,7 @@ export default function AIInterviewInitiation() {
         }
 
         // Call the AI interview initiation endpoint
-        const response = await fetch(`/ai-interview-initation?token=${encodeURIComponent(token)}`, {
+        const response = await fetch(`/api/ai-interview-initation?token=${encodeURIComponent(token)}`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
