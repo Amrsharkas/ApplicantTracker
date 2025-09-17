@@ -949,6 +949,15 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     }
   }, [isOpen]);
 
+  // Cleanup voice interview when modal closes
+  useEffect(() => {
+    return () => {
+      if (realtimeAPI.isConnected) {
+        realtimeAPI.disconnect();
+      }
+    };
+  }, []);
+
   const handleClose = () => {
     // Prevent closing during active AI speech or processing
     if (isAiSpeaking || isProcessingInterview || isStartingInterview) {
