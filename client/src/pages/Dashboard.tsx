@@ -631,7 +631,7 @@ export default function Dashboard() {
                   {t('dashboard.step1Description')}<br/>
                   {t('dashboard.step2Description')}
                 </div>
-                <div className="mt-4">
+                <div className="mt-4 space-x-2 rtl:space-x-reverse">
                   <button
                     onClick={() => openModal('jobPostings')}
                     className="px-4 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700"
