@@ -522,7 +522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Note: Auth routes are now handled in setupAuth from auth.ts
 
   // AI Interview initiation via Airtable token
-  app.get('/ai-interview-initation', async (req: any, res) => {
+  app.get('/api/ai-interview-initation', async (req: any, res) => {
     try {
       const token = (req.query.token || '').toString().trim();
       if (!token) {
@@ -741,7 +741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn('⚠️ Failed to update platojobmatchAIinterview user_id records:', matchUpdateError);
       }
 
-      return res.redirect('/dashboard');
+      return res.json({ success: true, redirect: '/dashboard' });
     } catch (error) {
       console.error('Error in ai-interview-initation:', error);
       return res.status(500).json({ error: 'Failed to initiate interview' });

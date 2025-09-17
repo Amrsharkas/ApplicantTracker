@@ -7,6 +7,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
+import AIInterviewInitiation from "@/pages/AIInterviewInitiation";
 import { useState, useEffect } from "react";
 
 import NotFound from "@/pages/not-found";
@@ -55,8 +56,11 @@ function Router() {
       <Route path="/dashboard">
         {isAuthenticated ? <Dashboard /> : <Redirect to="/" />}
       </Route>
-      
-      
+
+      <Route path="/ai-interview-initation">
+        <AIInterviewInitiation />
+      </Route>
+
       <Route component={NotFound} />
     </Switch>
   );
