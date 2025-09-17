@@ -1069,84 +1069,148 @@ export class AIProfileAnalysisAgent {
     resumeContent: string | null,
     interviewResponses: InterviewResponse[]
   ): Promise<GeneratedProfile> {
-    const conversationHistory = interviewResponses.map(qa => 
+    const conversationHistory = interviewResponses.map(qa =>
       `Q: ${qa.question}\nA: ${qa.answer}`
     ).join('\n\n');
 
-    const prompt = `You are a brutally honest professional analyst creating an employer-facing candidate profile. Your role is to be a tough, fair recruiter who has just completed an in-depth interview. You MUST be critical, evidence-based, and blunt—no promotional fluff.
+    const prompt = `You are a professional, objective analyst. Your task is to generate an employer-facing candidate profile that reflects the candidate's true alignment with a job posting, based only on the resume and interview responses. The profile must be structured, detailed, and evidence-based — a mirror of the truth.
 
-🧩 CRITICAL ANALYSIS RULES:
-- Be brutally honest and grounded in evidence
-- Every strength MUST be followed by a "but" that points out what's lacking
-- Call out vague answers, contradictions, and unsupported claims
-- No sugarcoating or generic praise
-- Focus solely on what the candidate actually demonstrated vs. claimed
+🎯 CORE PRINCIPLES
+- Accuracy over tone: Do not be harsh, do not be complimentary. Every line must be grounded in verifiable evidence.
+- No assumptions: If there is no explicit proof, mark the requirement as "missing" or "unverified" — never fill gaps with guesses.
+- Full coverage: Every requirement listed in the job posting must appear in the output profile under the correct category.
+- Transparency: Every score and percentage must be explained by referencing the exact requirement and the evidence (resume excerpt or interview response with timestamp).
+- Contradictions: If the candidate contradicted themselves between resume and interview (or across interviews), identify it explicitly with proof. If none exist, state "No contradictions observed."
 
-📊 CANDIDATE DATA:
-${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
-${userData?.email ? `Email: ${userData.email}` : ''}
-${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
-${userData?.totalYearsOfExperience ? `Claimed Experience: ${userData.totalYearsOfExperience} years` : ''}
-${userData?.currentEducationLevel ? `Education: ${userData.currentEducationLevel}` : ''}
-${userData?.skillsList ? `Self-Reported Skills: ${Array.isArray(userData.skillsList) ? userData.skillsList.join(', ') : userData.skillsList}` : ''}
-${userData?.location ? `Location: ${userData.location}` : ''}
-${userData?.age ? `Age: ${userData.age}` : ''}
+🧾 INPUTS
+- Job Posting: ${userData?.jobPosting || 'Not provided'}
+- Resume: ${resumeContent || 'Not provided'}
+- Candidate Data: ${JSON.stringify(userData, null, 2)}
+- Interview Transcripts: ${conversationHistory}
 
-${resumeContent ? `📄 RESUME CONTENT:
-${resumeContent}
+📊 OUTPUT FORMAT
+Return *only* this JSON object — no extra text.
 
-` : ''}🎤 INTERVIEW RESPONSES (3 interviews: Background/Soft Skills, Professional/Experience, Technical/Problem Solving):
-${conversationHistory}
-
-📘 GENERATE BRUTALLY HONEST PROFILE IN JSON:
 {
-  "candidateSummary": "Max 3-5 lines: Honest overview evaluating their claims vs actual demonstration. Do NOT repeat what they said—evaluate it critically.",
-  "keyStrengths": [
-    {
-      "strength": "Specific strength clearly demonstrated",
-      "butCritique": "What's still lacking or unclear about this strength"
+  "candidateSummary": "3–5 lines summarizing overall truth: how well the candidate meets the job posting. Must highlight strongest verified evidence AND the most critical missing requirements. No generic praise.",
+
+  "jobMatch": {
+    "overallScore": 0-100,
+    "weightsApplied": {
+      "technicalSkills": 0.4,
+      "experience": 0.4,
+      "culturalFit": 0.2
+    },
+    "technicalSkillsScore": 0-100,
+    "experienceScore": 0-100,
+    "culturalFitScore": 0-100,
+
+    "detailedBreakdown": {
+      "technicalSkills": [
+        {
+          "requirement": "Exact skill/technology from job posting (e.g., 'Proficiency in Python and Django')",
+          "status": "present|partial|missing",
+          "evidence": "Resume/portfolio/interview quote proving presence or absence",
+          "gapPercentage": 0-100,
+          "missingReason": "Why this percentage is lost (e.g., 'CV lists Python projects, no mention of Django at all → 50% met, 50% missing')"
+        }
+      ],
+      "experience": [
+        {
+          "requirement": "Years or type of experience required (e.g., '5 years backend development, leadership experience')",
+          "status": "present|partial|missing",
+          "evidence": "Resume timeline or interview quote showing actual experience",
+          "gapPercentage": 0-100,
+          "missingReason": "How much shortfall and why (e.g., '3 years backend vs 5 required → 40% missing; no leadership examples')"
+        }
+      ],
+      "educationAndCertifications": [
+        {
+          "requirement": "Required degree/certification (e.g., 'Bachelor's in Computer Science')",
+          "status": "present|partial|missing",
+          "evidence": "Proof from resume/credential",
+          "gapPercentage": 0-100,
+          "missingReason": "Exact mismatch (e.g., 'Degree in IT, Computer Science required')"
+        }
+      ],
+      "culturalFitAndSoftSkills": [
+        {
+          "requirement": "Soft skill requirement (e.g., 'clear communication', 'team collaboration', 'adaptability')",
+          "status": "present|partial|missing",
+          "evidence": "Tie to interview quote/behavior (with question ID/timestamp if possible)",
+          "gapPercentage": 0-100,
+          "missingReason": "Why (e.g., 'When asked Q5 @18:42, candidate gave vague answer without examples → partial')"
+        }
+      ],
+      "otherRequirements": [
+        {
+          "requirement": "Any explicit additional requirement from JD (e.g., 'Willing to relocate to NYC')",
+          "status": "present|partial|missing",
+          "evidence": "Proof or lack thereof",
+          "gapPercentage": 0-100,
+          "missingReason": "Exact explanation (e.g., 'JD requires relocation; candidate only willing remote → 100% missing')"
+        }
+      ]
     }
-  ],
-  "weaknessesAndGaps": [
-    "Direct weaknesses: missing skills, vague answers, inconsistencies, overstatements"
-  ],
-  "softSkillsReview": {
-    "communicationClarity": "Critical assessment of how clearly they expressed ideas",
-    "evidenceQuality": "Assessment of whether they provided real examples or just buzzwords",
-    "emotionalIntelligence": "Based on tone and responses about teamwork/conflict",
-    "overallTone": "Confident/hesitant/unclear/defensive assessment"
   },
-  "technicalKnowledge": {
-    "claimedVsActual": "Skills they claimed vs what they could actually demonstrate",
-    "gapsIdentified": "Technical areas where knowledge was clearly lacking",
-    "problemSolvingApproach": "Assessment of logical thinking in technical scenarios"
+
+  "interviewAssessment": {
+    "communication": {
+      "clarity": "Describe based on specific Q/A (e.g., 'Q3 @10:15: response meandered, lacked structure')",
+      "listeningAndResponsiveness": "Evidence from follow-ups (timestamps/questions)",
+      "examplesUsed": "Did candidate provide real examples? Cite them or note absence"
+    },
+    "contradictions": [
+      {
+        "topic": "What was contradicted (e.g., claimed leadership vs later denial)",
+        "evidenceA": "Source A (resume or interview, with timestamp)",
+        "evidenceB": "Source B (resume or interview, with timestamp)",
+        "resolution": "If later clarified, note; otherwise unresolved"
+      }
+    ],
+    "unverifiedClaims": [
+      "List each statement that lacked evidence (resume proof or example). Include timestamp if from interview."
+    ],
+    "scores": {
+      "communicationScore": 0-10,
+      "credibilityScore": 0-10,
+      "consistencyScore": 0-10
+    }
   },
-  "problemSolvingCriticalThinking": {
-    "approachClarity": "How well-structured was their thinking process",
-    "realismFactoring": "Did they consider practical constraints and real-world factors",
-    "logicalConsistency": "Were their solutions logical and well-reasoned"
-  },
-  "unverifiedClaims": [
-    "Things they stated with no supporting evidence or examples"
+
+  "strengthsHighlights": [
+    "Strength 1 tied to exact proof (e.g., 'Built production REST APIs using Flask, Resume p.2')",
+    "Strength 2 tied to proof",
+    "Strength 3 tied to proof"
   ],
-  "communicationScore": 7,
-  "credibilityScore": 6,
-  "consistencyScore": 8,
+
+  "improvementAreas": [
+    "Gap 1 tied directly to JD requirement (e.g., 'JD requires Kubernetes, CV/interview: none → 100% missing')",
+    "Gap 2 tied to JD requirement",
+    "Gap 3 tied to JD requirement"
+  ],
+
   "readinessAssessment": {
-    "faceToFaceReady": true,
-    "areasToClarity": ["Specific areas that need clarification in face-to-face interview"],
-    "recommendation": "Clear statement on interview readiness with specific focus areas"
+    "faceToFaceReady": true|false,
+    "areasToClarify": [
+      "Follow-up areas based on evidence gaps or contradictions"
+    ],
+    "recommendation": "Next-step recommendation based only on truth (e.g., 'Proceed to onsite; must clarify leadership examples and Kubernetes gap')"
   }
 }
 
-❌ DO NOT:
-- Fill gaps with assumptions
-- Give praise for vague statements  
-- Sound optimistic or promotional
-- Use generic career advice language
+📏 SCORING INSTRUCTIONS
+- Component scores are averages of requirement-level scores, weighted by job posting emphasis.
+- Example: If JD requires 5 years, candidate has 3 → (3/5=60%) → gap=40%. Score proportionally.
+- For skills: present with proof = 100%; absent = 0%; similar but not exact = partial (40–70%) with explanation.
+- For soft skills: Only score based on observed behavior/answers. If none, score low with reason.
+- Apply weights (default: 40% technical, 40% experience, 20% soft/cultural) to compute overallScore.
 
-✅ WRITE LIKE:
-A tough, fair recruiter who just finished an in-depth interview—credible, nuanced, trustworthy, with no marketing fluff.`;
+📌 STYLE REQUIREMENTS
+- Neutral, structured, and professional.
+- No "harsh," "complimentary," or "fluff" language.
+- Every point must tie back to either the job posting requirement, the CV, or an interview answer.
+- The final JSON must be detailed enough for an employer to see exactly: what is met, what is partially met, what is missing, and why.`;
 
     try {
       const response = await wrapOpenAIRequest(
@@ -1164,7 +1228,7 @@ A tough, fair recruiter who just finished an in-depth interview—credible, nuan
           ],
           response_format: { type: "json_object" },
           temperature: 0.1,
-          max_completion_tokens: 1500
+          max_completion_tokens: 3000
         }),
         {
           requestType: "generateComprehensiveProfile",
@@ -1174,57 +1238,54 @@ A tough, fair recruiter who just finished an in-depth interview—credible, nuan
       );
 
       const profile = JSON.parse(response.choices[0].message.content || '{}');
-      
-      // Store the brutally honest comprehensive profile for employers
+
+      // Map the new comprehensive profile format to the existing structure
       const comprehensiveProfile = {
         candidateSummary: profile.candidateSummary || "Candidate assessment could not be completed.",
-        keyStrengths: profile.keyStrengths || [],
-        weaknessesAndGaps: profile.weaknessesAndGaps || [],
-        softSkillsReview: profile.softSkillsReview || {
-          communicationClarity: "Communication assessment not available",
-          evidenceQuality: "Evidence quality not assessed",
-          emotionalIntelligence: "Emotional intelligence not evaluated",
-          overallTone: "Overall tone not determined"
+        jobMatch: profile.jobMatch || {
+          overallScore: 0,
+          weightsApplied: { technicalSkills: 0.4, experience: 0.4, culturalFit: 0.2 },
+          technicalSkillsScore: 0,
+          experienceScore: 0,
+          culturalFitScore: 0,
+          detailedBreakdown: {
+            technicalSkills: [],
+            experience: [],
+            educationAndCertifications: [],
+            culturalFitAndSoftSkills: [],
+            otherRequirements: []
+          }
         },
-        technicalKnowledge: profile.technicalKnowledge || {
-          claimedVsActual: "Technical claims not verified",
-          gapsIdentified: "Technical gaps not identified",
-          problemSolvingApproach: "Problem-solving approach not assessed"
+        interviewAssessment: profile.interviewAssessment || {
+          communication: { clarity: "Not assessed", listeningAndResponsiveness: "Not assessed", examplesUsed: "Not assessed" },
+          contradictions: [],
+          unverifiedClaims: [],
+          scores: { communicationScore: 0, credibilityScore: 0, consistencyScore: 0 }
         },
-        problemSolvingCriticalThinking: profile.problemSolvingCriticalThinking || {
-          approachClarity: "Approach clarity not assessed",
-          realismFactoring: "Realism factoring not evaluated", 
-          logicalConsistency: "Logical consistency not determined"
-        },
-        unverifiedClaims: profile.unverifiedClaims || [],
-        communicationScore: profile.communicationScore || 5,
-        credibilityScore: profile.credibilityScore || 5,
-        consistencyScore: profile.consistencyScore || 5,
+        strengthsHighlights: profile.strengthsHighlights || [],
+        improvementAreas: profile.improvementAreas || [],
         readinessAssessment: profile.readinessAssessment || {
           faceToFaceReady: false,
-          areasToClarity: ["Assessment incomplete"],
+          areasToClarify: ["Assessment incomplete"],
           recommendation: "Further assessment required"
         }
       };
 
-      // Extract basic info for backward compatibility
-      const legacySkills = comprehensiveProfile.keyStrengths.map((item: any) => 
-        typeof item === 'object' && item.strength ? item.strength : 'Not specified'
-      );
+      // Convert new format to legacy format for backward compatibility
+      const legacySkills = comprehensiveProfile.strengthsHighlights;
+      const legacyStrengths = comprehensiveProfile.strengthsHighlights.map(strength => `${strength} (verified)`);
+      const legacyWeaknesses = comprehensiveProfile.improvementAreas;
 
-      // Return legacy format for backward compatibility with new comprehensive data
+      // Return legacy format with new comprehensive data embedded
       return {
         summary: comprehensiveProfile.candidateSummary,
         skills: legacySkills,
-        personality: comprehensiveProfile.softSkillsReview.overallTone,
+        personality: comprehensiveProfile.interviewAssessment.communication.clarity,
         experience: [], // Will be populated from existing profile data
-        strengths: comprehensiveProfile.keyStrengths.map((item: any) => 
-          typeof item === 'object' && item.strength ? 
-          `${item.strength} - but ${item.butCritique}` : item
-        ),
+        strengths: legacyStrengths,
         careerGoals: "Assessment from interview responses",
-        workStyle: comprehensiveProfile.softSkillsReview.communicationClarity,
-        // Store the full brutally honest profile for employer access
+        workStyle: comprehensiveProfile.interviewAssessment.communication.clarity,
+        // Store the full comprehensive profile for employer access
         brutallyHonestProfile: comprehensiveProfile
       };
     } catch (error) {
