@@ -42,7 +42,7 @@ export default function AIInterviewInitiation() {
               title: "Profile Generated",
               description: "Your profile has been successfully created based on your resume.",
             });
-            // window.location.href = responseData.redirect;
+            window.location.href = responseData.redirect;
           } else {
             throw new Error('Invalid response format');
           }
