@@ -107,11 +107,11 @@ const translations = {
     twoPercent: "2%",
     
     // Forms
-    personalDetails: "Personal Details",
-    workExperience: "Work Experience",
+    personalDetails: "Personal",
+    workExperience: "Experience",
     education: "Education",
     skills: "Skills",
-    jobTarget: "Job Target",
+    jobTarget: "Target",
     
     // Language switch
     switchLanguage: "العربية",
@@ -465,9 +465,9 @@ const translations = {
     },
     
     // Comprehensive Profile Modal
-    governmentIdSubmission: "Government ID Submission",
-    linksPortfolio: "Links & Portfolio",
-    workEligibility: "Work Eligibility & Preferences",
+    governmentIdSubmission: "Government ID",
+    linksPortfolio: "Portfolio",
+    workEligibility: "Eligibility",
     language: "Language",
     proficiency: "Proficiency",
     certification: "Certification",
@@ -520,10 +520,10 @@ const translations = {
     freelance: "Freelance",
     internship: "Internship",
     currentlyWorkingHere: "Currently working here",
-    keyResponsibilitiesAchievements: "Key Responsibilities & Achievements",
+    keyResponsibilitiesAchievements: "Responsibilities",
     describeKeyResponsibilitiesAchievements: "Describe your key responsibilities and achievements",
     addExperience: "Add Experience",
-    certifications: "Certifications & Licenses",
+    certifications: "Certifications",
     addCertification: "Add Certification",
     certificationName: "Certification Name",
     certificationNamePlaceholder: "e.g., AWS Certified Developer",
@@ -537,7 +537,7 @@ const translations = {
     credentialUrlPlaceholder: "https://example.com/credential",
     certificateFile: "Certificate File",
     uploadCertificate: "Upload Certificate",
-    awards: "Awards & Achievements",
+    awards: "Awards",
     addAward: "Add Award",
     awardTitle: "Award Title",
     awardTitlePlaceholder: "e.g., Employee of the Year",
