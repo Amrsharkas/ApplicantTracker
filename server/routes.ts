@@ -30,7 +30,15 @@ const resumeService = new ResumeService();
 // Centralized AI profile generation with deduplication
 const profileGenerationLock = new Map<string, Promise<any>>();
 
-async function generateComprehensiveAIProfile(userId: string, updatedProfile: any, storage: any, aiInterviewService: any, airtableService: any) {
+interface JobSummary {
+  recordId: string;
+  jobTitle: string;
+  jobDescription?: string;
+  companyName: string;
+  location?: string;
+}
+
+async function generateComprehensiveAIProfile(userId: string, updatedProfile: any, storage: any, aiInterviewService: any, airtableService: any, job?: JobSummary) {
   // Check if profile generation is already in progress for this user
   if (profileGenerationLock.has(userId)) {
     console.log(`📋 AI profile generation already in progress for user ${userId}, waiting...`);
@@ -44,7 +52,7 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
   }
 
   // Create a promise for this profile generation
-  const generationPromise = (async () => {
+  const generationPromise = (async (job) => {
     try {
       console.log(`📋 Starting comprehensive AI profile generation for user ${userId}`);
       
@@ -64,7 +72,8 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
       const generatedProfile = await aiInterviewService.generateProfile(
         { ...user, ...updatedProfile },
         resumeContent,
-        allResponses
+        allResponses,
+        `Job Descritpion: ${job?.jobDescription}`
       );
 
       // Update profile with AI data - mark as generated to prevent duplicates
@@ -102,7 +111,7 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
       // Remove the lock when done
       profileGenerationLock.delete(userId);
     }
-  })();
+  })(job);
 
   // Store the promise in the lock map
   profileGenerationLock.set(userId, generationPromise);
@@ -1974,11 +1983,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isComplete) {
         const interviewType = session.interviewType || 'personal';
 
+        const job = (sessionData?.context && sessionData.context.job) || {};
+
         // Special handling for job-specific practice interviews
         if (interviewType === 'job-practice') {
           try {
             // Gather context for scoring
-            const job = (sessionData?.context && sessionData.context.job) || {};
             console.log("job fore debug", job);
             const jobTitle = job.jobTitle || job.title || 'Job Title';
             const companyName = job.companyName || job.company || 'Company';
@@ -2098,6 +2108,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               completedAt: new Date()
             });
 
+            const updatedProfile = await storage.getApplicantProfile(userId);
+
+            await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService, job);
+
             return res.json({ isComplete: true, jobPractice: true, score });
           } catch (scoringError) {
             console.error('Error scoring job-specific interview:', scoringError);
@@ -2126,8 +2140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                      updatedProfile?.technicalInterviewCompleted;
 
         if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
-          console.log(`🎯 All 3 interviews completed for user ${userId}. Generating final profile...`);
-          const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService);
+          const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService, job);
 
           res.json({ 
             isComplete: true,
@@ -2419,7 +2432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/interview/complete-voice', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const { conversationHistory, interviewType } = req.body;
+      const { conversationHistory, interviewType, job } = req.body;
 
       if (!conversationHistory || !Array.isArray(conversationHistory)) {
         return res.status(400).json({ message: "Invalid conversation history" });
@@ -2466,7 +2479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
         // Generate final comprehensive profile only after ALL 3 interviews are complete
         console.log(`🎯 All 3 voice interviews completed for user ${userId}. Generating final profile...`);
-        const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService);
+        const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService, job);
 
         // Update profile completion percentage
         await storage.updateProfileCompletion(userId);

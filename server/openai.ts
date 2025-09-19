@@ -38,6 +38,10 @@ export interface GeneratedProfile {
   careerGoals: string;
   workStyle: string;
   summary: string;
+  matchScorePercentage?: number;
+  experiencePercentage?: number;
+  techSkillsPercentage?: number;
+  culturalFitPercentage?: number;
   brutallyHonestProfile?: any;
 }
 
@@ -1067,7 +1071,8 @@ export class AIProfileAnalysisAgent {
   async generateComprehensiveProfile(
     userData: any,
     resumeContent: string | null,
-    interviewResponses: InterviewResponse[]
+    interviewResponses: InterviewResponse[],
+    jobDescription?: string
   ): Promise<GeneratedProfile> {
     const conversationHistory = interviewResponses.map(qa => 
       `Q: ${qa.question}\nA: ${qa.answer}`
@@ -1081,6 +1086,7 @@ export class AIProfileAnalysisAgent {
 - Call out vague answers, contradictions, and unsupported claims
 - No sugarcoating or generic praise
 - Focus solely on what the candidate actually demonstrated vs. claimed
+- ${jobDescription ? 'Evaluate specifically for the target job - how well do their skills and experience match what this role requires?' : 'Assess general professional capabilities and readiness'}
 
 📊 CANDIDATE DATA:
 ${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
@@ -1095,12 +1101,15 @@ ${userData?.age ? `Age: ${userData.age}` : ''}
 ${resumeContent ? `📄 RESUME CONTENT:
 ${resumeContent}
 
+` : ''}${jobDescription ? `🎯 JOB DESCRIPTION (Target Role):
+${jobDescription}
+
 ` : ''}🎤 INTERVIEW RESPONSES (3 interviews: Background/Soft Skills, Professional/Experience, Technical/Problem Solving):
 ${conversationHistory}
 
 📘 GENERATE BRUTALLY HONEST PROFILE IN JSON:
 {
-  "candidateSummary": "Max 3-5 lines: Honest overview evaluating their claims vs actual demonstration. Do NOT repeat what they said—evaluate it critically.",
+  "candidateSummary": "Max 3-5 lines: Honest overview evaluating their claims vs actual demonstration${jobDescription ? ' specifically for the target job' : ''}. Do NOT repeat what they said—evaluate it critically.",
   "keyStrengths": [
     {
       "strength": "Specific strength clearly demonstrated",
@@ -1129,9 +1138,13 @@ ${conversationHistory}
   "unverifiedClaims": [
     "Things they stated with no supporting evidence or examples"
   ],
-  "communicationScore": 7,
-  "credibilityScore": 6,
-  "consistencyScore": 8,
+  "communicationScore": between 0-100,
+  "credibilityScore": between 0-100,
+  "consistencyScore": between 0-100,
+  "matchScorePercentage": between 0-100,
+  "experiencePercentage": between 0-100,
+  "techSkillsPercentage": between 0-100,
+  "culturalFitPercentage": between 0-100,
   "readinessAssessment": {
     "faceToFaceReady": true,
     "areasToClarity": ["Specific areas that need clarification in face-to-face interview"],
@@ -1163,8 +1176,7 @@ A tough, fair recruiter who just finished an in-depth interview—credible, nuan
             }
           ],
           response_format: { type: "json_object" },
-          temperature: 0.1,
-          max_completion_tokens: 1500
+          temperature: 0.1
         }),
         {
           requestType: "generateComprehensiveProfile",
@@ -1193,13 +1205,17 @@ A tough, fair recruiter who just finished an in-depth interview—credible, nuan
         },
         problemSolvingCriticalThinking: profile.problemSolvingCriticalThinking || {
           approachClarity: "Approach clarity not assessed",
-          realismFactoring: "Realism factoring not evaluated", 
+          realismFactoring: "Realism factoring not evaluated",
           logicalConsistency: "Logical consistency not determined"
         },
         unverifiedClaims: profile.unverifiedClaims || [],
         communicationScore: profile.communicationScore || 5,
         credibilityScore: profile.credibilityScore || 5,
         consistencyScore: profile.consistencyScore || 5,
+        matchScorePercentage: profile.matchScorePercentage || 0,
+        experiencePercentage: profile.experiencePercentage || 0,
+        techSkillsPercentage: profile.techSkillsPercentage || 0,
+        culturalFitPercentage: profile.culturalFitPercentage || 0,
         readinessAssessment: profile.readinessAssessment || {
           faceToFaceReady: false,
           areasToClarity: ["Assessment incomplete"],
@@ -1218,12 +1234,16 @@ A tough, fair recruiter who just finished an in-depth interview—credible, nuan
         skills: legacySkills,
         personality: comprehensiveProfile.softSkillsReview.overallTone,
         experience: [], // Will be populated from existing profile data
-        strengths: comprehensiveProfile.keyStrengths.map((item: any) => 
-          typeof item === 'object' && item.strength ? 
+        strengths: comprehensiveProfile.keyStrengths.map((item: any) =>
+          typeof item === 'object' && item.strength ?
           `${item.strength} - but ${item.butCritique}` : item
         ),
         careerGoals: "Assessment from interview responses",
         workStyle: comprehensiveProfile.softSkillsReview.communicationClarity,
+        matchScorePercentage: comprehensiveProfile.matchScorePercentage,
+        experiencePercentage: comprehensiveProfile.experiencePercentage,
+        techSkillsPercentage: comprehensiveProfile.techSkillsPercentage,
+        culturalFitPercentage: comprehensiveProfile.culturalFitPercentage,
         // Store the full brutally honest profile for employer access
         brutallyHonestProfile: comprehensiveProfile
       };
@@ -1236,7 +1256,7 @@ A tough, fair recruiter who just finished an in-depth interview—credible, nuan
         experience: [],
         strengths: [],
         careerGoals: "Looking to advance career in chosen field.",
-        workStyle: "Team-oriented with focus on results."
+        workStyle: "Team-oriented with focus on results.",
       };
     }
   }
@@ -1728,7 +1748,8 @@ Return ONLY JSON:
       };
     }
   },
-  generateProfile: aiProfileAnalysisAgent.generateComprehensiveProfile.bind(aiProfileAnalysisAgent),
+  generateProfile: (userData: any, resumeContent: string | null, interviewResponses: InterviewResponse[], jobDescription?: string) =>
+    aiProfileAnalysisAgent.generateComprehensiveProfile(userData, resumeContent, interviewResponses, jobDescription),
   parseResume: aiProfileAnalysisAgent.parseResume.bind(aiProfileAnalysisAgent),
   parseResumeForProfile: aiProfileAnalysisAgent.parseResumeForProfile.bind(aiProfileAnalysisAgent)
 };

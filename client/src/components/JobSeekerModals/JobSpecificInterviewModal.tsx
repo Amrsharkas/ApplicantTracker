@@ -138,7 +138,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ sessionId: session.id, question: currentQuestion, answer: currentAnswer })
+        body: JSON.stringify({ sessionId: session.id, question: currentQuestion, answer: currentAnswer, job })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || 'Failed to submit answer');
@@ -176,7 +176,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ conversationHistory, interviewType: 'job-practice' })
+        body: JSON.stringify({ conversationHistory, interviewType: 'job-practice', job })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message || 'Failed to complete');

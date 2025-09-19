@@ -194,7 +194,7 @@ export default function Dashboard() {
   const hasAiProfileGenerated = (profile as any)?.aiProfileGenerated;
   
   const hasCompletedAllInterviews = hasCompletedPersonalInterview && hasCompletedProfessionalInterview && hasCompletedTechnicalInterview;
-  const hasCompletedInterview = hasCompletedAllInterviews && hasAiProfileGenerated;
+  const hasCompletedInterview = hasCompletedAllInterviews;
   
   // Show full dashboard only when BOTH steps are complete: complete profile (including CV) AND ALL interviews completed
   const showFullDashboard = hasCompleteProfile && hasCompletedInterview;

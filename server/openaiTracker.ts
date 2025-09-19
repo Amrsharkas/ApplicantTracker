@@ -56,7 +56,10 @@ export async function saveOpenAIRequest(
       status: "success",
       userId: options.userId || null,
       organizationId: options.organizationId || null,
-      metadata: options.metadata || null,
+      metadata: {
+        response,
+        options
+      },
     };
 
     await db.insert(openaiRequests).values(request);

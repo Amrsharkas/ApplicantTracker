@@ -573,7 +573,8 @@ export class AirtableService {
       const fields: any = {
         'Name': name,
         'User profile': profileString,
-        'User ID': userId
+        'User ID': userId,
+        "Profile Data": JSON.stringify(profileData || {})
       };
 
       // Add email if provided
