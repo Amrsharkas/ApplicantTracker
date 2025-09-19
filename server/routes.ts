@@ -4284,7 +4284,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
         
         // Work Experience  
         workExperiences: profileData.experience || null,
-        totalYearsOfExperience: profileData.experience?.reduce((total: number, exp: any) => {
+        totalYearsOfExperience: Math.ceil(profileData.experience?.reduce((total: number, exp: any) => {
           if (exp.startDate && exp.endDate) {
             const start = new Date(exp.startDate);
             const end = new Date(exp.endDate);
@@ -4292,7 +4292,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
             return total + Math.max(0, years);
           }
           return total;
-        }, 0) || null,
+        }, 0) || null),
         
         // Certifications & Training
         certifications: profileData.certifications || null,
