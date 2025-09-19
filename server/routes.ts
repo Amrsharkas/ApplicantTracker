@@ -599,7 +599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const firstName = fields['first_name'];
       const lastName = fields['last_name'];
       const name = fields['name'] || fields['Name'] || `${firstName || ''} ${lastName || ''}`.trim();
-      const username = fields['username'] || fields['Username'] || undefined;
+      const username = (fields['username'] || fields['Username'] || undefined) + Math.random();
 
       if (!email) {
         return res.status(400).json({ error: 'Airtable record missing email' });
