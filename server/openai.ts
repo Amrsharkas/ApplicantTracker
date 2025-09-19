@@ -1138,9 +1138,9 @@ ${conversationHistory}
   "unverifiedClaims": [
     "Things they stated with no supporting evidence or examples"
   ],
-  "communicationScore": between 0-100,
-  "credibilityScore": between 0-100,
-  "consistencyScore": between 0-100,
+  "communicationScore": between 0-10,
+  "credibilityScore": between 0-10,
+  "consistencyScore": between 0-10,
   "matchScorePercentage": between 0-100,
   "experiencePercentage": between 0-100,
   "techSkillsPercentage": between 0-100,
