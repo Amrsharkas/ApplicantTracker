@@ -618,7 +618,7 @@ export default function Dashboard() {
         )}
 
         {/* Instruction Message for Uncompleted Steps */}
-        {!showFullDashboard && (
+        {/* {!showFullDashboard  && (
           <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
             <div className="flex items-start space-x-3 rtl:space-x-reverse">
               <MessageCircle className="h-6 w-6 text-blue-600 mt-0.5" />
@@ -648,7 +648,7 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        )}
+        )} */}
       </main>
 
       {/* Modals */}
