@@ -96,7 +96,7 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
         {
           requestType: "generateWelcomeMessage",
           model: "gpt-4o",
-          userId: userData?.id,
+          userId: userData?.id || null,
         }
       );
 
@@ -270,7 +270,7 @@ Return ONLY JSON:
         {
           requestType: "generatePersonalInterview",
           model: "gpt-4o",
-          userId: userData?.id,
+          userId: userData?.id || null,
         }
       );
 
@@ -453,7 +453,7 @@ Return ONLY JSON:
         {
           requestType: "generateProfessionalInterview",
           model: "gpt-4o",
-          userId: userData?.id,
+          userId: userData?.id || null,
         }
       );
 
@@ -642,7 +642,7 @@ Return ONLY JSON:
         {
           requestType: "generateTechnicalInterview",
           model: "gpt-4o",
-          userId: userData?.id,
+          userId: userData?.id || null,
         }
       );
 
@@ -875,7 +875,7 @@ Be thorough, honest, and evidence-based. This assessment will help employers mak
         {
           requestType: "generateBrutallyHonestProfile",
           model: "gpt-4o",
-          userId: userData?.id,
+          userId: userData?.id || null,
         }
       );
 
@@ -933,7 +933,7 @@ Return JSON with:
         {
           requestType: "analyzeJobApplication",
           model: "gpt-4o",
-          userId: userProfile?.userId,
+          userId: userProfile?.userId || null,
         }
       );
 
@@ -1181,7 +1181,7 @@ A tough, fair recruiter who just finished an in-depth interview—credible, nuan
         {
           requestType: "generateComprehensiveProfile",
           model: "gpt-4o",
-          userId: userData?.id,
+          userId: userData?.id || null,
         }
       );
 
@@ -1720,7 +1720,7 @@ Return ONLY JSON:
         {
           requestType: "generateJobPracticeInterview",
           model: "gpt-4o",
-          userId: userData?.id,
+          userId: userData?.id || null,
         }
       );
       const result = JSON.parse(response.choices[0].message.content || '{}');

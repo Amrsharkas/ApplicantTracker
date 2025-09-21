@@ -345,7 +345,7 @@ export const openaiRequests = pgTable("openai_requests", {
   responseData: jsonb("response_data"), // Full response data as JSON
   status: varchar("status").notNull().default("success"), // success, error, pending
   errorMessage: text("error_message"), // Error message if request failed
-  userId: varchar("user_id").references(() => users.id), // User who made the request
+  userId: varchar("user_id"), // User who made the request (no foreign key constraint)
   organizationId: varchar("organization_id"), // Organization context
   metadata: jsonb("metadata"), // Additional metadata as JSON
   createdAt: timestamp("created_at").defaultNow(),
