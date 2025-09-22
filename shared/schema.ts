@@ -13,9 +13,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { relations } from "drizzle-orm";
 
-// Session storage table (mandatory for Replit Auth)
+// Session storage table
 export const sessions = pgTable(
   "sessions",
   {
@@ -26,27 +25,163 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table - updated for custom auth
+// Unified users table - combining both project schemas
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().notNull(),
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   email: varchar("email").unique().notNull(),
-  password: varchar("password").notNull(), // Hashed password
+  password: varchar("password").notNull(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   username: varchar("username").unique(),
-  displayName: varchar("display_name"), // Keep existing column to avoid data loss
+  displayName: varchar("display_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").default("applicant"),
+  role: varchar("role").notNull().default("user"),
+  isVerified: boolean("is_verified").notNull().default(false),
+  verificationToken: varchar("verification_token"),
+  resetPasswordToken: varchar("reset_password_token"),
+  resetPasswordExpires: timestamp("reset_password_expires"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Applicant profiles table
+// Organizations table (from HiringIntelligence)
+export const organizations = pgTable("organizations", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyName: varchar("company_name").notNull(),
+  industry: varchar("industry"),
+  companySize: varchar("company_size"),
+  description: text("description"),
+  ownerId: varchar("owner_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Organization members table
+export const organizationMembers = pgTable("organization_members", {
+  id: serial("id").primaryKey(),
+  organizationId: varchar("organization_id"),
+  userId: varchar("user_id"),
+  role: varchar("role").notNull().default("member"),
+  joinedAt: timestamp("joined_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Organization invitations table
+export const organizationInvitations = pgTable("organization_invitations", {
+  id: serial("id").primaryKey(),
+  organizationId: varchar("organization_id"),
+  email: varchar("email").notNull(),
+  role: varchar("role").notNull().default("member"),
+  token: varchar("token").notNull().unique(),
+  inviteCode: varchar("invite_code").notNull().unique(),
+  invitedBy: varchar("invited_by"),
+  status: varchar("status").notNull().default("pending"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Unified jobs table - combining both project schemas
+export const jobs = pgTable("jobs", {
+  id: serial("id").primaryKey(),
+  title: varchar("title").notNull(),
+  description: text("description").notNull(),
+  requirements: text("requirements").notNull(),
+  location: varchar("location"),
+  salaryRange: varchar("salary_range"),
+  salaryMin: integer("salary_min"),
+  salaryMax: integer("salary_max"),
+  salaryNegotiable: boolean("salary_negotiable").default(false),
+  softSkills: text("soft_skills").array(),
+  technicalSkills: text("technical_skills").array(),
+  employerQuestions: text("employer_questions").array(),
+  aiPrompt: text("ai_prompt"),
+  scoreMatchingThreshold: integer("score_matching_threshold").notNull().default(30),
+  employmentType: varchar("employment_type").notNull(),
+  workplaceType: varchar("workplace_type").notNull(),
+  seniorityLevel: varchar("seniority_level").notNull(),
+  industry: varchar("industry").notNull(),
+  languagesRequired: jsonb("languages_required"),
+  certifications: text("certifications"),
+  organizationId: varchar("organization_id"),
+  createdById: varchar("created_by_id"),
+  is_active: boolean("is_active").notNull().default(true),
+  views: integer("views").notNull().default(0),
+  company: varchar("company"),
+  experienceLevel: varchar("experience_level"),
+  skills: text("skills").array(),
+  jobType: varchar("job_type"),
+  benefits: text("benefits"),
+  airtableRecordId: varchar("airtable_record_id"),
+  postedAt: timestamp("posted_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Candidates table (from HiringIntelligence)
+export const candidates = pgTable("candidates", {
+  id: serial("id").primaryKey(),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  email: varchar("email").unique().notNull(),
+  profileImageUrl: varchar("profile_image_url"),
+  title: varchar("title"),
+  location: varchar("location"),
+  summary: text("summary"),
+  skills: text("skills").array(),
+  experience: text("experience"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Matches table (from HiringIntelligence)
+export const matches = pgTable("matches", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id"),
+  candidateId: integer("candidate_id"),
+  matchScore: integer("match_score").notNull(),
+  matchReasoning: text("match_reasoning"),
+  skillGaps: text("skill_gaps").array(),
+  culturalFit: integer("cultural_fit"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Candidate applications table (from HiringIntelligence)
+export const candidateApplications = pgTable("candidate_applications", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id"),
+  candidateId: varchar("candidate_id"),
+  candidateName: varchar("candidate_name").notNull(),
+  status: varchar("status").notNull().default("pending"),
+  matchScore: integer("match_score"),
+  matchReasoning: text("match_reasoning"),
+  reviewedBy: varchar("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Interviews table (from HiringIntelligence)
+export const interviews = pgTable("interviews", {
+  id: serial("id").primaryKey(),
+  applicationId: integer("application_id"),
+  jobId: integer("job_id"),
+  candidateId: varchar("candidate_id"),
+  candidateName: varchar("candidate_name").notNull(),
+  scheduledDate: timestamp("scheduled_date"),
+  scheduledTime: varchar("scheduled_time"),
+  interviewType: varchar("interview_type").default("video"),
+  meetingLink: text("meeting_link"),
+  notes: text("notes"),
+  status: varchar("status").default("scheduled"),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Applicant profiles table (from ApplicantTracker)
 export const applicantProfiles = pgTable("applicant_profiles", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  
-  // General Information (Essential fields)
+  userId: varchar("user_id"),
+
+  // General Information
   name: varchar("name"),
   birthdate: date("birthdate"),
   gender: varchar("gender"),
@@ -54,42 +189,42 @@ export const applicantProfiles = pgTable("applicant_profiles", {
   maritalStatus: varchar("marital_status"),
   dependents: integer("dependents"),
   militaryStatus: varchar("military_status"),
-  
+
   // Location & Address
   country: varchar("country"),
   city: varchar("city"),
-  address: varchar("address"), // Street address
-  zipCode: varchar("zip_code"), // Postal code
+  address: varchar("address"),
+  zipCode: varchar("zip_code"),
   willingToRelocate: boolean("willing_to_relocate"),
-  
-  // Contact Information (Essential)
+
+  // Contact Information
   phone: varchar("phone"),
   email: varchar("email"),
-  
+
   // Emergency Contact
   emergencyContactName: varchar("emergency_contact_name"),
   emergencyContactRelationship: varchar("emergency_contact_relationship"),
   emergencyContactPhone: varchar("emergency_contact_phone"),
-  
+
   // Government ID
   idType: varchar("id_type"),
   idNumber: varchar("id_number"),
   idExpiryDate: varchar("id_expiry_date"),
   idIssuingAuthority: varchar("id_issuing_authority"),
   idVerified: boolean("id_verified").default(false),
-  
+
   // Career Interests
-  careerLevel: varchar("career_level"), // student, entry_level, experienced, manager, senior_management
-  jobTypes: text("job_types").array(), // fulltime, part_time, freelance, internship, shift_based, volunteering, student_activity
-  workplaceSettings: varchar("workplace_settings"), // onsite, remote, hybrid
+  careerLevel: varchar("career_level"),
+  jobTypes: text("job_types").array(),
+  workplaceSettings: varchar("workplace_settings"),
   jobTitles: text("job_titles").array(),
   jobCategories: text("job_categories").array(),
   minimumSalary: integer("minimum_salary"),
   hideSalaryFromCompanies: boolean("hide_salary_from_companies").default(false),
   preferredWorkCountries: text("preferred_work_countries").array(),
-  jobSearchStatus: varchar("job_search_status"), // actively_looking, happy_but_open, specific_opportunities, not_looking, immediate_hiring
-  
-  // Work Eligibility (additional fields)
+  jobSearchStatus: varchar("job_search_status"),
+
+  // Work Eligibility
   workAuthorization: varchar("work_authorization"),
   visaStatus: varchar("visa_status"),
   visaExpiryDate: varchar("visa_expiry_date"),
@@ -97,22 +232,22 @@ export const applicantProfiles = pgTable("applicant_profiles", {
   availabilityDate: varchar("availability_date"),
   noticePeriod: varchar("notice_period"),
   travelWillingness: varchar("travel_willingness"),
-  
+
   // Experience
   totalYearsOfExperience: integer("total_years_of_experience"),
-  workExperiences: jsonb("work_experiences"), // Array of experience objects
-  languages: jsonb("languages"), // Array of language proficiency objects
-  
-  // Skills (enhanced)
-  skillsData: jsonb("skills_data"), // Complete skills with years of experience
-  
+  workExperiences: jsonb("work_experiences"),
+  languages: jsonb("languages"),
+
+  // Skills
+  skillsData: jsonb("skills_data"),
+
   // Education
-  currentEducationLevel: varchar("current_education_level"), // bachelors, masters, phd, high_school, vocational, diploma
-  degrees: jsonb("degrees"), // Array of degree objects
-  highSchools: jsonb("high_schools"), // Array of high school objects
-  certifications: jsonb("certifications"), // Array of certification objects
-  trainingCourses: jsonb("training_courses"), // Array of training course objects
-  
+  currentEducationLevel: varchar("current_education_level"),
+  degrees: jsonb("degrees"),
+  highSchools: jsonb("high_schools"),
+  certifications: jsonb("certifications"),
+  trainingCourses: jsonb("training_courses"),
+
   // Online Presence
   linkedinUrl: varchar("linkedin_url"),
   facebookUrl: varchar("facebook_url"),
@@ -122,11 +257,11 @@ export const applicantProfiles = pgTable("applicant_profiles", {
   youtubeUrl: varchar("youtube_url"),
   websiteUrl: varchar("website_url"),
   otherUrls: text("other_urls").array(),
-  
+
   // Achievements
   achievements: text("achievements"),
-  
-  // Legacy fields (keeping for backward compatibility)
+
+  // Legacy fields
   age: integer("age"),
   education: text("education"),
   university: varchar("university"),
@@ -139,11 +274,11 @@ export const applicantProfiles = pgTable("applicant_profiles", {
   resumeContent: text("resume_content"),
   summary: text("summary"),
   skillsList: text("skills_list").array(),
-  
-  // System fields
-  aiProfile: jsonb("ai_profile"), // Generated from AI interview
+
+  // AI profiles
+  aiProfile: jsonb("ai_profile"),
   aiProfileGenerated: boolean("ai_profile_generated").default(false),
-  honestProfile: jsonb("honest_profile"), // Brutally honest profile for employers
+  honestProfile: jsonb("honest_profile"),
   honestProfileGenerated: boolean("honest_profile_generated").default(false),
   profileGeneratedAt: timestamp("profile_generated_at"),
   personalInterviewCompleted: boolean("personal_interview_completed").default(false),
@@ -154,135 +289,167 @@ export const applicantProfiles = pgTable("applicant_profiles", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Job listings table (shared with employer platform)
-export const jobs = pgTable("jobs", {
-  id: serial("id").primaryKey(),
-  title: varchar("title").notNull(),
-  company: varchar("company").notNull(),
-  description: text("description").notNull(),
-  location: varchar("location"),
-  salaryMin: integer("salary_min"),
-  salaryMax: integer("salary_max"),
-  experienceLevel: varchar("experience_level"),
-  skills: text("skills").array(),
-  jobType: varchar("job_type"), // remote, hybrid, onsite
-  requirements: text("requirements"),
-  benefits: text("benefits"),
-  isActive: boolean("is_active").default(true),
-  postedAt: timestamp("posted_at").defaultNow(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Job matches table
+// Job matches table (from ApplicantTracker)
 export const jobMatches = pgTable("job_matches", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  jobId: integer("job_id").notNull().references(() => jobs.id),
-  matchScore: real("match_score").notNull(), // 0-100
+  userId: varchar("user_id"),
+  jobId: integer("job_id"),
+  matchScore: real("match_score").notNull(),
   matchReasons: text("match_reasons").array(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Applications table
+// Applications table (from ApplicantTracker)
 export const applications = pgTable("applications", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  jobId: integer("job_id").notNull().references(() => jobs.id),
-  status: varchar("status").default("applied"), // applied, reviewed, interviewed, rejected, offered
+  userId: varchar("user_id"),
+  jobId: integer("job_id"),
+  status: varchar("status").default("applied"),
   appliedAt: timestamp("applied_at").defaultNow(),
   coverLetter: text("cover_letter"),
   notes: text("notes"),
 });
 
-// Resume uploads table
+// Resume uploads table (from ApplicantTracker)
 export const resumeUploads = pgTable("resume_uploads", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: varchar("user_id"),
   filename: varchar("filename").notNull(),
   originalName: varchar("original_name").notNull(),
-  filePath: varchar("file_path").notNull(), // Object storage path
+  filePath: varchar("file_path").notNull(),
   fileSize: integer("file_size").notNull(),
   mimeType: varchar("mime_type").notNull(),
-  extractedText: text("extracted_text"), // PDF text extraction
-  aiAnalysis: jsonb("ai_analysis"), // AI analysis of the resume
-  isActive: boolean("is_active").default(true), // Allow multiple uploads, mark latest as active
+  extractedText: text("extracted_text"),
+  aiAnalysis: jsonb("ai_analysis"),
+  isActive: boolean("is_active").default(true),
   uploadedAt: timestamp("uploaded_at").defaultNow(),
 });
 
-// Interview sessions table
+// Interview sessions table (from ApplicantTracker)
 export const interviewSessions = pgTable("interview_sessions", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  interviewType: varchar("interview_type").notNull(), // 'personal', 'professional', 'technical'
-  sessionData: jsonb("session_data").notNull(), // Q&A pairs, progress
+  userId: varchar("user_id"),
+  interviewType: varchar("interview_type").notNull(),
+  sessionData: jsonb("session_data").notNull(),
   isCompleted: boolean("is_completed").default(false),
   generatedProfile: jsonb("generated_profile"),
-  resumeContext: jsonb("resume_context"), // Resume analysis context for the interview
+  resumeContext: jsonb("resume_context"),
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
 });
 
+// Additional tables from HiringIntelligence
+export const acceptedApplicants = pgTable("accepted_applicants", {
+  id: serial("id").primaryKey(),
+  candidateId: varchar("candidate_id"),
+  candidateName: varchar("candidate_name"),
+  candidateEmail: varchar("candidate_email"),
+  jobId: varchar("job_id"),
+  jobTitle: varchar("job_title"),
+  organizationId: varchar("organization_id"),
+  acceptedBy: varchar("accepted_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
-// Relations
-export const usersRelations = relations(users, ({ one, many }) => ({
-  profile: one(applicantProfiles, {
-    fields: [users.id],
-    references: [applicantProfiles.userId],
-  }),
-  matches: many(jobMatches),
-  applications: many(applications),
-  interviews: many(interviewSessions),
-  resumes: many(resumeUploads),
-}));
+export const realInterviews = pgTable("real_interviews", {
+  id: varchar("id").primaryKey().notNull(),
+  candidateName: varchar("candidate_name").notNull(),
+  candidateEmail: varchar("candidate_email"),
+  candidateId: varchar("candidate_id"),
+  jobId: varchar("job_id"),
+  jobTitle: varchar("job_title"),
+  scheduledDate: varchar("scheduled_date"),
+  scheduledTime: varchar("scheduled_time"),
+  timeZone: varchar("time_zone").default('UTC'),
+  interviewType: varchar("interview_type").default('video'),
+  meetingLink: varchar("meeting_link"),
+  interviewer: varchar("interviewer"),
+  status: varchar("status").default('scheduled'),
+  notes: text("notes"),
+  organizationId: varchar("organization_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
-export const applicantProfilesRelations = relations(applicantProfiles, ({ one }) => ({
-  user: one(users, {
-    fields: [applicantProfiles.userId],
-    references: [users.id],
-  }),
-}));
+export const scoredApplicants = pgTable("scored_applicants", {
+  id: serial("id").primaryKey(),
+  applicantId: varchar("applicant_id").unique(),
+  matchScore: integer("match_score"),
+  matchSummary: text("match_summary"),
+  technicalSkillsScore: integer("technical_skills_score"),
+  experienceScore: integer("experience_score"),
+  culturalFitScore: integer("cultural_fit_score"),
+  jobId: varchar("job_id"),
+  organizationId: varchar("organization_id"),
+  scoredAt: timestamp("scored_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
-export const jobsRelations = relations(jobs, ({ many }) => ({
-  matches: many(jobMatches),
-  applications: many(applications),
-}));
+export const resumeProfiles = pgTable("resume_profiles", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: varchar("name").notNull(),
+  email: varchar("email"),
+  phone: varchar("phone"),
+  summary: text("summary"),
+  experience: jsonb("experience").$type<string[]>(),
+  skills: jsonb("skills").$type<string[]>(),
+  education: jsonb("education").$type<string[]>(),
+  certifications: jsonb("certifications").$type<string[]>(),
+  languages: jsonb("languages").$type<string[]>(),
+  resumeText: text("resume_text").notNull(),
+  organizationId: varchar("organization_id"),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
-export const jobMatchesRelations = relations(jobMatches, ({ one }) => ({
-  user: one(users, {
-    fields: [jobMatches.userId],
-    references: [users.id],
-  }),
-  job: one(jobs, {
-    fields: [jobMatches.jobId],
-    references: [jobs.id],
-  }),
-}));
+export const resumeJobScores = pgTable("resume_job_scores", {
+  id: serial("id").primaryKey(),
+  profileId: varchar("profile_id"),
+  jobId: integer("job_id"),
+  overallScore: integer("overall_score"),
+  technicalSkillsScore: integer("technical_skills_score"),
+  experienceScore: integer("experience_score"),
+  culturalFitScore: integer("cultural_fit_score"),
+  matchSummary: text("match_summary"),
+  strengthsHighlights: jsonb("strengths_highlights").$type<string[]>(),
+  improvementAreas: jsonb("improvement_areas").$type<string[]>(),
+  scoredAt: timestamp("scored_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
-export const applicationsRelations = relations(applications, ({ one }) => ({
-  user: one(users, {
-    fields: [applications.userId],
-    references: [users.id],
-  }),
-  job: one(jobs, {
-    fields: [applications.jobId],
-    references: [jobs.id],
-  }),
-}));
+export const shortlistedApplicants = pgTable("shortlisted_applicants", {
+  id: text("id").primaryKey().notNull(),
+  employerId: text("employer_id"),
+  applicantId: text("applicant_id"),
+  applicantName: text("applicant_name"),
+  jobTitle: text("job_title"),
+  jobId: text("job_id"),
+  note: text("note"),
+  dateShortlisted: timestamp("date_shortlisted").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
-export const resumeUploadsRelations = relations(resumeUploads, ({ one }) => ({
-  user: one(users, {
-    fields: [resumeUploads.userId],
-    references: [users.id],
-  }),
-}));
-
-export const interviewSessionsRelations = relations(interviewSessions, ({ one }) => ({
-  user: one(users, {
-    fields: [interviewSessions.userId],
-    references: [users.id],
-  }),
-}));
-
+// OpenAI requests table (common to both)
+export const openaiRequests = pgTable("openai_requests", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  requestType: varchar("request_type").notNull(),
+  model: varchar("model").notNull(),
+  promptTokens: integer("prompt_tokens").notNull().default(0),
+  completionTokens: integer("completion_tokens").notNull().default(0),
+  totalTokens: integer("total_tokens").notNull().default(0),
+  cost: real("cost").notNull().default(0),
+  requestData: jsonb("request_data"),
+  responseData: jsonb("response_data"),
+  status: varchar("status").notNull().default("success"),
+  errorMessage: text("error_message"),
+  userId: varchar("user_id"),
+  organizationId: varchar("organization_id"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users);
@@ -294,6 +461,8 @@ export const insertApplicantProfileSchema = createInsertSchema(applicantProfiles
 export const insertJobSchema = createInsertSchema(jobs).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
+  views: true,
 });
 export const insertJobMatchSchema = createInsertSchema(jobMatches).omit({
   id: true,
@@ -331,26 +500,18 @@ export type InsertInterviewSession = z.infer<typeof insertInterviewSessionSchema
 export type InterviewSession = typeof interviewSessions.$inferSelect;
 export type InsertResumeUpload = z.infer<typeof insertResumeUploadSchema>;
 export type ResumeUpload = typeof resumeUploads.$inferSelect;
-
-// OpenAI API requests tracking table for cost and token usage
-export const openaiRequests = pgTable("openai_requests", {
-  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  requestType: varchar("request_type").notNull(), // Type of request (e.g., 'scoring', 'analysis', 'chat')
-  model: varchar("model").notNull(), // OpenAI model used (e.g., 'gpt-4', 'gpt-3.5-turbo')
-  promptTokens: integer("prompt_tokens").notNull().default(0),
-  completionTokens: integer("completion_tokens").notNull().default(0),
-  totalTokens: integer("total_tokens").notNull().default(0),
-  cost: real("cost").notNull().default(0), // Estimated cost in USD
-  requestData: jsonb("request_data"), // Full request data as JSON
-  responseData: jsonb("response_data"), // Full response data as JSON
-  status: varchar("status").notNull().default("success"), // success, error, pending
-  errorMessage: text("error_message"), // Error message if request failed
-  userId: varchar("user_id").references(() => users.id), // User who made the request
-  organizationId: varchar("organization_id"), // Organization context
-  metadata: jsonb("metadata"), // Additional metadata as JSON
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
 export type OpenAIRequest = typeof openaiRequests.$inferSelect;
 export type InsertOpenAIRequest = typeof openaiRequests.$inferInsert;
+
+// Additional types for compatibility
+export type Organization = typeof organizations.$inferSelect;
+export type Candidate = typeof candidates.$inferSelect;
+export type Match = typeof matches.$inferSelect;
+export type CandidateApplication = typeof candidateApplications.$inferSelect;
+export type Interview = typeof interviews.$inferSelect;
+export type AcceptedApplicant = typeof acceptedApplicants.$inferSelect;
+export type RealInterview = typeof realInterviews.$inferSelect;
+export type ScoredApplicant = typeof scoredApplicants.$inferSelect;
+export type ResumeProfile = typeof resumeProfiles.$inferSelect;
+export type ResumeJobScore = typeof resumeJobScores.$inferSelect;
+export type ShortlistedApplicant = typeof shortlistedApplicants.$inferSelect;
