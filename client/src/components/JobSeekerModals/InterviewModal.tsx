@@ -70,6 +70,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [lastAiResponse, setLastAiResponse] = useState<string>('');
   const [showResumeModal, setShowResumeModal] = useState(false);
+  const [windowBlurCount, setWindowBlurCount] = useState(0);
+  const [warningVisible, setWarningVisible] = useState(false);
+  const [sessionTerminated, setSessionTerminated] = useState(false);
+  const maxBlurCount = 3; // Maximum allowed window switches before termination
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -94,6 +98,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       setIsStartingInterview(false);
       setIsAiSpeaking(false);
       setLastAiResponse('');
+      setWindowBlurCount(0);
+      setWarningVisible(false);
+      setSessionTerminated(false);
     }
   }, [isOpen]);
 
@@ -820,6 +827,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     setIsStartingInterview(false);
     setIsAiSpeaking(false);
     setLastAiResponse('');
+    setWindowBlurCount(0);
+    setWarningVisible(false);
+    setSessionTerminated(false);
   };
 
   // Reset interview state when modal opens
@@ -828,6 +838,55 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       resetInterview();
     }
   }, [isOpen]);
+
+  // Window focus/blur detection for interview security
+  useEffect(() => {
+    if (!isOpen || sessionTerminated) return;
+
+    const handleBlur = () => {
+      if (mode === 'voice' || (mode === 'select' && selectedInterviewType)) {
+        const newCount = windowBlurCount + 1;
+        setWindowBlurCount(newCount);
+        setWarningVisible(true);
+
+        // Auto-hide warning after 3 seconds
+        setTimeout(() => setWarningVisible(false), 3000);
+
+        if (newCount >= maxBlurCount) {
+          // Terminate session
+          setSessionTerminated(true);
+          toast({
+            title: "Session Terminated",
+            description: "Interview session has been terminated due to multiple window switches.",
+            variant: "destructive",
+          });
+
+          // Disconnect voice interview if active
+          if (realtimeAPI.isConnected) {
+            realtimeAPI.disconnect();
+          }
+
+          // Close modal after delay
+          setTimeout(() => {
+            handleClose();
+          }, 2000);
+        } else {
+          // Show warning
+          const remaining = maxBlurCount - newCount;
+          toast({
+            title: "Warning: Window Switch Detected",
+            description: `Switching tabs during interviews is not allowed. ${remaining} more violation${remaining > 1 ? 's' : ''} before session termination.`,
+            variant: "destructive",
+          });
+        }
+      }
+    };
+
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [isOpen, mode, selectedInterviewType, windowBlurCount, sessionTerminated, toast, realtimeAPI]);
 
   // Cleanup voice interview when modal closes
   useEffect(() => {
@@ -848,7 +907,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       });
       return;
     }
-    
+
     if (realtimeAPI.isConnected) {
       realtimeAPI.disconnect();
     }
@@ -1279,9 +1338,49 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{t('interview.aiInterview') || 'AI Interview'}</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>{t('interview.aiInterview') || 'AI Interview'}</DialogTitle>
+              {(mode === 'voice' || (mode === 'select' && selectedInterviewType)) && (
+                <div className="flex items-center space-x-2">
+                  <div className={`h-2 w-2 rounded-full ${sessionTerminated ? 'bg-red-500' : windowBlurCount > 0 ? 'bg-yellow-500' : 'bg-green-500'}`} />
+                  <span className="text-xs text-muted-foreground">
+                    {sessionTerminated ? 'Session Terminated' : windowBlurCount > 0 ? `${windowBlurCount}/${maxBlurCount} violations` : 'Active'}
+                  </span>
+                </div>
+              )}
+            </div>
           </DialogHeader>
-          
+
+          {/* Window switch warning */}
+          {warningVisible && !sessionTerminated && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+              <div className="flex items-center space-x-2">
+                <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse" />
+                <div>
+                  <p className="text-sm font-medium text-red-800">Tab Switch Detected</p>
+                  <p className="text-xs text-red-600">
+                    Switching tabs during interviews is not allowed. {maxBlurCount - windowBlurCount} more violation{maxBlurCount - windowBlurCount > 1 ? 's' : ''} before session termination.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Session terminated overlay */}
+          {sessionTerminated && (
+            <div className="bg-red-100 border border-red-300 rounded-lg p-4 mb-4">
+              <div className="text-center space-y-2">
+                <div className="h-8 w-8 bg-red-500 rounded-full flex items-center justify-center mx-auto">
+                  <PhoneOff className="h-4 w-4 text-white" />
+                </div>
+                <p className="font-medium text-red-800">Interview Session Terminated</p>
+                <p className="text-sm text-red-600">
+                  Your session has been terminated due to multiple window switches.
+                </p>
+              </div>
+            </div>
+          )}
+
           {mode === 'types' && renderInterviewTypes()}
           {mode === 'select' && renderModeSelection()}
           {mode === 'voice' && renderVoiceInterview()}

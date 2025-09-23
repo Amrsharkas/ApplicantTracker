@@ -967,7 +967,7 @@ export class AIProfileAnalysisAgent {
           purpose: "assistants"
         }),
         {
-          requestType: "extractResumeTextWithOpenAI",
+          requestType: "uploadResumeFile",
           model: "gpt-4o-mini",
         }
       );
@@ -976,20 +976,26 @@ export class AIProfileAnalysisAgent {
 
       // Use Responses API to have the model read the uploaded file and emit plaintext
       // Using a cost-effective model for extraction; downstream structured parsing will use GPT-5
-      const response: any = await (openai as any).responses.create({
-        model: "gpt-4o-mini",
-        input: [
-          {
-            role: "user",
-            content: [
-              { type: "input_text", text: extractionPrompt },
-              { type: "input_file", file_id: uploaded.id }
-            ]
-          }
-        ],
-        // Allow long outputs for multi-page resumes
-        max_output_tokens: 64000
-      });
+      const response: any = await wrapOpenAIRequest(
+        async () => await (openai as any).responses.create({
+          model: "gpt-4o-mini",
+          input: [
+            {
+              role: "user",
+              content: [
+                { type: "input_text", text: extractionPrompt },
+                { type: "input_file", file_id: uploaded.id }
+              ]
+            }
+          ],
+          // Allow long outputs for multi-page resumes
+          max_output_tokens: 64000
+        }),
+        {
+          requestType: "extractResumeTextWithOpenAI",
+          model: "gpt-4o-mini",
+        }
+      );
 
       // Best-effort extraction of output text across SDK versions
       let text = "";

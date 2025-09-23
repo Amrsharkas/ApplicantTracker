@@ -7,6 +7,9 @@ const PRICING = {
   "gpt-4o-mini": { input: 0.00015, output: 0.0006 },
   "gpt-4": { input: 0.03, output: 0.06 },
   "gpt-3.5-turbo": { input: 0.0005, output: 0.0015 },
+  "gpt-5": { input: 1.25, output: 10.00 },
+  "gpt-5-mini": { input: 0.25, output: 2.00 },
+  "gpt-5-nano": { input: 0.05, output: 0.40 },
 };
 
 interface SaveOpenAIRequestOptions {
