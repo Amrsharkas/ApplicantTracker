@@ -1,19 +1,16 @@
-import { useState, useRef, useEffect, memo } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Mic, MicOff, MessageCircle, Phone, PhoneOff, Users, Briefcase, Target, User, CheckCircle, Languages } from 'lucide-react';
+import { Mic, MicOff, MessageCircle, PhoneOff, Briefcase, Target, User, CheckCircle, Languages } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRealtimeAPI } from '@/hooks/useRealtimeAPI';
 import { useResumeRequirement } from '@/hooks/useResumeRequirement';
 import { apiRequest } from '@/lib/queryClient';
 import { isUnauthorizedError } from '@/lib/authUtils';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ResumeRequiredModal } from '@/components/ResumeRequiredModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -34,6 +31,7 @@ interface InterviewType {
   title: string;
   description: string;
   completed: boolean;
+  locked?: boolean;
   questions: number;
 }
 
@@ -48,6 +46,7 @@ interface InterviewSession {
   };
   isCompleted: boolean;
   generatedProfile?: any;
+  interviewType?: string;
 }
 
 interface InterviewModalProps {
@@ -56,7 +55,7 @@ interface InterviewModalProps {
 }
 
 export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
-  const [mode, setMode] = useState<'types' | 'select' | 'text' | 'voice'>('types');
+  const [mode, setMode] = useState<'types' | 'select' | 'voice'>('types');
   const [selectedInterviewType, setSelectedInterviewType] = useState<string>('');
   const [selectedInterviewLanguage, setSelectedInterviewLanguage] = useState<string>('english');
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
@@ -65,20 +64,23 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const [currentSession, setCurrentSession] = useState<InterviewSession | null>(null);
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
-  const [showProfileDetails, setShowProfileDetails] = useState(false);
   const [isInterviewConcluded, setIsInterviewConcluded] = useState(false);
   const [isProcessingInterview, setIsProcessingInterview] = useState(false);
   const [isStartingInterview, setIsStartingInterview] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [lastAiResponse, setLastAiResponse] = useState<string>('');
   const [showResumeModal, setShowResumeModal] = useState(false);
+  const [windowBlurCount, setWindowBlurCount] = useState(0);
+  const [warningVisible, setWarningVisible] = useState(false);
+  const [sessionTerminated, setSessionTerminated] = useState(false);
+  const maxBlurCount = 3; // Maximum allowed window switches before termination
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { t, isRTL } = useLanguage();
+  const { t } = useLanguage();
 
   // Check resume requirement
-  const { hasResume, requiresResume, isLoading: isLoadingResume } = useResumeRequirement();
+  const { requiresResume } = useResumeRequirement();
 
   // Reset interview state when modal opens
   useEffect(() => {
@@ -91,12 +93,14 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       setCurrentSession(null);
       setVoiceTranscript('');
       setConversationHistory([]);
-      setShowProfileDetails(false);
       setIsInterviewConcluded(false);
       setIsProcessingInterview(false);
       setIsStartingInterview(false);
       setIsAiSpeaking(false);
       setLastAiResponse('');
+      setWindowBlurCount(0);
+      setWarningVisible(false);
+      setSessionTerminated(false);
     }
   }, [isOpen]);
 
@@ -219,7 +223,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         description: t('interview.voiceInterviewErrorDescription') || 'There was an issue with the voice interview. Please try text mode instead.',
         variant: 'destructive'
       });
-      setMode('text');
+      setMode('voice');
     }
   });
 
@@ -799,122 +803,6 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     }
   };
 
-  const startTextInterview = async () => {
-    if (!selectedInterviewType) {
-      toast({
-        title: t('interview.selectInterviewTypeError') || 'Error',
-        description: t('interview.selectInterviewTypeErrorDescription') || 'Please select an interview type first.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setIsStartingInterview(true);
-    setMode('text');
-    setMessages([]);
-    setIsInterviewConcluded(false);
-    setConversationHistory([]);
-    
-    // Show loading message immediately
-    const loadingMessage: InterviewMessage = {
-      type: 'question',
-      content: t('interview.startingTextInterview') || 'Starting your text interview... Please wait while I prepare your personalized questions.',
-      timestamp: new Date()
-    };
-    setMessages([loadingMessage]);
-    
-    try {
-      // Use the same backend system as voice interview
-      const response = await fetch('/api/interview/start-voice', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ 
-          interviewType: selectedInterviewType,
-          language: selectedInterviewLanguage
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Text interview start failed:', response.status, errorData);
-        throw new Error(errorData.error || `API returned ${response.status}`);
-      }
-
-      const interviewData = await response.json();
-      console.log('Text interview initialized:', interviewData);
-      
-      // Update current session
-      setCurrentSession({
-        id: interviewData.sessionId,
-        sessionData: {
-          questions: interviewData.questions || [],
-          responses: [],
-          currentQuestionIndex: 0
-        },
-        isCompleted: false
-      });
-
-      // Update with welcome message and first question
-      if (interviewData.welcomeMessage) {
-        const welcomeMessage: InterviewMessage = {
-          type: 'question',
-          content: interviewData.welcomeMessage,
-          timestamp: new Date()
-        };
-        
-        // If there are questions, show the first one after the welcome
-        if (interviewData.questions && interviewData.questions.length > 0) {
-          const firstQuestionObj = interviewData.questions[0];
-          const firstQuestionText = typeof firstQuestionObj === 'string' 
-            ? firstQuestionObj 
-            : firstQuestionObj?.question || firstQuestionObj?.text || 'Question content not available';
-            
-          const firstQuestion: InterviewMessage = {
-            type: 'question',
-            content: firstQuestionText,
-            timestamp: new Date()
-          };
-          setMessages([welcomeMessage, firstQuestion]);
-        } else {
-          setMessages([welcomeMessage]);
-        }
-      } else if (interviewData.questions && interviewData.questions.length > 0) {
-        // Show first question directly if no welcome message
-        const firstQuestionObj = interviewData.questions[0];
-        const firstQuestionText = typeof firstQuestionObj === 'string' 
-          ? firstQuestionObj 
-          : firstQuestionObj?.question || firstQuestionObj?.text || 'Question content not available';
-          
-        const firstQuestion: InterviewMessage = {
-          type: 'question',
-          content: firstQuestionText,
-          timestamp: new Date()
-        };
-        setMessages([firstQuestion]);
-      }
-      
-      setIsStartingInterview(false);
-      toast({
-        title: t('interview.textInterviewStarted') || "Text Interview Started",
-        description: t('interview.textInterviewStartedDescription') || "You can now type your responses to the interview questions.",
-      });
-    } catch (error) {
-      setIsStartingInterview(false);
-      console.error('Text interview error:', error);
-      
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
-      toast({
-        title: t('interview.failedToStartInterview') || 'Failed to Start Interview',
-        description: `${t('interview.couldNotStartTextInterview') || 'Could not start text interview'}: ${errorMessage}. ${t('interview.pleaseTryAgain') || 'Please try again'}.`,
-        variant: 'destructive'
-      });
-      setMode('select');
-    }
-  };
 
   const getQuestionCount = (interviewType: string) => {
     switch (interviewType) {
@@ -934,12 +822,14 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     setCurrentSession(null);
     setVoiceTranscript('');
     setConversationHistory([]);
-    setShowProfileDetails(false);
     setIsInterviewConcluded(false);
     setIsProcessingInterview(false);
     setIsStartingInterview(false);
     setIsAiSpeaking(false);
     setLastAiResponse('');
+    setWindowBlurCount(0);
+    setWarningVisible(false);
+    setSessionTerminated(false);
   };
 
   // Reset interview state when modal opens
@@ -948,6 +838,55 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       resetInterview();
     }
   }, [isOpen]);
+
+  // Window focus/blur detection for interview security
+  useEffect(() => {
+    if (!isOpen || sessionTerminated) return;
+
+    const handleBlur = () => {
+      if (mode === 'voice' || (mode === 'select' && selectedInterviewType)) {
+        const newCount = windowBlurCount + 1;
+        setWindowBlurCount(newCount);
+        setWarningVisible(true);
+
+        // Auto-hide warning after 3 seconds
+        setTimeout(() => setWarningVisible(false), 3000);
+
+        if (newCount >= maxBlurCount) {
+          // Terminate session
+          setSessionTerminated(true);
+          toast({
+            title: "Session Terminated",
+            description: "Interview session has been terminated due to multiple window switches.",
+            variant: "destructive",
+          });
+
+          // Disconnect voice interview if active
+          if (realtimeAPI.isConnected) {
+            realtimeAPI.disconnect();
+          }
+
+          // Close modal after delay
+          setTimeout(() => {
+            handleClose();
+          }, 2000);
+        } else {
+          // Show warning
+          const remaining = maxBlurCount - newCount;
+          toast({
+            title: "Warning: Window Switch Detected",
+            description: `Switching tabs during interviews is not allowed. ${remaining} more violation${remaining > 1 ? 's' : ''} before session termination.`,
+            variant: "destructive",
+          });
+        }
+      }
+    };
+
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [isOpen, mode, selectedInterviewType, windowBlurCount, sessionTerminated, toast, realtimeAPI]);
 
   // Cleanup voice interview when modal closes
   useEffect(() => {
@@ -968,7 +907,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       });
       return;
     }
-    
+
     if (realtimeAPI.isConnected) {
       realtimeAPI.disconnect();
     }
@@ -1007,8 +946,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             const questionContent = typeof firstQuestionObj === 'string'
               ? firstQuestionObj
               : firstQuestionObj?.question || firstQuestionObj?.text || t('interview.question1') || 'Question 1';
-            setMode('text');
-            setMessages([{
+                setMessages([{
               type: 'question',
               content: questionContent,
               timestamp: new Date()
@@ -1022,9 +960,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
   const renderInterviewTypes = () => {
     // Get completion status from user profile
-    const personalCompleted = userProfile?.personalInterviewCompleted || false;
-    const professionalCompleted = userProfile?.professionalInterviewCompleted || false;
-    const technicalCompleted = userProfile?.technicalInterviewCompleted || false;
+    const profileData = userProfile as any;
+    const personalCompleted = profileData?.personalInterviewCompleted || false;
+    const professionalCompleted = profileData?.professionalInterviewCompleted || false;
+    const technicalCompleted = profileData?.technicalInterviewCompleted || false;
     
     const interviewTypes = (interviewTypesData && typeof interviewTypesData === 'object' && 'interviewTypes' in interviewTypesData)
       ? (interviewTypesData as any).interviewTypes || [] : [
@@ -1166,13 +1105,13 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         </p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card 
-          className={`transition-colors ${
-            isStartingInterview 
-              ? 'opacity-50 cursor-not-allowed' 
+      <div className="flex justify-center">
+        <Card
+          className={`transition-colors w-full max-w-md ${
+            isStartingInterview
+              ? 'opacity-50 cursor-not-allowed'
               : 'cursor-pointer hover:bg-accent/50'
-          }`} 
+          }`}
           onClick={isStartingInterview ? undefined : startVoiceInterview}
         >
           <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
@@ -1184,35 +1123,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             <div className="text-center">
               <h4 className="font-medium">{t('voiceInterview') || 'Voice Interview'}</h4>
               <p className="text-sm text-muted-foreground">
-                {isStartingInterview && mode === 'voice' 
-                  ? t('startingVoiceInterview') || 'Starting voice interview...' 
+                {isStartingInterview && mode === 'voice'
+                  ? t('startingVoiceInterview') || 'Starting voice interview...'
                   : t('speakNaturally') || 'Speak naturally with the AI interviewer'
-                }
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card 
-          className={`transition-colors ${
-            isStartingInterview 
-              ? 'opacity-50 cursor-not-allowed' 
-              : 'cursor-pointer hover:bg-accent/50'
-          }`} 
-          onClick={isStartingInterview ? undefined : startTextInterview}
-        >
-          <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
-            {isStartingInterview && mode === 'text' ? (
-              <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <MessageCircle className="h-8 w-8 text-primary" />
-            )}
-            <div className="text-center">
-              <h4 className="font-medium">{t('textInterview') || 'Text Interview'}</h4>
-              <p className="text-sm text-muted-foreground">
-                {isStartingInterview && mode === 'text' 
-                  ? 'Preparing interview questions...' 
-                  : 'Type your responses at your own pace'
                 }
               </p>
             </div>
@@ -1230,120 +1143,6 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     </div>
   );
 
-  const renderTextInterview = () => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Text Interview</h3>
-        <Badge variant="outline">
-          Question {currentQuestionIndex + 1} of {currentSession?.sessionData?.questions?.length || getQuestionCount(selectedInterviewType)}
-        </Badge>
-      </div>
-      
-      <div className="max-h-96 overflow-y-auto space-y-4">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`p-3 rounded-lg ${
-              message.type === 'question'
-                ? 'bg-blue-50 border-l-4 border-blue-400'
-                : 'bg-green-50 border-l-4 border-green-400 ml-8'
-            }`}
-          >
-            <div className="flex items-start space-x-2 rtl:space-x-reverse">
-              {message.type === 'question' ? (
-                <User className="h-4 w-4 mt-1 text-blue-600" />
-              ) : (
-                <MessageCircle className="h-4 w-4 mt-1 text-green-600" />
-              )}
-              <div className="flex-1">
-                <p className="text-sm">
-                  {typeof message.content === 'string' 
-                    ? message.content 
-                    : 'Question content not available'
-                  }
-                </p>
-                <span className="text-xs text-muted-foreground">
-                  {message.timestamp.toLocaleTimeString()}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-        
-        {/* Loading indicator when processing responses */}
-        {(respondMutation.isPending || startInterviewMutation.isPending) && (
-          <div className="p-3 rounded-lg bg-gray-50 border-l-4 border-gray-400">
-            <div className="flex items-start space-x-2 rtl:space-x-reverse">
-              <div className="h-4 w-4 mt-1 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-600">
-                  {startInterviewMutation.isPending ? t('interview.preparingQuestions') || 'Preparing questions...' : t('interview.processingYourResponse') || 'Processing your response...'}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <div ref={messagesEndRef} />
-      </div>
-
-      {currentSession?.isCompleted ? (
-        <div className="space-y-4">
-          <Card className="border-green-200 bg-green-50">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                <div className="h-2 w-2 bg-green-500 rounded-full" />
-                <span className="text-sm font-medium text-green-700">Interview Complete!</span>
-              </div>
-              <p className="text-sm text-green-600 mt-1">
-                {t('interview.interviewSectionCompletedSuccessfully') || 'Interview section completed successfully! Continue with remaining interviews to complete your profile.'}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <Textarea
-            placeholder="Type your answer here..."
-            value={currentAnswer}
-            onChange={(e) => setCurrentAnswer(e.target.value)}
-            className="min-h-24"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmitAnswer();
-              }
-            }}
-          />
-          <div className="flex justify-between">
-            {currentSession?.interviewType !== 'job-practice' && (
-              <Button variant="outline" onClick={() => setMode('types')}>
-                ← {t('interview.backToInterviewTypes') || 'Back to Interview Types'}
-              </Button>
-            )}
-            <div className="flex space-x-2 rtl:space-x-reverse">
-              {isInterviewConcluded ? (
-                <Button 
-                  onClick={() => processInterviewCompletion()}
-                  disabled={isProcessingInterview}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {isProcessingInterview ? t('interview.submitting') || 'Submitting...' : t('interview.submitInterview') || 'Submit Interview'}
-                </Button>
-              ) : (
-                <Button 
-                  onClick={handleSubmitAnswer}
-                  disabled={!currentAnswer.trim() || respondMutation.isPending}
-                >
-                  {respondMutation.isPending ? t('interview.processing') || 'Processing...' : t('interview.submitAnswer') || 'Submit Answer'}
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 
   const renderVoiceInterview = () => (
     <div className="space-y-4">
@@ -1539,12 +1338,51 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{t('interview.aiInterview') || 'AI Interview'}</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>{t('interview.aiInterview') || 'AI Interview'}</DialogTitle>
+              {(mode === 'voice' || (mode === 'select' && selectedInterviewType)) && (
+                <div className="flex items-center space-x-2">
+                  <div className={`h-2 w-2 rounded-full ${sessionTerminated ? 'bg-red-500' : windowBlurCount > 0 ? 'bg-yellow-500' : 'bg-green-500'}`} />
+                  <span className="text-xs text-muted-foreground">
+                    {sessionTerminated ? 'Session Terminated' : windowBlurCount > 0 ? `${windowBlurCount}/${maxBlurCount} violations` : 'Active'}
+                  </span>
+                </div>
+              )}
+            </div>
           </DialogHeader>
-          
+
+          {/* Window switch warning */}
+          {warningVisible && !sessionTerminated && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+              <div className="flex items-center space-x-2">
+                <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse" />
+                <div>
+                  <p className="text-sm font-medium text-red-800">Tab Switch Detected</p>
+                  <p className="text-xs text-red-600">
+                    Switching tabs during interviews is not allowed. {maxBlurCount - windowBlurCount} more violation{maxBlurCount - windowBlurCount > 1 ? 's' : ''} before session termination.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Session terminated overlay */}
+          {sessionTerminated && (
+            <div className="bg-red-100 border border-red-300 rounded-lg p-4 mb-4">
+              <div className="text-center space-y-2">
+                <div className="h-8 w-8 bg-red-500 rounded-full flex items-center justify-center mx-auto">
+                  <PhoneOff className="h-4 w-4 text-white" />
+                </div>
+                <p className="font-medium text-red-800">Interview Session Terminated</p>
+                <p className="text-sm text-red-600">
+                  Your session has been terminated due to multiple window switches.
+                </p>
+              </div>
+            </div>
+          )}
+
           {mode === 'types' && renderInterviewTypes()}
           {mode === 'select' && renderModeSelection()}
-          {mode === 'text' && renderTextInterview()}
           {mode === 'voice' && renderVoiceInterview()}
         </DialogContent>
       </Dialog>

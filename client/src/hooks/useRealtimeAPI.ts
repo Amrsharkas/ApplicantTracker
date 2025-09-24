@@ -31,11 +31,15 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
     setIsConnecting(true);
     
     try {
+      const model = 'gpt-realtime';
+      const voice = 'verse';
+
       // Get ephemeral token from server
       const tokenResponse = await fetch('/api/realtime/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'
+        credentials: 'include',
+        body: JSON.stringify({ model, voice })
       });
       
       if (!tokenResponse.ok) {
@@ -211,7 +215,7 @@ This focused approach ensures we understand them comprehensively while respectin
           session: {
             modalities: ['text', 'audio'],
             instructions: buildInstructions(options.userProfile, interviewParams),
-            voice: 'verse',
+            voice,
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
             input_audio_transcription: {
@@ -252,7 +256,6 @@ This focused approach ensures we understand them comprehensively while respectin
       await pc.setLocalDescription(offer);
       
       const baseUrl = 'https://api.openai.com/v1/realtime';
-      const model = 'gpt-4o-realtime-preview-2024-10-01';
       
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
         method: 'POST',

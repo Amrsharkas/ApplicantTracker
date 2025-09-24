@@ -96,7 +96,7 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
         {
           requestType: "generateWelcomeMessage",
           model: "gpt-4o",
-          userId: userData?.id,
+          userId: userData?.id || null,
         }
       );
 
@@ -270,7 +270,7 @@ Return ONLY JSON:
         {
           requestType: "generatePersonalInterview",
           model: "gpt-4o",
-          userId: userData?.id,
+          userId: userData?.id || null,
         }
       );
 
@@ -453,7 +453,7 @@ Return ONLY JSON:
         {
           requestType: "generateProfessionalInterview",
           model: "gpt-4o",
-          userId: userData?.id,
+          userId: userData?.id || null,
         }
       );
 
@@ -642,7 +642,7 @@ Return ONLY JSON:
         {
           requestType: "generateTechnicalInterview",
           model: "gpt-4o",
-          userId: userData?.id,
+          userId: userData?.id || null,
         }
       );
 
@@ -875,7 +875,7 @@ Be thorough, honest, and evidence-based. This assessment will help employers mak
         {
           requestType: "generateBrutallyHonestProfile",
           model: "gpt-4o",
-          userId: userData?.id,
+          userId: userData?.id || null,
         }
       );
 
@@ -933,7 +933,7 @@ Return JSON with:
         {
           requestType: "analyzeJobApplication",
           model: "gpt-4o",
-          userId: userProfile?.userId,
+          userId: userProfile?.userId || null,
         }
       );
 
@@ -967,7 +967,7 @@ export class AIProfileAnalysisAgent {
           purpose: "assistants"
         }),
         {
-          requestType: "extractResumeTextWithOpenAI",
+          requestType: "uploadResumeFile",
           model: "gpt-4o-mini",
         }
       );
@@ -976,20 +976,26 @@ export class AIProfileAnalysisAgent {
 
       // Use Responses API to have the model read the uploaded file and emit plaintext
       // Using a cost-effective model for extraction; downstream structured parsing will use GPT-5
-      const response: any = await (openai as any).responses.create({
-        model: "gpt-4o-mini",
-        input: [
-          {
-            role: "user",
-            content: [
-              { type: "input_text", text: extractionPrompt },
-              { type: "input_file", file_id: uploaded.id }
-            ]
-          }
-        ],
-        // Allow long outputs for multi-page resumes
-        max_output_tokens: 64000
-      });
+      const response: any = await wrapOpenAIRequest(
+        async () => await (openai as any).responses.create({
+          model: "gpt-4o-mini",
+          input: [
+            {
+              role: "user",
+              content: [
+                { type: "input_text", text: extractionPrompt },
+                { type: "input_file", file_id: uploaded.id }
+              ]
+            }
+          ],
+          // Allow long outputs for multi-page resumes
+          max_output_tokens: 64000
+        }),
+        {
+          requestType: "extractResumeTextWithOpenAI",
+          model: "gpt-4o-mini",
+        }
+      );
 
       // Best-effort extraction of output text across SDK versions
       let text = "";
@@ -1181,7 +1187,7 @@ A tough, fair recruiter who just finished an in-depth interview—credible, nuan
         {
           requestType: "generateComprehensiveProfile",
           model: "gpt-4o",
-          userId: userData?.id,
+          userId: userData?.id || null,
         }
       );
 
@@ -1720,7 +1726,7 @@ Return ONLY JSON:
         {
           requestType: "generateJobPracticeInterview",
           model: "gpt-4o",
-          userId: userData?.id,
+          userId: userData?.id || null,
         }
       );
       const result = JSON.parse(response.choices[0].message.content || '{}');
