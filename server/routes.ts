@@ -95,8 +95,8 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
           ? `${user.firstName} ${user.lastName}` 
           : user?.email || `User ${userId}`;
         
-        await airtableService.storeUserProfile(userName, generatedProfile, userId, user?.email);
-        console.log('📋 Successfully stored comprehensive profile in Airtable for user:', userId);
+        // await airtableService.storeUserProfile(userName, generatedProfile, userId, user?.email);
+        // console.log('📋 Successfully stored comprehensive profile in Airtable for user:', userId);
       } catch (error) {
         console.error('📋 Failed to store profile in Airtable:', error);
         // Don't fail the entire request if Airtable fails
@@ -4319,52 +4319,6 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
 
       // Save to local database first
       await storage.upsertApplicantProfile(dbProfileData);
-      
-      // Save comprehensive profile to Airtable for AI analysis and job matching
-      try {
-        console.log('📋 Saving comprehensive profile to Airtable for user:', userId);
-        
-        // Format the comprehensive profile data for Airtable
-        const comprehensiveProfileString = JSON.stringify({
-          personalDetails: profileData.personalDetails,
-          governmentId: profileData.governmentId,
-          linksPortfolio: profileData.linksPortfolio,
-          workEligibility: profileData.workEligibility,
-          languages: profileData.languages,
-          skills: profileData.skills,
-          education: profileData.education,
-          experience: profileData.experience,
-          certifications: profileData.certifications,
-          awards: profileData.awards,
-          jobTarget: profileData.jobTarget,
-          completionPercentage: dbProfileData.completionPercentage,
-          profileType: 'comprehensive',
-          lastUpdated: new Date().toISOString()
-        }, null, 2);
-        
-        // Use the existing airtableService to store the profile (handle partial data)
-        const profileName = dbProfileData.name || profileData.personalDetails?.firstName || `User ${userId}`;
-        await airtableService.storeUserProfile(
-          profileName,
-          {
-            type: 'comprehensive',
-            data: profileData,
-            summary: `Comprehensive profile for ${profileName} (${dbProfileData.completionPercentage}% complete)`,
-            completionPercentage: dbProfileData.completionPercentage,
-            skills: dbProfileData.skillsList || [],
-            education: profileData.education || [],
-            experience: profileData.experience || [],
-            targetRoles: profileData.jobTarget?.targetRoles || []
-          },
-          userId,
-          dbProfileData.email || undefined
-        );
-        
-        console.log('📋 Successfully saved comprehensive profile to Airtable for user:', userId);
-      } catch (airtableError) {
-        console.error('📋 Error saving comprehensive profile to Airtable:', airtableError);
-        // Continue execution even if Airtable fails - don't block the user
-      }
       
       console.log(`📋 Profile saved successfully for user ${userId} with ${dbProfileData.completionPercentage}% completion`);
       

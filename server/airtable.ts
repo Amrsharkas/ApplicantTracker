@@ -560,51 +560,6 @@ export class AirtableService {
     }
   }
 
-  async storeUserProfile(name: string, profileData: any, userId: string, email?: string): Promise<void> {
-    if (!base) {
-      console.warn('Airtable not configured, skipping profile storage');
-      return;
-    }
-
-    try {
-      const profileString = this.formatProfileForDisplay(profileData);
-      
-      // Prepare the fields object
-      const fields: any = {
-        'Name': name,
-        'User profile': profileString,
-        'User ID': userId,
-        "Profile Data": JSON.stringify(profileData || {})
-      };
-
-      // Add email if provided
-      if (email) {
-        fields['email'] = email;
-      }
-
-      // Try to store with all fields
-      try {
-        await base!(TABLE_NAME).create([{ fields }]);
-        console.log(`Successfully stored profile for ${name} (ID: ${userId}, Email: ${email || 'N/A'}) in Airtable`);
-      } catch (userIdError) {
-        // If some fields don't exist, try with minimal fields
-        console.warn('Some fields not found, trying with minimal fields:', userIdError.message);
-        await base!(TABLE_NAME).create([
-          {
-            fields: {
-              'Name': name,
-              'User profile': profileString
-            }
-          }
-        ]);
-        console.log(`Successfully stored profile for ${name} in Airtable (minimal fields)`);
-      }
-    } catch (error) {
-      console.error('Error storing profile in Airtable:', error);
-      throw new Error('Failed to store profile in Airtable');
-    }
-  }
-
   // Update existing job applications with user email addresses
   async updateJobApplicationsWithEmails(): Promise<void> {
     if (!jobApplicationsBase) {
