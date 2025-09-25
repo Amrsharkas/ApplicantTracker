@@ -1278,57 +1278,52 @@ export class AirtableService {
   }
 
   async getAllJobPostings(): Promise<AirtableJobPosting[]> {
-    if (!jobPostingsBase) {
-      console.warn('Job postings base not configured');
-      return [];
-    }
-
     try {
-      const records = await jobPostingsBase('Table 1').select({
-        maxRecords: 100,
-        sort: [{field: 'Date Posted', direction: 'desc'}]
-      }).firstPage();
+      // Import the storage module to access database
+      const { storage } = await import('./storage');
+      const { db } = await import('./db');
+      const { jobs } = await import('@shared/schema');
+      const { eq, desc } = await import('drizzle-orm');
 
-      const jobPostings: AirtableJobPosting[] = [];
+      // Query all active jobs from the database
+      const jobsData = await db
+        .select()
+        .from(jobs)
+        .orderBy(desc(jobs.postedAt));
 
-      records.forEach((record) => {
-        const fields = record.fields as any;
-        
-        // Find field names dynamically to handle different naming conventions
-        const fieldKeys = Object.keys(fields);
-        const titleField = fieldKeys.find(key => 
-          key.toLowerCase().includes('title') || 
-          key.toLowerCase().includes('job')
-        );
-        const descField = fieldKeys.find(key => 
-          key.toLowerCase().includes('description')
-        );
-        
-        const jobTitle = titleField ? fields[titleField] : 'Untitled Position';
-        const jobDescription = descField ? fields[descField] : 'No description available';
-        
-        const jobPosting: AirtableJobPosting = {
-          recordId: record.id,
-          jobTitle: jobTitle,
-          jobDescription: jobDescription,
-          companyName: fields['Company Name'] || fields['Company'] || 'Unknown Company',
-          location: fields['Location'] || 'Remote',
-          salaryRange: fields['Salary Range'] || fields['Salary'] || undefined,
-          employmentType: fields['Employment Type'] || fields['Job type'] || fields['Job Type'] || 'Full-time',
-          experienceLevel: fields['Experience Level'] || 'Mid Level',
-          skills: fields['Skills'] ? (Array.isArray(fields['Skills']) ? fields['Skills'] : fields['Skills'].split(',').map((s: string) => s.trim())) : [],
-          postedDate: fields['Posted Date'] || fields['Date Posted'] || fields['Date'] || new Date().toISOString(),
-          employerQuestions: fields['Employer Questions'] || undefined,
-          aiPrompt: fields['AI Prompt'] || fields['aiPrompt'] || fields['Ai Prompt'] || undefined
+      console.log(`📋 Found ${jobsData.length} active job postings in database`);
+
+      // Transform database records to match AirtableJobPosting interface
+      const jobPostings: AirtableJobPosting[] = jobsData.map((job: any) => {
+        // Format salary range from min/max values
+        let salaryRange: string | undefined;
+        if (job.salaryMin && job.salaryMax) {
+          salaryRange = `$${job.salaryMin.toLocaleString()} - $${job.salaryMax.toLocaleString()}`;
+        } else if (job.salaryMin) {
+          salaryRange = `$${job.salaryMin.toLocaleString()}+`;
+        } else if (job.salaryMax) {
+          salaryRange = `Up to $${job.salaryMax.toLocaleString()}`;
+        }
+
+        return {
+          recordId: job.id.toString(),
+          jobTitle: job.title,
+          jobDescription: job.description,
+          companyName: job.company,
+          location: job.location || 'Remote',
+          salaryRange: salaryRange,
+          employmentType: job.jobType || 'Full-time',
+          experienceLevel: job.experienceLevel || 'Mid Level',
+          skills: job.skills || [],
+          postedDate: job.postedAt?.toISOString() || new Date().toISOString(),
+          employerQuestions: undefined, // Not stored in database
+          aiPrompt: undefined // Not stored in database
         };
-
-        jobPostings.push(jobPosting);
       });
 
-      console.log(`📋 Found ${jobPostings.length} job postings in platojobpostings table`);
       return jobPostings;
     } catch (error) {
-      console.error('Error fetching job postings from Airtable:', error);
+      console.error('Error fetching job postings from database:', error);
       return [];
     }
   }
