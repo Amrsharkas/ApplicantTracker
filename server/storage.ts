@@ -129,7 +129,8 @@ export class DatabaseStorage implements IStorage {
     const [profile] = await db
       .select()
       .from(applicantProfiles)
-      .where(eq(applicantProfiles.userId, userId));
+      .where(eq(applicantProfiles.userId, userId))
+      .orderBy(desc(applicantProfiles.id));
     return profile;
   }
 

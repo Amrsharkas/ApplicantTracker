@@ -503,6 +503,115 @@ export type ResumeUpload = typeof resumeUploads.$inferSelect;
 export type OpenAIRequest = typeof openaiRequests.$inferSelect;
 export type InsertOpenAIRequest = typeof openaiRequests.$inferInsert;
 
+// Airtable replacement tables
+export const airtableUserProfiles = pgTable("airtable_user_profiles", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: varchar("name").notNull(),
+  userId: varchar("user_id").unique().notNull(),
+  email: varchar("email").notNull(),
+  phone: varchar("phone"),
+  professionalSummary: text("professional_summary"),
+  workExperience: jsonb("work_experience"),
+  education: jsonb("education"),
+  skills: text("skills").array(),
+  interviewScore: integer("interview_score"),
+  salaryExpectation: varchar("salary_expectation"),
+  experienceLevel: varchar("experience_level"),
+  profilePicture: varchar("profile_picture"),
+  location: varchar("location"),
+  age: integer("age"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const airtableJobPostings = pgTable("airtable_job_postings", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  jobTitle: varchar("job_title").notNull(),
+  jobId: varchar("job_id").unique().notNull(),
+  jobDescription: text("job_description").notNull(),
+  datePosted: timestamp("date_posted").defaultNow(),
+  company: varchar("company").notNull(),
+  jobType: varchar("job_type"),
+  salary: varchar("salary"),
+  salaryMin: integer("salary_min"),
+  salaryMax: integer("salary_max"),
+  location: varchar("location"),
+  employerQuestions: text("employer_questions").array(),
+  aiPrompt: text("ai_prompt"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const airtableJobApplications = pgTable("airtable_job_applications", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  applicantName: varchar("applicant_name").notNull(),
+  applicantUserId: varchar("applicant_user_id").notNull(),
+  applicantEmail: varchar("applicant_email").notNull(),
+  jobTitle: varchar("job_title").notNull(),
+  jobId: varchar("job_id").notNull(),
+  company: varchar("company").notNull(),
+  userProfile: jsonb("user_profile"),
+  notes: text("notes"),
+  status: varchar("status").default("applied"),
+  applicationDate: timestamp("application_date").defaultNow(),
+  jobDescription: text("job_description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const airtableJobMatches = pgTable("airtable_job_matches", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: varchar("name").notNull(),
+  userId: varchar("user_id").notNull(),
+  jobTitle: varchar("job_title").notNull(),
+  jobDescription: text("job_description"),
+  companyName: varchar("company_name").notNull(),
+  jobId: varchar("job_id").notNull(),
+  interviewDate: timestamp("interview_date"),
+  interviewTime: varchar("interview_time"),
+  interviewLink: text("interview_link"),
+  matchScore: integer("match_score"),
+  status: varchar("status").default("pending"),
+  token: varchar("token"), // Add token field for interview initiation
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Type definitions for Airtable replacement tables
+export type AirtableUserProfile = typeof airtableUserProfiles.$inferSelect;
+export type InsertAirtableUserProfile = typeof airtableUserProfiles.$inferInsert;
+export type AirtableJobPosting = typeof airtableJobPostings.$inferSelect;
+export type InsertAirtableJobPosting = typeof airtableJobPostings.$inferInsert;
+export type AirtableJobApplication = typeof airtableJobApplications.$inferSelect;
+export type InsertAirtableJobApplication = typeof airtableJobApplications.$inferInsert;
+export type AirtableJobMatch = typeof airtableJobMatches.$inferSelect;
+export type InsertAirtableJobMatch = typeof airtableJobMatches.$inferInsert;
+
+// Schemas for Airtable replacement tables
+export const insertAirtableUserProfileSchema = createInsertSchema(airtableUserProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAirtableJobPostingSchema = createInsertSchema(airtableJobPostings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAirtableJobApplicationSchema = createInsertSchema(airtableJobApplications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAirtableJobMatchSchema = createInsertSchema(airtableJobMatches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Additional types for compatibility
 export type Organization = typeof organizations.$inferSelect;
 export type Candidate = typeof candidates.$inferSelect;
