@@ -16,11 +16,11 @@ interface JobSpecificInterviewOptionsModalProps {
   isOpen: boolean;
   onClose: () => void;
   job: JobSummary | null;
-  onConfirm: (opts: { mode: 'voice'; language: 'english' | 'arabic' }) => Promise<void> | void;
+  onConfirm: (opts: { mode: 'text' | 'voice'; language: 'english' | 'arabic' }) => Promise<void> | void;
 }
 
 export function JobSpecificInterviewOptionsModal({ isOpen, onClose, job, onConfirm }: JobSpecificInterviewOptionsModalProps) {
-  const [mode, setMode] = useState<'voice'>('voice');
+  const [mode, setMode] = useState<'text' | 'voice'>('text');
   const [language, setLanguage] = useState<'english' | 'arabic'>('english');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -52,10 +52,16 @@ export function JobSpecificInterviewOptionsModal({ isOpen, onClose, job, onConfi
 
           <div className={isSubmitting ? 'opacity-60 pointer-events-none' : ''}>
             <div className="text-sm font-medium mb-2">Interview style</div>
-            <div className="flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3 bg-blue-50 border-blue-200">
-              <RadioGroupItem value="voice" id="mode-voice" checked={true} disabled={true} />
-              <Label htmlFor="mode-voice">Voice Interview</Label>
-            </div>
+            <RadioGroup value={mode} onValueChange={(v) => setMode(v as any)} className="grid grid-cols-2 gap-3">
+              <div className="flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3">
+                <RadioGroupItem value="text" id="mode-text" />
+                <Label htmlFor="mode-text">Text</Label>
+              </div>
+              <div className="flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3">
+                <RadioGroupItem value="voice" id="mode-voice" />
+                <Label htmlFor="mode-voice">Voice</Label>
+              </div>
+            </RadioGroup>
           </div>
 
           <div className={isSubmitting ? 'opacity-60 pointer-events-none' : ''}>
