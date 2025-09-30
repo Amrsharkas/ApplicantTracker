@@ -81,6 +81,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const queryClient = useQueryClient();
   const { t, isRTL } = useLanguage();
 
+  // Debug: Log the environment variable value and its type
+  const enableTextInterviews = import.meta.env.VITE_ENABLE_TEXT_INTERVIEWS;
+  console.log('VITE_ENABLE_TEXT_INTERVIEWS:', enableTextInterviews, typeof enableTextInterviews);
+  console.log('enableTextInterviews === "true":', enableTextInterviews === 'true');
+
   // Check resume requirement
   const { hasResume, requiresResume, isLoading: isLoadingResume } = useResumeRequirement();
 
@@ -1225,13 +1230,13 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         </p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card 
+      <div className={`grid ${enableTextInterviews === 'true' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+        <Card
           className={`transition-colors ${
-            isStartingInterview 
-              ? 'opacity-50 cursor-not-allowed' 
+            isStartingInterview
+              ? 'opacity-50 cursor-not-allowed'
               : 'cursor-pointer hover:bg-accent/50'
-          }`} 
+          }`}
           onClick={isStartingInterview ? undefined : startVoiceInterview}
         >
           <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
@@ -1243,40 +1248,42 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             <div className="text-center">
               <h4 className="font-medium">{t('voiceInterview') || 'Voice Interview'}</h4>
               <p className="text-sm text-muted-foreground">
-                {isStartingInterview && mode === 'voice' 
-                  ? t('startingVoiceInterview') || 'Starting voice interview...' 
+                {isStartingInterview && mode === 'voice'
+                  ? t('startingVoiceInterview') || 'Starting voice interview...'
                   : t('speakNaturally') || 'Speak naturally with the AI interviewer'
                 }
               </p>
             </div>
           </CardContent>
         </Card>
-        
-        <Card 
-          className={`transition-colors ${
-            isStartingInterview 
-              ? 'opacity-50 cursor-not-allowed' 
-              : 'cursor-pointer hover:bg-accent/50'
-          }`} 
-          onClick={isStartingInterview ? undefined : startTextInterview}
-        >
-          <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
-            {isStartingInterview && mode === 'text' ? (
-              <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <MessageCircle className="h-8 w-8 text-primary" />
-            )}
-            <div className="text-center">
-              <h4 className="font-medium">{t('textInterview') || 'Text Interview'}</h4>
-              <p className="text-sm text-muted-foreground">
-                {isStartingInterview && mode === 'text' 
-                  ? 'Preparing interview questions...' 
-                  : 'Type your responses at your own pace'
-                }
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+
+        {enableTextInterviews === 'true' && (
+          <Card
+            className={`transition-colors ${
+              isStartingInterview
+                ? 'opacity-50 cursor-not-allowed'
+                : 'cursor-pointer hover:bg-accent/50'
+            }`}
+            onClick={isStartingInterview ? undefined : startTextInterview}
+          >
+            <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
+              {isStartingInterview && mode === 'text' ? (
+                <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <MessageCircle className="h-8 w-8 text-primary" />
+              )}
+              <div className="text-center">
+                <h4 className="font-medium">{t('textInterview') || 'Text Interview'}</h4>
+                <p className="text-sm text-muted-foreground">
+                  {isStartingInterview && mode === 'text'
+                    ? 'Preparing interview questions...'
+                    : 'Type your responses at your own pace'
+                  }
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
       
       {currentSession?.interviewType !== 'job-practice' && (
