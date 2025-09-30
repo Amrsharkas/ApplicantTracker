@@ -9,8 +9,8 @@ import { employerQuestionService } from "./employerQuestions";
 import { ObjectStorageService } from "./objectStorage";
 import { ResumeService } from "./resumeService";
 import multer from "multer";
-import { z } from "zod";
-import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests } from "@shared/schema";
+import { string, z } from "zod";
+import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, jobs } from "@shared/schema";
 // Dynamic import for pdf-parse will be used when needed
 import { db } from "./db";
 import { applicantProfiles, interviewSessions, resumeUploads, jobMatches, applications, sessions, users } from "@shared/schema";
@@ -48,7 +48,7 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
   // Check if AI profile already generated
   if (updatedProfile?.aiProfileGenerated) {
     console.log(`📋 AI profile already generated for user ${userId}, skipping...`);
-    return updatedProfile.aiProfile;
+    // return updatedProfile.aiProfile;
   }
 
   // Create a promise for this profile generation
@@ -83,7 +83,8 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
         aiProfile: generatedProfile,
         aiProfileGenerated: true,
         summary: generatedProfile.summary,
-        skillsList: generatedProfile.skills
+        skillsList: generatedProfile.skills,
+        jobId: job?.id
       });
 
       // Calculate job matches
@@ -551,15 +552,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Extract user information from the job match
       const userId = jobMatch.userId;
+
+      // Get the resume profile to extract the email
+      let resumeProfile;
+      try {
+        resumeProfile = await localDatabaseService.getUserProfile(userId);
+        console.log(`📄 Retrieved resume profile for user ID: ${userId}`);
+      } catch (profileError) {
+        console.warn('Failed to retrieve resume profile:', profileError);
+      }
+
       let user = await storage.getUser(userId);
 
+      
       // If user doesn't exist, create one (this should not happen normally, but handle it)
       if (!user) {
         try {
           console.log(`🔍 Creating new user for job match user ID: ${userId}`);
 
-          // Generate a unique email for this user
-          const email = `interview_${userId}@candidate.local`;
+          // Use email from resume profile if available, otherwise generate a unique email
+          const email = resumeProfile?.email || `interview_${userId}@candidate.local`;
+
           const scryptAsync = promisify(scrypt);
           const rawPassword = randomBytes(16).toString('hex');
           const salt = randomBytes(16).toString('hex');
@@ -570,13 +583,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             id: userId,
             email,
             password: hashedPassword,
-            firstName: jobMatch.name?.split(' ')[0] || 'Interview',
-            lastName: jobMatch.name?.split(' ').slice(1).join(' ') || 'Candidate',
+            firstName: resumeProfile?.name?.split(' ')[0] || jobMatch.name?.split(' ')[0] || 'Interview',
+            lastName: resumeProfile?.name?.split(' ').slice(1).join(' ') || jobMatch.name?.split(' ').slice(1).join(' ') || 'Candidate',
             username: `candidate_${userId}_${Math.random().toString(36).substr(2, 9)}`,
             role: 'applicant'
           });
 
-          console.log(`✅ Created new user for job match: ${user.id}`);
+          console.log(`✅ Created new user for job match: ${user.id} with email: ${email}`);
 
         } catch (createError) {
           console.error('Error creating user for job match:', createError);
@@ -598,15 +611,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!profile) {
           profile = await storage.upsertApplicantProfile({
             userId: user.id,
-            name: jobMatch.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-            email: user.email
+            name: resumeProfile?.name || jobMatch.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+            email: resumeProfile?.email || user.email
           } as any);
-          console.log(`✅ Created applicant profile for user: ${user.id}`);
+          console.log(`✅ Created applicant profile for user: ${user.id} with email: ${resumeProfile?.email || user.email}`);
         }
       } catch (profileError) {
         console.warn('Failed to create/update applicant profile:', profileError);
       }
 
+      // Create applicant profile from the file if fileId is available
+      if (resumeProfile?.fileId) {
+        try {
+          console.log(`📄 Found OpenAI file_id on resume profile: ${resumeProfile.fileId}`);
+
+          // Extract text via OpenAI file_id
+          let resumeContent = await aiProfileAnalysisAgent.extractResumeTextFromOpenAIFileId(resumeProfile.fileId.trim());
+          resumeContent = sanitizeTextForDatabase(resumeContent);
+
+          if (resumeContent && resumeContent.trim().length >= 100) {
+            // Parse and map to profile
+            const parsedResumeData = await aiInterviewService.parseResumeForProfile(resumeContent);
+            const profileData = mapResumeDataToProfile(parsedResumeData, user.id);
+            const existingProfile = await storage.getApplicantProfile(user.id);
+            const mergedProfile = {
+              ...existingProfile,
+              ...profileData,
+              resumeContent: resumeContent.substring(0, 10000),
+              updatedAt: new Date(),
+              completionPercentage: calculateProfileCompletion(profileData)
+            };
+
+            const updatedProfile = await storage.upsertApplicantProfile(mergedProfile);
+            await storage.updateProfileCompletion(user.id);
+
+            // Store a resume record for tracking
+            try {
+              const resumeRecord = await storage.createResumeUpload({
+                userId: user.id,
+                filename: `openai_${resumeProfile.fileId}.txt`,
+                originalName: `openai_file_${resumeProfile.fileId}`,
+                filePath: `/openai/${resumeProfile.fileId}`,
+                fileSize: resumeContent.length,
+                mimeType: 'text/plain',
+                extractedText: resumeContent,
+                aiAnalysis: parsedResumeData
+              } as any);
+              await storage.setActiveResume(user.id, (resumeRecord as any).id);
+            } catch (resumeErr) {
+              console.warn('Failed to create resume record from OpenAI file_id:', resumeErr);
+            }
+
+            console.log('✅ Profile auto-populated from OpenAI file before redirect');
+          } else {
+            console.warn('⚠️ Resume content from OpenAI file_id was empty or too short; skipping auto-population');
+          }
+        } catch (fileError) {
+          console.warn('Failed to process resume from file_id:', fileError);
+        }
+      }
 
       // Update the job match to link it to the user (this replaces the Airtable user_id update)
       try {
@@ -1871,6 +1934,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const job = (sessionData?.context && sessionData.context.job) || {};
 
+        const jobMatchingId = job.recordId ?? null;
+
         // Special handling for job-specific practice interviews
         if (interviewType === 'job-practice') {
           try {
@@ -1949,11 +2014,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Since we're no longer using Airtable, we'll update the local database instead
             // Find and update job match record with interview score and status
             try {
-              // Find job matches for this user and job
-              const jobMatches = await localDatabaseService.getJobMatchesByUser(userId);
-              const relevantMatch = jobMatches.find(match =>
-                match.jobTitle === jobTitle && match.company === companyName
-              );
+              const [relevantMatch] = await db
+                .select()
+                .from(airtableJobMatches)
+                .where(eq(airtableJobMatches.id, jobMatchingId))
+                .limit(1);
 
               if (relevantMatch) {
                 await localDatabaseService.updateJobMatch(relevantMatch.id, {
@@ -2734,7 +2799,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let jobMatches = await localDatabaseService.getJobMatchesByUser(userId);
 
       // Filter by status if specified
-      if (statusFilter === 'pending' || statusFilter === 'completed') {
+      if (statusFilter) {
         jobMatches = jobMatches.filter(match => match.status === statusFilter);
       }
 

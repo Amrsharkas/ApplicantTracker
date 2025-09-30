@@ -44,7 +44,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
   const [interviewMode, setInterviewMode] = useState<'text' | 'voice'>('text');
   const [interviewLanguage, setInterviewLanguage] = useState<'english' | 'arabic'>('english');
 
-  const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
+  const [activeTab, setActiveTab] = useState<'invited' | 'completed'>('invited');
 
   const { data: items = [], refetch, isLoading, error } = useQuery({
     queryKey: ["/api/job-specific-ai-interviews", activeTab],
@@ -133,7 +133,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
           <div className="px-4 pt-4">
             <TabsList>
-              <TabsTrigger value="pending">Pending interviews</TabsTrigger>
+              <TabsTrigger value="invited">Pending interviews</TabsTrigger>
               <TabsTrigger value="completed">Finished interviews</TabsTrigger>
             </TabsList>
           </div>
@@ -151,7 +151,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
           </div>
 
           {/* List Area */}
-          <TabsContent value="pending" className="flex-1 overflow-y-auto p-4 min-h-0 m-0">
+          <TabsContent value="invited" className="flex-1 overflow-y-auto p-4 min-h-0 m-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

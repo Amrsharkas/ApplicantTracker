@@ -397,6 +397,7 @@ export const resumeProfiles = pgTable("resume_profiles", {
   certifications: jsonb("certifications").$type<string[]>(),
   languages: jsonb("languages").$type<string[]>(),
   resumeText: text("resume_text").notNull(),
+  fileId: varchar("file_id"), // OpenAI file_id for resume processing
   organizationId: varchar("organization_id"),
   createdBy: varchar("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -520,6 +521,7 @@ export const airtableUserProfiles = pgTable("airtable_user_profiles", {
   profilePicture: varchar("profile_picture"),
   location: varchar("location"),
   age: integer("age"),
+  fileId: varchar("file_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
