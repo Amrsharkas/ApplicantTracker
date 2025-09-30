@@ -10,7 +10,7 @@ import { ObjectStorageService } from "./objectStorage";
 import { ResumeService } from "./resumeService";
 import multer from "multer";
 import { string, z } from "zod";
-import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, jobs } from "@shared/schema";
+import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, airtableJobApplications, jobs } from "@shared/schema";
 // Dynamic import for pdf-parse will be used when needed
 import { db } from "./db";
 import { applicantProfiles, interviewSessions, resumeUploads, jobMatches, applications, sessions, users } from "@shared/schema";
@@ -1914,6 +1914,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/interview/respond', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const user = req.user;
+
       const { sessionId, question, answer } = req.body;
 
       const session = await storage.getInterviewSession(userId);
@@ -2011,15 +2013,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               rationale = parsedAny.rationale;
             }
 
+            
+            const [relevantMatch] = await db
+              .select()
+              .from(airtableJobMatches)
+              .where(eq(airtableJobMatches.id, jobMatchingId))
+              .limit(1);
+
             // Since we're no longer using Airtable, we'll update the local database instead
             // Find and update job match record with interview score and status
             try {
-              const [relevantMatch] = await db
-                .select()
-                .from(airtableJobMatches)
-                .where(eq(airtableJobMatches.id, jobMatchingId))
-                .limit(1);
-
               if (relevantMatch) {
                 await localDatabaseService.updateJobMatch(relevantMatch.id, {
                   score,
@@ -2034,6 +2037,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.warn('⚠️ Error updating local job match score/status:', e);
             }
 
+            // Create new record in airtable_job_applications after job practice interview completion
+            try {
+              const userProfile = await storage.getApplicantProfile(userId);
+              const userName = userProfile?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Applicant';
+
+
+              // Prepare user profile data for the application
+              const profileData = {
+                name: userName,
+                email: user?.email || '',
+                phone: userProfile?.phone || '',
+                professionalSummary: userProfile?.summary || '',
+                workExperience: userProfile?.workExperiences || [],
+                education: userProfile?.degrees || [],
+                skills: userProfile?.skillsData?.skills || [],
+                interviewScore: score,
+                interviewComments: rationale || '',
+                location: userProfile?.country ? `${userProfile?.city || ''}, ${userProfile.country}`.replace(/^, |, $/g, '') : '',
+                experienceLevel: userProfile?.careerLevel || '',
+              };
+
+              const jobApplicationData = {
+                applicantName: userName,
+                applicantUserId: userId,
+                applicantEmail: user?.email || '',
+                jobTitle: job.jobTitle || job.title || '',
+                jobId: relevantMatch?.jobId || null,
+                company: job.companyName || job.company || '',
+                userProfile: profileData,
+                notes: `Interview completed with score: ${score}${rationale ? `\n${rationale}` : ''}`,
+                status: 'interview_completed',
+                jobDescription: job.jobDescription || job.description || '',
+              };
+
+              await localDatabaseService.createJobApplication(jobApplicationData);
+              console.log('✅ Created new job application record after interview completion:', job.jobTitle);
+            } catch (applicationError) {
+              console.warn('⚠️ Error creating job application record:', applicationError);
+              // Continue with flow even if application creation fails
+            }
+
+  
             // Mark session completed
             await storage.updateInterviewSession(session.id, {
               sessionData: { ...sessionData, isComplete: true },
