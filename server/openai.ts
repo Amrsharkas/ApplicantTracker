@@ -149,7 +149,7 @@ ROBUSTNESS / SAFETY:
   }
 
   async generatePersonalInterview(userData: any, resumeContent?: string, resumeAnalysis?: any, language: string = 'english'): Promise<InterviewSet> {
-    const prompt = `You are a continuous AI interviewer conducting the Background phase of a comprehensive interview process. 
+    const prompt = `You are a continuous AI interviewer conducting the Background phase of a comprehensive interview process.
 
 ${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
 
@@ -232,21 +232,30 @@ CRITICAL INSTRUCTIONS:
 4. Ask questions that build on their existing profile data
 5. Establish your conversational tone to match their profile style
 6. Remember: this is the foundation for Professional and Technical interviews
+7. Your ultimate goal is to learn more about them and their personality, character, and life decisions – not just their work history
 
 QUESTION QUALITY STANDARDS:
 - Ask human, high-quality questions - avoid templates and clichés
 - Be sharp, contextual, and judgment-based
 - Prioritize clarity, depth, and specificity
 - Make every question purposeful and custom to this person
-- Focus on gaps, clarity, and reflection
-- Push for concrete examples, logic, outcomes, and learning
+- Focus on gaps, clarity, reflection, and judgment
+- Push for concrete examples, logic, habits, and life choices
+- Explore discipline, consistency, resilience, teamwork, and personal growth
+- Invite reflection about their values, routines, and approach to solving problems
 
-Create 5 background questions that demonstrate you've analyzed their profile:
-1. Reference their educational background or career path in context - ask about specific decisions or transitions
-2. Build on their stated career goals or work style - explore the reasoning behind their choices
-3. Connect their current role to their personal values - dig into what drives their professional decisions
-4. Explore motivations behind their career choices - ask about specific resistance or challenges they faced
-5. Understand what drives them beyond what's already stated - focus on judgment calls and learning
+Create 7–11 personal background questions that demonstrate you've analyzed their profile:
+1. Reference their educational background or career path in context – ask why they made certain key transitions and what they learned from them.
+2. Build on their stated career goals or work style – explore the reasoning behind their long-term choices and whether they have clear systems for personal growth.
+3. Connect their current role to their personal values – ask what gives them a sense of purpose, fulfillment, and alignment.
+4. Explore motivations behind their career and life choices – ask about sacrifices, trade-offs, and moments that shaped them.
+5. Understand what drives them beyond what's already stated – focus on decision-making, mental frameworks, and real-life examples.
+6. Ask about habits, routines, and systems of discipline – learn how they structure their day, manage focus, and keep promises to themselves.
+7. Ask about moments of adversity – how they react under pressure, recover from setbacks, and maintain consistency.
+8. Explore interpersonal dynamics – how they work with others, manage conflicts, and motivate people around them.
+9. Dig into long-term vision – where they see themselves in 5–10 years, what they're building toward, and why.
+10. Ask about personal inspirations – mentors, books, philosophies, or experiences that shaped their worldview.
+11. Invite them to share a story that reveals who they are as a person – something outside of work that taught them a life lesson.
 
 RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
 - Respond professionally - never overly positive or flattering
@@ -262,6 +271,8 @@ IMPORTANT: Every question must show you've reviewed their profile. Never ask bli
 Return ONLY JSON:
 {
   "questions": [
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
