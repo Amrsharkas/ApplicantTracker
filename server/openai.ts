@@ -140,11 +140,11 @@ ROBUSTNESS / SAFETY:
 
   async generateComprehensiveInterviewSets(userData: any, resumeContent?: string): Promise<InterviewSet[]> {
     // Generate all three interview sets: personal, professional, and technical
-    
+
     const personalSet = await this.generatePersonalInterview(userData, resumeContent);
     const professionalSet = await this.generateProfessionalInterview(userData, resumeContent);
     const technicalSet = await this.generateTechnicalInterview(userData, resumeContent);
-    
+
     return [personalSet, professionalSet, technicalSet];
   }
 
@@ -513,125 +513,49 @@ Return ONLY JSON:
     }
   }
 
-  async generateTechnicalInterview(userData: any, resumeContent?: string, previousInterviewData?: any, resumeAnalysis?: any, language: string = 'english'): Promise<InterviewSet> {
+  async generateTechnicalInterview(userData: any, resumeContent?: string, language: string = 'english'): Promise<InterviewSet> {
     const userRole = userData?.currentRole || 'professional';
     const userField = this.determineUserField(userData, resumeContent);
-    const contextInsights = previousInterviewData?.insights || '';
-    const conversationStyle = previousInterviewData?.conversationStyle || '';
-    const keyThemes = previousInterviewData?.keyThemes || [];
-    const previousQuestions = previousInterviewData?.previousQuestions || [];
     
     const prompt = `You are completing the final interview phase as the same AI interviewer. You have comprehensive knowledge of this candidate's full profile AND all previous interview answers.
 
 ${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
 
 COMPREHENSIVE CANDIDATE PROFILE DATA:
-=== PERSONAL DETAILS ===
-${userData?.name ? `Full Name: ${userData.name}` : ''}
-${userData?.email ? `Email: ${userData.email}` : ''}
-${userData?.phone ? `Phone: ${userData.phone}` : ''}
-${userData?.birthdate ? `Date of Birth: ${new Date(userData.birthdate).toLocaleDateString()}` : ''}
-${userData?.gender ? `Gender: ${userData.gender}` : ''}
-${userData?.nationality ? `Nationality: ${userData.nationality}` : ''}
-${userData?.maritalStatus ? `Marital Status: ${userData.maritalStatus}` : ''}
-${userData?.dependents ? `Dependents: ${userData.dependents}` : ''}
-${userData?.militaryStatus ? `Military Status: ${userData.militaryStatus}` : ''}
-
-=== LOCATION & MOBILITY ===
-${userData?.country ? `Country: ${userData.country}` : ''}
-${userData?.city ? `City: ${userData.city}` : ''}
-${userData?.willingToRelocate !== undefined ? `Willing to Relocate: ${userData.willingToRelocate ? 'Yes' : 'No'}` : ''}
-${userData?.preferredWorkCountries?.length ? `Preferred Work Countries: ${userData.preferredWorkCountries.join(', ')}` : ''}
-${userData?.workplaceSettings ? `Work Arrangement Preference: ${userData.workplaceSettings}` : ''}
-
-=== ONLINE PRESENCE & PORTFOLIO ===
-${userData?.linkedinUrl ? `LinkedIn: ${userData.linkedinUrl}` : ''}
-${userData?.githubUrl ? `GitHub: ${userData.githubUrl}` : ''}
-${userData?.websiteUrl ? `Personal Website: ${userData.websiteUrl}` : ''}
-${userData?.facebookUrl ? `Facebook: ${userData.facebookUrl}` : ''}
-${userData?.twitterUrl ? `Twitter: ${userData.twitterUrl}` : ''}
-${userData?.instagramUrl ? `Instagram: ${userData.instagramUrl}` : ''}
-${userData?.youtubeUrl ? `YouTube: ${userData.youtubeUrl}` : ''}
-${userData?.otherUrls?.length ? `Other URLs: ${userData.otherUrls.join(', ')}` : ''}
-
-=== EDUCATION ===
-${userData?.currentEducationLevel ? `Current Education Level: ${userData.currentEducationLevel}` : ''}
-${userData?.degrees?.length ? `Degrees:\n${userData.degrees.map((deg: any) => `  • ${deg.degree} in ${deg.field || 'N/A'} from ${deg.institution} (${deg.startDate} - ${deg.endDate || 'Present'})${deg.gpa ? ` - GPA: ${deg.gpa}` : ''}`).join('\n')}` : ''}
-${userData?.highSchools?.length ? `High School Education:\n${userData.highSchools.map((hs: any) => `  • ${hs.institution} (${hs.startDate} - ${hs.endDate || 'Present'})`).join('\n')}` : ''}
-
-=== WORK EXPERIENCE ===
-${userData?.totalYearsOfExperience ? `Total Years of Experience: ${userData.totalYearsOfExperience}` : ''}
-${userData?.workExperiences?.length ? `Work Experience:\n${userData.workExperiences.map((exp: any) => `  • ${exp.position} at ${exp.company} (${exp.startDate} - ${exp.endDate || 'Present'})\n    Responsibilities: ${exp.responsibilities || 'N/A'}`).join('\n')}` : ''}
-
-=== SKILLS & LANGUAGES ===
-${userData?.skillsList?.length ? `Skills: ${userData.skillsList.join(', ')}` : ''}
-${userData?.languages?.length ? `Languages:\n${userData.languages.map((lang: any) => `  • ${lang.language}: ${lang.proficiency}${lang.certification ? ` (Certified: ${lang.certification})` : ''}`).join('\n')}` : ''}
-
-=== CERTIFICATIONS & TRAINING ===
-${userData?.certifications?.length ? `Certifications:\n${userData.certifications.map((cert: any) => `  • ${cert.name} by ${cert.issuer || 'N/A'} (${cert.issueDate}${cert.expiryDate ? ` - expires ${cert.expiryDate}` : ''})`).join('\n')}` : ''}
-${userData?.trainingCourses?.length ? `Training Courses:\n${userData.trainingCourses.map((course: any) => `  • ${course.name} by ${course.provider || 'N/A'}`).join('\n')}` : ''}
-
-=== CAREER GOALS & PREFERENCES ===
-${userData?.jobTitles?.length ? `Target Job Titles: ${userData.jobTitles.join(', ')}` : ''}
-${userData?.jobCategories?.length ? `Target Industries: ${userData.jobCategories.join(', ')}` : ''}
-${userData?.careerLevel ? `Career Level: ${userData.careerLevel}` : ''}
-${userData?.minimumSalary ? `Minimum Salary Expectation: ${userData.minimumSalary}` : ''}
-${userData?.jobTypes?.length ? `Preferred Job Types: ${userData.jobTypes.join(', ')}` : ''}
-${userData?.jobSearchStatus ? `Job Search Status: ${userData.jobSearchStatus}` : ''}
-
-=== ACHIEVEMENTS & SUMMARY ===
-${userData?.achievements ? `Notable Achievements: ${userData.achievements}` : ''}
-${userData?.summary ? `Professional Summary: ${userData.summary}` : ''}
-${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
-
-${resumeAnalysis ? `
-RESUME ANALYSIS - INTERVIEW GUIDANCE:
-Critical Areas to Explore: ${resumeAnalysis.interview_notes?.verification_points?.join(', ') || 'None identified'}
-Red Flags to Investigate: ${resumeAnalysis.interview_notes?.red_flags?.join(', ') || 'None identified'}
-Impressive Achievements to Validate: ${resumeAnalysis.interview_notes?.impressive_achievements?.join(', ') || 'None identified'}
-Skill Gaps to Probe: ${resumeAnalysis.interview_notes?.skill_gaps?.join(', ') || 'None identified'}
-Experience Inconsistencies: ${resumeAnalysis.interview_notes?.experience_inconsistencies?.join(', ') || 'None identified'}
-Career Progression Assessment: ${resumeAnalysis.interview_notes?.career_progression_notes?.join(', ') || 'Standard progression'}
-` : ''}
-
-${contextInsights}
-
-${conversationStyle}
-
-KEY THEMES FROM ALL PREVIOUS INTERVIEWS: ${keyThemes.join(', ')}
-
-QUESTIONS ALREADY ASKED (DO NOT REPEAT):
-${previousQuestions.map((q: string) => `- ${q}`).join('\n')}
+...
 
 CRITICAL INSTRUCTIONS:
-1. You are the SAME interviewer who knows their full profile AND all previous answers
-2. Reference specific details from their profile, background answers, AND professional answers
-3. Use phrases like "Based on your ${userRole} experience..." or "You mentioned in our earlier conversation..."
-4. DO NOT repeat any previously asked questions or themes
-5. DO NOT ask for information already in their profile
-6. Maintain the exact same tone and conversation style from the beginning
-7. Show complete memory of profile + all previous discussions
+1. You are the SAME interviewer with full memory of their profile and all previous answers
+2. Your questions must be technical, domain-specific, and deeply contextual
+3. Reference their specific tech stack, projects, and skills mentioned in their profile
+4. Build on themes from previous interviews - connect their technical skills to their professional experiences
+5. Use phrases like "In your role at ${userData?.previousCompany || 'your last company'}, you mentioned using..." or "Let's dig into the technical details of the project where you..."
+6. DO NOT repeat any previously asked questions
+7. Maintain the same neutral, professional tone
+8. Your goal is to assess technical depth, problem-solving skills, and real-world application of knowledge
+9. Go beyond theory – focus on how they actually execute, debug, optimize, and scale solutions
 
 QUESTION QUALITY STANDARDS:
-- Ask human, high-quality questions - avoid templates and clichés
-- Be sharp, contextual, and judgment-based
-- Ask deeper, not broader - dig into what's already been shared
-- Focus on gaps, clarity, and reflection - push for concrete examples, logic, outcomes, and learning
-- Be strategic and natural - sequence questions with logical flow
-- Use context smartly - reference past answers naturally without mentioning interview structure
+- Ask highly specific, scenario-based technical questions - avoid generic textbook questions
+- Be sharp, contextual, and judgment-based - test their decision-making process
+- Prioritize depth and specificity - push for concrete examples of how they solved a complex technical problem
+- Make every question purposeful and custom to this person's technical background
+- Focus on trade-offs, design choices, and debugging scenarios
+- Push for code examples, architectural diagrams, or step-by-step problem-solving logic
+- Include opportunities to test their ability to simplify complex ideas for non-technical people
 
-Create 11 technical questions for a ${userRole} in ${userField} that demonstrate total continuity:
-1. Reference their ${userData?.education || 'educational background'} - ask about specific technical decisions or trade-offs they had to make
-2. Connect their ${userData?.skills?.join(' and ') || 'technical skills'} - explore reasoning behind their technical approach choices
-3. Use their ${userData?.achievements || 'professional achievements'} - dig into specific resistance or obstacles they overcame
-4. Build on their stated ${userData?.careerGoals || 'career goals'} - ask about technical challenges they anticipate
-5. Test cognitive abilities through specific scenarios related to their ${userData?.yearsOfExperience || 'stated experience'} level
-6. Evaluate analytical thinking using concrete examples from their ${userData?.workStyle || 'work approach'} 
-7. Assess technical communication - ask them to explain complex concepts they've mentioned
-8. Test adaptability through specific technical challenges they've faced during career transitions
-9. Evaluate memory and processing using scenarios from their ${userData?.currentRole || 'professional'} context
-10. Challenge creative problem-solving with specific technical obstacles they've encountered
-11. Assess technical leadership using concrete examples from their management experiences discussed earlier
+Create 5–11 technical questions that assess deep expertise for a ${userRole} in ${userField}:
+1. Ask a deep-dive question about a core technology or methodology they claim expertise in – focus on an advanced or non-obvious aspect.
+2. Present a realistic, complex problem scenario related to their past projects and ask them to design or debug a solution step-by-step.
+3. Ask about a critical technical trade-off they had to make – explore what constraints existed, what options they considered, and how they measured success.
+4. Challenge them with a relevant system design or architecture question – test scalability, fault-tolerance, and performance considerations.
+5. Explore their debugging process – give them a subtle bug or performance issue and ask how they'd isolate and resolve it.
+6. Ask about security, reliability, or compliance considerations – how they ensure robustness in production environments.
+7. Explore optimization thinking – ask how they would improve efficiency or reduce cost in one of their previous solutions.
+8. Ask them to compare multiple technical approaches – explain when they'd use one over the other and why.
+9. Test their ability to work in constraints – limited time, legacy systems, or cross-team dependencies – and still deliver.
+10. Explore how they review and write code – what standards, documentation, and testing practices they follow.
+11. Ask them to explain a very complex technical concept from their work to a non-technical stakeholder, testing clarity and communication.
 
 RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
 - Respond professionally - never overly positive or flattering
@@ -639,18 +563,12 @@ RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
 - Never provide emotional reactions or value judgments
 - Don't evaluate how "good" an answer was - ask the next smart question
 - Maintain a calm, consistent tone - focused, observant, and neutral
-- Examples of good responses: "Thank you. Could you clarify how you prioritized tasks in that situation?" or "Got it. What was the biggest trade-off you had to make?"
-- Avoid: "That's amazing!" "Fantastic answer!" "Wow, that really shows how great you are!"
+- Examples of good responses: "Thank you. Could you walk me through the data model for that solution?" or "Interesting. What were the performance implications of that approach?"
+- Avoid: "That's brilliant!" "Perfect answer!" "Wow, you're a real expert!"
 
 Return ONLY JSON:
 {
   "questions": [
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
