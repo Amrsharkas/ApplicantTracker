@@ -15,8 +15,6 @@ import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUplo
 import { db } from "./db";
 import { applicantProfiles, interviewSessions, resumeUploads, jobMatches, applications, sessions, users } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
-import { scrypt, randomBytes } from "crypto";
-import { promisify } from "util";
 import { wrapOpenAIRequest } from "./openaiTracker";
 
 
@@ -573,20 +571,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Use email from resume profile if available, otherwise generate a unique email
           const email = resumeProfile?.email || `interview_${userId}@candidate.local`;
 
-          const scryptAsync = promisify(scrypt);
-          const rawPassword = randomBytes(16).toString('hex');
-          const salt = randomBytes(16).toString('hex');
-          const buf = (await scryptAsync(rawPassword, salt, 64)) as Buffer;
-          const hashedPassword = `${buf.toString('hex')}.${salt}`;
-
+          // Create user with empty password and flag for password setup
           user = await storage.createUser({
             id: userId,
             email,
-            password: hashedPassword,
+            password: '', // Empty password for now
             firstName: resumeProfile?.name?.split(' ')[0] || jobMatch.name?.split(' ')[0] || 'Interview',
             lastName: resumeProfile?.name?.split(' ').slice(1).join(' ') || jobMatch.name?.split(' ').slice(1).join(' ') || 'Candidate',
             username: `candidate_${userId}_${Math.random().toString(36).substr(2, 9)}`,
-            role: 'applicant'
+            role: 'applicant',
+            passwordNeedsSetup: true // Flag to indicate password needs to be set
           });
 
           console.log(`✅ Created new user for job match: ${user.id} with email: ${email}`);

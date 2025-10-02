@@ -37,6 +37,7 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").notNull().default("user"),
   isVerified: boolean("is_verified").notNull().default(false),
+  passwordNeedsSetup: boolean("password_needs_setup").notNull().default(false),
   verificationToken: varchar("verification_token"),
   resetPasswordToken: varchar("reset_password_token"),
   resetPasswordExpires: timestamp("reset_password_expires"),

@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
+import { PasswordSetupModal } from "@/components/PasswordSetupModal";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import AIInterviewInitiation from "@/pages/AIInterviewInitiation";
@@ -66,13 +67,51 @@ function Router() {
   );
 }
 
+function AppWithPasswordSetup() {
+  const { isAuthenticated, user } = useAuth();
+  const [showPasswordSetup, setShowPasswordSetup] = useState(false);
+
+  // Check if user needs password setup
+  useEffect(() => {
+    if (isAuthenticated && user?.passwordNeedsSetup) {
+      setShowPasswordSetup(true);
+    } else {
+      setShowPasswordSetup(false);
+    }
+  }, [isAuthenticated, user]);
+
+  const handlePasswordSetupSuccess = () => {
+    setShowPasswordSetup(false);
+    // Force a refetch to update the user data
+    queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+  };
+
+  const handleClose = () => {
+    // Only allow closing if user no longer needs password setup
+    if (!user?.passwordNeedsSetup) {
+      setShowPasswordSetup(false);
+    }
+  };
+
+  return (
+    <>
+      <Router />
+      <PasswordSetupModal
+        isOpen={showPasswordSetup}
+        onClose={handleClose}
+        onSuccess={handlePasswordSetupSuccess}
+      />
+    </>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <AppWithPasswordSetup />
         </TooltipProvider>
       </LanguageProvider>
     </QueryClientProvider>
