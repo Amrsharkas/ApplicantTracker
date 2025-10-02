@@ -1034,94 +1034,338 @@ export class AIProfileAnalysisAgent {
     userData: any,
     resumeContent: string | null,
     interviewResponses: InterviewResponse[],
+    resumeAnalysis?: any,
     jobDescription?: string
   ): Promise<GeneratedProfile> {
-    const conversationHistory = interviewResponses.map(qa => 
-      `Q: ${qa.question}\nA: ${qa.answer}`
-    ).join('\n\n');
+    const prompt = `You are an elite, world-class HR strategist and assessment analyst.
+You must produce the most detailed, evidence-based, brutally honest, employer-facing candidate profile possible.
 
-    const prompt = `You are a brutally honest professional analyst creating an employer-facing candidate profile. Your role is to be a tough, fair recruiter who has just completed an in-depth interview. You MUST be critical, evidence-based, and blunt—no promotional fluff.
+CRITICAL CONTEXT (READ FIRST):
+- This comprehensive profile is generated ONLY AFTER all three inputs are complete and available:
+  (1) the candidate's structured profile, (2) the full multi-phase interview transcript, and (3) the resume/CV analysis.
+- You MUST cross-reference across ALL THREE. If any input is missing/partial, explicitly say so, lower confidence accordingly,
+  and label any conclusions that rely on missing data as "provisional".
 
-🧩 CRITICAL ANALYSIS RULES:
-- Be brutally honest and grounded in evidence
-- Every strength MUST be followed by a "but" that points out what's lacking
-- Call out vague answers, contradictions, and unsupported claims
-- No sugarcoating or generic praise
-- Focus solely on what the candidate actually demonstrated vs. claimed
-- ${jobDescription ? 'Evaluate specifically for the target job - how well do their skills and experience match what this role requires?' : 'Assess general professional capabilities and readiness'}
+TONE & GOAL:
+- Mirror the candidate exactly as they are — no flattery, no unfair harshness — just precise truth, backed by evidence.
+- Write like a top HR director preparing a board-level dossier that will influence a hiring decision.
 
-📊 CANDIDATE DATA:
-${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
-${userData?.email ? `Email: ${userData.email}` : ''}
-${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
-${userData?.totalYearsOfExperience ? `Claimed Experience: ${userData.totalYearsOfExperience} years` : ''}
-${userData?.currentEducationLevel ? `Education: ${userData.currentEducationLevel}` : ''}
-${userData?.skillsList ? `Self-Reported Skills: ${Array.isArray(userData.skillsList) ? userData.skillsList.join(', ') : userData.skillsList}` : ''}
-${userData?.location ? `Location: ${userData.location}` : ''}
-${userData?.age ? `Age: ${userData.age}` : ''}
+---
 
-${resumeContent ? `📄 RESUME CONTENT:
-${resumeContent}
+### INPUT DATA
 
-` : ''}${jobDescription ? `🎯 JOB DESCRIPTION (Target Role):
-${jobDescription}
+CANDIDATE STRUCTURED PROFILE:
+${JSON.stringify(userData, null, 2)}
 
-` : ''}🎤 INTERVIEW RESPONSES (3 interviews: Background/Soft Skills, Professional/Experience, Technical/Problem Solving):
-${conversationHistory}
+RESUME ANALYSIS:
+${JSON.stringify(resumeAnalysis, null, 2)}
 
-📘 GENERATE BRUTALLY HONEST PROFILE IN JSON:
+INTERVIEW TRANSCRIPT:
+${interviewResponses.map((r: any) => `Q: ${r.question}\nA: ${r.answer}`).join('\n\n')}
+
+${jobDescription ? `TARGET JOB DESCRIPTION:
+${jobDescription}` : ''}
+
+---
+
+### GOLDEN PRINCIPLES
+
+1) Truth as a Mirror
+- Reflect the candidate as-is: not harsher, not softer.
+- Where evidence is thin/absent: write "This area lacks sufficient evidence."
+
+2) Evidence Anchoring
+- EVERY claim/score must cite evidence from: resume, interview quote, profile fact, OR explicitly "no evidence found".
+- If there is a contradiction, show BOTH sides with direct quotations and explain the conflict + impact.
+
+3) Scoring with Missing Percentages (Mandatory)
+- For EACH score (1–10) or percentage:
+  • Explain earned points (why they got them) WITH evidence.
+  • Explain lost points (what's missing/inadequate/contradictory) WITH evidence or "no evidence found".
+  • Include a "lostPercentageReasons" array that itemizes where the missing % went (reason + % share).
+  Example: "7/10 Communication → earned 7 for clear structure; lost 3 due to vague outcomes (2 pts) and filler words under pressure (1 pt)."
+
+4) Balanced Strengths & Weaknesses
+- Pair every strength with a realistic limiter.
+- Pair every weakness with a possible compensator (if any).
+
+5) Granular Breakdown & Employer Usefulness
+- Cover technical depth, soft skills, problem-solving, consistency, credibility, growth, culture fit, risks.
+- End each section with concrete employer actions or questions when relevant.
+
+6) Non-Speculation Rule
+- Do NOT invent facts or infer beyond the evidence. Label uncertainties. Lower confidence when inputs are missing.
+
+---
+
+### SCORING CALIBRATION RUBRIC (apply consistently)
+
+- 9–10: Expert-level, repeatedly evidenced, realistic, consistent, ready with minimal guidance.
+- 7–8: Strong, mostly evidenced, minor gaps, generally consistent; succeeds with normal onboarding.
+- 5–6: Adequate baseline, notable gaps or thin evidence; needs support and validation.
+- 3–4: Weak; significant missing skills/evidence; high risk; requires close supervision.
+- 0–2: Absent or contradicted; critical risk; not suitable without substantial remediation.
+
+When giving %: map from 10-point scale (e.g., 7/10 ≈ 70%), then allocate the "lost" % to explicit, itemized reasons.
+
+---
+
+### OUTPUT FORMAT (RETURN JSON ONLY — no extra text)
+
 {
-  "candidateSummary": "Max 3-5 lines: Honest overview evaluating their claims vs actual demonstration${jobDescription ? ' specifically for the target job' : ''}. Do NOT repeat what they said—evaluate it critically.",
+  "meta": {
+    "dataCoverage": {
+      "profileCoveragePercentage": number,   // % of key items supported by the structured profile
+      "interviewCoveragePercentage": number, // % supported by interview quotes
+      "resumeCoveragePercentage": number     // % supported by resume facts
+    },
+    "confidenceScore": {
+      "value": number, // 1–10
+      "justification": "Why this confidence based on coverage, contradictions, and evidence quality."
+    },
+    "missingInputs": ["List any missing/partial inputs, or empty array if complete"]
+  },
+
+  "candidateSummary": {
+    "executiveNote": "3–5 lines: role, experience level, defining takeaway (positive or negative), rooted in evidence.",
+    "overallVerdict": "One line for executives (e.g., 'Promising IC, risky for lead due to evidence gaps in budgeting.')"
+  },
+
   "keyStrengths": [
     {
-      "strength": "Specific strength clearly demonstrated",
-      "butCritique": "What's still lacking or unclear about this strength"
+      "strength": "Evidence-based strength.",
+      "supportingEvidence": "Direct quote/resume line/profile fact.",
+      "butCritique": "Limiter/constraint that keeps it realistic (with evidence if possible)."
     }
   ],
+
   "weaknessesAndGaps": [
-    "Direct weaknesses: missing skills, vague answers, inconsistencies, overstatements"
+    {
+      "gap": "Specific gap/weakness.",
+      "evidence": "Exact quote, resume data, or 'no evidence found'.",
+      "impact": "Why this matters to an employer.",
+      "possibleCompensation": "Any mitigating factor (or 'none')."
+    }
   ],
+
+  "contradictionMatrix": [
+    {
+      "topic": "Area of conflict (e.g., leadership years).",
+      "resumeQuote": "Verbatim resume line",
+      "interviewQuote": "Verbatim interview line",
+      "profileReference": "Optional profile datum",
+      "impact": "How this contradiction affects credibility/fit."
+    }
+  ],
+
+  "evidenceMap": {
+    "claimsSupported": [
+      { "claim": "What is supported", "source": "resume|interview|profile", "quoteOrLine": "verbatim" }
+    ],
+    "claimsUnsupported": [
+      { "claim": "What lacks support", "expectedEvidence": "what would verify it (docs, metrics, example)" }
+    ]
+  },
+
   "softSkillsReview": {
-    "communicationClarity": "Critical assessment of how clearly they expressed ideas",
-    "evidenceQuality": "Assessment of whether they provided real examples or just buzzwords",
-    "emotionalIntelligence": "Based on tone and responses about teamwork/conflict",
-    "overallTone": "Confident/hesitant/unclear/defensive assessment"
+    "communicationClarity": {
+      "score": "X/10",
+      "earnedReasons": ["Evidence-backed reasons for points earned"],
+      "lostPercentageReasons": [
+        { "reason": "Specific deficiency", "percent": number, "evidence": "quote or 'no evidence found'" }
+      ],
+      "contradictions": ["Quoted inconsistencies, if any"]
+    },
+    "evidenceQuality": {
+      "rating": "Strongly | Moderately | Weakly",
+      "examples": "Where they did/didn't provide proof",
+      "lostPercentageReasons": [
+        { "reason": "Vague outcomes", "percent": number }
+      ]
+    },
+    "emotionalIntelligence": {
+      "score": "X/10",
+      "analysis": "Evidence of self-awareness/empathy",
+      "lostPercentageReasons": [
+        { "reason": "Avoids conflict", "percent": number, "evidence": "quoted line" }
+      ]
+    },
+    "overallTone": {
+      "descriptor": "Confident | Nervous | Defensive | etc.",
+      "justification": "Evidence-based"
+    },
+    "adaptability": {
+      "score": "X/10",
+      "analysis": "How well they shift across topics/scenarios (with quotes)",
+      "lostPercentageReasons": [
+        { "reason": "Struggled with ambiguity scenario", "percent": number, "evidence": "quote" }
+      ]
+    }
   },
+
   "technicalKnowledge": {
-    "claimedVsActual": "Skills they claimed vs what they could actually demonstrate",
-    "gapsIdentified": "Technical areas where knowledge was clearly lacking",
-    "problemSolvingApproach": "Assessment of logical thinking in technical scenarios"
+    "claimedVsActual": {
+      "analysis": "Alignment vs reality with citations",
+      "contradictions": ["Quoted mismatches"],
+      "score": "X/10",
+      "earnedReasons": ["What is clearly demonstrated"],
+      "lostPercentageReasons": [
+        { "reason": "Missing Docker", "percent": number, "evidence": "no evidence found" },
+        { "reason": "Shallow AWS depth", "percent": number, "evidence": "quote showing theory-only" }
+      ]
+    },
+    "gapsIdentified": [
+      { "gap": "Specific shortfall", "evidence": "quote/fact", "impact": "practical risk" }
+    ],
+    "problemSolvingApproach": {
+      "description": "Method as evidenced by transcript",
+      "score": "X/10",
+      "earnedReasons": ["Concrete, stepwise reasoning"],
+      "lostPercentageReasons": [
+        { "reason": "No trade-off analysis", "percent": number, "evidence": "quote" }
+      ]
+    },
+    "realismCheck": {
+      "assessment": "Grounded / Theoretical / Inconsistent",
+      "examples": ["Quotes showing realism or lack thereof"]
+    }
   },
+
   "problemSolvingCriticalThinking": {
-    "approachClarity": "How well-structured was their thinking process",
-    "realismFactoring": "Did they consider practical constraints and real-world factors",
-    "logicalConsistency": "Were their solutions logical and well-reasoned"
+    "approachClarity": {
+      "score": "X/10",
+      "earnedReasons": ["evidence…"],
+      "lostPercentageReasons": [
+        { "reason": "High-level only, no metrics", "percent": number, "evidence": "quote" }
+      ]
+    },
+    "realismFactoring": {
+      "score": "X/10",
+      "analysis": "Trade-offs/constraints considered?",
+      "lostPercentageReasons": [
+        { "reason": "Ignores constraints", "percent": number }
+      ]
+    },
+    "logicalConsistency": {
+      "score": "X/10",
+      "contradictions": ["quote inconsistencies"],
+      "lostPercentageReasons": [
+        { "reason": "Internal contradiction", "percent": number, "evidence": "two quotes" }
+      ]
+    },
+    "creativity": {
+      "score": "X/10",
+      "examples": "Original ideas vs textbook",
+      "lostPercentageReasons": [
+        { "reason": "Template answers only", "percent": number }
+      ]
+    }
   },
+
+  "growthPotential": {
+    "coachability": {
+      "score": "X/10",
+      "evidence": "proof of learning mindset",
+      "lostPercentageReasons": [
+        { "reason": "Defensive under challenge", "percent": number, "evidence": "quote" }
+      ]
+    },
+    "trajectory": {
+      "assessment": "Plateauing | Growing | Declining",
+      "evidence": "resume/interview facts driving the view"
+    },
+    "longTermFit": {
+      "assessment": "Best environment for growth",
+      "evidence": "why this is likely"
+    }
+  },
+
+  "culturalFit": {
+    "teamDynamics": {
+      "assessment": "Likely team role",
+      "evidence": "quotes/examples"
+    },
+    "organizationalFit": {
+      "fit": "Structured corp | startup | hybrid",
+      "reasoning": "why (evidence)"
+    },
+    "riskFactors": [
+      { "risk": "Behavioral/cultural red flag", "evidence": "quote/fact", "severity": "Low|Med|High" }
+    ]
+  },
+
   "unverifiedClaims": [
-    "Things they stated with no supporting evidence or examples"
+    {
+      "claim": "Unverified statement",
+      "reasonForFlag": "Why questionable",
+      "followUp": "Exact question/documentation to request"
+    }
   ],
-  "communicationScore": between 0-10,
-  "credibilityScore": between 0-10,
-  "consistencyScore": between 0-10,
-  "matchScorePercentage": between 0-100,
-  "experiencePercentage": between 0-100,
-  "techSkillsPercentage": between 0-100,
-  "culturalFitPercentage": between 0-100,
+
+  "scores": {
+    "communicationScore": {
+      "value": "X/10",
+      "breakdown": "Narrative of earned vs lost points with quotes",
+      "lostPercentageReasons": [
+        { "reason": "Vague outcomes", "percent": number, "evidence": "quote" }
+      ]
+    },
+    "credibilityScore": {
+      "value": "X/10",
+      "breakdown": "Believability w/ contradictions cited",
+      "lostPercentageReasons": [
+        { "reason": "Resume vs interview mismatch on leadership", "percent": number, "evidence": "two quotes" }
+      ]
+    },
+    "consistencyScore": {
+      "value": "X/10",
+      "breakdown": "Resume/profile/interview alignment",
+      "lostPercentageReasons": [
+        { "reason": "Shifting definitions across answers", "percent": number }
+      ]
+    },
+    "problemSolvingScore": {
+      "value": "X/10",
+      "breakdown": "Method, realism, creativity",
+      "lostPercentageReasons": [
+        { "reason": "No metrics/trade-offs", "percent": number }
+      ]
+    },
+    "technicalDepthScore": {
+      "value": "X/10",
+      "breakdown": "Specific knowledge shown vs claimed",
+      "lostPercentageReasons": [
+        { "reason": "Missing core tool from resume claim", "percent": number, "evidence": "quote or 'no evidence found'" }
+      ]
+    },
+    "overallEmployabilityScore": {
+      "value": "X/10",
+      "justification": "Integrated view: strengths, gaps, risks, contradictions. Include why remaining points were lost."
+    }
+  },
+
   "readinessAssessment": {
     "faceToFaceReady": true,
-    "areasToClarity": ["Specific areas that need clarification in face-to-face interview"],
-    "recommendation": "Clear statement on interview readiness with specific focus areas"
+    "areasToClarify": [
+      "Targeted questions to resolve doubts (each tied to a gap/contradiction)."
+    ],
+    "recommendation": {
+      "level": "'Highly Recommended' | 'Recommended' | 'Recommended with Reservations' | 'Not Recommended'",
+      "justification": "2–3 sentences, explicitly citing evidence and noting missing percentages."
+    }
   }
 }
 
-❌ DO NOT:
-- Fill gaps with assumptions
-- Give praise for vague statements  
-- Sound optimistic or promotional
-- Use generic career advice language
+---
 
-✅ WRITE LIKE:
-A tough, fair recruiter who just finished an in-depth interview—credible, nuanced, trustworthy, with no marketing fluff.`;
+### QUALITY ENFORCEMENT (HARD REQUIREMENTS)
+
+- JSON ONLY. No extra text.
+- Every score MUST include both earned reasons AND lostPercentageReasons (reasons + %).
+- Every contradiction MUST be quoted in the contradictionMatrix and referenced where relevant.
+- Every claim MUST be supported (with a quote/line) OR labeled "no evidence found".
+- Always note when inputs are missing/partial and lower confidence accordingly.
+- Keep language precise, neutral, and professional; avoid generic fluff.`;
 
     try {
       const response = await wrapOpenAIRequest(
@@ -1130,7 +1374,7 @@ A tough, fair recruiter who just finished an in-depth interview—credible, nuan
           messages: [
             {
               role: "system",
-              content: "You are an expert career analyst. Provide detailed, accurate professional assessments based on all available candidate data."
+              content: "You are an elite HR strategist and assessment analyst producing evidence-based candidate profiles for executive decision-making."
             },
             {
               role: "user",
@@ -1148,65 +1392,46 @@ A tough, fair recruiter who just finished an in-depth interview—credible, nuan
       );
 
       const profile = JSON.parse(response.choices[0].message.content || '{}');
-      
-      // Store the brutally honest comprehensive profile for employers
-      const comprehensiveProfile = {
-        candidateSummary: profile.candidateSummary || "Candidate assessment could not be completed.",
-        keyStrengths: profile.keyStrengths || [],
-        weaknessesAndGaps: profile.weaknessesAndGaps || [],
-        softSkillsReview: profile.softSkillsReview || {
-          communicationClarity: "Communication assessment not available",
-          evidenceQuality: "Evidence quality not assessed",
-          emotionalIntelligence: "Emotional intelligence not evaluated",
-          overallTone: "Overall tone not determined"
-        },
-        technicalKnowledge: profile.technicalKnowledge || {
-          claimedVsActual: "Technical claims not verified",
-          gapsIdentified: "Technical gaps not identified",
-          problemSolvingApproach: "Problem-solving approach not assessed"
-        },
-        problemSolvingCriticalThinking: profile.problemSolvingCriticalThinking || {
-          approachClarity: "Approach clarity not assessed",
-          realismFactoring: "Realism factoring not evaluated",
-          logicalConsistency: "Logical consistency not determined"
-        },
-        unverifiedClaims: profile.unverifiedClaims || [],
-        communicationScore: profile.communicationScore || 5,
-        credibilityScore: profile.credibilityScore || 5,
-        consistencyScore: profile.consistencyScore || 5,
-        matchScorePercentage: profile.matchScorePercentage || 0,
-        experiencePercentage: profile.experiencePercentage || 0,
-        techSkillsPercentage: profile.techSkillsPercentage || 0,
-        culturalFitPercentage: profile.culturalFitPercentage || 0,
-        readinessAssessment: profile.readinessAssessment || {
-          faceToFaceReady: false,
-          areasToClarity: ["Assessment incomplete"],
-          recommendation: "Further assessment required"
-        }
-      };
+
+      // Store the comprehensive profile for employers
+      const comprehensiveProfile = profile;
 
       // Extract basic info for backward compatibility
-      const legacySkills = comprehensiveProfile.keyStrengths.map((item: any) => 
+      const legacySkills = comprehensiveProfile.keyStrengths?.map((item: any) =>
         typeof item === 'object' && item.strength ? item.strength : 'Not specified'
+      ) || [];
+
+      // Calculate legacy percentages from new scores
+      const calculatePercentage = (scoreValue: string) => {
+        const score = parseInt(scoreValue?.split('/')[0] || '0');
+        return Math.round(score * 10);
+      };
+
+      // Calculate overall match percentage from multiple factors
+      const overallMatchPercentage = Math.round(
+        (calculatePercentage(comprehensiveProfile.scores?.overallEmployabilityScore?.value) +
+         calculatePercentage(comprehensiveProfile.scores?.communicationScore?.value) +
+         calculatePercentage(comprehensiveProfile.scores?.technicalDepthScore?.value) +
+         calculatePercentage(comprehensiveProfile.scores?.problemSolvingScore?.value)) / 4
       );
 
       // Return legacy format for backward compatibility with new comprehensive data
       return {
-        summary: comprehensiveProfile.candidateSummary,
+        summary: comprehensiveProfile.candidateSummary?.executiveNote || "Candidate assessment could not be completed.",
         skills: legacySkills,
-        personality: comprehensiveProfile.softSkillsReview.overallTone,
+        personality: comprehensiveProfile.softSkillsReview?.overallTone?.descriptor || "Not assessed",
         experience: [], // Will be populated from existing profile data
-        strengths: comprehensiveProfile.keyStrengths.map((item: any) =>
+        strengths: comprehensiveProfile.keyStrengths?.map((item: any) =>
           typeof item === 'object' && item.strength ?
           `${item.strength} - but ${item.butCritique}` : item
-        ),
-        careerGoals: "Assessment from interview responses",
-        workStyle: comprehensiveProfile.softSkillsReview.communicationClarity,
-        matchScorePercentage: comprehensiveProfile.matchScorePercentage,
-        experiencePercentage: comprehensiveProfile.experiencePercentage,
-        techSkillsPercentage: comprehensiveProfile.techSkillsPercentage,
-        culturalFitPercentage: comprehensiveProfile.culturalFitPercentage,
-        // Store the full brutally honest profile for employer access
+        ) || [],
+        careerGoals: comprehensiveProfile.growthPotential?.longTermFit?.assessment || "Assessment from interview responses",
+        workStyle: comprehensiveProfile.softSkillsReview?.communicationClarity?.score || "Not assessed",
+        matchScorePercentage: overallMatchPercentage,
+        experiencePercentage: calculatePercentage(comprehensiveProfile.scores?.credibilityScore?.value),
+        techSkillsPercentage: calculatePercentage(comprehensiveProfile.scores?.technicalDepthScore?.value),
+        culturalFitPercentage: calculatePercentage(comprehensiveProfile.scores?.communicationScore?.value),
+        // Store the full comprehensive profile for employer access
         brutallyHonestProfile: comprehensiveProfile
       };
     } catch (error) {
@@ -1710,8 +1935,8 @@ Return ONLY JSON:
       };
     }
   },
-  generateProfile: (userData: any, resumeContent: string | null, interviewResponses: InterviewResponse[], jobDescription?: string) =>
-    aiProfileAnalysisAgent.generateComprehensiveProfile(userData, resumeContent, interviewResponses, jobDescription),
+  generateProfile: (userData: any, resumeContent: string | null, interviewResponses: InterviewResponse[], resumeAnalysis?: any, jobDescription?: string) =>
+    aiProfileAnalysisAgent.generateComprehensiveProfile(userData, resumeContent, interviewResponses, resumeAnalysis, jobDescription),
   parseResume: aiProfileAnalysisAgent.parseResume.bind(aiProfileAnalysisAgent),
   parseResumeForProfile: aiProfileAnalysisAgent.parseResumeForProfile.bind(aiProfileAnalysisAgent)
 };
