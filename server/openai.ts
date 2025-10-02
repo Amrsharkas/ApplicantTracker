@@ -50,11 +50,20 @@ export class AIInterviewAgent {
   public openai = openai;
 
   async generateWelcomeMessage(userData: any, language: string = 'english'): Promise<string> {
-    const prompt = `You are an AI interviewer for Plato, an AI-powered job matching platform. Generate a professional welcome message for a candidate starting their comprehensive interview process.
+    const prompt = `You are an AI interviewer for Plato, an AI-powered job matching platform. Generate a professional but natural-sounding welcome message for a candidate starting their comprehensive interview process. This welcome message must sound human, flow smoothly, and include the rules in a casual conversational style (not numbered).
 
-${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Generate this welcome message ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Generate this welcome message entirely in English.'}
+${language === 'arabic'
+  ? `LANGUAGE INSTRUCTION (EGYPTIAN ARABIC ONLY):
+- Write ONLY in Egyptian Arabic slang (اللهجة المصرية العامية).
+- Talk like a friendly but serious Egyptian explaining something clearly. Imagine chatting in a Cairo ahwa (café) but keeping it professional.
+- Examples of words/phrases to use naturally: "إزيك"، "عامل إيه"، "تمام"، "ماشي"، "خلاص"، "كدا"، "دلوقتي"، "يلا نبدأ"، "معلش"، "براحتك"، "خلي بالك"، "واخد بالك"، "على مهلك"، "إحنا هنا"، "من غير لف ودوران"، "ده الطبيعي"، "هو ده"، "بالظبط"، "بص"، "بلاش"، "أيوه"، "لأ"، "ليه"، "فين"، "لسه"، "برضه"، "قوي"، "طبعًا"، "مش مشكلة"، "من غير كتر كلام".
+- Use informal pronouns: "انت" / "انتي". Use "دي" not "هذه"، "كدا" not "هكذا"، "ليه" not "لماذا"، "فين" not "أين"، "علشان" not "لكي".
+- Absolutely forbidden: فصحى (formal Arabic). Must sound relaxed, local, and natural.`
+  : `LANGUAGE INSTRUCTION (ENGLISH ONLY):
+- Write ONLY in neutral, professional English.
+- Keep the tone calm, direct, and natural — not robotic, not overly formal.`}
 
-COMPREHENSIVE CANDIDATE DATA:
+COMPREHENSIVE CANDIDATE DATA (OPTIONAL PERSONALIZATION):
 ${userData?.name ? `Name: ${userData.name}` : 'Candidate'}
 ${userData?.workExperiences?.[0] ? `Current Role: ${userData.workExperiences[0].position} at ${userData.workExperiences[0].company}` : ''}
 ${userData?.totalYearsOfExperience ? `Experience: ${userData.totalYearsOfExperience} years` : ''}
@@ -63,17 +72,29 @@ ${userData?.skillsList?.length ? `Key Skills: ${userData.skillsList.slice(0, 3).
 ${userData?.careerLevel ? `Career Level: ${userData.careerLevel}` : ''}
 ${userData?.jobTitles?.[0] ? `Target Role: ${userData.jobTitles[0]}` : ''}
 
-Create a professional welcome message that:
-1. Welcomes them to Plato professionally
-2. Explains this is a comprehensive interview process with three connected phases
-3. Mentions you'll be the same AI interviewer throughout all phases
-4. Sets a neutral, professional tone
-5. Personalizes it with their name if available
-6. Emphasizes continuity - that you'll remember their answers throughout
+OUTPUT REQUIREMENTS:
+- Start by saying: "Welcome to Plato" (in the chosen language).
+- Clearly explain there are FOUR interviews: Personal, Professional, Technical, and Job-Tailored.
+- Mention you (the AI interviewer) will stay with them through all phases and remember their answers.
+- Then, introduce the rules casually and clearly, as if talking normally:
+   • No switching tabs or opening other windows.
+   • No using phones or other devices.
+   • No screen sharing.
+   • You must be the one doing the interview, no one else.
+   • Keep your focus on the screen, don't look away too much.
+   • Keep your mouse active in the interview window.
+   • Sit alone in a quiet room and make sure nobody comes in.
+   • If the internet cuts out, unfortunately, the interview will be disqualified.
+- State the rules smoothly, like natural speech, not as a numbered list. Be very clear but conversational.
+- Add one short sentence about WHY these rules exist (privacy, fairness, and focus).
+- End by telling them what to do next, e.g., "When you're ready, let me know so we can begin." (in the selected language).
+- Keep the message complete but natural — no JSON, no metadata, no formatting.
 
-Keep it professional and neutral - avoid overly positive or encouraging language. The message should be 3-4 sentences maximum. Sound like a professional interviewer who will assess and understand them thoroughly.
-
-Return ONLY the welcome message text, no JSON or additional formatting.`;
+ROBUSTNESS / SAFETY:
+- If any candidate data is missing, skip it naturally without breaking flow.
+- If there's ANY ambiguity (even 1%), ask a short clarifying question in the same language before continuing.
+- Never output in the wrong language.
+- Always sound like a human interviewer who knows Egyptian slang (if Arabic is chosen) or a professional recruiter (if English is chosen).`;
 
     try {
       const messages = language === 'arabic' ? [
@@ -110,10 +131,10 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
   private getFallbackWelcomeMessage(firstName?: string, language: string = 'english'): string {
     if (language === 'arabic') {
       const name = firstName ? ` يا ${firstName}` : '';
-      return `إزيك${name}! أهلاً وسهلاً بيك في بلاتو. أنا هكون المحاور اللي هعمل معاك مقابلة شاملة النهاردة. إحنا هنمر بتلات مراحل مترابطة - شخصية ومهنية وتقنية - عشان نفهم خلفيتك وقدراتك كدا. هحافظ على الاستمرارية في كل المراحل عشان نبني ملف شخصي متكامل. يلا نبدأ!`;
+      return `إزيك${name}! أهلاً وسهلاً بيك في بلاتو. أنا هكون المحاور اللي هعمل معاك مقابلة شاملة النهاردة. إحنا هنمر بأربع مراحل مترابطة - شخصية ومهنية وتقنية ومتخصصة للوظيفة - عشان نفهم خلفيتك وقدراتك كدا. هحافظ على الاستمرارية في كل المراحل عشان نبني ملف شخصي متكامل. بس قبل ما نبدأ، فيه حاجات لازم ننتبه ليها: مفيش تبديل تابات أو فتح نوافذ تانية، مفيش استخدام موبايل أو أي devices تانية، مفيش screen sharing، ولازم تكون انت اللي بتعمل المقابلة لوحدك في مكان هادي. لو الإنترنت قطع، للأسف المقابلة هتتشطب. القواعد دي علشان الخصوصية والعدالة والتركيز. يلا لما تكون جاهز، قولي عشان نبدأ.`;
     } else {
       const name = firstName ? `, ${firstName}` : '';
-      return `Welcome to Plato${name}. I'll be conducting a comprehensive interview process with you today. We'll proceed through three connected phases - personal, professional, and technical - to understand your background and capabilities. I'll maintain continuity throughout all phases to build a complete profile.`;
+      return `Welcome to Plato${name}. I'll be conducting a comprehensive interview process with you today. We'll proceed through four connected phases - personal, professional, technical, and job-tailored - to understand your background and capabilities. I'll maintain continuity throughout all phases to build a complete profile. Before we begin, I need to mention a few important rules: no switching tabs or opening other windows, no using phones or other devices, no screen sharing, and you must be the one doing the interview alone in a quiet room. If your internet disconnects, unfortunately the interview will be disqualified. These rules exist to ensure privacy, fairness, and focus. When you're ready, let me know so we can begin.`;
     }
   }
 
