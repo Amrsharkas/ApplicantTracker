@@ -329,7 +329,7 @@ Return ONLY JSON:
     const conversationStyle = previousInterviewData?.conversationStyle || '';
     const keyThemes = previousInterviewData?.keyThemes || [];
     const previousQuestions = previousInterviewData?.previousQuestions || [];
-    
+
     const prompt = `You are continuing as the same AI interviewer. You have full knowledge of this candidate's profile AND their previous interview answers.
 
 ${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
@@ -405,6 +405,7 @@ Impressive Achievements to Validate: ${resumeAnalysis.interview_notes?.impressiv
 Skill Gaps to Probe: ${resumeAnalysis.interview_notes?.skill_gaps?.join(', ') || 'None identified'}
 Experience Inconsistencies: ${resumeAnalysis.interview_notes?.experience_inconsistencies?.join(', ') || 'None identified'}
 Career Progression Assessment: ${resumeAnalysis.interview_notes?.career_progression_notes?.join(', ') || 'Standard progression'}
+Overall Credibility: ${resumeAnalysis.raw_analysis?.credibility_assessment || 'Standard assessment'}
 ` : ''}
 
 ${contextInsights}
@@ -419,28 +420,33 @@ ${previousQuestions.map((q: string) => `- ${q}`).join('\n')}
 CRITICAL INSTRUCTIONS:
 1. You are the SAME interviewer who knows their full profile AND previous answers
 2. Reference specific details from BOTH their profile AND previous responses
-3. Use phrases like "You mentioned earlier..." or "Building on what you shared about..." 
-4. DO NOT repeat any previously asked questions or themes
-5. DO NOT ask for information already in their profile
+3. Use phrases like "You mentioned earlier..." or "Building on what you shared about..."
+4. DO NOT repeat previously asked questions or themes
+5. DO NOT ask for information already available in their profile
 6. Maintain the exact same tone and conversation style
 7. Show you remember everything - profile + previous answers
+8. Go deeper into how they THINK, DECIDE, and EXECUTE professionally – this round is about work patterns, judgment, and practical experiences
 
 QUESTION QUALITY STANDARDS:
-- Ask human, high-quality questions - avoid templates and clichés like "Tell me about a time..."
+- Ask high-quality, insight-driven questions - avoid generic templates and clichés
 - Be sharp, contextual, and judgment-based
-- Ask deeper, not broader - dig into what's already been shared
-- Focus on gaps, clarity, and reflection - push for concrete examples, logic, outcomes, and learning
-- Be strategic and natural - sequence questions with logical flow
-- Use context smartly - reference past answers naturally without mentioning interview structure
+- Dig into their problem-solving process, decision-making under pressure, and real-world execution
+- Focus on clarity, specificity, and actionable examples
+- Ask them to walk through trade-offs, priorities, conflicts, and outcomes
+- Explore how they collaborate, communicate, and lead – especially in high-stakes situations
+- Sequence questions logically to feel like a natural, evolving conversation
 
-Create 7 professional questions that demonstrate full knowledge:
-1. Reference their career progression from profile - ask about specific resistance or challenges they faced during transitions
-2. Build on their stated career goals - explore the reasoning and trade-offs behind their choices
-3. Connect their current role to their motivations - dig into specific judgment calls they've made
-4. Explore leadership based on achievements AND personal philosophy - ask about concrete situations where they had to make difficult decisions
-5. Ask about career transitions using educational background - focus on WHY they made specific choices
-6. Connect their target role to personal aspirations - explore what specific obstacles they anticipate
-7. Understand their professional preferences - ask about times when their work style was challenged
+Create 7–10 professional questions that demonstrate full knowledge and go beyond surface-level:
+1. Reference their career progression from profile – ask how they adapted to challenges, overcame resistance, or redefined their role.
+2. Build on their stated career goals – ask about the systems and strategies they've used to stay on track or pivot when necessary.
+3. Connect their current role to their decision-making – explore a specific project or task where their judgment significantly influenced results.
+4. Explore leadership and collaboration – ask about moments they had to align conflicting stakeholders, motivate teams, or resolve tensions.
+5. Ask about mistakes, failures, or missed opportunities – focus on what they learned and how they've applied it since.
+6. Explore how they handle pressure – deadlines, resource constraints, or conflicting priorities – and how they keep quality high.
+7. Connect their educational or technical background to their problem-solving ability – ask how it shaped their approach to real-world situations.
+8. Explore their growth mindset – how they measure progress, seek feedback, and continuously improve professionally.
+9. Understand how they evaluate opportunities – what criteria they use to accept projects, roles, or responsibilities.
+10. Ask how they'd bring value to the target role specifically – what unique contribution they'd make in the first 90 days.
 
 RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
 - Respond professionally - never overly positive or flattering
