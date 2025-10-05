@@ -432,7 +432,7 @@ export default function Dashboard() {
 
               {/* Large Action Buttons */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                {/* <button
+                <button
                   onClick={() => openModal('matches')}
                   className="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
                 >
@@ -448,9 +448,9 @@ export default function Dashboard() {
                   <p className="text-blue-100 text-base leading-relaxed">
                     {t('discoverPersonalizedJobs')}
                   </p>
-                </button> */}
+                </button>
 
-                {/* <button
+                <button
                   onClick={() => openModal('jobPostings')}
                   className="bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
                 >
@@ -466,7 +466,7 @@ export default function Dashboard() {
                   <p className="text-green-100 text-base leading-relaxed">
                     {t('browseLatestJobs')}
                   </p>
-                </button> */}
+                </button> 
               </div>
 
               {/* Job specific AI interviews - New widget (above upcoming) */}
@@ -510,7 +510,7 @@ export default function Dashboard() {
               </button>
 
               {/* Upcoming Interview - Always show */}
-              {/* <button
+              <button
                 onClick={() => openModal('upcomingInterview')}
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-6"
               >
@@ -531,10 +531,10 @@ export default function Dashboard() {
                   </div>
                   <div className="text-white text-2xl">{isRTL ? '←' : '→'}</div>
                 </div>
-              </button> */}
+              </button>
 
               {/* Applications Button - Full Width */}
-              {/* <button
+              <button
                 onClick={() => openModal('applications')}
                 className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
               >
@@ -550,7 +550,7 @@ export default function Dashboard() {
                   </div>
                   <div className="text-white text-2xl">{isRTL ? '←' : '→'}</div>
                 </div>
-              </button> */}
+              </button>
 
               {/* Invited Jobs - Full Width */}
               {/* <button
