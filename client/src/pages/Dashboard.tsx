@@ -709,6 +709,17 @@ export default function Dashboard() {
         onClose={closeModal}
         onStartJobPractice={async () => { setActiveModal('interview'); }}
         onStartJobPracticeVoice={async () => { setActiveModal('interview'); }}
+        onInterviewComplete={async () => {
+          // Refresh the upcoming interviews data to ensure dashboard is up-to-date
+          try {
+            await Promise.all([
+              refetchProfile(),
+              refetchComprehensiveProfile()
+            ]);
+          } catch (error) {
+            console.error('Failed to refresh data after interview completion:', error);
+          }
+        }}
       />
       <JobPostingsModal 
         isOpen={activeModal === 'jobPostings'} 

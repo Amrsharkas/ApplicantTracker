@@ -29,12 +29,13 @@ interface JobSpecificAIInterviewsModalProps {
   onClose: () => void;
   onStartJobPractice?: (job: InvitedJob) => void;
   onStartJobPracticeVoice?: (job: InvitedJob) => void;
+  onInterviewComplete?: () => void;
 }
 
 import { JobSpecificInterviewOptionsModal } from "./JobSpecificInterviewOptionsModal";
 import { JobSpecificInterviewModal } from "./JobSpecificInterviewModal";
 
-export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPractice, onStartJobPracticeVoice }: JobSpecificAIInterviewsModalProps) {
+export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPractice, onStartJobPracticeVoice, onInterviewComplete }: JobSpecificAIInterviewsModalProps) {
   const { toast } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -95,6 +96,15 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
   const handleClose = () => {
     setSelectedJob(null);
     onClose();
+  };
+
+  const handleInterviewComplete = async () => {
+    // Refresh the interview data
+    await refetch();
+    // Call the parent callback if provided
+    onInterviewComplete?.();
+    // Switch to completed tab to show the finished interview
+    setActiveTab('completed');
   };
 
   return (
@@ -234,23 +244,66 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
               <div className="space-y-4">
                 {invitedJobs.map((job) => (
                   <motion.div key={job.recordId} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-                    <Card>
+                    <Card className="hover:shadow-lg transition-all duration-200">
                       <CardContent className="p-6">
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                               <h3 className="font-semibold text-blue-600 text-lg">{job.jobTitle}</h3>
-                              <Badge variant="secondary" className="text-xs">Completed</Badge>
+                              <div className="flex items-center gap-1 px-2 py-1 rounded bg-green-100 text-green-800">
+                                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">Completed</Badge>
+                              </div>
                             </div>
                             <div className="flex items-center gap-2 mb-2 text-gray-600">
                               <span className="text-gray-900 font-medium">{job.companyName}</span>
+                              <span className="text-gray-500">•</span>
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {job.location || 'Remote'}
+                              </span>
                             </div>
-                            {typeof job.score === 'number' && (
-                              <div className="mb-2 text-sm"><span className="font-medium">Score:</span> {job.score}</div>
-                            )}
-                            {job.interviewComments && (
-                              <div className="text-sm text-gray-700 whitespace-pre-wrap"><span className="font-medium">Interview Comments:</span> {job.interviewComments}</div>
-                            )}
+                            <p className="text-gray-700 text-sm leading-relaxed mb-4 line-clamp-3">
+                              {job.jobDescription || ''}
+                            </p>
+
+                            {/* Interview Results Section */}
+                            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                              <h4 className="font-medium text-gray-900 mb-2">Interview Results</h4>
+                              {typeof job.score === 'number' && (
+                                <div className="mb-2 text-sm">
+                                  <span className="font-medium">Score:</span>
+                                  <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
+                                    job.score >= 80 ? 'bg-green-100 text-green-800' :
+                                    job.score >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {job.score}/100
+                                  </span>
+                                </div>
+                              )}
+                              {job.interviewComments && (
+                                <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                                  <span className="font-medium">Feedback:</span> {job.interviewComments}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedJob(job)}
+                                className="flex items-center gap-1"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                View Details
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="ml-6 flex-shrink-0 flex items-center">
+                            <div className="w-16 h-16 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center">
+                              <Building className="w-8 h-8 text-gray-400" />
+                            </div>
                           </div>
                         </div>
                       </CardContent>
@@ -285,9 +338,23 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h2 className="text-2xl font-bold text-gray-900">{selectedJob.jobTitle}</h2>
-                        <div className="flex items-center gap-1 bg-blue-100 px-2 py-1 rounded">
-                          <Star className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm font-medium text-blue-800">Invited</span>
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded ${
+                          selectedJob.status === 'completed'
+                            ? 'bg-green-100'
+                            : 'bg-blue-100'
+                        }`}>
+                          <Star className={`h-4 w-4 ${
+                            selectedJob.status === 'completed'
+                              ? 'text-green-600'
+                              : 'text-blue-600'
+                          }`} />
+                          <span className={`text-sm font-medium ${
+                            selectedJob.status === 'completed'
+                              ? 'text-green-800'
+                              : 'text-blue-800'
+                          }`}>
+                            {selectedJob.status === 'completed' ? 'Completed' : 'Invited'}
+                          </span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
@@ -348,14 +415,31 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                 <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 shadow-lg">
                   <div className="flex items-center justify-end gap-3 rtl:space-x-reverse">
                     <Button variant="outline" onClick={() => setSelectedJob(null)}>Close</Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => { setOptionsOpen(true); }}
-                      className="flex items-center gap-2 px-6"
-                    >
-                      <Play className="h-4 w-4" />
-                      Start interview
-                    </Button>
+                    {selectedJob.status === 'completed' ? (
+                      <div className="flex items-center gap-4">
+                        {typeof selectedJob.score === 'number' && (
+                          <div className="text-sm">
+                            <span className="font-medium">Interview Score:</span>
+                            <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
+                              selectedJob.score >= 80 ? 'bg-green-100 text-green-800' :
+                              selectedJob.score >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {selectedJob.score}/100
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        onClick={() => { setOptionsOpen(true); }}
+                        className="flex items-center gap-2 px-6"
+                      >
+                        <Play className="h-4 w-4" />
+                        Start interview
+                      </Button>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -399,6 +483,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
           job={selectedJob}
           mode={interviewMode}
           language={interviewLanguage}
+          onInterviewComplete={handleInterviewComplete}
         />
       </DialogContent>
     </Dialog>

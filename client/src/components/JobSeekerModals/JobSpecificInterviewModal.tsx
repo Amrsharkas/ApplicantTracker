@@ -32,9 +32,10 @@ interface JobSpecificInterviewModalProps {
   job: JobSummary | null;
   mode: 'text' | 'voice';
   language: 'english' | 'arabic';
+  onInterviewComplete?: () => void;
 }
 
-export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language }: JobSpecificInterviewModalProps) {
+export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language, onInterviewComplete }: JobSpecificInterviewModalProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<SessionData | null>(null);
@@ -145,6 +146,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
 
       if (data.isComplete) {
         toast({ title: 'Interview Complete', description: 'Your job-specific interview has been completed.' });
+        onInterviewComplete?.();
         onClose();
         return;
       }
@@ -181,6 +183,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message || 'Failed to complete');
       toast({ title: 'Interview Complete', description: 'Your job-specific voice interview has been completed.' });
+      onInterviewComplete?.();
       onClose();
     } catch (e: any) {
       toast({ title: 'Error', description: e?.message || 'Failed to complete interview', variant: 'destructive' });
