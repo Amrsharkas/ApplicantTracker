@@ -788,7 +788,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       // Connect to realtime API with the interview data
       await realtimeAPI.connect({
         interviewType: selectedInterviewType,
-        questions: interviewData.questions
+        questions: interviewData.questions,
+        language: selectedInterviewLanguage
       });
       
       setIsStartingInterview(false);
