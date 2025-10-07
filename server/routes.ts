@@ -8,6 +8,7 @@ import { aiJobFilteringService } from "./aiJobFiltering";
 import { employerQuestionService } from "./employerQuestions";
 import { ObjectStorageService } from "./objectStorage";
 import { ResumeService } from "./resumeService";
+import { heygenService } from "./heygenService";
 import multer from "multer";
 import { string, z } from "zod";
 import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, airtableJobApplications, jobs } from "@shared/schema";
@@ -4445,6 +4446,173 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
+  // HeyGen Avatar Integration Routes
+  // Check if HeyGen is available
+  app.get('/api/heygen/status', requireAuth, async (req: any, res) => {
+    try {
+      const isAvailable = heygenService.isAvailable();
+      res.json({
+        available: isAvailable,
+        message: isAvailable ? 'HeyGen service is available' : 'HeyGen API key not configured'
+      });
+    } catch (error) {
+      console.error('Error checking HeyGen status:', error);
+      res.status(500).json({
+        available: false,
+        message: 'Failed to check HeyGen status'
+      });
+    }
+  });
+
+  // Create HeyGen session
+  app.post('/api/heygen/create-session', requireAuth, async (req: any, res) => {
+    try {
+      const { quality = 'medium', videoEncoding = 'VP8' } = req.body || {};
+
+      console.log(`🎬 Creating HeyGen session for user ${req.user.id}`);
+
+      const session = await heygenService.createSession({
+        quality,
+        video_encoding: videoEncoding,
+        activity_idle_timeout: 300 // 5 minutes idle timeout
+      });
+
+      // Return the full HeyGen session response
+      const fullSessionResponse = {
+        ...session,
+        // Add convenience aliases
+        sessionId: session.session_id,
+        accessToken: session.access_token,
+        durationLimit: session.session_duration_limit,
+        realtimeEndpoint: session.realtime_endpoint
+      };
+
+      res.json({
+        success: true,
+        session: fullSessionResponse
+      });
+    } catch (error) {
+      console.error('Error creating HeyGen session:', error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to create HeyGen session'
+      });
+    }
+  });
+
+  // Start HeyGen session
+  app.post('/api/heygen/start-session', requireAuth, async (req: any, res) => {
+    try {
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Session ID is required'
+        });
+      }
+
+      console.log(`🚀 Starting HeyGen session: ${sessionId}`);
+
+      const result = await heygenService.startSession(sessionId);
+
+      res.json({
+        success: true,
+        status: result.status,
+        sessionId
+      });
+    } catch (error) {
+      console.error('Error starting HeyGen session:', error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to start HeyGen session'
+      });
+    }
+  });
+
+  // Send task to HeyGen session
+  app.post('/api/heygen/send-task', requireAuth, async (req: any, res) => {
+    try {
+      const { sessionId, text } = req.body;
+
+      if (!sessionId || !text) {
+        return res.status(400).json({
+          success: false,
+          message: 'Session ID and text are required'
+        });
+      }
+
+      console.log(`💬 Sending task to HeyGen session ${sessionId}: ${text.substring(0, 100)}...`);
+
+      const result = await heygenService.sendTask(sessionId, text);
+
+      res.json({
+        success: true,
+        taskId: result.task_id,
+        durationMs: result.duration_ms,
+        sessionId
+      });
+    } catch (error) {
+      console.error('Error sending task to HeyGen:', error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to send task to HeyGen'
+      });
+    }
+  });
+
+  // Stop HeyGen session
+  app.post('/api/heygen/stop-session', requireAuth, async (req: any, res) => {
+    try {
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Session ID is required'
+        });
+      }
+
+      console.log(`🛑 Stopping HeyGen session: ${sessionId}`);
+
+      const result = await heygenService.stopSession(sessionId);
+
+      res.json({
+        success: true,
+        status: result.status,
+        sessionId
+      });
+    } catch (error) {
+      console.error('Error stopping HeyGen session:', error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to stop HeyGen session'
+      });
+    }
+  });
+
+  // Get active HeyGen sessions for user
+  app.get('/api/heygen/sessions', requireAuth, async (_req: any, res) => {
+    try {
+      const activeSessions = heygenService.getActiveSessions();
+
+      res.json({
+        success: true,
+        sessions: Array.from(activeSessions.entries()).map(([sessionId, session]) => ({
+          sessionId,
+          url: session.url,
+          durationLimit: session.session_duration_limit,
+          isPaid: session.is_paid
+        }))
+      });
+    } catch (error) {
+      console.error('Error getting HeyGen sessions:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get HeyGen sessions'
+      });
+    }
+  });
 
 
   const httpServer = createServer(app);

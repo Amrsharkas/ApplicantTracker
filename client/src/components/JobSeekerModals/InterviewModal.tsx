@@ -7,10 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Mic, MicOff, MessageCircle, Phone, PhoneOff, Users, Briefcase, Target, User, CheckCircle, Languages } from 'lucide-react';
+import { Mic, MicOff, MessageCircle, Phone, PhoneOff, Users, Briefcase, Target, User, CheckCircle, Languages, Video, VideoOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRealtimeAPI } from '@/hooks/useRealtimeAPI';
+import { useHeyGen } from '@/hooks/useHeyGen';
 import { useResumeRequirement } from '@/hooks/useResumeRequirement';
+import { HeyGenVideo } from '@/components/HeyGenVideo';
 import { apiRequest } from '@/lib/queryClient';
 import { isUnauthorizedError } from '@/lib/authUtils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -56,7 +58,7 @@ interface InterviewModalProps {
 }
 
 export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
-  const [mode, setMode] = useState<'types' | 'select' | 'text' | 'voice'>('types');
+  const [mode, setMode] = useState<'types' | 'select' | 'text' | 'voice' | 'heygen'>('types');
   const [selectedInterviewType, setSelectedInterviewType] = useState<string>('');
   const [selectedInterviewLanguage, setSelectedInterviewLanguage] = useState<string>('english');
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
@@ -75,7 +77,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const [windowBlurCount, setWindowBlurCount] = useState(0);
   const [warningVisible, setWarningVisible] = useState(false);
   const [sessionTerminated, setSessionTerminated] = useState(false);
-  const maxBlurCount = 3; // Maximum allowed window switches before termination
+  const maxBlurCount = 300; // Maximum allowed window switches before termination
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -83,8 +85,6 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
   // Debug: Log the environment variable value and its type
   const enableTextInterviews = import.meta.env.VITE_ENABLE_TEXT_INTERVIEWS;
-  console.log('VITE_ENABLE_TEXT_INTERVIEWS:', enableTextInterviews, typeof enableTextInterviews);
-  console.log('enableTextInterviews === "true":', enableTextInterviews === 'true');
 
   // Check resume requirement
   const { hasResume, requiresResume, isLoading: isLoadingResume } = useResumeRequirement();
@@ -233,6 +233,31 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       });
       setMode('text');
     }
+  });
+
+  // HeyGen avatar integration
+  const heyGen = useHeyGen({
+    onMessage: (message) => {
+      console.log('HeyGen event:', message);
+    },
+    onAvatarSpeaking: (isSpeaking) => {
+      if (mode === 'heygen') {
+        setIsAiSpeaking(isSpeaking);
+      }
+    },
+    onConnectionChange: (isConnected) => {
+      console.log('HeyGen connection status:', isConnected);
+    },
+    onError: (error) => {
+      console.error('HeyGen error:', error);
+      toast({
+        title: 'Avatar Interview Error',
+        description: 'There was an issue with the avatar interview. Please try voice mode instead.',
+        variant: 'destructive'
+      });
+      setMode('voice');
+    },
+    userProfile
   });
 
   const { data: existingSession } = useQuery({
@@ -812,6 +837,58 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     }
   };
 
+  const startHeyGenInterview = async () => {
+    if (!selectedInterviewType) {
+      toast({
+        title: t('interview.selectInterviewTypeError') || 'Error',
+        description: t('interview.selectInterviewTypeErrorDescription') || 'Please select an interview type first.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsStartingInterview(true);
+    setMode('heygen');
+    setMessages([]);
+    setIsInterviewConcluded(false);
+    setConversationHistory([]);
+
+    try {
+      // Check if HeyGen is available
+      // const isAvailable = await heyGen.checkHeyGenAvailability();
+      // if (!isAvailable) {
+      //   toast({
+      //     title: 'HeyGen Unavailable',
+      //     description: 'Avatar interview is currently unavailable. Please use voice mode instead.',
+      //     variant: 'destructive'
+      //   });
+      //   setMode('select');
+      //   return;
+      // }
+
+      // Start the HeyGen interview
+      await heyGen.startInterview(selectedInterviewType, currentSession?.sessionData?.questions || []);
+
+      toast({
+        title: "Avatar Interview Started",
+        description: "Your AI avatar interviewer is ready. Please speak naturally.",
+      });
+
+    } catch (error) {
+      console.error('HeyGen interview error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+      toast({
+        title: 'Connection Failed',
+        description: `Could not start avatar interview: ${errorMessage}. Please try voice mode instead.`,
+        variant: 'destructive'
+      });
+      setMode('select');
+    } finally {
+      setIsStartingInterview(false);
+    }
+  };
+
   const startTextInterview = async () => {
     if (!selectedInterviewType) {
       toast({
@@ -956,6 +1033,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     setWindowBlurCount(0);
     setWarningVisible(false);
     setSessionTerminated(false);
+
+    // Cleanup HeyGen session
+    heyGen.disconnect().catch(console.error);
   };
 
   // Reset interview state when modal opens
@@ -970,7 +1050,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     if (!isOpen || sessionTerminated) return;
 
     const handleBlur = () => {
-      if (mode === 'voice' || (mode === 'select' && selectedInterviewType)) {
+      if (mode === 'voice' || mode === 'heygen' || (mode === 'select' && selectedInterviewType)) {
         const newCount = windowBlurCount + 1;
         setWindowBlurCount(newCount);
         setWarningVisible(true);
@@ -1231,7 +1311,33 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         </p>
       </div>
       
-      <div className={`grid ${enableTextInterviews === 'true' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+      <div className={`grid ${enableTextInterviews === 'true' ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'} gap-4`}>
+        <Card
+          className={`transition-colors ${
+            isStartingInterview
+              ? 'opacity-50 cursor-not-allowed'
+              : 'cursor-pointer hover:bg-accent/50'
+          }`}
+          onClick={isStartingInterview ? undefined : startHeyGenInterview}
+        >
+          <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
+            {isStartingInterview && mode === 'heygen' ? (
+              <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Video className="h-8 w-8 text-primary" />
+            )}
+            <div className="text-center">
+              <h4 className="font-medium">Avatar Interview</h4>
+              <p className="text-sm text-muted-foreground">
+                {isStartingInterview && mode === 'heygen'
+                  ? 'Starting avatar interview...'
+                  : 'Interview with an AI avatar'
+                }
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card
           className={`transition-colors ${
             isStartingInterview
@@ -1409,6 +1515,150 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           </div>
         </div>
       )}
+    </div>
+  );
+
+  const renderHeyGenInterview = () => (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+      {/* Left Column - HeyGen Video */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Avatar Interview</h3>
+          <div className="flex items-center space-x-2 rtl:space-x-reverse">
+            {heyGen.isConnected && (
+              <Badge variant="default" className="flex items-center space-x-1 rtl:space-x-reverse">
+                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                Live
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <HeyGenVideo
+          videoElement={heyGen.videoElement}
+          audioElement={heyGen.audioElement}
+          isConnected={heyGen.isConnected}
+          isAvatarSpeaking={heyGen.isAvatarSpeaking}
+          isSessionActive={heyGen.isSessionActive}
+          volume={heyGen.volume}
+          isMuted={heyGen.isMuted}
+          isConnecting={heyGen.isConnecting}
+          onVolumeChange={heyGen.setAudioVolume}
+          onToggleMute={heyGen.toggleMute}
+          onDisconnect={async () => {
+            await heyGen.disconnect();
+            setMode('select');
+          }}
+          className="w-full max-w-lg mx-auto"
+        />
+      </div>
+
+      {/* Right Column - Conversation History */}
+      <div className="space-y-4 flex flex-col h-full max-h-[600px]">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Conversation</h3>
+          <Badge variant="outline">
+            {heyGen.conversationHistory.length} messages
+          </Badge>
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-3 p-4 border rounded-lg bg-gray-50">
+          {heyGen.conversationHistory.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              <div className="h-12 w-12 mx-auto mb-4 rounded-full bg-gray-200 flex items-center justify-center">
+                <MessageCircle className="h-6 w-6 text-gray-400" />
+              </div>
+              <p className="text-sm">Starting conversation...</p>
+            </div>
+          ) : (
+            heyGen.conversationHistory.map((message, index) => (
+              <div
+                key={`heygen-${index}-${message.content.substring(0, 20)}`}
+                className={`p-3 rounded-lg ${
+                  message.role === 'assistant'
+                    ? 'bg-blue-50 border-l-4 border-blue-400'
+                    : 'bg-green-50 border-l-4 border-green-400 ml-8'
+                }`}
+              >
+                <div className="flex items-start space-x-2 rtl:space-x-reverse">
+                  {message.role === 'assistant' ? (
+                    <User className="h-4 w-4 mt-1 text-blue-600" />
+                  ) : (
+                    <MessageCircle className="h-4 w-4 mt-1 text-green-600" />
+                  )}
+                  <div className="flex-1">
+                    <p className="text-sm font-medium mb-1">
+                      {message.role === 'assistant' ? 'AI Interviewer' : 'You'}
+                    </p>
+                    <p className="text-sm">{message.content}</p>
+                    <span className="text-xs text-muted-foreground">
+                      {message.timestamp.toLocaleTimeString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+
+          {/* Avatar speaking indicator */}
+          {heyGen.isAvatarSpeaking && (
+            <div className="p-3 rounded-lg bg-orange-50 border-l-4 border-orange-400">
+              <div className="flex items-start space-x-2 rtl:space-x-reverse">
+                <div className="h-4 w-4 mt-1 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-orange-800 mb-1">AI Interviewer</p>
+                  <p className="text-sm text-orange-700">Speaking...</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Controls */}
+        <div className="flex justify-between items-center pt-4 border-t">
+          {currentSession?.interviewType !== 'job-practice' && (
+            <Button variant="outline" onClick={() => setMode('types')}>
+              ← Back to Interview Types
+            </Button>
+          )}
+
+          <div className="flex space-x-2 rtl:space-x-reverse">
+            {heyGen.isSessionActive && (
+              <Button
+                variant={isInterviewConcluded ? "default" : "destructive"}
+                onClick={() => {
+                  if (isInterviewConcluded) {
+                    processVoiceInterviewMutation.mutate();
+                  } else {
+                    // End the HeyGen interview
+                    heyGen.disconnect().then(() => {
+                      setMode('select');
+                    });
+                  }
+                }}
+                disabled={isProcessingInterview || processVoiceInterviewMutation.isPending}
+              >
+                {isProcessingInterview || processVoiceInterviewMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Processing Interview...
+                  </>
+                ) : isInterviewConcluded || heyGen.conversationHistory.filter(msg => msg.role === 'user').length >= 3 ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Submit Interview
+                  </>
+                ) : (
+                  <>
+                    <PhoneOff className="h-4 w-4 mr-2" />
+                    End Interview
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -1604,11 +1854,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className={`${mode === 'heygen' ? 'max-w-7xl' : 'max-w-2xl'} max-h-[90vh] overflow-y-auto`}>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>{t('interview.aiInterview') || 'AI Interview'}</DialogTitle>
-              {(mode === 'voice' || (mode === 'select' && selectedInterviewType)) && (
+              {(mode === 'voice' || mode === 'heygen' || (mode === 'select' && selectedInterviewType)) && (
                 <div className="flex items-center space-x-2">
                   <div className={`h-2 w-2 rounded-full ${sessionTerminated ? 'bg-red-500' : windowBlurCount > 0 ? 'bg-yellow-500' : 'bg-green-500'}`} />
                   <span className="text-xs text-muted-foreground">
@@ -1652,6 +1902,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           {mode === 'types' && renderInterviewTypes()}
           {mode === 'select' && renderModeSelection()}
           {mode === 'text' && renderTextInterview()}
+          {mode === 'heygen' && renderHeyGenInterview()}
           {mode === 'voice' && renderVoiceInterview()}
         </DialogContent>
       </Dialog>
