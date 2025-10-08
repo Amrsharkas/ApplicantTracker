@@ -561,8 +561,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let user = await storage.getUser(userId);
-
       
+      // Get the user by email if not found 
+      if (!user && resumeProfile?.email) {
+        user = await storage.getUserByEmail(resumeProfile.email)
+      }
+
       // If user doesn't exist, create one (this should not happen normally, but handle it)
       if (!user) {
         try {
