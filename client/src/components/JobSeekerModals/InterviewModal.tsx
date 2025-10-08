@@ -227,16 +227,32 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     // Audio streaming callbacks for HeyGen integration
     onAudioChunk: (audioData) => {
       // Stream audio chunk to HeyGen avatar when in HeyGen mode and audio session is ready
-      if (mode === 'heygen' && heyGen.isAudioSessionReady && heyGen.isWebSocketConnected) {
+      const audioReady = heyGen.getAudioSessionReady();
+      const wsConnected = heyGen.isWebSocketConnected;
+      console.log('🔍 Audio chunk callback - audio ready:', audioReady, 'ws connected:', wsConnected, 'audio size:', audioData.byteLength);
+
+      // Always try to stream if HeyGen is ready (regardless of mode closure)
+      // The mode state closure issue prevents us from checking mode === 'heygen' reliably
+      const shouldStream = true;
+
+      if (shouldStream) {
         console.log('🎵 Streaming audio chunk to HeyGen:', audioData.byteLength, 'bytes');
-        heyGen.streamAudioToAvatar(audioData, false);
+        try {
+          heyGen.streamAudioToAvatar(audioData, false);
+        } catch (streamError) {
+          console.error('❌ Error streaming audio to HeyGen:', streamError);
+        }
       } else {
-        console.log('🚫 Not streaming audio - mode:', mode, 'Audio session ready:', heyGen.isAudioSessionReady, 'WebSocket connected:', heyGen.isWebSocketConnected);
+        console.log('🚫 Not streaming audio - conditions:', {
+          audioReady,
+          wsConnected,
+          audioSize: audioData.byteLength
+        });
       }
     },
     onSpeakingStart: () => {
       // AI started speaking - interrupt avatar if needed
-      if (mode === 'heygen' && heyGen.isWebSocketConnected) {
+      if (heyGen.isWebSocketConnected) {
         // Interrupt any current avatar speech to sync with new audio
         heyGen.interruptAvatar();
         console.log('🔇 Interrupted avatar speech for new audio');
@@ -244,7 +260,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     },
     onSpeakingEnd: () => {
       // AI finished speaking - send final audio chunk
-      if (mode === 'heygen' && heyGen.isAudioSessionReady && heyGen.isWebSocketConnected) {
+      const audioReady = heyGen.getAudioSessionReady();
+      const wsConnected = heyGen.isWebSocketConnected;
+      if (audioReady && wsConnected) {
         // Send empty final chunk to signal end of speech
         heyGen.streamAudioToAvatar(new ArrayBuffer(0), true);
         console.log('🔚 Sent final audio chunk to HeyGen');
@@ -252,14 +270,14 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     },
     onUserSpeakingStart: () => {
       // User started speaking - show avatar listening animation
-      if (mode === 'heygen' && heyGen.isWebSocketConnected) {
+      if (heyGen.isWebSocketConnected) {
         heyGen.startAvatarListening();
         console.log('👂 Started avatar listening animation');
       }
     },
     onUserSpeakingEnd: () => {
       // User stopped speaking - stop avatar listening animation
-      if (mode === 'heygen' && heyGen.isWebSocketConnected) {
+      if (heyGen.isWebSocketConnected) {
         heyGen.stopAvatarListening();
         console.log('🤫 Stopped avatar listening animation');
       }
@@ -901,18 +919,26 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
     try {
       // First, start the HeyGen session and connect to LiveKit for video
-      console.log('🎭 Starting HeyGen avatar session...');
+      console.log('🎭 Step 1: Starting HeyGen avatar session...');
+
+      console.log('🎭 Step 1a: Creating HeyGen session...');
       const session = await heyGen.createSession();
+      console.log('✅ Step 1a: HeyGen session created successfully:', session.sessionId);
+
+      console.log('🎭 Step 1b: Connecting to LiveKit room...');
       await heyGen.connectToRoom(session);
+      console.log('✅ Step 1b: Connected to LiveKit room successfully');
 
       // Connect to HeyGen WebSocket for audio streaming and wait for audio session to be ready
-      console.log('🔌 Connecting to HeyGen WebSocket for audio control...');
+      console.log('🔌 Step 2: Connecting to HeyGen WebSocket for audio control...');
 
       // Create a promise that resolves when HeyGen audio session is ready
       const audioSessionReadyPromise = new Promise<void>((resolve) => {
         // Set up a one-time listener for audio session ready
         const checkAudioReady = () => {
-          if (heyGen.isAudioSessionReady) {
+          const isReady = heyGen.getAudioSessionReady();
+          console.log('🔍 Checking audio session ready status:', isReady);
+          if (isReady) {
             console.log('🎵 HeyGen audio session is ready');
             resolve();
           } else {
@@ -925,11 +951,19 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         setTimeout(checkAudioReady, 500);
       });
 
-      // Connect to WebSocket
+      console.log('🔌 Step 2a: Connecting to WebSocket...');
       await heyGen.connectWebSocket(session);
+      console.log('✅ Step 2a: WebSocket connected successfully');
 
       // Wait for audio session to be ready with timeout
-      console.log('⏳ Waiting for HeyGen audio session to be ready...');
+      console.log('⏳ Step 3: Waiting for HeyGen audio session to be ready...');
+      console.log('📊 Current HeyGen state:', {
+        isConnected: heyGen.isConnected,
+        isWebSocketConnected: heyGen.isWebSocketConnected,
+        isAudioSessionReady: heyGen.isAudioSessionReady,
+        isSessionActive: heyGen.isSessionActive
+      });
+
       await Promise.race([
         audioSessionReadyPromise,
         new Promise<never>((_, reject) =>
@@ -937,13 +971,30 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         )
       ]);
 
+      console.log('✅ Step 3: Audio session is ready!');
+
+      // Add a small delay to ensure HeyGen is fully ready before starting OpenAI
+      console.log('⏱️ Waiting 2 seconds for HeyGen to stabilize...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
       // Now start the OpenAI Realtime API for voice conversation
-      console.log('🤖 Starting OpenAI Realtime API for voice conversation...');
-      await realtimeAPI.connect({
+      console.log('🤖 Starting OpenAI Realtime API for voice conversation...', {
         interviewType: selectedInterviewType,
-        questions: currentSession?.sessionData?.questions || [],
+        questionCount: currentSession?.sessionData?.questions?.length || 0,
         language: selectedInterviewLanguage
       });
+
+      try {
+        await realtimeAPI.connect({
+          interviewType: selectedInterviewType,
+          questions: currentSession?.sessionData?.questions || [],
+          language: selectedInterviewLanguage
+        });
+        console.log('✅ OpenAI Realtime API connected successfully');
+      } catch (realtimeError) {
+        console.error('❌ Failed to connect to OpenAI Realtime API:', realtimeError);
+        throw realtimeError;
+      }
 
       toast({
         title: "Avatar Interview Started",

@@ -131,8 +131,21 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
           };
 
           source.connect(processor);
-          // Don't connect to destination to avoid playing audio twice (since HeyGen will play it)
-          console.log('✅ Audio processing pipeline set up successfully');
+
+          // Always connect to destination but mute when forwarding to HeyGen
+          // This ensures audio processing continues for HeyGen forwarding
+          processor.connect(audioContext.destination);
+
+          // Mute local audio when forwarding to HeyGen
+          const isForwardingToHeyGen = options.onAudioChunk && options.onAudioChunk.length > 0;
+          if (isForwardingToHeyGen) {
+            audioEl.volume = 0; // Mute local audio
+          } else {
+            audioEl.volume = 1; // Unmute for normal voice mode
+          }
+
+          console.log('✅ Audio processing pipeline set up successfully',
+            isForwardingToHeyGen ? '(audio being forwarded to HeyGen, local audio muted)' : '(audio playing locally)');
 
           // Cleanup when track ends
           audioTrack.addEventListener('ended', () => {
