@@ -11,6 +11,11 @@ interface RealtimeAPIOptions {
   questions?: any[];
   interviewSet?: any;
   language?: string;
+  onAudioChunk?: (audioData: ArrayBuffer) => void;
+  onSpeakingStart?: () => void;
+  onSpeakingEnd?: () => void;
+  onUserSpeakingStart?: () => void;
+  onUserSpeakingEnd?: () => void;
 }
 
 export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
@@ -67,9 +72,53 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       audioElementRef.current = audioEl;
       
       pc.ontrack = (e) => {
+        console.log('🎯 Got track from OpenAI:', e.streams[0].getAudioTracks().length, 'audio tracks');
         audioEl.srcObject = e.streams[0];
         setIsSpeaking(true);
         options.onAudioStart?.();
+        options.onSpeakingStart?.();
+
+        // Capture audio from the incoming track and forward to HeyGen
+        const audioTrack = e.streams[0].getAudioTracks()[0];
+        if (audioTrack && options.onAudioChunk) {
+          console.log('🎵 Setting up audio processing for track:', audioTrack.label);
+          const mediaStream = new MediaStream([audioTrack]);
+          const audioContext = new AudioContext();
+          const source = audioContext.createMediaStreamSource(mediaStream);
+          const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+          let chunkCount = 0;
+          processor.onaudioprocess = (event) => {
+            const inputBuffer = event.inputBuffer.getChannelData(0);
+            const pcmData = new Int16Array(inputBuffer.length);
+
+            // Convert float32 to int16 PCM
+            for (let i = 0; i < inputBuffer.length; i++) {
+              pcmData[i] = Math.max(-32768, Math.min(32767, inputBuffer[i] * 32768));
+            }
+
+            const pcmBuffer = pcmData.buffer;
+            chunkCount++;
+            if (chunkCount % 10 === 0) { // Log every 10th chunk to avoid spam
+              console.log('🎵 Got audio chunk from OpenAI:', pcmBuffer.byteLength, 'bytes (chunk #' + chunkCount + ')');
+            }
+            options.onAudioChunk?.(pcmBuffer);
+          };
+
+          source.connect(processor);
+          processor.connect(audioContext.destination);
+          console.log('✅ Audio processing pipeline set up successfully');
+
+          // Cleanup when track ends
+          audioTrack.addEventListener('ended', () => {
+            console.log('🔚 Audio track ended, cleaning up processor');
+            source.disconnect();
+            processor.disconnect();
+            audioContext.close();
+          });
+        } else {
+          console.warn('⚠️ No audio track or onAudioChunk callback available');
+        }
       };
       
       // Get user media for microphone input
@@ -97,16 +146,22 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
         // Handle specific events
         if (serverEvent.type === 'response.audio.done') {
           setIsSpeaking(false);
+          setIsListening(true);
           options.onAudioEnd?.();
+          options.onSpeakingEnd?.();
         } else if (serverEvent.type === 'response.audio.delta') {
           setIsSpeaking(true);
+          setIsListening(false);
           options.onAudioStart?.();
+          options.onSpeakingStart?.();
         } else if (serverEvent.type === 'input_audio_buffer.speech_started') {
           console.log('👂 User started speaking');
           setIsListening(true);
+          options.onUserSpeakingStart?.();
         } else if (serverEvent.type === 'input_audio_buffer.speech_stopped') {
           console.log('👂 User stopped speaking - triggering AI response');
           setIsListening(false);
+          options.onUserSpeakingEnd?.();
           // Trigger AI response after user stops speaking
           setTimeout(() => {
             if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
@@ -125,10 +180,12 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
           // Ensure we're ready to listen again
           setIsSpeaking(false);
           setIsListening(true);
+          options.onSpeakingEnd?.();
         } else if (serverEvent.type === 'output_audio_buffer.stopped') {
           console.log('🔊 Audio output stopped - conversation ready for user');
           setIsSpeaking(false);
           setIsListening(true);
+          options.onSpeakingEnd?.();
         }
         
         options.onMessage?.(serverEvent);

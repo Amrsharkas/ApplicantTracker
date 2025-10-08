@@ -138,45 +138,45 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     userProfile,
     onMessage: (event) => {
       console.log('Realtime event:', event);
-      
+
       if (event.type === 'response.audio.delta') {
         // AI started speaking - set speaking state
         setIsAiSpeaking(true);
       }
-      
+
       if (event.type === 'response.audio.done' || event.type === 'response.done') {
         // AI finished speaking - clear speaking state
         setIsAiSpeaking(false);
       }
-      
+
       if (event.type === 'response.audio_transcript.delta') {
         // AI speaking - build transcript
         setVoiceTranscript(prev => prev + (event.delta || ''));
       }
-      
+
       if (event.type === 'response.audio_transcript.done') {
         const aiText = event.transcript;
         setVoiceTranscript("");
-        
+
         // Prevent duplicate responses - only add if different from last response
         if (aiText && aiText !== lastAiResponse) {
           setLastAiResponse(aiText);
-          
+
           // Add unique assistant message to conversation history
           setConversationHistory(prev => {
             // Check if this exact message already exists
-            const isDuplicate = prev.some(msg => 
+            const isDuplicate = prev.some(msg =>
               msg.role === 'assistant' && msg.content === aiText
             );
-            
+
             if (isDuplicate) {
               return prev; // Don't add duplicate
             }
-            
+
             // Add new unique message
             return [...prev, { role: 'assistant', content: aiText }];
           });
-          
+
           // Check if the AI is concluding the interview in English or Arabic
           const conclusionKeywords = [
             'conclude', 'final', 'wrap up', 'end of interview', 'that concludes', 'thank you for', 'this concludes',
@@ -184,19 +184,19 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             'أتمنى لك', 'شكراً لك', 'انتهت المقابلة', 'نهاية المقابلة', 'هذا كل شيء', 'عفواً', 'تم الانتهاء',
             'بالتوفيق', 'أتمنى لك النجاح', 'هذا يختتم', 'انتهينا من', 'كل التوفيق'
           ];
-          
+
           // Also check for question count completion - if we've reached expected count
           const expectedQuestionCount = getQuestionCount(selectedInterviewType);
           const currentQuestionCount = conversationHistory.filter(msg => msg.role === 'assistant').length;
-          
-          if (conclusionKeywords.some(keyword => aiText.toLowerCase().includes(keyword.toLowerCase())) || 
+
+          if (conclusionKeywords.some(keyword => aiText.toLowerCase().includes(keyword.toLowerCase())) ||
               currentQuestionCount >= expectedQuestionCount) {
             console.log('🎯 Voice interview concluded - setting submit button state');
             setIsInterviewConcluded(true);
           }
         }
       }
-      
+
       if (event.type === 'input_audio_buffer.speech_started') {
         setVoiceTranscript("");
         // User started speaking - interrupt AI if needed
@@ -204,24 +204,60 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           setIsAiSpeaking(false);
         }
       }
-      
+
       if (event.type === 'conversation.item.input_audio_transcription.completed') {
         const userText = event.transcript;
-        
+
         // Add user message to conversation history - prevent duplicates
         if (userText) {
           setConversationHistory(prev => {
-            const isDuplicate = prev.some(msg => 
+            const isDuplicate = prev.some(msg =>
               msg.role === 'user' && msg.content === userText
             );
-            
+
             if (isDuplicate) {
               return prev; // Don't add duplicate
             }
-            
+
             return [...prev, { role: 'user', content: userText }];
           });
         }
+      }
+    },
+    // Audio streaming callbacks for HeyGen integration
+    onAudioChunk: (audioData) => {
+      // Stream audio chunk to HeyGen avatar when in HeyGen mode
+      if (mode === 'heygen' && heyGen.isWebSocketConnected) {
+        console.log('🎵 Streaming audio chunk to HeyGen:', audioData.byteLength, 'bytes');
+        heyGen.streamAudioToAvatar(audioData, false);
+      } else {
+        console.log('🚫 Not streaming audio - mode:', mode, 'WebSocket connected:', heyGen.isWebSocketConnected);
+      }
+    },
+    onSpeakingStart: () => {
+      // AI started speaking - interrupt avatar if needed
+      if (mode === 'heygen' && heyGen.isWebSocketConnected) {
+        // Interrupt any current avatar speech to sync with new audio
+        heyGen.interruptAvatar();
+      }
+    },
+    onSpeakingEnd: () => {
+      // AI finished speaking - send final audio chunk
+      if (mode === 'heygen' && heyGen.isWebSocketConnected) {
+        // Send empty final chunk to signal end of speech
+        heyGen.streamAudioToAvatar(new ArrayBuffer(0), true);
+      }
+    },
+    onUserSpeakingStart: () => {
+      // User started speaking - show avatar listening animation
+      if (mode === 'heygen' && heyGen.isWebSocketConnected) {
+        heyGen.startAvatarListening();
+      }
+    },
+    onUserSpeakingEnd: () => {
+      // User stopped speaking - stop avatar listening animation
+      if (mode === 'heygen' && heyGen.isWebSocketConnected) {
+        heyGen.stopAvatarListening();
       }
     },
     onError: (error) => {
@@ -256,6 +292,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         variant: 'destructive'
       });
       setMode('voice');
+    },
+    onWebSocketMessage: (message) => {
+      console.log('HeyGen WebSocket event:', message);
+      // Handle any WebSocket-specific events here
     },
     userProfile
   });
@@ -547,7 +587,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
       
+      // Disconnect both systems
       realtimeAPI.disconnect();
+      heyGen.disconnect().catch(console.error);
       setIsInterviewConcluded(false);
       
       if (data.allInterviewsCompleted) {
@@ -854,24 +896,26 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     setConversationHistory([]);
 
     try {
-      // Check if HeyGen is available
-      // const isAvailable = await heyGen.checkHeyGenAvailability();
-      // if (!isAvailable) {
-      //   toast({
-      //     title: 'HeyGen Unavailable',
-      //     description: 'Avatar interview is currently unavailable. Please use voice mode instead.',
-      //     variant: 'destructive'
-      //   });
-      //   setMode('select');
-      //   return;
-      // }
+      // First, start the HeyGen session and connect to LiveKit for video
+      console.log('🎭 Starting HeyGen avatar session...');
+      const session = await heyGen.createSession();
+      await heyGen.connectToRoom(session);
 
-      // Start the HeyGen interview
-      await heyGen.startInterview(selectedInterviewType, currentSession?.sessionData?.questions || []);
+      // Connect to HeyGen WebSocket for audio streaming
+      console.log('🔌 Connecting to HeyGen WebSocket for audio control...');
+      await heyGen.connectWebSocket(session);
+
+      // Now start the OpenAI Realtime API for voice conversation
+      console.log('🤖 Starting OpenAI Realtime API for voice conversation...');
+      await realtimeAPI.connect({
+        interviewType: selectedInterviewType,
+        questions: currentSession?.sessionData?.questions || [],
+        language: selectedInterviewLanguage
+      });
 
       toast({
         title: "Avatar Interview Started",
-        description: "Your AI avatar interviewer is ready. Please speak naturally.",
+        description: "Your AI avatar interviewer is ready with voice. Please speak naturally.",
       });
 
     } catch (error) {
@@ -883,6 +927,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         description: `Could not start avatar interview: ${errorMessage}. Please try voice mode instead.`,
         variant: 'destructive'
       });
+
+      // Cleanup on failure
+      await heyGen.disconnect();
+      await realtimeAPI.disconnect();
       setMode('select');
     } finally {
       setIsStartingInterview(false);
@@ -1034,7 +1082,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     setWarningVisible(false);
     setSessionTerminated(false);
 
-    // Cleanup HeyGen session
+    // Cleanup both systems
+    realtimeAPI.disconnect();
     heyGen.disconnect().catch(console.error);
   };
 
@@ -1094,11 +1143,14 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     };
   }, [isOpen, mode, selectedInterviewType, windowBlurCount, sessionTerminated, toast, realtimeAPI]);
 
-  // Cleanup voice interview when modal closes
+  // Cleanup both systems when modal closes
   useEffect(() => {
     return () => {
       if (realtimeAPI.isConnected) {
         realtimeAPI.disconnect();
+      }
+      if (heyGen.isConnected) {
+        heyGen.disconnect().catch(console.error);
       }
     };
   }, []);
@@ -1114,8 +1166,12 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       return;
     }
 
+    // Disconnect both systems
     if (realtimeAPI.isConnected) {
       realtimeAPI.disconnect();
+    }
+    if (heyGen.isConnected) {
+      heyGen.disconnect().catch(console.error);
     }
     resetInterview();
     onClose();
@@ -1551,6 +1607,43 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           }}
           className="w-full max-w-lg mx-auto"
         />
+
+        {/* Debug Controls */}
+        <div className="bg-gray-100 p-4 rounded-lg space-y-2">
+          <h4 className="font-medium text-sm">Debug Controls</h4>
+          <div className="flex items-center space-x-2">
+            <Badge variant={heyGen.isWebSocketConnected ? "default" : "secondary"}>
+              WebSocket: {heyGen.isWebSocketConnected ? "Connected" : "Disconnected"}
+            </Badge>
+            <Badge variant={realtimeAPI.isConnected ? "default" : "secondary"}>
+              OpenAI: {realtimeAPI.isConnected ? "Connected" : "Disconnected"}
+            </Badge>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => heyGen.testAvatarAudio()}
+            disabled={!heyGen.isWebSocketConnected}
+          >
+            🧪 Test Avatar Audio
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => heyGen.startAvatarListening()}
+            disabled={!heyGen.isWebSocketConnected}
+          >
+            👂 Start Listening
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => heyGen.stopAvatarListening()}
+            disabled={!heyGen.isWebSocketConnected}
+          >
+            🤫 Stop Listening
+          </Button>
+        </div>
       </div>
 
       {/* Right Column - Conversation History */}
@@ -1820,8 +1913,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                     setIsInterviewConcluded(true);
                     processVoiceInterviewMutation.mutate();
                   } else {
-                    // Just hang up
+                    // Just hang up - disconnect both systems
                     realtimeAPI.disconnect();
+                    heyGen.disconnect().catch(console.error);
                     setMode('select');
                   }
                 }
