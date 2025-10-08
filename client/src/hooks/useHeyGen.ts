@@ -27,6 +27,7 @@ interface UseHeyGenOptions {
   onError?: (error: Error) => void;
   userProfile?: any;
   onWebSocketMessage?: (message: any) => void;
+  onAudioSessionReady?: () => void;
 }
 
 interface ConversationMessage {
@@ -45,6 +46,8 @@ export function useHeyGen(options: UseHeyGenOptions = {}) {
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
+  const [isAudioSessionReady, setIsAudioSessionReady] = useState(false);
+  const [isAvatarListening, setIsAvatarListening] = useState(false);
 
   const roomRef = useRef<Room | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
@@ -52,6 +55,8 @@ export function useHeyGen(options: UseHeyGenOptions = {}) {
   const reconnectAttemptsRef = useRef(0);
   const webSocketRef = useRef<WebSocket | null>(null);
   const eventIdRef = useRef(0);
+  const audioQueueRef = useRef<Array<{data: ArrayBuffer, isFinal: boolean}>>([]);
+  const isProcessingAudioRef = useRef(false);
 
   const { toast } = useToast();
 
@@ -69,6 +74,74 @@ export function useHeyGen(options: UseHeyGenOptions = {}) {
     }
     return btoa(binary);
   }, []);
+
+  // Process audio queue with proper sequencing
+  const processAudioQueue = useCallback(async () => {
+    if (isProcessingAudioRef.current || audioQueueRef.current.length === 0) {
+      return;
+    }
+
+    if (!webSocketRef.current || webSocketRef.current.readyState !== WebSocket.OPEN) {
+      console.warn('HeyGen WebSocket not ready, deferring audio processing');
+      // Retry processing after a short delay
+      setTimeout(() => processAudioQueue(), 1000);
+      return;
+    }
+
+    if (!isAudioSessionReady) {
+      console.log('HeyGen audio session not ready, waiting to process queue');
+      // Retry processing after a short delay
+      setTimeout(() => processAudioQueue(), 500);
+      return;
+    }
+
+    isProcessingAudioRef.current = true;
+
+    try {
+      while (audioQueueRef.current.length > 0) {
+        const audioChunk = audioQueueRef.current.shift();
+        if (!audioChunk) break;
+
+        const { data, isFinal } = audioChunk;
+
+        // Skip empty chunks that aren't final
+        if (data.byteLength === 0 && !isFinal) {
+          continue;
+        }
+
+        // Convert to base64
+        const base64Audio = data.byteLength > 0 ? pcmToBase64(data) : '';
+        const eventId = generateEventId();
+
+        const message = {
+          type: isFinal ? 'agent.speak_end' : 'agent.speak',
+          event_id: eventId,
+          audio: base64Audio
+        };
+
+        // Send to WebSocket with error handling
+        try {
+          webSocketRef.current.send(JSON.stringify(message));
+          console.log(`📤 Sent ${isFinal ? 'final' : 'audio chunk'} to HeyGen:`, eventId,
+            isFinal ? '(final)' : `(${data.byteLength} bytes)`);
+        } catch (sendError) {
+          console.error('Error sending audio chunk to WebSocket:', sendError);
+          // Put the chunk back in the queue to retry later
+          audioQueueRef.current.unshift(audioChunk);
+          break;
+        }
+
+        // Small delay between chunks to prevent overwhelming
+        if (!isFinal && data.byteLength > 0) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+      }
+    } catch (error) {
+      console.error('Error processing audio queue:', error);
+    } finally {
+      isProcessingAudioRef.current = false;
+    }
+  }, [pcmToBase64, generateEventId, isAudioSessionReady]);
 
   // Check HeyGen availability
   const checkHeyGenAvailability = useCallback(async () => {
@@ -294,14 +367,14 @@ export function useHeyGen(options: UseHeyGenOptions = {}) {
   }, [volume, options, startSession]);
 
   // Connect to HeyGen WebSocket for audio streaming
-  const connectWebSocket = useCallback(async (session: HeyGenSession): Promise<void> => {
+  const connectWebSocket = useCallback(async (session: HeyGenSession, retryCount: number = 0): Promise<void> => {
     if (!session.realtimeEndpoint) {
       throw new Error('Missing realtime endpoint for WebSocket connection');
     }
 
     return new Promise((resolve, reject) => {
       try {
-        console.log('Connecting to HeyGen WebSocket:', session.realtimeEndpoint);
+        console.log(`Connecting to HeyGen WebSocket (attempt ${retryCount + 1}):`, session.realtimeEndpoint);
 
         const ws = new WebSocket(session.realtimeEndpoint);
         webSocketRef.current = ws;
@@ -310,15 +383,33 @@ export function useHeyGen(options: UseHeyGenOptions = {}) {
           console.log('✅ HeyGen WebSocket connected successfully');
           setIsWebSocketConnected(true);
 
-          // Send a session keep-alive to initialize the session
+          // Initialize the session for audio streaming
           setTimeout(() => {
             if (ws.readyState === WebSocket.OPEN) {
-              const keepAliveMessage = {
-                type: 'session.keep_alive',
+              // Send session initialization
+              const initMessage = {
+                type: 'session.start',
                 event_id: generateEventId()
               };
-              ws.send(JSON.stringify(keepAliveMessage));
-              console.log('📤 Sent initial keep-alive message');
+              ws.send(JSON.stringify(initMessage));
+              console.log('📤 Sent session start message');
+
+              // Send keep-alive to maintain connection
+              setTimeout(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                  const keepAliveMessage = {
+                    type: 'session.keep_alive',
+                    event_id: generateEventId()
+                  };
+                  ws.send(JSON.stringify(keepAliveMessage));
+                  console.log('📤 Sent keep-alive message');
+                }
+              }, 500);
+
+              // Mark audio session as ready and notify parent
+              setIsAudioSessionReady(true);
+              options.onAudioSessionReady?.();
+              console.log('🎵 HeyGen audio session is now ready for streaming');
             }
           }, 1000);
 
@@ -332,6 +423,10 @@ export function useHeyGen(options: UseHeyGenOptions = {}) {
 
             // Handle server events
             switch (message.type) {
+              case 'session.started':
+                console.log('🚀 HeyGen session started successfully');
+                break;
+
               case 'session.state_updated':
                 console.log('🔄 HeyGen session state:', message.state);
                 break;
@@ -388,13 +483,29 @@ export function useHeyGen(options: UseHeyGenOptions = {}) {
         ws.onerror = (error) => {
           console.error('HeyGen WebSocket error:', error);
           setIsWebSocketConnected(false);
-          reject(new Error('WebSocket connection failed'));
+          setIsAudioSessionReady(false);
+
+          // Retry logic
+          if (retryCount < 3) {
+            console.log(`🔄 Retrying WebSocket connection (${retryCount + 1}/3)...`);
+            setTimeout(() => {
+              connectWebSocket(session, retryCount + 1).then(resolve).catch(reject);
+            }, 2000 * (retryCount + 1)); // Exponential backoff
+          } else {
+            console.error('❌ Max retry attempts reached for WebSocket connection');
+            reject(new Error('WebSocket connection failed after 3 attempts'));
+          }
         };
 
         ws.onclose = () => {
           console.log('HeyGen WebSocket disconnected');
           setIsWebSocketConnected(false);
+          setIsAudioSessionReady(false);
+          setIsAvatarListening(false);
           webSocketRef.current = null;
+          // Clear audio queue on disconnect
+          audioQueueRef.current = [];
+          isProcessingAudioRef.current = false;
         };
 
       } catch (error) {
@@ -406,33 +517,22 @@ export function useHeyGen(options: UseHeyGenOptions = {}) {
 
   // Stream audio to HeyGen avatar
   const streamAudioToAvatar = useCallback((audioData: ArrayBuffer, isFinal: boolean = false) => {
-    if (!webSocketRef.current || webSocketRef.current.readyState !== WebSocket.OPEN) {
-      console.warn('HeyGen WebSocket not connected, cannot stream audio. WebSocket state:', webSocketRef.current?.readyState);
-      return;
+    // Add to queue for processing
+    audioQueueRef.current.push({ data: audioData, isFinal });
+
+    // Start processing if session is ready
+    if (isAudioSessionReady) {
+      // Process asynchronously to avoid blocking
+      setTimeout(() => processAudioQueue(), 0);
+    } else {
+      console.log('🎵 Audio queued - HeyGen session not ready yet');
     }
-
-    try {
-      // For empty final chunks, don't encode audio
-      const base64Audio = audioData.byteLength > 0 ? pcmToBase64(audioData) : '';
-      const eventId = generateEventId();
-
-      const message = {
-        type: isFinal ? 'agent.speak_end' : 'agent.speak',
-        event_id: eventId,
-        audio: base64Audio
-      };
-
-      webSocketRef.current.send(JSON.stringify(message));
-      console.log(`📤 Sent ${isFinal ? 'final' : 'audio chunk'} to HeyGen:`, eventId,
-        isFinal ? '(final)' : `(${audioData.byteLength} bytes, ${base64Audio.length} chars)`);
-    } catch (error) {
-      console.error('Error streaming audio to HeyGen:', error);
-    }
-  }, [pcmToBase64, generateEventId]);
+  }, [isAudioSessionReady, processAudioQueue]);
 
   // Start avatar listening animation
   const startAvatarListening = useCallback(() => {
     if (!webSocketRef.current || webSocketRef.current.readyState !== WebSocket.OPEN) {
+      console.warn('Cannot start listening - WebSocket not ready');
       return;
     }
 
@@ -442,12 +542,14 @@ export function useHeyGen(options: UseHeyGenOptions = {}) {
     };
 
     webSocketRef.current.send(JSON.stringify(message));
+    setIsAvatarListening(true);
     console.log('Started avatar listening animation');
   }, [generateEventId]);
 
   // Stop avatar listening animation
   const stopAvatarListening = useCallback(() => {
     if (!webSocketRef.current || webSocketRef.current.readyState !== WebSocket.OPEN) {
+      console.warn('Cannot stop listening - WebSocket not ready');
       return;
     }
 
@@ -457,6 +559,7 @@ export function useHeyGen(options: UseHeyGenOptions = {}) {
     };
 
     webSocketRef.current.send(JSON.stringify(message));
+    setIsAvatarListening(false);
     console.log('Stopped avatar listening animation');
   }, [generateEventId]);
 
@@ -718,6 +821,8 @@ Let's start with our first question.`;
     volume,
     isMuted,
     isWebSocketConnected,
+    isAudioSessionReady,
+    isAvatarListening,
 
     // Actions
     createSession,

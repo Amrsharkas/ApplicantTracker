@@ -82,31 +82,56 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
         const audioTrack = e.streams[0].getAudioTracks()[0];
         if (audioTrack && options.onAudioChunk) {
           console.log('🎵 Setting up audio processing for track:', audioTrack.label);
+
+          // Use a more reliable audio processing approach
           const mediaStream = new MediaStream([audioTrack]);
-          const audioContext = new AudioContext();
+          const audioContext = new AudioContext({ sampleRate: 24000 }); // Match HeyGen's expected sample rate
           const source = audioContext.createMediaStreamSource(mediaStream);
+
+          // Create a script processor with appropriate buffer size
           const processor = audioContext.createScriptProcessor(4096, 1, 1);
 
           let chunkCount = 0;
-          processor.onaudioprocess = (event) => {
-            const inputBuffer = event.inputBuffer.getChannelData(0);
-            const pcmData = new Int16Array(inputBuffer.length);
+          let isProcessing = false;
 
-            // Convert float32 to int16 PCM
-            for (let i = 0; i < inputBuffer.length; i++) {
-              pcmData[i] = Math.max(-32768, Math.min(32767, inputBuffer[i] * 32768));
+          processor.onaudioprocess = async (event) => {
+            if (isProcessing) {
+              // Skip processing if still processing previous chunk
+              return;
             }
 
-            const pcmBuffer = pcmData.buffer;
-            chunkCount++;
-            if (chunkCount % 10 === 0) { // Log every 10th chunk to avoid spam
-              console.log('🎵 Got audio chunk from OpenAI:', pcmBuffer.byteLength, 'bytes (chunk #' + chunkCount + ')');
+            isProcessing = true;
+
+            try {
+              const inputBuffer = event.inputBuffer.getChannelData(0);
+              const pcmData = new Int16Array(inputBuffer.length);
+
+              // Convert float32 to int16 PCM with proper scaling
+              for (let i = 0; i < inputBuffer.length; i++) {
+                const sample = Math.max(-1, Math.min(1, inputBuffer[i]));
+                pcmData[i] = Math.round(sample * 32767);
+              }
+
+              const pcmBuffer = pcmData.buffer;
+              chunkCount++;
+
+              if (chunkCount % 10 === 0) { // Log every 10th chunk to avoid spam
+                console.log('🎵 Got audio chunk from OpenAI:', pcmBuffer.byteLength, 'bytes (chunk #' + chunkCount + ')');
+              }
+
+              // Send to HeyGen if callback is available
+              if (options.onAudioChunk) {
+                options.onAudioChunk(pcmBuffer);
+              }
+            } catch (error) {
+              console.error('Error processing audio chunk:', error);
+            } finally {
+              isProcessing = false;
             }
-            options.onAudioChunk?.(pcmBuffer);
           };
 
           source.connect(processor);
-          processor.connect(audioContext.destination);
+          // Don't connect to destination to avoid playing audio twice (since HeyGen will play it)
           console.log('✅ Audio processing pipeline set up successfully');
 
           // Cleanup when track ends
@@ -115,6 +140,14 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
             source.disconnect();
             processor.disconnect();
             audioContext.close();
+          });
+
+          // Also cleanup on context close
+          audioContext.addEventListener('statechange', () => {
+            if (audioContext.state === 'closed') {
+              source.disconnect();
+              processor.disconnect();
+            }
           });
         } else {
           console.warn('⚠️ No audio track or onAudioChunk callback available');

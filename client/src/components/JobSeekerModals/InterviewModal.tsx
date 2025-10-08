@@ -226,12 +226,12 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     },
     // Audio streaming callbacks for HeyGen integration
     onAudioChunk: (audioData) => {
-      // Stream audio chunk to HeyGen avatar when in HeyGen mode
-      if (mode === 'heygen' && heyGen.isWebSocketConnected) {
+      // Stream audio chunk to HeyGen avatar when in HeyGen mode and audio session is ready
+      if (mode === 'heygen' && heyGen.isAudioSessionReady && heyGen.isWebSocketConnected) {
         console.log('🎵 Streaming audio chunk to HeyGen:', audioData.byteLength, 'bytes');
         heyGen.streamAudioToAvatar(audioData, false);
       } else {
-        console.log('🚫 Not streaming audio - mode:', mode, 'WebSocket connected:', heyGen.isWebSocketConnected);
+        console.log('🚫 Not streaming audio - mode:', mode, 'Audio session ready:', heyGen.isAudioSessionReady, 'WebSocket connected:', heyGen.isWebSocketConnected);
       }
     },
     onSpeakingStart: () => {
@@ -239,25 +239,29 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       if (mode === 'heygen' && heyGen.isWebSocketConnected) {
         // Interrupt any current avatar speech to sync with new audio
         heyGen.interruptAvatar();
+        console.log('🔇 Interrupted avatar speech for new audio');
       }
     },
     onSpeakingEnd: () => {
       // AI finished speaking - send final audio chunk
-      if (mode === 'heygen' && heyGen.isWebSocketConnected) {
+      if (mode === 'heygen' && heyGen.isAudioSessionReady && heyGen.isWebSocketConnected) {
         // Send empty final chunk to signal end of speech
         heyGen.streamAudioToAvatar(new ArrayBuffer(0), true);
+        console.log('🔚 Sent final audio chunk to HeyGen');
       }
     },
     onUserSpeakingStart: () => {
       // User started speaking - show avatar listening animation
       if (mode === 'heygen' && heyGen.isWebSocketConnected) {
         heyGen.startAvatarListening();
+        console.log('👂 Started avatar listening animation');
       }
     },
     onUserSpeakingEnd: () => {
       // User stopped speaking - stop avatar listening animation
       if (mode === 'heygen' && heyGen.isWebSocketConnected) {
         heyGen.stopAvatarListening();
+        console.log('🤫 Stopped avatar listening animation');
       }
     },
     onError: (error) => {
@@ -901,9 +905,37 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       const session = await heyGen.createSession();
       await heyGen.connectToRoom(session);
 
-      // Connect to HeyGen WebSocket for audio streaming
+      // Connect to HeyGen WebSocket for audio streaming and wait for audio session to be ready
       console.log('🔌 Connecting to HeyGen WebSocket for audio control...');
+
+      // Create a promise that resolves when HeyGen audio session is ready
+      const audioSessionReadyPromise = new Promise<void>((resolve) => {
+        // Set up a one-time listener for audio session ready
+        const checkAudioReady = () => {
+          if (heyGen.isAudioSessionReady) {
+            console.log('🎵 HeyGen audio session is ready');
+            resolve();
+          } else {
+            // Check again after a short delay
+            setTimeout(checkAudioReady, 100);
+          }
+        };
+
+        // Start checking after initial connection
+        setTimeout(checkAudioReady, 500);
+      });
+
+      // Connect to WebSocket
       await heyGen.connectWebSocket(session);
+
+      // Wait for audio session to be ready with timeout
+      console.log('⏳ Waiting for HeyGen audio session to be ready...');
+      await Promise.race([
+        audioSessionReadyPromise,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('HeyGen audio session ready timeout')), 15000)
+        )
+      ]);
 
       // Now start the OpenAI Realtime API for voice conversation
       console.log('🤖 Starting OpenAI Realtime API for voice conversation...');
@@ -1611,38 +1643,54 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         {/* Debug Controls */}
         <div className="bg-gray-100 p-4 rounded-lg space-y-2">
           <h4 className="font-medium text-sm">Debug Controls</h4>
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant={heyGen.isWebSocketConnected ? "default" : "secondary"}>
               WebSocket: {heyGen.isWebSocketConnected ? "Connected" : "Disconnected"}
+            </Badge>
+            <Badge variant={heyGen.isAudioSessionReady ? "default" : "secondary"}>
+              Audio Session: {heyGen.isAudioSessionReady ? "Ready" : "Not Ready"}
             </Badge>
             <Badge variant={realtimeAPI.isConnected ? "default" : "secondary"}>
               OpenAI: {realtimeAPI.isConnected ? "Connected" : "Disconnected"}
             </Badge>
+            <Badge variant={heyGen.isAvatarListening ? "default" : "secondary"}>
+              Avatar: {heyGen.isAvatarListening ? "Listening" : "Not Listening"}
+            </Badge>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => heyGen.testAvatarAudio()}
-            disabled={!heyGen.isWebSocketConnected}
-          >
-            🧪 Test Avatar Audio
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => heyGen.startAvatarListening()}
-            disabled={!heyGen.isWebSocketConnected}
-          >
-            👂 Start Listening
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => heyGen.stopAvatarListening()}
-            disabled={!heyGen.isWebSocketConnected}
-          >
-            🤫 Stop Listening
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => heyGen.testAvatarAudio()}
+              disabled={!heyGen.isWebSocketConnected}
+            >
+              🧪 Test Avatar Audio
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => heyGen.startAvatarListening()}
+              disabled={!heyGen.isWebSocketConnected}
+            >
+              👂 Start Listening
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => heyGen.stopAvatarListening()}
+              disabled={!heyGen.isWebSocketConnected}
+            >
+              🤫 Stop Listening
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => heyGen.interruptAvatar()}
+              disabled={!heyGen.isWebSocketConnected}
+            >
+              🔇 Interrupt Avatar
+            </Button>
+          </div>
         </div>
       </div>
 
