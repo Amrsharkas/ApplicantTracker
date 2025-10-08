@@ -1060,7 +1060,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               try {
                 await realtimeAPI.connect({
                   interviewType: 'job-practice',
-                  questions: session.sessionData?.questions
+                  questions: session.sessionData?.questions,
+                  language: selectedInterviewLanguage
                 });
               } catch (e) {
                 console.error('Auto voice connect failed:', e);

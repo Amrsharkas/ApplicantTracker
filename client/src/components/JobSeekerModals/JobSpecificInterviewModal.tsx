@@ -109,7 +109,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
 
         if (mode === 'voice' && data?.sessionData?.questions) {
           // Connect voice session
-          await realtimeAPI.connect({ interviewType: 'job-practice', questions: data.sessionData.questions });
+          await realtimeAPI.connect({ interviewType: 'job-practice', questions: data.sessionData.questions, language: language });
         }
       } catch (e: any) {
         toast({ title: 'Error', description: e?.message || 'Failed to load session', variant: 'destructive' });
