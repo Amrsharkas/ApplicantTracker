@@ -16,6 +16,7 @@ import { isUnauthorizedError } from '@/lib/authUtils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ResumeRequiredModal } from '@/components/ResumeRequiredModal';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { CameraPreview } from '@/components/CameraPreview';
 
 interface InterviewQuestion {
   question: string;
@@ -75,6 +76,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const [windowBlurCount, setWindowBlurCount] = useState(0);
   const [warningVisible, setWarningVisible] = useState(false);
   const [sessionTerminated, setSessionTerminated] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [showTranscription, setShowTranscription] = useState(true);
   const maxBlurCount = 3; // Maximum allowed window switches before termination
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -136,6 +139,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   // Voice interview integration
   const realtimeAPI = useRealtimeAPI({
     userProfile,
+    requireCamera: false, // Don't require camera in realtime API since we'll handle it separately
     onMessage: (event) => {
       console.log('Realtime event:', event);
       
@@ -710,7 +714,30 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     }
   };;
 
-  const startVoiceInterview = async () => {
+  const startCameraAccess = async () => {
+  try {
+    const videoStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 1280, max: 1920 },
+        height: { ideal: 720, max: 1080 },
+        facingMode: 'user'
+      }
+    });
+    setCameraStream(videoStream);
+    return videoStream;
+  } catch (error) {
+    console.error('Camera access error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to access camera';
+    toast({
+      title: 'Camera Access Failed',
+      description: 'Could not access camera. You can continue with audio only.',
+      variant: 'destructive'
+    });
+    return null;
+  }
+};
+
+const startVoiceInterview = async () => {
     if (!selectedInterviewType) {
       toast({
         title: t('interview.selectInterviewTypeError') || 'Error',
@@ -725,11 +752,14 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     setMessages([]);
     setIsInterviewConcluded(false);
     setConversationHistory([]);
-    
+
+    // Start camera access immediately when voice mode is selected
+    await startCameraAccess();
+
     // Show loading message
     const loadingMessage: InterviewMessage = {
       type: 'question',
-      content: t('interview.startingVoiceInterviewConnecting') || 'Starting your voice interview... Connecting to AI interviewer...',
+      content: t('interview.startingVoiceInterviewConnecting') || 'Starting your voice interview... Camera enabled, connecting to AI interviewer...',
       timestamp: new Date()
     };
     setMessages([loadingMessage]);
@@ -939,6 +969,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   };
 
   const resetInterview = () => {
+    // Stop camera stream
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+    }
+
     setMode('types');
     setSelectedInterviewType('');
     setMessages([]);
@@ -956,6 +991,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     setWindowBlurCount(0);
     setWarningVisible(false);
     setSessionTerminated(false);
+    setCameraStream(null);
   };
 
   // Reset interview state when modal opens
@@ -1037,6 +1073,12 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     if (realtimeAPI.isConnected) {
       realtimeAPI.disconnect();
     }
+
+    // Stop camera stream
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+    }
+
     resetInterview();
     onClose();
   };
@@ -1414,194 +1456,296 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   );
 
   const renderVoiceInterview = () => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Voice Interview</h3>
-        <div className="flex items-center space-x-2 rtl:space-x-reverse">
-          {realtimeAPI.isConnected && (
-            <Badge variant="default" className="flex items-center space-x-1 rtl:space-x-reverse">
-              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-              {t('interview.live') || 'Live'}
-            </Badge>
-          )}
-        </div>
-      </div>
+    <div className="flex-1 flex flex-col h-full">
+      {/* Main content area */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-0 h-full">
+        {/* Video section - takes full width when transcription is hidden */}
+        <div className={`${showTranscription ? 'lg:col-span-1' : 'lg:col-span-2'} relative bg-gray-900 overflow-hidden`}>
+          <CameraPreview
+            stream={cameraStream}
+            isActive={realtimeAPI.isConnected}
+            error={realtimeAPI.cameraError}
+            connecting={isStartingInterview}
+            className="h-full"
+          />
 
-      <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
-        <CardContent className="p-6">
-          <div className="text-center space-y-4">
-            <div className="relative">
-              <div className={`h-20 w-20 mx-auto rounded-full border-4 flex items-center justify-center transition-all duration-300 ${
-                realtimeAPI.isConnected 
-                  ? 'border-green-500 bg-green-100 animate-pulse' 
-                  : 'border-gray-300 bg-gray-100'
-              }`}>
-                {realtimeAPI.isConnected ? (
-                  <Mic className="h-8 w-8 text-green-600" />
-                ) : (
-                  <MicOff className="h-8 w-8 text-gray-600" />
-                )}
+          {/* Video overlay with status and AI info */}
+          <div className="absolute inset-0 flex flex-col">
+            {/* Top overlay */}
+            <div className="bg-gradient-to-b from-black/60 to-transparent p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm">
+                    You
+                  </div>
+                  {realtimeAPI.isConnected && (
+                    <div className="flex items-center space-x-2 bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full">
+                      <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                      <span className="text-sm">Speaking</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* AI Interviewer status */}
+                <div className="bg-black/50 backdrop-blur-sm text-white px-4 py-2 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                      isStartingInterview ? 'bg-yellow-500' :
+                      isAiSpeaking ? 'bg-blue-500 animate-pulse' :
+                      realtimeAPI.isConnected ? 'bg-green-500' : 'bg-gray-500'
+                    }`}>
+                      <User className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">AI Interviewer</p>
+                      <p className="text-xs opacity-75">
+                        {isStartingInterview ? 'Setting up...' :
+                         isAiSpeaking ? 'Speaking...' :
+                         realtimeAPI.isConnected ? 'Listening' : 'Connecting...'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              {realtimeAPI.isConnected && (
-                <div className="absolute inset-0 h-20 w-20 mx-auto rounded-full border-4 border-green-500 animate-ping opacity-30" />
-              )}
             </div>
-            
-            <div className="space-y-2">
-              <p className="font-medium">
-                {isStartingInterview 
-                  ? t('interview.startingInterview') || 'Starting Interview...'
-                  : isAiSpeaking
-                    ? t('interview.aiIsSpeaking') || 'AI is Speaking...'
-                    : realtimeAPI.isConnected
-                      ? t('interview.aiInterviewActive') || 'AI Interview Active'
-                      : t('interview.connecting') || 'Connecting...'
-                }
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {isStartingInterview 
-                  ? t('interview.preparingYourPersonalizedQuestions') || 'Preparing your personalized questions...'
-                  : isAiSpeaking
-                    ? t('interview.waitForAiToFinishSpeaking') || 'Please wait for the AI to finish speaking before responding'
-                    : realtimeAPI.isConnected
-                      ? `${t('interview.speakNaturally') || 'Speak naturally'} - ${t('interview.aiWillGuideYou') || 'the AI will guide you through'} ${getQuestionCount(selectedInterviewType)} ${selectedInterviewType} ${t('interview.questions') || 'questions'}`
-                      : t('interview.settingUpVoiceInterview') || 'Setting up your voice interview...'
-                }
-              </p>
+
+            {/* Bottom overlay with current AI text */}
+            {isAiSpeaking && voiceTranscript && (
+              <div className="mt-auto bg-gradient-to-t from-black/60 to-transparent p-4">
+                <div className="bg-black/50 backdrop-blur-sm text-white p-3 rounded-lg max-w-2xl">
+                  <p className="text-sm font-medium mb-1">AI Interviewer is saying:</p>
+                  <p className="text-sm">{voiceTranscript}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Transcription panel - only shown when enabled */}
+        {showTranscription && (
+          <div className="bg-gray-900 border-l border-gray-800 flex flex-col">
+            {/* Transcription header */}
+            <div className="bg-gray-800 px-4 py-3 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white font-medium flex items-center space-x-2">
+                  <MessageCircle className="h-4 w-4" />
+                  <span>Live Transcription</span>
+                </h3>
+                <span className="text-gray-400 text-xs">
+                  {conversationHistory.length} messages
+                </span>
+              </div>
+            </div>
+
+            {/* Transcription content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {conversationHistory.length > 0 ? (
+                conversationHistory.map((item, index) => (
+                  <div key={`${item.role}-${index}`} className={`flex ${
+                    item.role === 'assistant' ? 'justify-start' : 'justify-end'
+                  }`}>
+                    <div className={`max-w-full px-3 py-2 rounded-lg text-sm ${
+                      item.role === 'assistant'
+                        ? 'bg-blue-600/20 text-blue-100 border border-blue-600/30'
+                        : 'bg-green-600/20 text-green-100 border border-green-600/30'
+                    }`}>
+                      <div className="flex items-center space-x-1 mb-1">
+                        <span className="text-xs font-medium opacity-75">
+                          {item.role === 'assistant' ? 'AI' : 'You'}
+                        </span>
+                      </div>
+                      <p className="text-sm leading-relaxed">{item.content}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Waiting for conversation...</p>
+                </div>
+              )}
+
+              {/* AI speaking indicator in transcription */}
+              {isAiSpeaking && (
+                <div className="flex justify-start">
+                  <div className="bg-blue-600/20 text-blue-100 border border-blue-600/30 px-3 py-2 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <div className="h-3 w-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm">AI is speaking...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {voiceTranscript && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="p-4">
-            <div className="flex items-start space-x-2 rtl:space-x-reverse">
-              <User className="h-4 w-4 mt-1 text-blue-600" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-blue-800">AI Interviewer</p>
-                <p className="text-sm text-blue-700">{voiceTranscript}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="h-48 overflow-y-auto space-y-2 p-2 border rounded-lg bg-gray-50">
-        {conversationHistory
-          .slice(-6) // Show last 6 messages for better context
-          .map((item, index) => (
-          <Card key={`${item.role}-${index}-${item.content.substring(0, 20)}`} className={`${
-            item.role === 'assistant' 
-              ? 'border-blue-200 bg-blue-50' 
-              : 'border-green-200 bg-green-50 ml-8'
-          }`}>
-            <CardContent className="p-3">
-              <div className="flex items-start space-x-2 rtl:space-x-reverse">
-                {item.role === 'assistant' ? (
-                  <User className="h-4 w-4 mt-1 text-blue-600" />
-                ) : (
-                  <MessageCircle className="h-4 w-4 mt-1 text-green-600" />
-                )}
-                <div className="flex-1">
-                  <p className={`text-sm font-medium ${item.role === 'assistant' ? 'text-blue-800' : 'text-green-800'}`}>
-                    {item.role === 'assistant' ? t('interview.aiInterviewer') || 'AI Interviewer' : t('interview.you') || 'You'}
-                  </p>
-                  <p className={`text-sm ${item.role === 'assistant' ? 'text-blue-700' : 'text-green-700'}`}>
-                    {item.content}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        
-        {/* Show AI speaking indicator */}
-        {isAiSpeaking && (
-          <Card className="border-orange-200 bg-orange-50">
-            <CardContent className="p-3">
-              <div className="flex items-start space-x-2 rtl:space-x-reverse">
-                <div className="h-4 w-4 mt-1 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-orange-800">AI Interviewer</p>
-                  <p className="text-sm text-orange-700">Speaking...</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         )}
       </div>
 
-      {currentSession?.isCompleted && (
-        <div className="space-y-4">
-          <Card className="border-green-200 bg-green-50">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                <div className="h-2 w-2 bg-green-500 rounded-full" />
-                <span className="text-sm font-medium text-green-700">Voice Interview Complete!</span>
-              </div>
-              <p className="text-sm text-green-600 mt-1">
-                {t('interview.interviewSectionCompletedSuccessfully') || 'Interview section completed successfully! Continue with remaining interviews to complete your profile.'}
-              </p>
-            </CardContent>
-          </Card>
+      {/* Meeting controls */}
+      <div className="bg-gray-900 border-t border-gray-800 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className={`h-3 w-3 rounded-full ${
+              sessionTerminated ? 'bg-red-500' : windowBlurCount > 0 ? 'bg-yellow-500' : 'bg-green-500'
+            } animate-pulse`} />
+            <span className="text-gray-400 text-sm">
+              {sessionTerminated ? 'Session Terminated' :
+               windowBlurCount > 0 ? `${windowBlurCount}/${maxBlurCount} violations` :
+               realtimeAPI.isConnected ? 'Connected' : 'Connecting...'}
+            </span>
 
+            {showTranscription && (
+              <span className="text-gray-500 text-xs">
+                • Transcription enabled
+              </span>
+            )}
+          </div>
 
-        </div>
-      )}
+          <div className="flex items-center space-x-3">
+            {currentSession?.interviewType !== 'job-practice' && (
+              <button
+                onClick={() => setMode('types')}
+                className="text-gray-400 hover:text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
+                disabled={isAiSpeaking || isProcessingInterview}
+              >
+                ← Exit Interview
+              </button>
+            )}
 
-      <div className="flex justify-between">
-        {currentSession?.interviewType !== 'job-practice' && (
-          <Button variant="outline" onClick={() => setMode('types')}>
-            ← {t('interview.backToInterviewTypes') || 'Back to Interview Types'}
-          </Button>
-        )}
-        <div className="space-x-2 rtl:space-x-reverse">
-          {realtimeAPI.isConnected && (
-            <Button
-              variant={isInterviewConcluded ? "default" : "destructive"}
-              onClick={() => {
-                if (isInterviewConcluded) {
-                  processVoiceInterviewMutation.mutate();
-                } else {
-                  // Check if minimum conversation length reached (at least 5 exchanges)
-                  const userMessages = conversationHistory.filter(msg => msg.role === 'user');
-                  if (userMessages.length >= 3) {
-                    console.log('🎯 Minimum voice interview length reached - enabling submit');
-                    setIsInterviewConcluded(true);
+            {realtimeAPI.isConnected && (
+              <button
+                onClick={() => {
+                  if (isInterviewConcluded) {
                     processVoiceInterviewMutation.mutate();
                   } else {
-                    // Just hang up
-                    realtimeAPI.disconnect();
-                    setMode('select');
+                    const userMessages = conversationHistory.filter(msg => msg.role === 'user');
+                    if (userMessages.length >= 3) {
+                      setIsInterviewConcluded(true);
+                      processVoiceInterviewMutation.mutate();
+                    } else {
+                      realtimeAPI.disconnect();
+                      setMode('select');
+                    }
                   }
-                }
-              }}
-              disabled={isProcessingInterview || processVoiceInterviewMutation.isPending}
-            >
-              {isProcessingInterview || processVoiceInterviewMutation.isPending ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {t('interview.processingInterview') || 'Processing Interview...'}
-                </>
-              ) : isInterviewConcluded || conversationHistory.filter(msg => msg.role === 'user').length >= 3 ? (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  {t('interview.submitInterview') || 'Submit Interview'}
-                </>
-              ) : (
-                <>
-                  <PhoneOff className="h-4 w-4 mr-2" />
-                  {t('interview.hangUp') || 'Hang Up'}
-                </>
-              )}
-            </Button>
-          )}
+                }}
+                disabled={isProcessingInterview || processVoiceInterviewMutation.isPending}
+                className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
+                  isInterviewConcluded || conversationHistory.filter(msg => msg.role === 'user').length >= 3
+                    ? 'bg-green-600 hover:bg-green-700 text-white'
+                    : 'bg-red-600 hover:bg-red-700 text-white'
+                }`}
+              >
+                {isProcessingInterview || processVoiceInterviewMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                    <span>Processing...</span>
+                  </>
+                ) : isInterviewConcluded || conversationHistory.filter(msg => msg.role === 'user').length >= 3 ? (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Submit Interview</span>
+                  </>
+                ) : (
+                  <>
+                    <PhoneOff className="h-4 w-4" />
+                    <span>End Interview</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 
+  // Voice mode uses a different, full-screen interface
+  if (mode === 'voice') {
+    return (
+      <>
+        <div className="fixed inset-0 z-50 bg-gray-950 flex flex-col">
+          {/* Header */}
+          <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
+                <div className={`h-3 w-3 rounded-full ${sessionTerminated ? 'bg-red-500' : windowBlurCount > 0 ? 'bg-yellow-500' : 'bg-green-500'} animate-pulse`} />
+                <span className="text-white font-medium">
+                  {sessionTerminated ? 'Session Terminated' : windowBlurCount > 0 ? `${windowBlurCount}/${maxBlurCount} violations` : 'Live Interview'}
+                </span>
+              </div>
+              <div className="text-gray-400 text-sm">
+                {selectedInterviewType && `${selectedInterviewType.charAt(0).toUpperCase() + selectedInterviewType.slice(1)} Interview`} • {selectedInterviewLanguage === 'arabic' ? 'Arabic' : 'English'}
+              </div>
+
+              {/* Transcription toggle */}
+              <button
+                onClick={() => setShowTranscription(!showTranscription)}
+                className={`flex items-center space-x-2 px-3 py-1 rounded-lg transition-colors ${
+                  showTranscription ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+                title={showTranscription ? 'Hide transcription' : 'Show transcription'}
+              >
+                <MessageCircle className="h-4 w-4" />
+                <span className="text-sm">{showTranscription ? 'Transcript On' : 'Transcript Off'}</span>
+              </button>
+            </div>
+            <button
+              onClick={handleClose}
+              className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors"
+              disabled={isAiSpeaking || isProcessingInterview || isStartingInterview}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Warning overlay */}
+          {warningVisible && !sessionTerminated && (
+            <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg">
+              <p className="text-sm font-medium">Tab Switch Detected - {maxBlurCount - windowBlurCount} violations remaining</p>
+            </div>
+          )}
+
+          {/* Session terminated overlay */}
+          {sessionTerminated && (
+            <div className="absolute inset-0 z-40 bg-black bg-opacity-75 flex items-center justify-center">
+              <div className="bg-gray-800 rounded-lg p-6 text-center">
+                <PhoneOff className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-white font-semibold text-lg mb-2">Interview Session Terminated</h3>
+                <p className="text-gray-300">Your session has been terminated due to multiple window switches.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Main video meeting area */}
+          <div className="flex-1 flex flex-col lg:flex-row">
+            {/* Main content area */}
+            <div className="flex-1 flex flex-col p-4">
+              {renderVoiceInterview()}
+            </div>
+          </div>
+        </div>
+
+        <ResumeRequiredModal
+          isOpen={showResumeModal}
+          onClose={() => setShowResumeModal(false)}
+          onResumeUploaded={() => {
+            setShowResumeModal(false);
+            queryClient.invalidateQueries({ queryKey: ['/api/interview/resume-check'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/interview/types'] });
+            toast({
+              title: t('interview.success') || "Success",
+              description: t('interview.resumeUploadedSuccessfully') || "Resume uploaded successfully! You can now start interviews.",
+              variant: "default",
+            });
+          }}
+        />
+      </>
+    );
+  }
+
+  // Regular dialog for non-voice modes
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -1609,7 +1753,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>{t('interview.aiInterview') || 'AI Interview'}</DialogTitle>
-              {(mode === 'voice' || (mode === 'select' && selectedInterviewType)) && (
+              {(mode === 'select' && selectedInterviewType) && (
                 <div className="flex items-center space-x-2">
                   <div className={`h-2 w-2 rounded-full ${sessionTerminated ? 'bg-red-500' : windowBlurCount > 0 ? 'bg-yellow-500' : 'bg-green-500'}`} />
                   <span className="text-xs text-muted-foreground">
@@ -1628,7 +1772,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                 <div>
                   <p className="text-sm font-medium text-red-800">Tab Switch Detected</p>
                   <p className="text-xs text-red-600">
-                    Switching tabs during interviews is not allowed. {maxBlurCount - windowBlurCount} more violation{maxBlurCount - windowBlurCount > 1 ? 's' : ''} before session termination.
+                    Switching tabs during interviews is not allowed. {maxBlurCount - windowBlurCount > 1 ? 's' : ''} before session termination.
                   </p>
                 </div>
               </div>
@@ -1653,11 +1797,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           {mode === 'types' && renderInterviewTypes()}
           {mode === 'select' && renderModeSelection()}
           {mode === 'text' && renderTextInterview()}
-          {mode === 'voice' && renderVoiceInterview()}
         </DialogContent>
       </Dialog>
 
-      <ResumeRequiredModal 
+      <ResumeRequiredModal
         isOpen={showResumeModal}
         onClose={() => setShowResumeModal(false)}
         onResumeUploaded={() => {

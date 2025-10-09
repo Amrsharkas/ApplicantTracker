@@ -11,6 +11,8 @@ interface RealtimeAPIOptions {
   questions?: any[];
   interviewSet?: any;
   language?: string;
+  onVideoStream?: (stream: MediaStream) => void;
+  requireCamera?: boolean;
 }
 
 export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
@@ -18,11 +20,13 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const videoStreamRef = useRef<MediaStream | null>(null);
   
   const { toast } = useToast();
 
@@ -73,18 +77,68 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       };
       
       // Get user media for microphone input
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
+      const constraints: MediaStreamConstraints = {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
         }
-      });
-      mediaStreamRef.current = mediaStream;
+      };
+
+      // Add video constraint if camera is required
+      if (options.requireCamera) {
+        constraints.video = {
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          facingMode: 'user'
+        };
+      }
+
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        mediaStreamRef.current = mediaStream;
+
+        // Extract video stream if camera is enabled
+        if (options.requireCamera && mediaStream.getVideoTracks().length > 0) {
+          const videoStream = new MediaStream(mediaStream.getVideoTracks());
+          videoStreamRef.current = videoStream;
+          options.onVideoStream?.(videoStream);
+        }
+      } catch (error) {
+        console.error('Media access error:', error);
+        if (options.requireCamera) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to access camera';
+          setCameraError(errorMessage);
+
+          // Try again with just audio if camera fails
+          try {
+            const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+              }
+            });
+            mediaStreamRef.current = audioOnlyStream;
+
+            toast({
+              title: 'Camera Access Failed',
+              description: 'Could not access camera. Continuing with audio only.',
+              variant: 'destructive'
+            });
+          } catch (audioError) {
+            throw new Error('Failed to access both camera and microphone');
+          }
+        } else {
+          throw error;
+        }
+      }
       
       // Add audio track to peer connection
-      pc.addTrack(mediaStream.getTracks()[0]);
-      setIsListening(true);
+      if (mediaStreamRef.current && mediaStreamRef.current.getAudioTracks().length > 0) {
+        pc.addTrack(mediaStreamRef.current.getAudioTracks()[0]);
+        setIsListening(true);
+      }
       
       // Set up data channel for events
       const dc = pc.createDataChannel('oai-events');
@@ -249,26 +303,32 @@ Have a natural conversation - listen to their answers, ask brief follow-ups if n
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
     }
-    
+
     if (dataChannelRef.current) {
       dataChannelRef.current.close();
       dataChannelRef.current = null;
     }
-    
+
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
       mediaStreamRef.current = null;
     }
-    
+
+    if (videoStreamRef.current) {
+      videoStreamRef.current.getTracks().forEach(track => track.stop());
+      videoStreamRef.current = null;
+    }
+
     if (audioElementRef.current) {
       audioElementRef.current.pause();
       audioElementRef.current = null;
     }
-    
+
     setIsConnected(false);
     setIsConnecting(false);
     setIsSpeaking(false);
     setIsListening(false);
+    setCameraError(null);
   }, []);
   
   const sendMessage = useCallback((message: any) => {
@@ -302,6 +362,7 @@ Have a natural conversation - listen to their answers, ask brief follow-ups if n
     isConnecting,
     isConnected,
     isSpeaking,
-    isListening
+    isListening,
+    cameraError
   };
 }

@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeAPI } from "@/hooks/useRealtimeAPI";
-import { MessageCircle, User, Mic, MicOff, PhoneOff } from "lucide-react";
+import { MessageCircle, MessageSquare, User, Mic, MicOff, PhoneOff } from "lucide-react";
+import { CameraPreview } from '@/components/CameraPreview';
 
 interface JobSummary {
   recordId: string;
@@ -43,9 +44,35 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   const [submitting, setSubmitting] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [showTranscription, setShowTranscription] = useState(true);
+
+  const startCameraAccess = async () => {
+    try {
+      const videoStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          facingMode: 'user'
+        }
+      });
+      setCameraStream(videoStream);
+      return videoStream;
+    } catch (error) {
+      console.error('Camera access error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to access camera';
+      toast({
+        title: 'Camera Access Failed',
+        description: 'Could not access camera. You can continue with audio only.',
+        variant: 'destructive'
+      });
+      return null;
+    }
+  };
 
   // Voice realtime
   const realtimeAPI = useRealtimeAPI({
+    requireCamera: false, // Don't require camera in realtime API since we'll handle it separately
     onMessage: (event) => {
   
       if (event.type === 'response.audio_transcript.done') {
@@ -108,7 +135,9 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         }
 
         if (mode === 'voice' && data?.sessionData?.questions) {
-          // Connect voice session
+          // Start camera access first
+          await startCameraAccess();
+          // Then connect voice session
           await realtimeAPI.connect({ interviewType: 'job-practice', questions: data.sessionData.questions, language: language });
         }
       } catch (e: any) {
@@ -120,6 +149,11 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
     // Disconnect on close
     return () => {
       if (realtimeAPI.isConnected) realtimeAPI.disconnect();
+      // Stop camera stream
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+      setCameraStream(null);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -193,6 +227,184 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
     }
   };
 
+  // Voice mode uses a different, full-screen interface
+  if (mode === 'voice') {
+    return (
+      <div className="fixed inset-0 z-50 bg-gray-950 flex flex-col">
+        {/* Header with enhanced controls */}
+        <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
+              <div className={`h-3 w-3 rounded-full ${realtimeAPI.isConnected ? 'bg-green-500' : 'bg-yellow-500'} animate-pulse`} />
+              <span className="text-white font-medium">
+                {realtimeAPI.isConnected ? 'Live Interview' : 'Connecting...'}
+              </span>
+            </div>
+            <div className="text-gray-400 text-sm">
+              Job Interview • {job?.jobTitle} • {language === 'arabic' ? 'Arabic' : 'English'}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowTranscription(!showTranscription)}
+              className="flex items-center gap-2 px-3 py-2 border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors"
+              title={showTranscription ? "Hide transcription" : "Show transcription"}
+            >
+              <MessageSquare className="h-4 w-4 text-gray-300" />
+              <span className="text-sm font-medium text-gray-300">
+                {showTranscription ? "Hide" : "Show"} Transcription
+              </span>
+            </button>
+
+            <button
+              onClick={() => { if (realtimeAPI.isConnected) realtimeAPI.disconnect(); onClose(); }}
+              className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors"
+              disabled={processing}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Main video meeting area */}
+        <div className="flex-1 flex flex-col h-full">
+          {/* Video grid with responsive layout */}
+          <div className={`flex-1 grid gap-4 p-4 ${
+            showTranscription
+              ? 'grid-cols-1 lg:grid-cols-2'
+              : 'grid-cols-1'
+          }`}>
+            {/* User camera - takes full width when transcription is hidden */}
+            <div className={`relative bg-gray-900 rounded-lg overflow-hidden ${
+              showTranscription ? '' : 'lg:col-span-1'
+            }`}>
+              <CameraPreview
+                stream={cameraStream}
+                isActive={realtimeAPI.isConnected}
+                error={realtimeAPI.cameraError}
+                connecting={loading}
+                className="h-full"
+              />
+              <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+                You
+              </div>
+              {realtimeAPI.isConnected && (
+                <div className="absolute bottom-4 left-4 flex items-center space-x-2">
+                  <div className="h-3 w-3 bg-green-500 rounded-full animate-pulse" />
+                  <span className="text-white text-sm">Speaking</span>
+                </div>
+              )}
+            </div>
+
+            {/* Transcription panel - only shown when enabled */}
+            {showTranscription && (
+              <div className="bg-gray-900 rounded-lg overflow-hidden flex flex-col">
+                {/* Transcription header */}
+                <div className="bg-gray-800 px-4 py-3 border-b border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-white font-medium flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Live Transcription
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <div className={`h-2 w-2 rounded-full ${
+                        realtimeAPI.isListening ? 'bg-green-500 animate-pulse' : 'bg-gray-500'
+                      }`} />
+                      <span className="text-xs text-gray-400">
+                        {realtimeAPI.isListening ? 'Listening' : 'Idle'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Transcription content */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {conversationHistory.length > 0 ? (
+                    conversationHistory.map((item, index) => (
+                      <div key={`${item.role}-${index}`} className={`flex ${
+                        item.role === 'assistant' ? 'justify-start' : 'justify-end'
+                      }`}>
+                        <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${
+                          item.role === 'assistant'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-green-600 text-white'
+                        }`}>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="text-xs font-medium opacity-75">
+                              {item.role === 'assistant' ? 'AI' : 'You'}
+                            </span>
+                          </div>
+                          <p className="text-sm leading-relaxed">{item.content}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-500 py-8">
+                      <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Conversation will appear here...</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Meeting controls bar */}
+          <div className="bg-gray-900 border-t border-gray-800 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <div className={`h-3 w-3 rounded-full ${
+                    realtimeAPI.isConnected ? 'bg-green-500' : 'bg-yellow-500'
+                  } animate-pulse`} />
+                  <span className="text-gray-400 text-sm">
+                    {realtimeAPI.isConnected ? 'Connected' : 'Connecting...'}
+                  </span>
+                </div>
+
+                <div className="text-sm text-gray-500">
+                  {job?.jobTitle} • {language === 'arabic' ? 'Arabic' : 'English'}
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => { if (realtimeAPI.isConnected) realtimeAPI.disconnect(); onClose(); }}
+                  className="text-gray-400 hover:text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium"
+                  disabled={processing}
+                >
+                  Exit Interview
+                </button>
+
+                <button
+                  onClick={submitVoiceInterview}
+                  disabled={processing || !realtimeAPI.isConnected}
+                  className="bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:text-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                >
+                  {processing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <PhoneOff className="h-4 w-4" />
+                      <span>End Interview</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Regular dialog for text mode
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl">
@@ -272,6 +484,15 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               </div>
               <Badge variant="outline">Live</Badge>
             </div>
+
+            {/* Camera Preview */}
+            <CameraPreview
+              stream={cameraStream}
+              isActive={realtimeAPI.isConnected}
+              error={realtimeAPI.cameraError}
+              connecting={loading}
+              className="h-48 w-full max-w-md mx-auto"
+            />
 
             <div className="p-3 rounded-md border bg-slate-50 text-sm text-slate-600">
               {realtimeAPI.isConnected ? 'You are connected. Speak naturally to answer questions.' : 'Connecting to voice interview...'}
