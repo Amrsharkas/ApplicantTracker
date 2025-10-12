@@ -6,6 +6,7 @@ interface RealtimeAPIOptions {
   onAudioStart?: () => void;
   onAudioEnd?: () => void;
   onError?: (error: Error) => void;
+  onLanguageWarning?: (language: string) => void;
   userProfile?: any;
   interviewType?: string;
   questions?: any[];
@@ -147,7 +148,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       dc.addEventListener('message', (e) => {
         const serverEvent = JSON.parse(e.data);
         console.log('📨 Voice interview event:', serverEvent.type, serverEvent);
-        
+
         // Handle specific events
         if (serverEvent.type === 'response.audio.done') {
           setIsSpeaking(false);
@@ -184,7 +185,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
           setIsSpeaking(false);
           setIsListening(true);
         }
-        
+
         options.onMessage?.(serverEvent);
       });
       
@@ -205,7 +206,9 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
 
 ${questionList}
 
-Have a natural conversation - listen to their answers, ask brief follow-ups if needed, then move to the next question. Keep it conversational and professional. End by thanking them for their time.`;
+Have a natural conversation - listen to their answers, ask brief follow-ups if needed, then move to the next question. Keep it conversational and professional. End by thanking them for their time.
+
+IMPORTANT LANGUAGE REQUIREMENT: This interview must be conducted${isArabic ? ' ONLY in Egyptian Arabic' : ' ONLY in English'}. If the candidate responds in a different language, gently remind them to respond${isArabic ? ' in Arabic' : ' in English'} before proceeding with the conversation.`;
 
           if (isArabic) {
             instructions = `Speak in Egyptian Arabic. ${instructions}`;
@@ -224,7 +227,8 @@ Have a natural conversation - listen to their answers, ask brief follow-ups if n
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
             input_audio_transcription: {
-              model: 'whisper-1'
+              model: 'whisper-1',
+              language: interviewParams?.language === 'arabic' ? 'ar' : 'en'
             },
             turn_detection: {
               type: 'server_vad',

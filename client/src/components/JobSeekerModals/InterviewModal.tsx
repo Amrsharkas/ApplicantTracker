@@ -140,6 +140,15 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const realtimeAPI = useRealtimeAPI({
     userProfile,
     requireCamera: false, // Don't require camera in realtime API since we'll handle it separately
+    onLanguageWarning: (detectedLanguage) => {
+      toast({
+        title: selectedInterviewLanguage === 'arabic' ? 'تنبيه لغوي' : 'Language Warning',
+        description: selectedInterviewLanguage === 'arabic'
+          ? `يرجى التحدث باللغة العربية فقط. تم اكتشاف لغة مختلفة: ${detectedLanguage}`
+          : `Please speak in English only. Detected different language: ${detectedLanguage}`,
+        variant: "destructive",
+      });
+    },
     onMessage: (event) => {
       console.log('Realtime event:', event);
       
@@ -1599,6 +1608,11 @@ const startVoiceInterview = async () => {
                 • Transcription enabled
               </span>
             )}
+
+            {/* Language indicator */}
+            <span className="text-gray-500 text-xs">
+              • Language: {selectedInterviewLanguage === 'arabic' ? 'العربية' : 'English'}
+            </span>
           </div>
 
           <div className="flex items-center space-x-3">
