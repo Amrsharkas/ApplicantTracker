@@ -6,15 +6,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Mic, MessageCircle, PhoneOff, Briefcase, Target, User, CheckCircle, Languages } from 'lucide-react';
+import { Mic, MessageCircle, PhoneOff, Briefcase, Target, User, CheckCircle, Languages, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRealtimeAPI } from '@/hooks/useRealtimeAPI';
 import { useResumeRequirement } from '@/hooks/useResumeRequirement';
+import { useVideoProctoring } from '@/hooks/useVideoProctoring';
 import { apiRequest } from '@/lib/queryClient';
 import { isUnauthorizedError } from '@/lib/authUtils';
 import { ResumeRequiredModal } from '@/components/ResumeRequiredModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { CameraPreview } from '@/components/CameraPreview';
+import { ProctoringStatusPanel } from '@/components/ProctoringStatusPanel';
 
 interface InterviewQuestion {
   question: string;
@@ -88,8 +90,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showViolationRules, setShowViolationRules] = useState(false);
   const [violationRulesAccepted, setViolationRulesAccepted] = useState(false);
+  const [showProctoringPanel, setShowProctoringPanel] = useState(true);
   const maxBlurCount = 3; // Maximum allowed window switches before termination
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { t, isRTL } = useLanguage();
@@ -101,31 +105,6 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
   // Check resume requirement
   const { hasResume, requiresResume, isLoading: isLoadingResume } = useResumeRequirement();
-
-  // Reset interview state when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setMode('types');
-      setSelectedInterviewType('');
-      setMessages([]);
-      setCurrentAnswer('');
-      setCurrentQuestionIndex(0);
-      setCurrentSession(null);
-      setVoiceTranscript('');
-      setConversationHistory([]);
-      setShowProfileDetails(false);
-      setIsInterviewConcluded(false);
-      setIsProcessingInterview(false);
-      setIsStartingInterview(false);
-      setIsAiSpeaking(false);
-      setLastAiResponse('');
-      setWindowBlurCount(0);
-      setWarningVisible(false);
-      setSessionTerminated(false);
-      setShowViolationRules(false);
-      setViolationRulesAccepted(false);
-    }
-  }, [isOpen]);
 
   // Fetch user profile data for personalized interview questions
   const { data: userProfile } = useQuery({
@@ -163,45 +142,45 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
     },
     onMessage: (event) => {
       console.log('Realtime event:', event);
-      
+
       if (event.type === 'response.audio.delta') {
         // AI started speaking - set speaking state
         setIsAiSpeaking(true);
       }
-      
+
       if (event.type === 'response.audio.done' || event.type === 'response.done') {
         // AI finished speaking - clear speaking state
         setIsAiSpeaking(false);
       }
-      
+
       if (event.type === 'response.audio_transcript.delta') {
         // AI speaking - build transcript
         setVoiceTranscript(prev => prev + (event.delta || ''));
       }
-      
+
       if (event.type === 'response.audio_transcript.done') {
         const aiText = event.transcript;
         setVoiceTranscript("");
-        
+
         // Prevent duplicate responses - only add if different from last response
         if (aiText && aiText !== lastAiResponse) {
           setLastAiResponse(aiText);
-          
+
           // Add unique assistant message to conversation history
           setConversationHistory(prev => {
             // Check if this exact message already exists
-            const isDuplicate = prev.some(msg => 
+            const isDuplicate = prev.some(msg =>
               msg.role === 'assistant' && msg.content === aiText
             );
-            
+
             if (isDuplicate) {
               return prev; // Don't add duplicate
             }
-            
+
             // Add new unique message
             return [...prev, { role: 'assistant', content: aiText }];
           });
-          
+
           // Check if the AI is concluding the interview in English or Arabic
           const conclusionKeywords = [
             'conclude', 'final', 'wrap up', 'end of interview', 'that concludes', 'thank you for', 'this concludes',
@@ -209,19 +188,19 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             'أتمنى لك', 'شكراً لك', 'انتهت المقابلة', 'نهاية المقابلة', 'هذا كل شيء', 'عفواً', 'تم الانتهاء',
             'بالتوفيق', 'أتمنى لك النجاح', 'هذا يختتم', 'انتهينا من', 'كل التوفيق'
           ];
-          
+
           // Also check for question count completion - if we've reached expected count
           const expectedQuestionCount = getQuestionCount(selectedInterviewType);
           const currentQuestionCount = conversationHistory.filter(msg => msg.role === 'assistant').length;
-          
-          if (conclusionKeywords.some(keyword => aiText.toLowerCase().includes(keyword.toLowerCase())) || 
+
+          if (conclusionKeywords.some(keyword => aiText.toLowerCase().includes(keyword.toLowerCase())) ||
               currentQuestionCount >= expectedQuestionCount) {
             console.log('🎯 Voice interview concluded - setting submit button state');
             setIsInterviewConcluded(true);
           }
         }
       }
-      
+
       if (event.type === 'input_audio_buffer.speech_started') {
         setVoiceTranscript("");
         // User started speaking - interrupt AI if needed
@@ -229,21 +208,21 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           setIsAiSpeaking(false);
         }
       }
-      
+
       if (event.type === 'conversation.item.input_audio_transcription.completed') {
         const userText = event.transcript;
-        
+
         // Add user message to conversation history - prevent duplicates
         if (userText) {
           setConversationHistory(prev => {
-            const isDuplicate = prev.some(msg => 
+            const isDuplicate = prev.some(msg =>
               msg.role === 'user' && msg.content === userText
             );
-            
+
             if (isDuplicate) {
               return prev; // Don't add duplicate
             }
-            
+
             return [...prev, { role: 'user', content: userText }];
           });
         }
@@ -259,6 +238,74 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       setMode('text');
     }
   });
+
+  // Video proctoring setup for voice interviews (moved after realtimeAPI initialization)
+  const videoProctoring = useVideoProctoring({
+    enabled: mode === 'voice' && realtimeAPI.isConnected && !sessionTerminated,
+    maxViolations: 5,
+    onViolation: (violation) => {
+      console.log('Video proctoring violation:', violation);
+
+      // Add to existing violation count
+      setWindowBlurCount(prev => prev + 1);
+
+      // Show warning
+      if (violation.severity === 'critical') {
+        toast({
+          title: 'Critical Violation Detected',
+          description: violation.description,
+          variant: 'destructive'
+        });
+      } else {
+        toast({
+          title: 'Warning',
+          description: violation.description,
+          variant: 'default'
+        });
+      }
+    },
+    onSessionTerminated: () => {
+      setSessionTerminated(true);
+      toast({
+        title: 'Session Terminated',
+        description: 'Interview session terminated due to proctoring violations.',
+        variant: 'destructive'
+      });
+      // Disconnect and cleanup
+      if (realtimeAPI?.isConnected) {
+        realtimeAPI.disconnect();
+      }
+      // Close modal after delay
+      setTimeout(() => {
+        handleClose();
+      }, 2000);
+    }
+  });
+
+  // Reset interview state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setMode('types');
+      setSelectedInterviewType('');
+      setMessages([]);
+      setCurrentAnswer('');
+      setCurrentQuestionIndex(0);
+      setCurrentSession(null);
+      setVoiceTranscript('');
+      setConversationHistory([]);
+      setShowProfileDetails(false);
+      setIsInterviewConcluded(false);
+      setIsProcessingInterview(false);
+      setIsStartingInterview(false);
+      setIsAiSpeaking(false);
+      setLastAiResponse('');
+      setWindowBlurCount(0);
+      setWarningVisible(false);
+      setSessionTerminated(false);
+      setShowViolationRules(false);
+      setViolationRulesAccepted(false);
+    }
+  }, [isOpen]);
 
   const { data: existingSession } = useQuery({
     queryKey: ["/api/interview/session"],
@@ -745,13 +792,31 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       }
     });
     setCameraStream(videoStream);
+
+    // Set up video element for proctoring after a short delay
+    setTimeout(() => {
+      if (videoRef.current && mode === 'voice') {
+        videoRef.current.srcObject = videoStream;
+        videoRef.current.play().catch(err => {
+          console.error('Video play error for proctoring:', err);
+        });
+
+        // Start video proctoring when video element is ready
+        videoRef.current.onloadedmetadata = () => {
+          if (videoRef.current && !videoProctoring.isActive) {
+            videoProctoring.startProctoring(videoRef.current);
+          }
+        };
+      }
+    }, 1000);
+
     return videoStream;
   } catch (error) {
     console.error('Camera access error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to access camera';
     toast({
       title: 'Camera Access Failed',
-      description: 'Could not access camera. You can continue with audio only.',
+      description: 'Could not access camera. Voice proctoring will not be available.',
       variant: 'destructive'
     });
     return null;
@@ -1072,6 +1137,11 @@ const startVoiceInterview = async () => {
       cameraStream.getTracks().forEach(track => track.stop());
     }
 
+    // Stop video proctoring
+    if (videoProctoring.isActive) {
+      videoProctoring.stopProctoring();
+    }
+
     // Exit fullscreen when resetting from voice mode
     if (mode === 'voice') {
       exitFullscreen();
@@ -1095,6 +1165,7 @@ const startVoiceInterview = async () => {
     setWarningVisible(false);
     setSessionTerminated(false);
     setCameraStream(null);
+    setShowProctoringPanel(true);
   };
 
   // Reset interview state when modal opens
@@ -1180,6 +1251,11 @@ const startVoiceInterview = async () => {
     // Stop camera stream
     if (cameraStream) {
       cameraStream.getTracks().forEach(track => track.stop());
+    }
+
+    // Stop video proctoring
+    if (videoProctoring.isActive) {
+      videoProctoring.stopProctoring();
     }
 
     // Exit fullscreen when closing voice mode
@@ -1359,7 +1435,7 @@ const startVoiceInterview = async () => {
           </svg>
         </div>
         <p className="text-sm text-red-600 font-medium">
-          This interview is fully monitored by advanced AI systems. Any violation ends your session immediately.
+          This interview is fully monitored by advanced AI video proctoring. Any violation ends your session immediately.
         </p>
       </div>
 
@@ -1370,16 +1446,20 @@ const startVoiceInterview = async () => {
 
         <div className="space-y-3">
           {[
-            "Webcam ON — eye tracking is active. Looking away = flag.",
-            "No phones or extra devices — detection = instant disqualification.",
-            "Stay on this page — leaving the tab, opening apps, or refreshing ends the interview.",
-            "No shortcuts or screenshots — Ctrl/Cmd+Tab, Ctrl+C/Ctrl+V, or screenshots = automatic failure.",
-            "Mouse must stay in the window — leaving or prolonged idling triggers termination.",
-            "Microphone ON — outside voices or played audio = invalid session.",
-            "Face check active — masks, deepfakes, or identity mismatch = termination.",
-            "Random verification — follow live instructions immediately when prompted.",
-            "Exiting full screen = disqualification",
-            "One-strike policy — no warnings, no retries."
+            "📹 Webcam MUST remain ON — AI eye tracking is active. Looking away = flag.",
+            "👤 Face MUST be visible at all times — masks, filters, or face covering = instant termination.",
+            "👥 Only ONE person allowed — multiple faces detected = automatic disqualification.",
+            "📱 No phones, tablets, or extra devices — electronic device detection = instant failure.",
+            "🖱️ Mouse MUST stay in window — leaving screen area triggers termination.",
+            "📋 Stay on this page — tab switching, app opening, or refreshing ends interview.",
+            "⌨️ No shortcuts or screenshots — Ctrl/Cmd+Tab, Alt+Tab, PrintScreen = automatic failure.",
+            "🎤 Microphone MUST be ON — outside voices, pre-recorded audio = invalid session.",
+            "💡 Proper lighting required — poor lighting conditions = warning, then termination.",
+            "🎯 Maintain eye contact — extended periods looking away = violation.",
+            "🚫 No notes, papers, or unauthorized materials — object detection = disqualification.",
+            "🔄 Follow live instructions immediately — random verification prompts require instant response.",
+            "📺 Stay in fullscreen — exiting fullscreen mode = instant disqualification.",
+            "⚠️ One-strike policy — no warnings, no retries for most violations."
           ].map((rule, index) => (
             <div key={index} className="flex items-start space-x-3">
               <div className="flex-shrink-0 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
@@ -1388,6 +1468,14 @@ const startVoiceInterview = async () => {
               <p className="text-sm text-red-700">{rule}</p>
             </div>
           ))}
+        </div>
+
+        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-xs text-yellow-800">
+            <strong>⚠️ Advanced AI Monitoring:</strong> This system uses facial recognition, eye tracking,
+            motion detection, and object recognition to ensure interview integrity. All violations are
+            automatically logged with video evidence.
+          </p>
         </div>
       </div>
 
@@ -1424,7 +1512,7 @@ const startVoiceInterview = async () => {
               // Show loading message
               const loadingMessage: InterviewMessage = {
                 type: 'question',
-                content: t('interview.startingVoiceInterviewConnecting') || 'Starting your voice interview... Camera enabled, connecting to AI interviewer...',
+                content: t('interview.startingVoiceInterviewConnecting') || 'Starting your voice interview... AI video proctoring enabled, connecting to AI interviewer...',
                 timestamp: new Date()
               };
               setMessages([loadingMessage]);
@@ -1490,7 +1578,7 @@ const startVoiceInterview = async () => {
 
               toast({
                 title: t('interview.voiceInterviewStarted') || "Voice Interview Started",
-                description: t('interview.voiceInterviewStartedDescription') || "You can now speak naturally with the AI interviewer.",
+                description: "AI video proctoring is now active. Please maintain eye contact and follow all rules.",
               });
 
               // Auto-enter fullscreen for voice mode with a small delay to ensure UI is ready
@@ -1513,7 +1601,7 @@ const startVoiceInterview = async () => {
           }}
           className="bg-red-600 hover:bg-red-700 text-white"
         >
-          I Agree & Continue
+          I Agree & Start Interview
         </Button>
       </div>
     </div>
@@ -1746,6 +1834,16 @@ const startVoiceInterview = async () => {
             className="h-full"
           />
 
+          {/* Hidden video element for proctoring */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="hidden"
+            style={{ transform: 'scaleX(-1)' }}
+          />
+
           {/* Video overlay with status and AI info */}
           <div className="absolute inset-0 flex flex-col">
             {/* Top overlay */}
@@ -1858,6 +1956,20 @@ const startVoiceInterview = async () => {
         )}
       </div>
 
+      {/* Proctoring Panel */}
+      {showProctoringPanel && videoProctoring.isActive && (
+        <div className="bg-gray-900 border-t border-gray-800 px-4 py-3">
+          <ProctoringStatusPanel
+            status={videoProctoring.status}
+            violations={videoProctoring.status.violations}
+            violationsRemaining={videoProctoring.violationsRemaining}
+            maxViolations={5}
+            isExpanded={showProctoringPanel}
+            onToggleExpanded={() => setShowProctoringPanel(!showProctoringPanel)}
+          />
+        </div>
+      )}
+
       {/* Meeting controls */}
       <div className="bg-gray-900 border-t border-gray-800 px-4 py-3">
         <div className="flex items-center justify-between">
@@ -1877,10 +1989,29 @@ const startVoiceInterview = async () => {
               </span>
             )}
 
+            {/* Video proctoring indicator */}
+            {videoProctoring.isActive && (
+              <span className="text-green-400 text-xs flex items-center space-x-1">
+                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                <span>• AI Proctoring Active</span>
+              </span>
+            )}
+
             {/* Language indicator */}
             <span className="text-gray-500 text-xs">
               • Language: {selectedInterviewLanguage === 'arabic' ? 'العربية' : 'English'}
             </span>
+
+            {/* Proctoring toggle */}
+            <button
+              onClick={() => setShowProctoringPanel(!showProctoringPanel)}
+              className={`flex items-center space-x-1 px-2 py-1 rounded text-xs transition-colors ${
+                showProctoringPanel ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              <Shield className="h-3 w-3" />
+              <span>{showProctoringPanel ? 'Hide' : 'Show'} Proctoring</span>
+            </button>
           </div>
 
           <div className="flex items-center space-x-3">
