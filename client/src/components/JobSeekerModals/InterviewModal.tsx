@@ -1,19 +1,17 @@
-import { useState, useRef, useEffect, memo } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Mic, MicOff, MessageCircle, Phone, PhoneOff, Users, Briefcase, Target, User, CheckCircle, Languages } from 'lucide-react';
+import { Mic, MessageCircle, PhoneOff, Briefcase, Target, User, CheckCircle, Languages } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRealtimeAPI } from '@/hooks/useRealtimeAPI';
 import { useResumeRequirement } from '@/hooks/useResumeRequirement';
 import { apiRequest } from '@/lib/queryClient';
 import { isUnauthorizedError } from '@/lib/authUtils';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ResumeRequiredModal } from '@/components/ResumeRequiredModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { CameraPreview } from '@/components/CameraPreview';
@@ -36,6 +34,7 @@ interface InterviewType {
   description: string;
   completed: boolean;
   questions: number;
+  locked?: boolean;
 }
 
 interface InterviewSession {
@@ -49,6 +48,14 @@ interface InterviewSession {
   };
   isCompleted: boolean;
   generatedProfile?: any;
+  interviewType?: string;
+}
+
+interface UserProfile {
+  personalInterviewCompleted?: boolean;
+  professionalInterviewCompleted?: boolean;
+  technicalInterviewCompleted?: boolean;
+  [key: string]: any;
 }
 
 interface InterviewModalProps {
@@ -78,6 +85,9 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const [sessionTerminated, setSessionTerminated] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [showTranscription, setShowTranscription] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showViolationRules, setShowViolationRules] = useState(false);
+  const [violationRulesAccepted, setViolationRulesAccepted] = useState(false);
   const maxBlurCount = 3; // Maximum allowed window switches before termination
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -112,6 +122,8 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       setWindowBlurCount(0);
       setWarningVisible(false);
       setSessionTerminated(false);
+      setShowViolationRules(false);
+      setViolationRulesAccepted(false);
     }
   }, [isOpen]);
 
@@ -746,6 +758,68 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   }
 };
 
+const enterFullscreen = async () => {
+  try {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      await elem.requestFullscreen();
+    } else if ((elem as any).webkitRequestFullscreen) {
+      await (elem as any).webkitRequestFullscreen();
+    } else if ((elem as any).mozRequestFullScreen) {
+      await (elem as any).mozRequestFullScreen();
+    } else if ((elem as any).msRequestFullscreen) {
+      await (elem as any).msRequestFullscreen();
+    }
+    setIsFullscreen(true);
+  } catch (error) {
+    console.error('Fullscreen error:', error);
+  }
+};
+
+const exitFullscreen = async () => {
+  try {
+    if (document.exitFullscreen) {
+      await document.exitFullscreen();
+    } else if ((document as any).webkitExitFullscreen) {
+      await (document as any).webkitExitFullscreen();
+    } else if ((document as any).mozCancelFullScreen) {
+      await (document as any).mozCancelFullScreen();
+    } else if ((document as any).msExitFullscreen) {
+      await (document as any).msExitFullscreen();
+    }
+    setIsFullscreen(false);
+  } catch (error) {
+    console.error('Exit fullscreen error:', error);
+  }
+};
+
+const toggleFullscreen = () => {
+  if (isFullscreen) {
+    exitFullscreen();
+  } else {
+    enterFullscreen();
+  }
+};
+
+// Listen for fullscreen changes
+useEffect(() => {
+  const handleFullscreenChange = () => {
+    setIsFullscreen(!!document.fullscreenElement);
+  };
+
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+  document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+  document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+  return () => {
+    document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+  };
+}, []);
+
 const startVoiceInterview = async () => {
     if (!selectedInterviewType) {
       toast({
@@ -753,6 +827,12 @@ const startVoiceInterview = async () => {
         description: t('interview.selectInterviewTypeErrorDescription') || 'Please select an interview type first.',
         variant: 'destructive'
       });
+      return;
+    }
+
+    // First show violation rules if not accepted yet
+    if (!violationRulesAccepted) {
+      setShowViolationRules(true);
       return;
     }
 
@@ -765,6 +845,9 @@ const startVoiceInterview = async () => {
     // Start camera access immediately when voice mode is selected
     await startCameraAccess();
 
+    // Try to enter fullscreen immediately when switching to voice mode
+    enterFullscreen();
+
     // Show loading message
     const loadingMessage: InterviewMessage = {
       type: 'question',
@@ -772,16 +855,16 @@ const startVoiceInterview = async () => {
       timestamp: new Date()
     };
     setMessages([loadingMessage]);
-    
+
     try {
       // Call the dedicated voice interview route
       const response = await fetch('/api/interview/start-voice', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           interviewType: selectedInterviewType,
           language: selectedInterviewLanguage
         })
@@ -802,7 +885,7 @@ const startVoiceInterview = async () => {
 
       const interviewData = await response.json();
       console.log('Voice interview initialized:', interviewData);
-      
+
       // Update current session
       setCurrentSession({
         id: interviewData.sessionId,
@@ -823,25 +906,31 @@ const startVoiceInterview = async () => {
         };
         setMessages([welcomeMessage]);
       }
-      
+
       // Connect to realtime API with the interview data
       await realtimeAPI.connect({
         interviewType: selectedInterviewType,
         questions: interviewData.questions,
         language: selectedInterviewLanguage
       });
-      
+
       setIsStartingInterview(false);
+
       toast({
         title: t('interview.voiceInterviewStarted') || "Voice Interview Started",
         description: t('interview.voiceInterviewStartedDescription') || "You can now speak naturally with the AI interviewer.",
       });
+
+      // Auto-enter fullscreen for voice mode with a small delay to ensure UI is ready
+      setTimeout(async () => {
+        await enterFullscreen();
+      }, 500);
     } catch (error) {
       setIsStartingInterview(false);
       console.error('Voice interview error:', error);
-      
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
+
       toast({
         title: t('interview.connectionFailed') || 'Connection Failed',
         description: `${t('interview.couldNotStartVoiceInterview') || 'Could not start voice interview'}: ${errorMessage}. ${t('interview.tryTextMode') || 'Please try text mode'}.`,
@@ -983,6 +1072,11 @@ const startVoiceInterview = async () => {
       cameraStream.getTracks().forEach(track => track.stop());
     }
 
+    // Exit fullscreen when resetting from voice mode
+    if (mode === 'voice') {
+      exitFullscreen();
+    }
+
     setMode('types');
     setSelectedInterviewType('');
     setMessages([]);
@@ -1088,6 +1182,11 @@ const startVoiceInterview = async () => {
       cameraStream.getTracks().forEach(track => track.stop());
     }
 
+    // Exit fullscreen when closing voice mode
+    if (mode === 'voice') {
+      exitFullscreen();
+    }
+
     resetInterview();
     onClose();
   };
@@ -1139,9 +1238,9 @@ const startVoiceInterview = async () => {
 
   const renderInterviewTypes = () => {
     // Get completion status from user profile
-    const personalCompleted = userProfile?.personalInterviewCompleted || false;
-    const professionalCompleted = userProfile?.professionalInterviewCompleted || false;
-    const technicalCompleted = userProfile?.technicalInterviewCompleted || false;
+    const personalCompleted = (userProfile as UserProfile)?.personalInterviewCompleted || false;
+    const professionalCompleted = (userProfile as UserProfile)?.professionalInterviewCompleted || false;
+    const technicalCompleted = (userProfile as UserProfile)?.technicalInterviewCompleted || false;
     
     const interviewTypes = (interviewTypesData && typeof interviewTypesData === 'object' && 'interviewTypes' in interviewTypesData)
       ? (interviewTypesData as any).interviewTypes || [] : [
@@ -1251,6 +1350,175 @@ const startVoiceInterview = async () => {
     );
   };
 
+  const renderViolationRules = () => (
+    <div className="space-y-6">
+      <div className="text-center space-y-3">
+        <div className="flex items-center justify-center space-x-2 text-red-600">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        </div>
+        <p className="text-sm text-red-600 font-medium">
+          This interview is fully monitored by advanced AI systems. Any violation ends your session immediately.
+        </p>
+      </div>
+
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-sm text-red-800 mb-4">
+          Sessions are recorded and reviewed by humans. By continuing you consent to video, audio, and activity recording for fraud prevention.
+        </p>
+
+        <div className="space-y-3">
+          {[
+            "Webcam ON — eye tracking is active. Looking away = flag.",
+            "No phones or extra devices — detection = instant disqualification.",
+            "Stay on this page — leaving the tab, opening apps, or refreshing ends the interview.",
+            "No shortcuts or screenshots — Ctrl/Cmd+Tab, Ctrl+C/Ctrl+V, or screenshots = automatic failure.",
+            "Mouse must stay in the window — leaving or prolonged idling triggers termination.",
+            "Microphone ON — outside voices or played audio = invalid session.",
+            "Face check active — masks, deepfakes, or identity mismatch = termination.",
+            "Random verification — follow live instructions immediately when prompted.",
+            "Exiting full screen = disqualification",
+            "One-strike policy — no warnings, no retries."
+          ].map((rule, index) => (
+            <div key={index} className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                {index + 1}
+              </div>
+              <p className="text-sm text-red-700">{rule}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex justify-center space-x-4">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setShowViolationRules(false);
+            setMode('select');
+          }}
+          className="border-red-300 text-red-600 hover:bg-red-50"
+        >
+          Decline
+        </Button>
+        <Button
+          onClick={async () => {
+            setShowViolationRules(false);
+            setViolationRulesAccepted(true);
+
+            // Start voice interview directly after accepting rules
+            try {
+              setIsStartingInterview(true);
+              setMode('voice');
+              setMessages([]);
+              setIsInterviewConcluded(false);
+              setConversationHistory([]);
+
+              // Start camera access immediately when voice mode is selected
+              await startCameraAccess();
+
+              // Try to enter fullscreen immediately when switching to voice mode
+              enterFullscreen();
+
+              // Show loading message
+              const loadingMessage: InterviewMessage = {
+                type: 'question',
+                content: t('interview.startingVoiceInterviewConnecting') || 'Starting your voice interview... Camera enabled, connecting to AI interviewer...',
+                timestamp: new Date()
+              };
+              setMessages([loadingMessage]);
+
+              // Call the dedicated voice interview route
+              const response = await fetch('/api/interview/start-voice', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                  interviewType: selectedInterviewType,
+                  language: selectedInterviewLanguage
+                })
+              });
+
+              if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                console.error('Voice interview start failed:', response.status, errorData);
+                throw new Error(errorData.error || `API returned ${response.status}`);
+              }
+
+              const contentType = response.headers.get('content-type');
+              if (!contentType || !contentType.includes('application/json')) {
+                const htmlContent = await response.text();
+                console.error('Expected JSON but got:', contentType, htmlContent.substring(0, 200));
+                throw new Error('Server returned HTML instead of JSON');
+              }
+
+              const interviewData = await response.json();
+              console.log('Voice interview initialized:', interviewData);
+
+              // Update current session
+              setCurrentSession({
+                id: interviewData.sessionId,
+                sessionData: {
+                  questions: interviewData.questions || [],
+                  responses: [],
+                  currentQuestionIndex: 0
+                },
+                isCompleted: false
+              });
+
+              // Update with welcome message
+              if (interviewData.welcomeMessage) {
+                const welcomeMessage: InterviewMessage = {
+                  type: 'question',
+                  content: interviewData.welcomeMessage,
+                  timestamp: new Date()
+                };
+                setMessages([welcomeMessage]);
+              }
+
+              // Connect to realtime API with the interview data
+              await realtimeAPI.connect({
+                interviewType: selectedInterviewType,
+                questions: interviewData.questions,
+                language: selectedInterviewLanguage
+              });
+
+              setIsStartingInterview(false);
+
+              toast({
+                title: t('interview.voiceInterviewStarted') || "Voice Interview Started",
+                description: t('interview.voiceInterviewStartedDescription') || "You can now speak naturally with the AI interviewer.",
+              });
+
+              // Auto-enter fullscreen for voice mode with a small delay to ensure UI is ready
+              setTimeout(async () => {
+                await enterFullscreen();
+              }, 500);
+            } catch (error) {
+              setIsStartingInterview(false);
+              console.error('Voice interview error:', error);
+
+              const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+              toast({
+                title: t('interview.connectionFailed') || 'Connection Failed',
+                description: `${t('interview.couldNotStartVoiceInterview') || 'Could not start voice interview'}: ${errorMessage}. ${t('interview.tryTextMode') || 'Please try text mode'}.`,
+                variant: 'destructive'
+              });
+              setMode('select');
+            }
+          }}
+          className="bg-red-600 hover:bg-red-700 text-white"
+        >
+          I Agree & Continue
+        </Button>
+      </div>
+    </div>
+  );
+
   const renderModeSelection = () => (
     <div className="space-y-6">
       <div className="text-center space-y-3">
@@ -1290,7 +1558,7 @@ const startVoiceInterview = async () => {
               ? 'opacity-50 cursor-not-allowed'
               : 'cursor-pointer hover:bg-accent/50'
           }`}
-          onClick={isStartingInterview ? undefined : startVoiceInterview}
+          onClick={isStartingInterview ? undefined : () => setShowViolationRules(true)}
         >
           <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
             {isStartingInterview && mode === 'voice' ? (
@@ -1618,7 +1886,10 @@ const startVoiceInterview = async () => {
           <div className="flex items-center space-x-3">
             {currentSession?.interviewType !== 'job-practice' && (
               <button
-                onClick={() => setMode('types')}
+                onClick={() => {
+                  exitFullscreen();
+                  setMode('types');
+                }}
                 className="text-gray-400 hover:text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
                 disabled={isAiSpeaking || isProcessingInterview}
               >
@@ -1638,6 +1909,7 @@ const startVoiceInterview = async () => {
                       processVoiceInterviewMutation.mutate();
                     } else {
                       realtimeAPI.disconnect();
+                      exitFullscreen();
                       setMode('select');
                     }
                   }
@@ -1811,6 +2083,16 @@ const startVoiceInterview = async () => {
           {mode === 'types' && renderInterviewTypes()}
           {mode === 'select' && renderModeSelection()}
           {mode === 'text' && renderTextInterview()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Violation Rules Dialog */}
+      <Dialog open={showViolationRules} onOpenChange={(open) => !open && setShowViolationRules(false)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-center text-red-600">Interview Violation Rules</DialogTitle>
+          </DialogHeader>
+          {renderViolationRules()}
         </DialogContent>
       </Dialog>
 
