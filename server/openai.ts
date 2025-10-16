@@ -1701,7 +1701,6 @@ Return a JSON object with:
               strict: true
             }
           },
-          max_output_tokens: 4000
         }),
         {
           requestType: "parseResumeForProfile",
@@ -1738,7 +1737,6 @@ Return a JSON object with:
               { role: "user", content: `Extract structured JSON for this resume:\n${resumeContent}` }
             ],
             response_format: { type: "json_object" },
-            max_completion_tokens: 2000
           }),
           {
             requestType: "parseResumeForProfile-fallback",
