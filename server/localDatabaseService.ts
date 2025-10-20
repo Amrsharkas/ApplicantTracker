@@ -158,8 +158,8 @@ export class LocalDatabaseService {
     try {
       return await db
         .select()
-        .from(schema.airtableJobPostings)
-        .orderBy(desc(schema.airtableJobPostings.datePosted));
+        .from(schema.jobs)
+        .orderBy(desc(schema.jobs.createdAt));
     } catch (error) {
       console.error('Error getting all job postings:', error);
       throw error;
