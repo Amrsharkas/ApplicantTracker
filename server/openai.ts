@@ -244,7 +244,7 @@ QUESTION QUALITY STANDARDS:
 - Explore discipline, consistency, resilience, teamwork, and personal growth
 - Invite reflection about their values, routines, and approach to solving problems
 
-Create 7–11 personal background questions that demonstrate you've analyzed their profile:
+Create 11 personal background questions that demonstrate you've analyzed their profile:
 1. Reference their educational background or career path in context – ask why they made certain key transitions and what they learned from them.
 2. Build on their stated career goals or work style – explore the reasoning behind their long-term choices and whether they have clear systems for personal growth.
 3. Connect their current role to their personal values – ask what gives them a sense of purpose, fulfillment, and alignment.
@@ -544,7 +544,7 @@ QUESTION QUALITY STANDARDS:
 - Push for code examples, architectural diagrams, or step-by-step problem-solving logic
 - Include opportunities to test their ability to simplify complex ideas for non-technical people
 
-Create 5–11 technical questions that assess deep expertise for a ${userRole} in ${userField}:
+Create 11 technical questions that assess deep expertise for a ${userRole} in ${userField}:
 1. Ask a deep-dive question about a core technology or methodology they claim expertise in – focus on an advanced or non-obvious aspect.
 2. Present a realistic, complex problem scenario related to their past projects and ask them to design or debug a solution step-by-step.
 3. Ask about a critical technical trade-off they had to make – explore what constraints existed, what options they considered, and how they measured success.
