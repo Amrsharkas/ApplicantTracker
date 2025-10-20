@@ -96,8 +96,6 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
   // Debug: Log the environment variable value and its type
   const enableTextInterviews = import.meta.env.VITE_ENABLE_TEXT_INTERVIEWS;
-  console.log('VITE_ENABLE_TEXT_INTERVIEWS:', enableTextInterviews, typeof enableTextInterviews);
-  console.log('enableTextInterviews === "true":', enableTextInterviews === 'true');
 
   // Check resume requirement
   const { hasResume, requiresResume, isLoading: isLoadingResume } = useResumeRequirement();
@@ -1733,9 +1731,9 @@ const startVoiceInterview = async () => {
   );
 
   const renderVoiceInterview = () => (
-    <div className="flex-1 flex flex-col h-full">
+    <div className="flex-1 flex flex-col h-full min-h-0">
       {/* Main content area */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-0 h-full">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-0 min-h-0 overflow-hidden relative">
         {/* Video section - takes full width when transcription is hidden */}
         <div className={`${showTranscription ? 'lg:col-span-1' : 'lg:col-span-2'} relative bg-gray-900 overflow-hidden`}>
           <CameraPreview
@@ -1800,9 +1798,9 @@ const startVoiceInterview = async () => {
 
         {/* Transcription panel - only shown when enabled */}
         {showTranscription && (
-          <div className="bg-gray-900 border-l border-gray-800 flex flex-col">
+          <div className="bg-gray-900 border-l border-gray-800 flex flex-col h-full">
             {/* Transcription header */}
-            <div className="bg-gray-800 px-4 py-3 border-b border-gray-700">
+            <div className="bg-gray-800 px-4 py-3 border-b border-gray-700 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <h3 className="text-white font-medium flex items-center space-x-2">
                   <MessageCircle className="h-4 w-4" />
@@ -1815,7 +1813,7 @@ const startVoiceInterview = async () => {
             </div>
 
             {/* Transcription content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="overflow-y-auto overflow-x-hidden p-4 space-y-3" style={{ height: 'calc(100vh - 250px)', minHeight: '200px' }}>
               {conversationHistory.length > 0 ? (
                 conversationHistory.map((item, index) => (
                   <div key={`${item.role}-${index}`} className={`flex ${
@@ -2007,7 +2005,7 @@ const startVoiceInterview = async () => {
           {/* Main video meeting area */}
           <div className="flex-1 flex flex-col lg:flex-row">
             {/* Main content area */}
-            <div className="flex-1 flex flex-col p-4">
+            <div className="flex-1 flex flex-col p-4 min-h-0">
               {renderVoiceInterview()}
             </div>
           </div>
