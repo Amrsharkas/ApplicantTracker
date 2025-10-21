@@ -107,6 +107,14 @@ export default function Dashboard() {
     setActiveModal('jobPostings');
   };
 
+  const handleAllInterviewsCompleted = () => {
+    // Close current modal and open JobSpecificAIInterviewsModal
+    closeModal();
+    setTimeout(() => {
+      setActiveModal('jobSpecificAI');
+    }, 300); // Small delay to ensure smooth transition
+  };
+
   const handleResumeUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -660,9 +668,10 @@ export default function Dashboard() {
         isOpen={activeModal === 'profile'} 
         onClose={closeModal} 
       />
-      <InterviewModal 
-        isOpen={activeModal === 'interview'} 
-        onClose={closeModal} 
+      <InterviewModal
+        isOpen={activeModal === 'interview'}
+        onClose={closeModal}
+        onAllInterviewsCompleted={handleAllInterviewsCompleted}
       />
 
       <MatchesModal 

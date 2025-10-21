@@ -62,9 +62,10 @@ interface UserProfile {
 interface InterviewModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onAllInterviewsCompleted?: () => void;
 }
 
-export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
+export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: InterviewModalProps) {
   const [mode, setMode] = useState<'types' | 'select' | 'text' | 'voice'>('types');
   const [selectedInterviewType, setSelectedInterviewType] = useState<string>('');
   const [selectedInterviewLanguage, setSelectedInterviewLanguage] = useState<string>('english');
@@ -386,7 +387,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
             title: t('interview.allInterviewsComplete') || "All Interviews Complete!",
             description: t('interview.profileGeneratedSuccessfully') || "Your comprehensive AI profile has been generated successfully.",
           });
-          
+
+          // Call callback to open JobSpecificAIInterviewsModal
+          onAllInterviewsCompleted?.();
+
           // Reset to interview types view to show all completed
           setMode('types');
           setSelectedInterviewType('');
@@ -464,7 +468,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           title: t('interview.allInterviewsComplete') || "All Interviews Complete!",
           description: t('interview.profileGeneratedSuccessfully') || "Your comprehensive AI profile has been generated successfully.",
         });
-        
+
+        // Call callback to open JobSpecificAIInterviewsModal
+        onAllInterviewsCompleted?.();
+
         // Reset to interview types view to show all completed
         setMode('types');
         setSelectedInterviewType('');
@@ -586,6 +593,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           title: t('interview.allInterviewsComplete') || "All Interviews Complete!",
           description: t('interview.profileGeneratedSuccessfully') || "Your comprehensive AI profile has been generated successfully.",
         });
+
+        // Call callback to open JobSpecificAIInterviewsModal
+        onAllInterviewsCompleted?.();
+
         onClose();
       } else if (data.nextInterviewType) {
         // Continue to next interview type automatically
@@ -823,7 +834,10 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
           title: t('interview.allInterviewsComplete') || "All Interviews Complete!",
           description: t('interview.profileGeneratedSuccessfully') || "Your comprehensive AI profile has been generated successfully.",
         });
-        
+
+        // Call callback to open JobSpecificAIInterviewsModal
+        onAllInterviewsCompleted?.();
+
         // Reset to interview types view to show all completed
         setMode('types');
         setSelectedInterviewType('');
