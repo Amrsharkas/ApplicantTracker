@@ -1372,7 +1372,7 @@ const startVoiceInterview = async () => {
         description: t('interview.personalInterviewDescription') || 'Understanding your personal self, background, and history',
         completed: personalCompleted,
         locked: false,
-        questions: 5
+        questions: 11
       },
       {
         type: 'professional',
@@ -1380,7 +1380,7 @@ const startVoiceInterview = async () => {
         description: t('interview.professionalInterviewDescription') || 'Exploring your career background and professional experience',
         completed: professionalCompleted,
         locked: !personalCompleted,
-        questions: 7
+        questions: 11
       },
       {
         type: 'technical',
@@ -1473,7 +1473,7 @@ const startVoiceInterview = async () => {
   };
 
   const renderViolationRules = () => (
-    <div className="space-y-6">
+    <div className="space-y-6 px-2">
       <div className="text-center space-y-3">
         <div className="flex items-center justify-center space-x-2 text-red-600">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1748,7 +1748,7 @@ const startVoiceInterview = async () => {
         </Badge>
       </div>
       
-      <div className="max-h-96 overflow-y-auto space-y-4">
+      <div className="max-h-[32rem] overflow-y-auto space-y-4 pr-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
         {messages.map((message, index) => (
           <div
             key={index}
@@ -1938,7 +1938,7 @@ const startVoiceInterview = async () => {
             </div>
 
             {/* Transcription content */}
-            <div className="overflow-y-auto overflow-x-hidden p-4 space-y-3" style={{ height: 'calc(100vh - 250px)', minHeight: '200px' }}>
+            <div className="overflow-y-auto overflow-x-hidden p-4 space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800" style={{ height: 'calc(100vh - 250px)', minHeight: '200px' }}>
               {conversationHistory.length > 0 ? (
                 conversationHistory.map((item, index) => (
                   <div key={`${item.role}-${index}`} className={`flex ${
@@ -2203,7 +2203,7 @@ const startVoiceInterview = async () => {
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>{t('interview.aiInterview') || 'AI Interview'}</DialogTitle>
@@ -2256,7 +2256,7 @@ const startVoiceInterview = async () => {
 
       {/* Violation Rules Dialog */}
       <Dialog open={showViolationRules} onOpenChange={(open) => !open && setShowViolationRules(false)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-center text-red-600">Interview Violation Rules</DialogTitle>
           </DialogHeader>
