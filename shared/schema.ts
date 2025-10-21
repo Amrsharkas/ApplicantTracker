@@ -466,7 +466,27 @@ export const openaiRequests = pgTable("openai_requests", {
 });
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users);
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  isVerified: true,
+  verificationToken: true,
+  resetPasswordToken: true,
+  resetPasswordExpires: true,
+});
+export const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const registerSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  username: z.string().min(3, "Username must be at least 3 characters"),
+});
 export const insertApplicantProfileSchema = createInsertSchema(applicantProfiles).omit({
   id: true,
   createdAt: true,
@@ -503,6 +523,8 @@ export const insertResumeUploadSchema = createInsertSchema(resumeUploads).omit({
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type LoginData = z.infer<typeof loginSchema>;
+export type RegisterData = z.infer<typeof registerSchema>;
 
 // Applicant Profile types
 export type ApplicantProfile = typeof applicantProfiles.$inferSelect;
@@ -593,7 +615,7 @@ export const airtableJobMatches = pgTable("airtable_job_matches", {
   interviewLink: text("interview_link"),
   matchScore: integer("match_score"),
   status: varchar("status").default("pending"),
-  token: varchar("token"), // Add token field for interview initiation
+  token: varchar("token").unique().notNull(), // Add token field for interview initiation
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
