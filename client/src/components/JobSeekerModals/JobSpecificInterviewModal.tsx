@@ -50,6 +50,9 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   const [isUploading, setIsUploading] = useState(false);
   const { isRecording, startRecording, stopRecording, cleanup } = useCameraRecorder();
 
+  // Debug: Log the environment variable value and its type
+  const enableTextInterviews = import.meta.env.VITE_ENABLE_TEXT_INTERVIEWS;
+
   const startCameraAccess = async () => {
     try {
       const videoStream = await navigator.mediaDevices.getUserMedia({
@@ -421,7 +424,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                 </div>
 
                 {/* Transcription content */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-96">
                   {conversationHistory.length > 0 ? (
                     conversationHistory.map((item, index) => (
                       <div key={`${item.role}-${index}`} className={`flex ${
@@ -544,19 +547,20 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   // Regular dialog for text mode
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="w-screen h-screen max-w-none max-h-none p-0">
+        <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle>Job-specific Interview</DialogTitle>
         </DialogHeader>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="h-10 w-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : !session ? (
-          <div className="text-center text-slate-600 py-12">No active job-specific interview session.</div>
-        ) : mode === 'text' ? (
-          <div className="space-y-4">
+        <div className="flex-1 overflow-auto px-6 py-4">
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="h-10 w-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : !session ? (
+            <div className="text-center text-slate-600 h-full flex items-center justify-center">No active job-specific interview session.</div>
+          ) : (enableTextInterviews === 'true' && mode === 'text') ? (
+            <div className="max-w-4xl mx-auto space-y-6 h-full flex flex-col">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-slate-600">Text mode • {language === 'arabic' ? 'Arabic' : 'English'}</div>
@@ -565,8 +569,8 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               <Badge variant="outline">Question {(session.sessionData.responses?.length || 0) + 1} of {session.sessionData.questions?.length || 5}</Badge>
             </div>
 
-            <div className="max-h-96 overflow-y-auto space-y-4">
-    
+            <div className="flex-1 overflow-y-auto space-y-4">
+
               {/* Display previous Q&A pairs */}
               {session.sessionData.responses?.map((response, index) => (
                 <div key={index} className="space-y-3">
@@ -603,13 +607,15 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               </div>
             </div>
 
-            <Textarea value={currentAnswer} onChange={(e) => setCurrentAnswer(e.target.value)} placeholder="Type your answer here" rows={4} />
+            <div className="border-t pt-4 space-y-4">
+              <Textarea value={currentAnswer} onChange={(e) => setCurrentAnswer(e.target.value)} placeholder="Type your answer here" rows={4} />
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={onClose} disabled={submitting}>Close</Button>
-              <Button onClick={submitTextAnswer} disabled={!currentAnswer.trim() || submitting}>
-                {submitting ? 'Submitting...' : 'Submit Answer'}
-              </Button>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={onClose} disabled={submitting}>Close</Button>
+                <Button onClick={submitTextAnswer} disabled={!currentAnswer.trim() || submitting}>
+                  {submitting ? 'Submitting...' : 'Submit Answer'}
+                </Button>
+              </div>
             </div>
           </div>
         ) : (
@@ -711,6 +717,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
             </div>
           </div>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );

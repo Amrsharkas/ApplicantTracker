@@ -20,7 +20,9 @@ interface JobSpecificInterviewOptionsModalProps {
 }
 
 export function JobSpecificInterviewOptionsModal({ isOpen, onClose, job, onConfirm }: JobSpecificInterviewOptionsModalProps) {
-  const [mode, setMode] = useState<'text' | 'voice'>('text');
+  // Debug: Log the environment variable value and its type
+  const enableTextInterviews = import.meta.env.VITE_ENABLE_TEXT_INTERVIEWS;
+  const [mode, setMode] = useState<'text' | 'voice'>(enableTextInterviews === 'true' ? 'text' : 'voice');
   const [language, setLanguage] = useState<'english' | 'arabic'>('english');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -52,12 +54,14 @@ export function JobSpecificInterviewOptionsModal({ isOpen, onClose, job, onConfi
 
           <div className={isSubmitting ? 'opacity-60 pointer-events-none' : ''}>
             <div className="text-sm font-medium mb-2">Interview style</div>
-            <RadioGroup value={mode} onValueChange={(v) => setMode(v as any)} className="grid grid-cols-2 gap-3">
-              <div className="flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3">
-                <RadioGroupItem value="text" id="mode-text" />
-                <Label htmlFor="mode-text">Text</Label>
-              </div>
-              <div className="flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3">
+            <RadioGroup value={mode} onValueChange={(v) => setMode(v as any)} className={`${enableTextInterviews === 'true' ? 'grid grid-cols-2' : ''} gap-3`}>
+              {enableTextInterviews === 'true' && (
+                <div className="flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3">
+                  <RadioGroupItem value="text" id="mode-text" />
+                  <Label htmlFor="mode-text">Text</Label>
+                </div>
+              )}
+              <div className={`flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3 ${enableTextInterviews === 'true' ? '' : 'w-full'}`}>
                 <RadioGroupItem value="voice" id="mode-voice" />
                 <Label htmlFor="mode-voice">Voice</Label>
               </div>
