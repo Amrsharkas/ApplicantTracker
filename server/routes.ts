@@ -15,10 +15,33 @@ import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUplo
 import { db } from "./db";
 import { applicantProfiles, interviewSessions, resumeUploads, jobMatches, applications, sessions, users } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
+import fs from "fs";
+import path from "path";
+
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const recordingsDir = path.join(__dirname, '..', 'uploads/recordings');
+fs.mkdirSync(recordingsDir, { recursive: true });
+
+const recordingStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, recordingsDir);
+  },
+  filename: (req, file, cb) => {
+    const sessionId = req.body.sessionId;
+    const uniqueSuffix = Date.now(); // Add timestamp to avoid conflicts
+    cb(null, `interview-${sessionId}-${uniqueSuffix}.webm`);
+  },
+});
+
+const uploadRecording = multer({ storage: recordingStorage });
 import { wrapOpenAIRequest } from "./openaiTracker";
 
-
-const upload = multer({ 
+const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
@@ -1309,6 +1332,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error in enhanced resume processing:", error);
       res.status(500).json({ 
         message: "Failed to process resume and populate profile. Please try again." 
+      });
+    }
+  });
+
+  app.post('/api/interview/upload-recording', requireAuth, uploadRecording.single('recording'), async (req: any, res) => {
+    try {
+      // Validate required fields
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        return res.status(400).json({
+          message: "Session ID is required"
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          message: "Recording file is required"
+        });
+      }
+
+      // Validate session ID format
+      const parsedSessionId = parseInt(sessionId);
+      if (isNaN(parsedSessionId) || parsedSessionId <= 0) {
+        return res.status(400).json({
+          message: "Invalid session ID"
+        });
+      }
+
+      // Validate file size (max 100MB for video recordings)
+      const maxSize = 100 * 1024 * 1024; // 100MB
+      if (req.file.size > maxSize) {
+        return res.status(413).json({
+          message: "Recording file is too large (max 100MB)"
+        });
+      }
+
+      // Allow any video file type - browsers may record with different MIME types
+      console.log('File upload details:', {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        encoding: req.file.encoding,
+        fieldname: req.file.fieldname
+      });
+
+      console.log(`Uploading recording for session ${parsedSessionId}, file size: ${req.file.size} bytes`);
+      console.log('Recording file details:', {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: req.file.path,
+        destination: req.file.destination,
+        filename: req.file.filename
+      });
+
+      const recordingData = await storage.createInterviewRecording({
+        sessionId: parsedSessionId,
+        recordingPath: req.file.path,
+      });
+
+      console.log(`Recording data being saved to database:`, recordingData);
+
+      res.json({
+        message: "Recording uploaded successfully",
+        recording: recordingData
+      });
+    } catch (error) {
+      console.error("Error uploading recording:", error);
+
+      // Handle specific database errors
+      if (error instanceof Error) {
+        if (error.message.includes('duplicate key')) {
+          return res.status(409).json({
+            message: "A recording for this session already exists"
+          });
+        }
+
+        if (error.message.includes('foreign key constraint')) {
+          return res.status(400).json({
+            message: "Invalid session ID - session does not exist"
+          });
+        }
+      }
+
+      // Clean up uploaded file if database operation failed
+      if (req.file && req.file.path) {
+        try {
+          const fs = await import('fs');
+          if (fs.default.existsSync(req.file.path)) {
+            fs.default.unlinkSync(req.file.path);
+            console.log(`Cleaned up failed upload: ${req.file.path}`);
+          }
+        } catch (cleanupError) {
+          console.error("Failed to clean up uploaded file:", cleanupError);
+        }
+      }
+
+      res.status(500).json({
+        message: "Failed to upload recording. Please try again."
       });
     }
   });

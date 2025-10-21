@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Mic, MessageCircle, PhoneOff, Briefcase, Target, User, CheckCircle, Languages } from 'lucide-react';
+import { Mic, MessageCircle, PhoneOff, Briefcase, Target, User, CheckCircle, Languages, Video, Circle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRealtimeAPI } from '@/hooks/useRealtimeAPI';
 import { useResumeRequirement } from '@/hooks/useResumeRequirement';
@@ -14,6 +14,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { isUnauthorizedError } from '@/lib/authUtils';
 import { ResumeRequiredModal } from '@/components/ResumeRequiredModal';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useCameraRecorder } from '@/hooks/useCameraRecorder';
 import { CameraPreview } from '@/components/CameraPreview';
 
 interface InterviewQuestion {
@@ -83,6 +84,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const [windowBlurCount, setWindowBlurCount] = useState(0);
   const [warningVisible, setWarningVisible] = useState(false);
   const [sessionTerminated, setSessionTerminated] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [showTranscription, setShowTranscription] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -93,6 +95,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { t, isRTL } = useLanguage();
+  const { isRecording, startRecording, stopRecording, cleanup } = useCameraRecorder();
 
   // Debug: Log the environment variable value and its type
   const enableTextInterviews = import.meta.env.VITE_ENABLE_TEXT_INTERVIEWS;
@@ -539,14 +542,43 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       });
       return response;
     },
-    onSuccess: (data) => {
-      setIsProcessingInterview(false);
-      setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
-      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
-      
-      realtimeAPI.disconnect();
-      setIsInterviewConcluded(false);
+    onSuccess: async (data) => {
+      console.log('Processing voice interview success - starting cleanup');
+
+      try {
+        // Disconnect realtime API first
+        if (realtimeAPI.isConnected) {
+          console.log('Disconnecting OpenAI realtime connection...');
+          realtimeAPI.disconnect();
+        }
+
+        // Stop recording and get blob
+        console.log('Stopping recording...');
+        const recordedBlob = await stopRecording();
+
+        console.log('Recording stopped, blob info:', {
+          blob: recordedBlob,
+          size: recordedBlob?.size,
+          type: recordedBlob?.type
+        });
+
+        // Upload recording if we have data
+        if (recordedBlob && recordedBlob.size > 0) {
+          console.log('Uploading recorded blob...');
+          await uploadRecording(recordedBlob);
+        } else {
+          console.log('No recording data to upload');
+        }
+      } catch (error) {
+        console.error('Error during interview processing cleanup:', error);
+      } finally {
+        setIsProcessingInterview(false);
+        setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
+        queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
+        setIsInterviewConcluded(false);
+        console.log('Voice interview processing completed');
+      }
       
       if (data.allInterviewsCompleted) {
         // Final completion - show profile generation success and close modal
@@ -591,6 +623,88 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       });
     },
   });
+
+  const uploadRecording = async (blob: Blob) => {
+    if (!currentSession) {
+      console.warn('No current session available for upload');
+      return;
+    }
+
+    // Validate blob before upload
+    if (!blob || blob.size === 0) {
+      console.warn('Recording blob is empty or null:', { blob: blob, size: blob?.size });
+      toast({
+        title: 'Upload Skipped',
+        description: 'No recording data available to upload.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    console.log('About to upload recording:', {
+      sessionId: currentSession.id,
+      blobSize: blob.size,
+      blobType: blob.type
+    });
+
+    setIsUploading(true);
+    const formData = new FormData();
+
+    // Determine file extension based on blob type
+    let fileExtension = 'webm'; // default
+    if (blob.type) {
+      if (blob.type.includes('mp4') || blob.type.includes('m4v')) {
+        fileExtension = 'mp4';
+      } else if (blob.type.includes('quicktime') || blob.type.includes('mov')) {
+        fileExtension = 'mov';
+      } else if (blob.type.includes('webm')) {
+        fileExtension = 'webm';
+      }
+      // Add any other detected types
+      console.log('Upload blob type:', blob.type, 'using extension:', fileExtension);
+    }
+
+    formData.append('recording', blob, `interview-${currentSession.id}.${fileExtension}`);
+    formData.append('sessionId', currentSession.id.toString());
+
+    try {
+      console.log(`Uploading recording for session ${currentSession.id}, size: ${blob.size} bytes`);
+
+      const response = await fetch('/api/interview/upload-recording', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include', // Include authentication
+      });
+
+      const responseData = await response.json().catch(() => ({ message: 'Invalid response' }));
+
+      if (!response.ok) {
+        // Handle specific error messages from server
+        const errorMessage = responseData.message || 'Upload failed';
+        throw new Error(errorMessage);
+      }
+
+      console.log('Recording uploaded successfully:', responseData);
+
+      toast({
+        title: 'Upload Complete',
+        description: 'Your interview recording has been uploaded successfully.',
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+
+      // Show specific error message from server if available
+      const errorMessage = error instanceof Error ? error.message : 'Unknown upload error';
+
+      toast({
+        title: 'Upload Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSubmitAnswer = async () => {
     if (!currentAnswer.trim() || !currentSession) return;
@@ -740,9 +854,11 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
         width: { ideal: 1280, max: 1920 },
         height: { ideal: 720, max: 1080 },
         facingMode: 'user'
-      }
+      },
+      audio: true,
     });
     setCameraStream(videoStream);
+    startRecording(videoStream);
     return videoStream;
   } catch (error) {
     console.error('Camera access error:', error);
@@ -1065,6 +1181,9 @@ const startVoiceInterview = async () => {
   };
 
   const resetInterview = () => {
+    // Stop recording first
+    cleanup();
+
     // Stop camera stream
     if (cameraStream) {
       cameraStream.getTracks().forEach(track => track.stop());
@@ -1151,14 +1270,16 @@ const startVoiceInterview = async () => {
     };
   }, [isOpen, mode, selectedInterviewType, windowBlurCount, sessionTerminated, toast, realtimeAPI]);
 
-  // Cleanup voice interview when modal closes
+  // Cleanup voice interview and recording when modal closes
   useEffect(() => {
     return () => {
       if (realtimeAPI.isConnected) {
         realtimeAPI.disconnect();
       }
+      // Clean up recording when component unmounts
+      cleanup();
     };
-  }, []);
+  }, [cleanup]);
 
   const handleClose = () => {
     // Prevent closing during active AI speech or processing
@@ -1174,6 +1295,9 @@ const startVoiceInterview = async () => {
     if (realtimeAPI.isConnected) {
       realtimeAPI.disconnect();
     }
+
+    // Stop recording first
+    cleanup();
 
     // Stop camera stream
     if (cameraStream) {
@@ -1739,6 +1863,7 @@ const startVoiceInterview = async () => {
           <CameraPreview
             stream={cameraStream}
             isActive={realtimeAPI.isConnected}
+            isRecording={isRecording}
             error={realtimeAPI.cameraError}
             connecting={isStartingInterview}
             className="h-full"
@@ -1860,13 +1985,22 @@ const startVoiceInterview = async () => {
       <div className="bg-gray-900 border-t border-gray-800 px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
+            {/* Recording status indicator */}
+            {isRecording && (
+              <div className="flex items-center space-x-2 bg-red-600 text-white px-3 py-1 rounded-full animate-pulse">
+                <Video className="h-4 w-4" />
+                <span className="text-xs font-medium">Recording</span>
+                <Circle className="h-2 w-2 bg-red-800 rounded-full animate-pulse" />
+              </div>
+            )}
+
             <div className={`h-3 w-3 rounded-full ${
               sessionTerminated ? 'bg-red-500' : windowBlurCount > 0 ? 'bg-yellow-500' : 'bg-green-500'
             } animate-pulse`} />
             <span className="text-gray-400 text-sm">
               {sessionTerminated ? 'Session Terminated' :
                windowBlurCount > 0 ? `${windowBlurCount}/${maxBlurCount} violations` :
-               realtimeAPI.isConnected ? 'Connected' : 'Connecting...'}
+               realtimeAPI.isConnected ? (isRecording ? '🔴 Recording' : '🟢 Live') : '🟡 Connecting...'}
             </span>
 
             {showTranscription && (
@@ -1884,12 +2018,48 @@ const startVoiceInterview = async () => {
           <div className="flex items-center space-x-3">
             {currentSession?.interviewType !== 'job-practice' && (
               <button
-                onClick={() => {
-                  exitFullscreen();
-                  setMode('types');
+                onClick={async () => {
+                  if (isAiSpeaking || isProcessingInterview) {
+                    return;
+                  }
+
+                  console.log('Exit Interview button clicked, recording state:', { isRecording });
+
+                  try {
+                    // Disconnect OpenAI realtime connection first
+                    if (realtimeAPI.isConnected) {
+                      console.log('Disconnecting OpenAI realtime connection...');
+                      realtimeAPI.disconnect();
+                    }
+
+                    // Stop recording and get the blob
+                    console.log('Stopping recording...');
+                    const recordedBlob = await stopRecording();
+
+                    console.log('Recording stopped, blob info:', {
+                      blob: recordedBlob,
+                      size: recordedBlob?.size,
+                      type: recordedBlob?.type
+                    });
+
+                    // Upload the recording if we have data
+                    if (recordedBlob && recordedBlob.size > 0) {
+                      console.log('Uploading recorded blob...');
+                      await uploadRecording(recordedBlob);
+                    } else {
+                      console.log('No recording data to upload');
+                    }
+                  } catch (error) {
+                    console.error('Error saving recording on exit:', error);
+                  } finally {
+                    // Always cleanup and exit
+                    cleanup();
+                    exitFullscreen();
+                    setMode('types');
+                  }
                 }}
                 className="text-gray-400 hover:text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
-                disabled={isAiSpeaking || isProcessingInterview}
+                disabled={isAiSpeaking || isProcessingInterview || isUploading}
               >
                 ← Exit Interview
               </button>

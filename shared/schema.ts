@@ -340,6 +340,13 @@ export const interviewSessions = pgTable("interview_sessions", {
   completedAt: timestamp("completed_at"),
 });
 
+export const interviewRecordings = pgTable("interview_recordings", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull(),
+  recordingPath: varchar("recording_path").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Additional tables from HiringIntelligence
 export const acceptedApplicants = pgTable("accepted_applicants", {
   id: serial("id").primaryKey(),
@@ -484,6 +491,10 @@ export const insertInterviewSessionSchema = createInsertSchema(interviewSessions
   createdAt: true,
   completedAt: true,
 });
+export const insertInterviewRecordingSchema = createInsertSchema(interviewRecordings).omit({
+  id: true,
+  createdAt: true,
+});
 export const insertResumeUploadSchema = createInsertSchema(resumeUploads).omit({
   id: true,
   uploadedAt: true,
@@ -505,6 +516,8 @@ export type InsertApplication = z.infer<typeof insertApplicationSchema>;
 export type Application = typeof applications.$inferSelect;
 export type InsertInterviewSession = z.infer<typeof insertInterviewSessionSchema>;
 export type InterviewSession = typeof interviewSessions.$inferSelect;
+export type InsertInterviewRecording = z.infer<typeof insertInterviewRecordingSchema>;
+export type InterviewRecording = typeof interviewRecordings.$inferSelect;
 export type InsertResumeUpload = z.infer<typeof insertResumeUploadSchema>;
 export type ResumeUpload = typeof resumeUploads.$inferSelect;
 export type OpenAIRequest = typeof openaiRequests.$inferSelect;
