@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeAPI } from "@/hooks/useRealtimeAPI";
-import { MessageCircle, MessageSquare, User, Mic, MicOff, PhoneOff } from "lucide-react";
+import { useCameraRecorder } from '@/hooks/useCameraRecorder';
+import { MessageCircle, MessageSquare, User, Mic, MicOff, PhoneOff, Video, Circle } from "lucide-react";
 import { CameraPreview } from '@/components/CameraPreview';
 
 interface JobSummary {
@@ -46,6 +47,8 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   const [conversationHistory, setConversationHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [showTranscription, setShowTranscription] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const { isRecording, startRecording, stopRecording, cleanup } = useCameraRecorder();
 
   const startCameraAccess = async () => {
     try {
@@ -54,9 +57,11 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           width: { ideal: 1280, max: 1920 },
           height: { ideal: 720, max: 1080 },
           facingMode: 'user'
-        }
+        },
+        audio: true,
       });
       setCameraStream(videoStream);
+      startRecording(videoStream);
       return videoStream;
     } catch (error) {
       console.error('Camera access error:', error);
@@ -149,7 +154,8 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
     // Disconnect on close
     return () => {
       if (realtimeAPI.isConnected) realtimeAPI.disconnect();
-      // Stop camera stream
+      // Stop camera stream and recording
+      cleanup();
       if (cameraStream) {
         cameraStream.getTracks().forEach(track => track.stop());
       }
@@ -205,9 +211,102 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
     }
   };
 
+  const uploadRecording = async (blob: Blob) => {
+    if (!session) {
+      console.warn('No current session available for upload');
+      return;
+    }
+
+    // Validate blob before upload
+    if (!blob || blob.size === 0) {
+      console.warn('Recording blob is empty or null:', { blob: blob, size: blob?.size });
+      toast({
+        title: 'Upload Skipped',
+        description: 'No recording data available to upload.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    console.log('About to upload recording:', {
+      sessionId: session.id,
+      blobSize: blob.size,
+      blobType: blob.type
+    });
+
+    setIsUploading(true);
+    const formData = new FormData();
+
+    // Determine file extension based on blob type
+    let fileExtension = 'webm'; // default
+    if (blob.type) {
+      if (blob.type.includes('mp4') || blob.type.includes('m4v')) {
+        fileExtension = 'mp4';
+      } else if (blob.type.includes('quicktime') || blob.type.includes('mov')) {
+        fileExtension = 'mov';
+      } else if (blob.type.includes('webm')) {
+        fileExtension = 'webm';
+      }
+      // Add any other detected types
+      console.log('Upload blob type:', blob.type, 'using extension:', fileExtension);
+    }
+
+    formData.append('recording', blob, `interview-${session.id}.${fileExtension}`);
+    formData.append('sessionId', session.id.toString());
+
+    try {
+      console.log(`Uploading recording for session ${session.id}, size: ${blob.size} bytes`);
+
+      const response = await fetch('/api/interview/upload-recording', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include', // Include authentication
+      });
+
+      const responseData = await response.json().catch(() => ({ message: 'Invalid response' }));
+
+      if (!response.ok) {
+        // Handle specific error messages from server
+        const errorMessage = responseData.message || 'Upload failed';
+        throw new Error(errorMessage);
+      }
+
+      console.log('Recording uploaded successfully:', responseData);
+
+      toast({
+        title: 'Upload Complete',
+        description: 'Your interview recording has been uploaded successfully.',
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+
+      // Show specific error message from server if available
+      const errorMessage = error instanceof Error ? error.message : 'Unknown upload error';
+
+      toast({
+        title: 'Upload Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const submitVoiceInterview = async () => {
     setProcessing(true);
     try {
+      // Stop recording and get blob before submitting
+      const recordedBlob = await stopRecording();
+
+      // Upload recording if we have data
+      if (recordedBlob && recordedBlob.size > 0) {
+        console.log('Uploading recorded blob...');
+        await uploadRecording(recordedBlob);
+      } else {
+        console.log('No recording data to upload');
+      }
+
       const response = await fetch('/api/interview/complete-voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -284,6 +383,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               <CameraPreview
                 stream={cameraStream}
                 isActive={realtimeAPI.isConnected}
+                isRecording={isRecording}
                 error={realtimeAPI.cameraError}
                 connecting={loading}
                 className="h-full"
@@ -356,12 +456,21 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           <div className="bg-gray-900 border-t border-gray-800 px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
+                {/* Recording status indicator */}
+                {isRecording && (
+                  <div className="flex items-center space-x-2 bg-red-600 text-white px-3 py-1 rounded-full animate-pulse">
+                    <Video className="h-4 w-4" />
+                    <span className="text-xs font-medium">Recording</span>
+                    <Circle className="h-2 w-2 bg-red-800 rounded-full animate-pulse" />
+                  </div>
+                )}
+
                 <div className="flex items-center space-x-2">
                   <div className={`h-3 w-3 rounded-full ${
                     realtimeAPI.isConnected ? 'bg-green-500' : 'bg-yellow-500'
                   } animate-pulse`} />
                   <span className="text-gray-400 text-sm">
-                    {realtimeAPI.isConnected ? 'Connected' : 'Connecting...'}
+                    {realtimeAPI.isConnected ? (isRecording ? '🔴 Recording' : '🟢 Live') : '🟡 Connecting...'}
                   </span>
                 </div>
 
@@ -372,22 +481,50 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
 
               <div className="flex items-center space-x-3">
                 <button
-                  onClick={() => { if (realtimeAPI.isConnected) realtimeAPI.disconnect(); onClose(); }}
+                  onClick={async () => {
+                    if (processing || isUploading) {
+                      return;
+                    }
+
+                    try {
+                      // Disconnect OpenAI realtime connection first
+                      if (realtimeAPI.isConnected) {
+                        realtimeAPI.disconnect();
+                      }
+
+                      // Stop recording and get the blob
+                      const recordedBlob = await stopRecording();
+
+                      // Upload the recording if we have data
+                      if (recordedBlob && recordedBlob.size > 0) {
+                        console.log('Uploading recorded blob...');
+                        await uploadRecording(recordedBlob);
+                      } else {
+                        console.log('No recording data to upload');
+                      }
+                    } catch (error) {
+                      console.error('Error saving recording on exit:', error);
+                    } finally {
+                      // Always cleanup and exit
+                      cleanup();
+                      onClose();
+                    }
+                  }}
                   className="text-gray-400 hover:text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium"
-                  disabled={processing}
+                  disabled={processing || isUploading}
                 >
-                  Exit Interview
+                  ← Exit Interview
                 </button>
 
                 <button
                   onClick={submitVoiceInterview}
-                  disabled={processing || !realtimeAPI.isConnected}
+                  disabled={processing || !realtimeAPI.isConnected || isUploading}
                   className="bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:text-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
                 >
-                  {processing ? (
+                  {processing || isUploading ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                      <span>Processing...</span>
+                      <span>{isUploading ? 'Uploading...' : 'Processing...'}</span>
                     </>
                   ) : (
                     <>
@@ -489,6 +626,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
             <CameraPreview
               stream={cameraStream}
               isActive={realtimeAPI.isConnected}
+              isRecording={isRecording}
               error={realtimeAPI.cameraError}
               connecting={loading}
               className="h-48 w-full max-w-md mx-auto"
@@ -536,11 +674,39 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => { if (realtimeAPI.isConnected) realtimeAPI.disconnect(); onClose(); }} disabled={processing}>
+              <Button variant="outline" onClick={async () => {
+                if (processing || isUploading) {
+                  return;
+                }
+
+                try {
+                  // Disconnect OpenAI realtime connection first
+                  if (realtimeAPI.isConnected) {
+                    realtimeAPI.disconnect();
+                  }
+
+                  // Stop recording and get the blob
+                  const recordedBlob = await stopRecording();
+
+                  // Upload the recording if we have data
+                  if (recordedBlob && recordedBlob.size > 0) {
+                    console.log('Uploading recorded blob...');
+                    await uploadRecording(recordedBlob);
+                  } else {
+                    console.log('No recording data to upload');
+                  }
+                } catch (error) {
+                  console.error('Error saving recording on exit:', error);
+                } finally {
+                  // Always cleanup and exit
+                  cleanup();
+                  onClose();
+                }
+              }} disabled={processing || isUploading}>
                 <PhoneOff className="h-4 w-4 mr-1" /> End
               </Button>
-              <Button onClick={submitVoiceInterview} disabled={processing || !realtimeAPI.isConnected}>
-                {processing ? 'Submitting...' : 'End & Submit'}
+              <Button onClick={submitVoiceInterview} disabled={processing || !realtimeAPI.isConnected || isUploading}>
+                {processing || isUploading ? (isUploading ? 'Uploading...' : 'Submitting...') : 'End & Submit'}
               </Button>
             </div>
           </div>
