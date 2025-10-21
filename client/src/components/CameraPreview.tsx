@@ -1,16 +1,17 @@
 import { useRef, useEffect, useState } from 'react';
-import { Camera, CameraOff, AlertCircle } from 'lucide-react';
+import { Camera, CameraOff, AlertCircle, Video, Circle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface CameraPreviewProps {
   stream: MediaStream | null;
   isActive: boolean;
+  isRecording?: boolean;
   error?: string | null;
   className?: string;
   connecting?: boolean;
 }
 
-export function CameraPreview({ stream, isActive, error, className = '', connecting = false }: CameraPreviewProps) {
+export function CameraPreview({ stream, isActive, isRecording = false, error, className = '', connecting = false }: CameraPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoReady, setIsVideoReady] = useState(false);
 
@@ -91,10 +92,20 @@ export function CameraPreview({ stream, isActive, error, className = '', connect
 
         {/* Camera status indicator */}
         {(isActive || stream) && isVideoReady && (
-          <div className="absolute top-4 right-4 flex items-center space-x-1 bg-red-600 text-white px-3 py-1 rounded-full">
-            <div className="h-2 w-2 bg-white rounded-full animate-pulse" />
-            <span className="text-xs font-medium">LIVE</span>
-          </div>
+          <>
+            {isRecording ? (
+              <div className="absolute top-4 right-4 flex items-center space-x-2 bg-red-600 text-white px-3 py-1 rounded-full animate-pulse">
+                <Video className="h-4 w-4" />
+                <span className="text-xs font-medium">REC</span>
+                <Circle className="h-2 w-2 bg-red-800 rounded-full animate-pulse" />
+              </div>
+            ) : (
+              <div className="absolute top-4 right-4 flex items-center space-x-1 bg-green-600 text-white px-3 py-1 rounded-full">
+                <div className="h-2 w-2 bg-white rounded-full animate-pulse" />
+                <span className="text-xs font-medium">LIVE</span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
