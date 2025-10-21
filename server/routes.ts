@@ -2974,9 +2974,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recordId: match.id,
         jobTitle: match.jobTitle || 'Untitled Position',
         jobDescription: match.jobDescription || '',
-        companyName: match.company || 'Unknown Company',
+        companyName: match.companyName || 'Unknown Company',
         status: match.status || '',
-        score: match.score,
+        score: match.matchScore,
         interviewComments: match.interviewComments || '',
         aiPrompt: match.aiPrompt || '',
       }));
