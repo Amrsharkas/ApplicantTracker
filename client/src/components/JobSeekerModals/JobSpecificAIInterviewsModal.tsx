@@ -109,38 +109,45 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
-          <DialogTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              Job specific AI interviews ({invitedJobs.length})
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="flex items-center gap-1"
-                title="Refresh invitations"
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClose}
-                className="hover:bg-gray-100"
-                title="Close"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className={`${
+        interviewOpen
+          ? 'w-screen h-screen max-w-none max-h-none p-0'
+          : 'max-w-6xl max-h-[95vh] overflow-hidden p-0'
+      }`}>
+        {/* Only show header when not in interview mode */}
+        {!interviewOpen ? (
+          <>
+            <DialogHeader className="px-6 pt-6 pb-4 border-b">
+              <DialogTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  Job specific AI interviews ({invitedJobs.length})
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className="flex items-center gap-1"
+                    title="Refresh invitations"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClose}
+                    className="hover:bg-gray-100"
+                    title="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </DialogTitle>
+            </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
           <div className="px-4 pt-4">
             <TabsList>
               <TabsTrigger value="invited">Pending interviews</TabsTrigger>
@@ -314,10 +321,26 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
             )}
           </TabsContent>
         </Tabs>
+            </>
+          ) : (
+            /* Interview mode - show full screen interview for both text and voice */
+            <JobSpecificInterviewModal
+              isOpen={interviewOpen}
+              onClose={() => {
+                console.log('JobSpecificInterviewModal onClose called');
+                setInterviewOpen(false);
+              }}
+              job={selectedJob}
+              mode={interviewMode}
+              language={interviewLanguage}
+              onInterviewComplete={handleInterviewComplete}
+            />
+          )}
 
-        {/* Details Drawer */}
-        <AnimatePresence>
-          {selectedJob && (
+        {/* Details Drawer - only show when not in interview */}
+        {!interviewOpen ? (
+          <AnimatePresence>
+            {selectedJob && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -445,7 +468,8 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
               </motion.div>
             </motion.div>
           )}
-        </AnimatePresence>
+          </AnimatePresence>
+        ) : null}
 
         <JobSpecificInterviewOptionsModal
           isOpen={optionsOpen}
@@ -475,15 +499,6 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
               // Simple toast; reuse parent toast
             }
           }}
-        />
-
-        <JobSpecificInterviewModal
-          isOpen={interviewOpen}
-          onClose={() => setInterviewOpen(false)}
-          job={selectedJob}
-          mode={interviewMode}
-          language={interviewLanguage}
-          onInterviewComplete={handleInterviewComplete}
         />
       </DialogContent>
     </Dialog>

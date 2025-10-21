@@ -332,7 +332,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   // Voice mode uses a different, full-screen interface
   if (mode === 'voice') {
     return (
-      <div className="fixed inset-0 z-50 bg-gray-950 flex flex-col">
+      <div className="w-full h-full bg-gray-950 flex flex-col">
         {/* Header with enhanced controls */}
         <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center space-x-3">
@@ -489,6 +489,8 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                       return;
                     }
 
+                    console.log('Exiting interview...');
+
                     try {
                       // Disconnect OpenAI realtime connection first
                       if (realtimeAPI.isConnected) {
@@ -509,7 +511,14 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                       console.error('Error saving recording on exit:', error);
                     } finally {
                       // Always cleanup and exit
+                      console.log('Cleaning up and closing dialog...');
                       cleanup();
+                      // Stop camera stream and recording
+                      if (cameraStream) {
+                        cameraStream.getTracks().forEach(track => track.stop());
+                      }
+                      setCameraStream(null);
+                      console.log('Calling onClose...');
                       onClose();
                     }
                   }}
@@ -685,6 +694,8 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                   return;
                 }
 
+                console.log('Exiting interview from dialog mode...');
+
                 try {
                   // Disconnect OpenAI realtime connection first
                   if (realtimeAPI.isConnected) {
@@ -705,7 +716,14 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                   console.error('Error saving recording on exit:', error);
                 } finally {
                   // Always cleanup and exit
+                  console.log('Cleaning up and closing dialog...');
                   cleanup();
+                  // Stop camera stream and recording
+                  if (cameraStream) {
+                    cameraStream.getTracks().forEach(track => track.stop());
+                  }
+                  setCameraStream(null);
+                  console.log('Calling onClose...');
                   onClose();
                 }
               }} disabled={processing || isUploading}>
