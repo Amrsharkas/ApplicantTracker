@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmployerQuestionsModal } from "./EmployerQuestionsModal";
-import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft } from "lucide-react";
+import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft, Mic } from "lucide-react";
 
 // Country-City data structure
 const COUNTRIES_CITIES = {
@@ -39,17 +39,25 @@ const COUNTRIES_CITIES = {
 };
 
 interface JobPosting {
-  recordId: string;
-  jobTitle: string;
-  jobDescription: string;
-  companyName: string;
+  recordId: string; // Keep recordId for existing references, but it should map to id
+  id: number;
+  title: string;
+  description: string;
+  requirements: string;
   location?: string;
   salaryRange?: string;
-  employmentType?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  employmentType: string;
+  workplaceType: string;
+  seniorityLevel: string;
+  industry: string;
   experienceLevel?: string;
   skills?: string[];
-  postedDate?: string;
-  employerQuestions?: string;
+  postedAt?: string; // Change from postedDate
+  employerQuestions?: string[]; // Change to array
+  aiPrompt?: string;
+  companyName: string; // New field from 'jobs' table
 }
 
 interface AIMatchResponse {
@@ -63,6 +71,8 @@ interface JobPostingsModalProps {
   onClose: () => void;
   initialJobTitle?: string;
   initialJobId?: string;
+  onStartJobPractice?: (job: JobPosting) => void;
+  onStartJobPracticeVoice?: (job: JobPosting) => void;
 }
 
 const funnyNoJobsMessages = [
@@ -78,7 +88,7 @@ const funnyNoJobsMessages = [
   "🍕 No jobs yet, but that just means more time to grab a snack before the opportunities flood in!"
 ];
 
-export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobId }: JobPostingsModalProps) {
+export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobId, onStartJobPractice, onStartJobPracticeVoice }: JobPostingsModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [viewedJobDetails, setViewedJobDetails] = useState<Set<string>>(new Set());
@@ -269,7 +279,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     if (isOpen && initialJobTitle && jobPostings.length > 0 && !selectedJob) {
       // Find the job by title or job ID
       const targetJob = jobPostings.find(job => 
-        job.jobTitle === initialJobTitle || 
+        job.title === initialJobTitle || 
         (initialJobId && job.recordId === initialJobId)
       );
       
@@ -330,9 +340,9 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesSearch = (
-          job.jobTitle.toLowerCase().includes(query) ||
+          job.title.toLowerCase().includes(query) ||
           job.companyName.toLowerCase().includes(query) ||
-          job.jobDescription.toLowerCase().includes(query) ||
+          job.description.toLowerCase().includes(query) ||
           job.location?.toLowerCase().includes(query) ||
           job.skills?.some(skill => skill.toLowerCase().includes(query))
         );
@@ -341,7 +351,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
       // Smart workplace filter with OR logic
       if (filters.workplace.length > 0) {
-        const jobWorkplace = job.employmentType?.toLowerCase() || "";
+        const jobWorkplace = job.workplaceType?.toLowerCase() || "";
         const hasWorkplaceMatch = filters.workplace.some(w => {
           const filterValue = w.toLowerCase();
           return (
@@ -376,14 +386,14 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
       // Smart job category filter
       if (filters.jobCategory) {
-        const jobCategory = job.jobTitle.toLowerCase();
+        const jobCategory = job.industry?.toLowerCase() || job.title.toLowerCase();
         const categoryLower = filters.jobCategory.toLowerCase();
         if (!jobCategory.includes(categoryLower)) return false;
       }
 
       // Smart job type filter
-      if (filters.jobType && job.employmentType) {
-        const typeLower = job.employmentType.toLowerCase();
+      if (filters.jobType && job.jobType) {
+        const typeLower = job.jobType.toLowerCase();
         const filterTypeLower = filters.jobType.toLowerCase();
         if (!typeLower.includes(filterTypeLower)) return false;
       }
@@ -403,9 +413,9 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
         if (searchQuery) {
           const query = searchQuery.toLowerCase();
           const matchesSearch = (
-            job.jobTitle.toLowerCase().includes(query) ||
+            job.title.toLowerCase().includes(query) ||
             job.companyName.toLowerCase().includes(query) ||
-            job.jobDescription.toLowerCase().includes(query) ||
+            job.description.toLowerCase().includes(query) ||
             job.location?.toLowerCase().includes(query) ||
             job.skills?.some(skill => skill.toLowerCase().includes(query))
           );
@@ -417,7 +427,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
         // Workplace relaxed matching
         if (filters.workplace.length > 0) {
-          const jobWorkplace = job.employmentType?.toLowerCase() || "";
+          const jobWorkplace = job.workplaceType?.toLowerCase() || "";
           const hasWorkplaceMatch = filters.workplace.some(w => {
             const filterValue = w.toLowerCase();
             return (
@@ -446,7 +456,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
         // Job category relaxed matching
         if (filters.jobCategory) {
-          const jobCategory = job.jobTitle.toLowerCase();
+          const jobCategory = job.industry?.toLowerCase() || job.title.toLowerCase();
           const categoryLower = filters.jobCategory.toLowerCase();
           if (jobCategory.includes(categoryLower)) hasAnyMatch = true;
         }
@@ -633,8 +643,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     const tags = [];
     if (job.employmentType) tags.push(job.employmentType);
     if (job.experienceLevel) tags.push(job.experienceLevel);
-    if (job.postedDate) {
-      const daysSincePosted = Math.floor((Date.now() - new Date(job.postedDate).getTime()) / (1000 * 60 * 60 * 24));
+    if (job.postedAt) {
+      const daysSincePosted = Math.floor((Date.now() - new Date(job.postedAt).getTime()) / (1000 * 60 * 60 * 24));
       if (daysSincePosted <= 3) tags.push("New");
       if (daysSincePosted <= 1) tags.push("Urgent");
     }
@@ -649,7 +659,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
   const proceedWithApplication = (job: JobPosting) => {
     // Check if job has employer questions
-    if (job.employerQuestions && job.employerQuestions.trim() !== '') {
+    if (job.employerQuestions && job.employerQuestions.length > 0) {
       // Show employer questions modal
       setPendingApplication(job);
       setShowEmployerQuestions(true);
@@ -790,7 +800,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                 {expandedFilters.workplace && (
                   <div className="mt-2 space-y-2 pl-2">
                     {['On-site', 'Remote', 'Hybrid'].map((option) => (
-                      <div key={option} className="flex items-center space-x-2">
+                      <div key={option} className="flex items-center space-x-2 rtl:space-x-reverse">
                         <Checkbox
                           id={`workplace-${option}`}
                           checked={filters.workplace.includes(option)}
@@ -1080,7 +1090,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                               <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-2">
                                   <h3 className="font-semibold text-blue-600 text-lg hover:text-blue-800 cursor-pointer">
-                                    {job.jobTitle}
+                                    {job.title}
                                   </h3>
                                   <div className={`flex items-center gap-1 px-2 py-1 rounded ${
                                     matchScore >= 80 ? 'bg-green-100 text-green-800' :
@@ -1120,11 +1130,11 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                                     </Badge>
                                   ))}
                                   <span className="text-gray-500 text-sm">
-                                    {job.postedDate ? formatDate(job.postedDate) : 'Recently posted'}
+                                    {job.postedAt ? formatDate(job.postedAt) : 'Recently posted'}
                                   </span>
                                 </div>
                                 <p className="text-gray-700 text-sm leading-relaxed mb-4 line-clamp-3">
-                                  {job.jobDescription}
+                                  {job.description}
                                 </p>
                                 {job.skills && job.skills.length > 0 && (
                                   <div className="flex flex-wrap gap-2 mb-4">
@@ -1226,7 +1236,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h2 className="text-2xl font-bold text-gray-900">
-                          {selectedJob.jobTitle}
+                          {selectedJob.title}
                         </h2>
                         <div className="flex items-center gap-1 bg-green-100 px-2 py-1 rounded">
                           <Star className="h-4 w-4 text-green-600" />
@@ -1246,7 +1256,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         <span>{selectedJob.location || 'Remote'}</span>
                         <span>•</span>
                         <Clock className="h-4 w-4" />
-                        <span>{selectedJob.postedDate ? formatDate(selectedJob.postedDate) : 'Recently posted'}</span>
+                        <span>{selectedJob.postedAt ? formatDate(selectedJob.postedAt) : 'Recently posted'}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
@@ -1305,11 +1315,23 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Description</h3>
                       <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                        {selectedJob.jobDescription.split('\n').map((paragraph, index) => (
+                        {selectedJob.description.split('\n').map((paragraph, index) => (
                           <p key={index} className="mb-3">{paragraph}</p>
                         ))}
                       </div>
                     </div>
+
+                    {/* AI Prompt */}
+                    {selectedJob.aiPrompt && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">AI Prompt</h3>
+                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                          <p className="text-purple-800 text-sm leading-relaxed whitespace-pre-wrap">
+                            {selectedJob.aiPrompt}
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Skills & Requirements */}
                     {selectedJob.skills && selectedJob.skills.length > 0 && (
@@ -1379,12 +1401,55 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         {selectedJob.location || 'Remote'}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 rtl:space-x-reverse">
                       <Button
                         variant="outline"
                         onClick={() => setSelectedJob(null)}
                       >
                         Close
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          if (selectedJob) {
+                            if (onStartJobPractice) {
+                              onStartJobPractice(selectedJob);
+                            } else {
+                              // Fallback: fire API directly
+                              fetch('/api/interview/start-job-practice', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({ job: selectedJob })
+                              }).then(() => {}).catch(() => {});
+                            }
+                          }
+                        }}
+                        className="flex items-center gap-2 px-6"
+                      >
+                        <Zap className="h-4 w-4" />
+                        Practice Interview
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          if (selectedJob) {
+                            if (onStartJobPracticeVoice) {
+                              onStartJobPracticeVoice(selectedJob);
+                            } else {
+                              fetch('/api/interview/start-job-practice-voice', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({ job: selectedJob })
+                              }).then(() => {}).catch(() => {});
+                            }
+                          }
+                        }}
+                        className="flex items-center gap-2 px-6"
+                      >
+                        <Mic className="h-4 w-4" />
+                        Voice Practice
                       </Button>
                       <Button
                         onClick={() => proceedWithApplication(selectedJob)}
@@ -1463,7 +1528,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                   <div className="bg-gray-50 p-4 rounded-lg mb-6">
                     <div className="flex items-center gap-2 mb-1">
                       <Briefcase className="h-4 w-4 text-gray-600" />
-                      <h4 className="font-medium text-gray-900">{selectedJob?.jobTitle}</h4>
+                      <h4 className="font-medium text-gray-900">{selectedJob?.title}</h4>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Building className="h-3 w-3" />

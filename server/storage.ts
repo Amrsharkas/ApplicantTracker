@@ -6,6 +6,7 @@ import {
   applications,
   interviewSessions,
   resumeUploads,
+  interviewRecordings,
   type User,
   type UpsertUser,
   type InsertApplicantProfile,
@@ -20,6 +21,8 @@ import {
   type InterviewSession,
   type InsertResumeUpload,
   type ResumeUpload,
+  type InsertInterviewRecording,
+  type InterviewRecording,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -61,6 +64,7 @@ export interface IStorage {
   updateInterviewSession(id: number, data: Partial<InterviewSession>): Promise<void>;
   updateInterviewCompletion(userId: string, interviewType: string): Promise<void>;
   getInterviewContext(userId: string, currentInterviewType: string): Promise<any>;
+  createInterviewRecording(recording: InsertInterviewRecording): Promise<InterviewRecording>;
 
   // Resume operations
   createResumeUpload(resumeData: InsertResumeUpload): Promise<ResumeUpload>;
@@ -129,7 +133,8 @@ export class DatabaseStorage implements IStorage {
     const [profile] = await db
       .select()
       .from(applicantProfiles)
-      .where(eq(applicantProfiles.userId, userId));
+      .where(eq(applicantProfiles.userId, userId))
+      .orderBy(desc(applicantProfiles.id));
     return profile;
   }
 
@@ -501,6 +506,73 @@ export class DatabaseStorage implements IStorage {
     });
     
     return questions;
+  }
+
+  async createInterviewRecording(recordingData: InsertInterviewRecording): Promise<InterviewRecording> {
+    try {
+      // Validate input data
+      if (!recordingData.sessionId) {
+        throw new Error("Session ID is required");
+      }
+
+      if (!recordingData.recordingPath || recordingData.recordingPath.trim() === '') {
+        throw new Error("Recording path is required");
+      }
+
+      // Verify session exists first
+      const session = await db
+        .select({ id: interviewSessions.id })
+        .from(interviewSessions)
+        .where(eq(interviewSessions.id, recordingData.sessionId))
+        .limit(1);
+
+      if (session.length === 0) {
+        throw new Error(`Interview session with ID ${recordingData.sessionId} does not exist`);
+      }
+
+      // Check if recording already exists for this session
+      const existingRecording = await db
+        .select({ id: interviewRecordings.id })
+        .from(interviewRecordings)
+        .where(eq(interviewRecordings.sessionId, recordingData.sessionId))
+        .limit(1);
+
+      if (existingRecording.length > 0) {
+        throw new Error(`Recording for session ${recordingData.sessionId} already exists`);
+      }
+
+      const [recording] = await db
+        .insert(interviewRecordings)
+        .values({
+          ...recordingData,
+          createdAt: new Date(), // Ensure timestamp is set
+        })
+        .returning();
+
+      if (!recording) {
+        throw new Error("Failed to create recording record");
+      }
+
+      console.log(`Created interview recording for session ${recordingData.sessionId}:`, {
+        id: recording.id,
+        sessionId: recordingData.sessionId,
+        recordingPath: recordingData.recordingPath,
+        createdAt: recording.createdAt
+      });
+      return recording;
+    } catch (error) {
+      // Re-throw with more context if it's already a database error
+      if (error instanceof Error && (
+        error.message.includes('duplicate key') ||
+        error.message.includes('already exists') ||
+        error.message.includes('does not exist')
+      )) {
+        throw error;
+      }
+
+      // Wrap other errors
+      throw new Error(`Failed to create interview recording: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   // Resume operations

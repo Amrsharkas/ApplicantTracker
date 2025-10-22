@@ -592,7 +592,7 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
               <Label>Preferred Work Type *</Label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
                 {["fulltime", "part_time", "freelance", "internship"].map((type) => (
-                  <label key={type} className="flex items-center space-x-2 cursor-pointer">
+                  <label key={type} className="flex items-center space-x-2 rtl:space-x-reverse cursor-pointer">
                     <input
                       type="checkbox"
                       value={type}

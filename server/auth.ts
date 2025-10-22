@@ -190,6 +190,52 @@ export async function setupAuth(app: Express) {
     });
   });
 
+  // Set password endpoint (for users with passwordNeedsSetup flag)
+  app.post('/api/set-password', async (req: any, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const setPasswordSchema = z.object({
+        password: z.string().min(6, 'Password must be at least 6 characters'),
+      });
+
+      const { password } = setPasswordSchema.parse(req.body);
+
+      // Get current user
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Check if user needs password setup
+      if (!user.passwordNeedsSetup) {
+        return res.status(400).json({ error: 'Password already set or setup not required' });
+      }
+
+      // Hash password and update user
+      const hashedPassword = await hashPassword(password);
+      const updatedUser = await storage.updateUser(user.id, {
+        password: hashedPassword,
+        passwordNeedsSetup: false
+      });
+
+      console.log(`✅ Password set for user: ${user.email}`);
+
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = updatedUser;
+      res.json({ user: userWithoutPassword, message: 'Password set successfully' });
+
+    } catch (error) {
+      console.error('Set password error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      res.status(500).json({ error: 'Failed to set password' });
+    }
+  });
+
   // Get current user endpoint
   app.get('/api/user', async (req: any, res) => {
     try {

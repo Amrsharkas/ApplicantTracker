@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { ObjectStorageService } from "./objectStorage.js";
+import { wrapOpenAIRequest } from "./openaiTracker.js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -133,21 +134,27 @@ ANALYSIS GUIDELINES:
 Resume text:
 ${resumeText}`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert HR analyst and resume reviewer. Analyze resumes thoroughly and provide detailed, honest assessments."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.3,
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          messages: [
+            {
+              role: "system",
+              content: "You are an expert HR analyst and resume reviewer. Analyze resumes thoroughly and provide detailed, honest assessments."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.3,
+        }),
+        {
+          requestType: "analyzeResume",
+          model: "gpt-4o",
+        }
+      );
 
       const analysis = JSON.parse(response.choices[0].message.content || "{}");
       return analysis as ResumeAnalysis;

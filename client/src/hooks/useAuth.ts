@@ -91,6 +91,35 @@ export function useRegister() {
   });
 }
 
+export function useSetPassword() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (password: string) => {
+      return await apiRequest("/api/set-password", {
+        method: "POST",
+        body: JSON.stringify({ password }),
+        headers: { "Content-Type": "application/json" }
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      toast({
+        title: "Password Set Successfully!",
+        description: "Your password has been set. You can now use it to login in the future.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to Set Password",
+        description: error.message || "Failed to set password",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export function useLogout() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -105,11 +134,11 @@ export function useLogout() {
     onSuccess: () => {
       // Set global logout state to prevent any component rendering
       globalLoggingOut = true;
-      
+
       // Clear all queries and immediately redirect
       queryClient.clear();
       queryClient.cancelQueries();
-      
+
       // Immediate redirect with no delay
       window.location.replace("/");
     },

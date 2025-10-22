@@ -66,9 +66,9 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Serve the app on port 3000 (changed from 5000 to avoid AirPlay conflict)
+  // Serve the app on port 5000 for deployment
   // this serves both the API and the client.
-  const port = 3000;
+  const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
   server.listen({
     port,
     host: "0.0.0.0",

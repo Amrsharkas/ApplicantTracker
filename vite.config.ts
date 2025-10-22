@@ -30,8 +30,8 @@ export default defineConfig({
   },
   server: {
     fs: {
-      strict: false,
-      allow: ["..", "../shared", "../attached_assets"],
+      strict: true,
+      deny: ["**/.*"],
     },
   },
 });

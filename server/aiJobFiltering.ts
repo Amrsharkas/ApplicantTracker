@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { wrapOpenAIRequest } from "./openaiTracker.js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -347,15 +348,21 @@ Respond in JSON format:
 }
 `;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          { role: "system", content: "You are an expert job filtering AI that understands job descriptions contextually and provides intelligent, flexible matching." },
-          { role: "user", content: prompt }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.3,
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          messages: [
+            { role: "system", content: "You are an expert job filtering AI that understands job descriptions contextually and provides intelligent, flexible matching." },
+            { role: "user", content: prompt }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.3,
+        }),
+        {
+          requestType: "analyzeJobMatch",
+          model: "gpt-4o",
+        }
+      );
 
       const analysis = JSON.parse(response.choices[0].message.content || '{}');
       

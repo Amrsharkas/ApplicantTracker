@@ -316,30 +316,30 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 rtl:space-x-reverse">
               {mode !== 'select' && (
                 <Button variant="ghost" size="sm" onClick={goBack}>
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               )}
-              <DialogTitle className="flex items-center space-x-2">
+              <DialogTitle className="flex items-center space-x-2 rtl:space-x-reverse">
                 <Brain className="h-5 w-5 text-blue-600" />
                 <span>AI Interview</span>
               </DialogTitle>
             </div>
             {mode === 'voice' && (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 rtl:space-x-reverse">
                 <Badge variant={realtimeAPI.isConnected ? "default" : "secondary"}>
                   {realtimeAPI.isConnected ? "Connected" : "Connecting..."}
                 </Badge>
                 {realtimeAPI.isSpeaking && (
-                  <div className="flex items-center space-x-1 text-green-600">
+                  <div className="flex items-center space-x-1 rtl:space-x-reverse text-green-600">
                     <Volume2 className="h-4 w-4" />
                     <span className="text-sm">AI Speaking</span>
                   </div>
                 )}
                 {realtimeAPI.isListening && (
-                  <div className="flex items-center space-x-1 text-blue-600">
+                  <div className="flex items-center space-x-1 rtl:space-x-reverse text-blue-600">
                     <Mic className="h-4 w-4" />
                     <span className="text-sm">Listening</span>
                   </div>
@@ -363,7 +363,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                 <div className="space-y-4">
                   <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-blue-300" onClick={startVoiceInterview}>
                     <CardContent className="p-6">
-                      <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-4 rtl:space-x-reverse">
                         <div className="bg-blue-100 p-3 rounded-lg">
                           <Phone className="h-6 w-6 text-blue-600" />
                         </div>
@@ -380,7 +380,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
                   <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-gray-300" onClick={startTextInterview}>
                     <CardContent className="p-6">
-                      <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-4 rtl:space-x-reverse">
                         <div className="bg-gray-100 p-3 rounded-lg">
                           <MessageSquare className="h-6 w-6 text-gray-600" />
                         </div>
@@ -415,7 +415,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                       animate={{ opacity: 1, y: 0 }}
                       className={`flex ${message.type === 'answer' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`max-w-[80%] flex items-start space-x-2 ${message.type === 'answer' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                      <div className={`max-w-[80%] flex items-start space-x-2 rtl:space-x-reverse ${message.type === 'answer' ? 'flex-row-reverse space-x-reverse' : ''}`}>
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${message.type === 'answer' ? 'bg-blue-600' : 'bg-gray-600'}`}>
                           {message.type === 'answer' ? (
                             <User className="h-4 w-4 text-white" />
@@ -438,13 +438,13 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
                     animate={{ opacity: 1 }}
                     className="flex justify-start"
                   >
-                    <div className="max-w-[80%] flex items-start space-x-2">
+                    <div className="max-w-[80%] flex items-start space-x-2 rtl:space-x-reverse">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-600">
                         <Bot className="h-4 w-4 text-white" />
                       </div>
                       <div className="rounded-lg p-3 bg-gray-100 text-gray-900 border-2 border-blue-200">
                         <p className="text-sm">{voiceTranscript}</p>
-                        <div className="flex items-center space-x-1 mt-1">
+                        <div className="flex items-center space-x-1 rtl:space-x-reverse mt-1">
                           <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
                           <span className="text-xs text-gray-500">Speaking...</span>
                         </div>
@@ -455,7 +455,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
 
                 {(startInterviewMutation.isPending || respondMutation.isPending) && (
                   <div className="flex justify-start">
-                    <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-3">
+                    <div className="flex items-center space-x-2 rtl:space-x-reverse bg-gray-100 rounded-lg p-3">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                       <span className="text-sm text-gray-600">AI is thinking...</span>
                     </div>
@@ -468,7 +468,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               {/* Input Area for Text Mode */}
               {mode === 'text' && currentSession && !currentSession.isCompleted && (
                 <div className="border-t p-4">
-                  <div className="flex space-x-3">
+                  <div className="flex space-x-3 rtl:space-x-reverse">
                     <Textarea
                       value={currentAnswer}
                       onChange={(e) => setCurrentAnswer(e.target.value)}
@@ -495,17 +495,17 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               {/* Voice Status Indicator */}
               {mode === 'voice' && realtimeAPI.isConnected && (
                 <div className="border-t bg-gray-50 p-3">
-                  <div className="flex items-center justify-center space-x-3">
+                  <div className="flex items-center justify-center space-x-3 rtl:space-x-reverse">
                     {realtimeAPI.isListening ? (
                       <>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 rtl:space-x-reverse">
                           <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
                           <span className="text-sm font-medium text-red-600">Listening...</span>
                         </div>
                       </>
                     ) : realtimeAPI.isSpeaking ? (
                       <>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 rtl:space-x-reverse">
                           <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
                           <span className="text-sm font-medium text-blue-600">AI Speaking...</span>
                         </div>
@@ -520,7 +520,7 @@ export function InterviewModal({ isOpen, onClose }: InterviewModalProps) {
               {/* Voice Controls */}
               {mode === 'voice' && (
                 <div className="border-t p-4">
-                  <div className="flex items-center justify-center space-x-4">
+                  <div className="flex items-center justify-center space-x-4 rtl:space-x-reverse">
                     <Button
                       variant="outline"
                       onClick={realtimeAPI.toggleMute}

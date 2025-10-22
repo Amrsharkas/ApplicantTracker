@@ -6,10 +6,14 @@ interface RealtimeAPIOptions {
   onAudioStart?: () => void;
   onAudioEnd?: () => void;
   onError?: (error: Error) => void;
+  onLanguageWarning?: (language: string) => void;
   userProfile?: any;
   interviewType?: string;
   questions?: any[];
   interviewSet?: any;
+  language?: string;
+  onVideoStream?: (stream: MediaStream) => void;
+  requireCamera?: boolean;
 }
 
 export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
@@ -17,25 +21,31 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const videoStreamRef = useRef<MediaStream | null>(null);
   
   const { toast } = useToast();
 
-  const connect = useCallback(async (interviewParams?: { interviewType?: string; questions?: any[]; interviewSet?: any }) => {
+  const connect = useCallback(async (interviewParams?: { interviewType?: string; questions?: any[]; interviewSet?: any; language?: string }) => {
     if (isConnecting || isConnected) return;
     
     setIsConnecting(true);
     
     try {
+      const model = 'gpt-realtime';
+      const voice = 'marin';
+
       // Get ephemeral token from server
       const tokenResponse = await fetch('/api/realtime/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'
+        credentials: 'include',
+        body: JSON.stringify({ model, voice })
       });
       
       if (!tokenResponse.ok) {
@@ -68,18 +78,68 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       };
       
       // Get user media for microphone input
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
+      const constraints: MediaStreamConstraints = {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
         }
-      });
-      mediaStreamRef.current = mediaStream;
+      };
+
+      // Add video constraint if camera is required
+      if (options.requireCamera) {
+        constraints.video = {
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          facingMode: 'user'
+        };
+      }
+
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        mediaStreamRef.current = mediaStream;
+
+        // Extract video stream if camera is enabled
+        if (options.requireCamera && mediaStream.getVideoTracks().length > 0) {
+          const videoStream = new MediaStream(mediaStream.getVideoTracks());
+          videoStreamRef.current = videoStream;
+          options.onVideoStream?.(videoStream);
+        }
+      } catch (error) {
+        console.error('Media access error:', error);
+        if (options.requireCamera) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to access camera';
+          setCameraError(errorMessage);
+
+          // Try again with just audio if camera fails
+          try {
+            const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+              }
+            });
+            mediaStreamRef.current = audioOnlyStream;
+
+            toast({
+              title: 'Camera Access Failed',
+              description: 'Could not access camera. Continuing with audio only.',
+              variant: 'destructive'
+            });
+          } catch (audioError) {
+            throw new Error('Failed to access both camera and microphone');
+          }
+        } else {
+          throw error;
+        }
+      }
       
       // Add audio track to peer connection
-      pc.addTrack(mediaStream.getTracks()[0]);
-      setIsListening(true);
+      if (mediaStreamRef.current && mediaStreamRef.current.getAudioTracks().length > 0) {
+        pc.addTrack(mediaStreamRef.current.getAudioTracks()[0]);
+        setIsListening(true);
+      }
       
       // Set up data channel for events
       const dc = pc.createDataChannel('oai-events');
@@ -88,7 +148,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       dc.addEventListener('message', (e) => {
         const serverEvent = JSON.parse(e.data);
         console.log('📨 Voice interview event:', serverEvent.type, serverEvent);
-        
+
         // Handle specific events
         if (serverEvent.type === 'response.audio.done') {
           setIsSpeaking(false);
@@ -125,7 +185,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
           setIsSpeaking(false);
           setIsListening(true);
         }
-        
+
         options.onMessage?.(serverEvent);
       });
       
@@ -135,74 +195,26 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
         setIsConnecting(false);
         
         // Generate dynamic instructions based on user profile
-        const buildInstructions = (userProfile: any, interviewParams?: { interviewType?: string; questions?: any[]; interviewSet?: any }) => {
-          const profileContext = userProfile ? `
-
-CANDIDATE BACKGROUND:
-${userProfile.firstName ? `Name: ${userProfile.firstName} ${userProfile.lastName || ''}` : ''}
-${userProfile.currentRole ? `Current Role: ${userProfile.currentRole}${userProfile.company ? ` at ${userProfile.company}` : ''}` : ''}
-${userProfile.yearsOfExperience ? `Experience: ${userProfile.yearsOfExperience} years` : ''}
-${userProfile.education ? `Education: ${userProfile.education}${userProfile.university ? ` from ${userProfile.university}` : ''}` : ''}
-${userProfile.location ? `Location: ${userProfile.location}` : ''}
-${userProfile.summary ? `Profile Summary: ${userProfile.summary}` : ''}
-${userProfile.resumeUrl ? `NOTE: The candidate has uploaded a resume. Use this background information to ask more personalized and relevant follow-up questions.` : ''}
-
-WORK EXPERIENCE CONTEXT:
-${userProfile.workExperiences && Array.isArray(userProfile.workExperiences) ? 
-  userProfile.workExperiences.map((exp: any) => {
-    const isCurrent = exp.current || exp.endDate === '' || !exp.endDate;
-    return `- ${isCurrent ? 'CURRENT POSITION' : 'PAST POSITION'}: ${exp.position || exp.jobTitle || 'Position'} at ${exp.company || 'Company'} (${exp.startDate || 'Start date'} - ${isCurrent ? 'Present' : (exp.endDate || 'End date')})`;
-  }).join('\n') : 
-  userProfile.company ? `- CURRENT POSITION: ${userProfile.currentRole || 'Current role'} at ${userProfile.company}` : ''
-}
-
-IMPORTANT EMPLOYMENT GUIDELINES:
-- When discussing work experiences, clearly distinguish between CURRENT and PAST positions
-- For current positions, use present tense: "What are your main responsibilities in your current role at [company]?"
-- For past positions, use past tense: "What were your key achievements during your time at [previous company]?"
-- Reference specific companies and roles from their background when asking questions
-
-Use this information to tailor your questions and make them more specific to their background. Reference their experience and current situation when appropriate.` : '';
+        const buildInstructions = (userProfile: any, interviewParams?: { interviewType?: string; questions?: any[]; interviewSet?: any; language?: string }) => {
+          const isArabic = interviewParams?.language === 'arabic';
 
           // Get interview type and questions from parameters
-          const interviewType = interviewParams?.interviewType || 'personal';
           const questions = interviewParams?.questions || [];
-          const interviewSet = interviewParams?.interviewSet;
-          
-          const questionCount = questions.length;
           const questionList = questions.map((q, index) => `${index + 1}. "${q.question}"`).join('\n');
 
-          return `You are an AI interviewer conducting a focused ${interviewType} interview. Your goal is to understand the candidate through exactly ${questionCount} structured questions.${profileContext}
+          let instructions = `You are an interviewer conducting a professional interview. Start with a natural greeting, then ask these questions one by one:
 
-${interviewSet ? `
-INTERVIEW TYPE: ${interviewSet.title}
-INTERVIEW DESCRIPTION: ${interviewSet.description}
-` : ''}
-
-The ${questionCount} questions to ask in order:
 ${questionList}
 
-Key guidelines:
-- Start with a professional greeting, then proceed through each question in order
-- Be professional and neutral - never overly positive, flattering, or emotional
-- Use real interviewer language - neutral, grounded, professionally curious
-- Never provide emotional reactions or value judgments about their answers
-- Don't evaluate how "good" an answer was - ask the next smart question
-- Maintain a calm, consistent tone - focused, observant, and neutral
-- If you have background information about them, reference it naturally to make questions more relevant
-- Keep the conversation moving toward the goal of understanding them deeply
-- CRITICAL: Ask ONE question at a time and WAIT for the user's complete response before asking the next question
-- Never send multiple questions in sequence without waiting for answers
-- Always pause and listen after asking each question
-- After each answer, acknowledge what they shared with neutral responses like "Understood" or "Got it" before moving to the next question
-- Speak clearly and at a natural pace
-- ALWAYS respond after the user speaks - never stay silent
-- Examples of good responses: "Thank you. Could you clarify how you prioritized tasks in that situation?" or "What outcome did that lead to?" or "How did the team respond?"
-- AVOID: "That's amazing!" "Fantastic answer!" "Wow, very impressive!" "You must be great at that!" "You handled that perfectly!"
-- After the final question (question ${questionCount}), thank them professionally and use the word "conclude" ONLY in your final response to signal the interview is complete. For example: "Thank you for your responses. This concludes our ${interviewType} interview today."
-- IMPORTANT: Only use the word "conclude" in your very last response when the interview is finished. Never use this word at any other time during the conversation.
+Have a natural conversation - listen to their answers, ask brief follow-ups if needed, then move to the next question. Keep it conversational and professional. End by thanking them for their time.
 
-This focused approach ensures we understand them comprehensively while respecting their time.`;
+IMPORTANT LANGUAGE REQUIREMENT: This interview must be conducted${isArabic ? ' ONLY in Egyptian Arabic' : ' ONLY in English'}. If the candidate responds in a different language, gently remind them to respond${isArabic ? ' in Arabic' : ' in English'} before proceeding with the conversation.`;
+
+          if (isArabic) {
+            instructions = `Speak in Egyptian Arabic. ${instructions}`;
+          }
+
+          return instructions;
         };
 
         // Initialize session with interview-specific settings
@@ -211,11 +223,12 @@ This focused approach ensures we understand them comprehensively while respectin
           session: {
             modalities: ['text', 'audio'],
             instructions: buildInstructions(options.userProfile, interviewParams),
-            voice: 'verse',
+            voice,
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
             input_audio_transcription: {
-              model: 'whisper-1'
+              model: 'whisper-1',
+              language: interviewParams?.language === 'arabic' ? 'ar' : 'en'
             },
             turn_detection: {
               type: 'server_vad',
@@ -252,7 +265,6 @@ This focused approach ensures we understand them comprehensively while respectin
       await pc.setLocalDescription(offer);
       
       const baseUrl = 'https://api.openai.com/v1/realtime';
-      const model = 'gpt-4o-realtime-preview-2024-10-01';
       
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
         method: 'POST',
@@ -295,26 +307,32 @@ This focused approach ensures we understand them comprehensively while respectin
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
     }
-    
+
     if (dataChannelRef.current) {
       dataChannelRef.current.close();
       dataChannelRef.current = null;
     }
-    
+
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
       mediaStreamRef.current = null;
     }
-    
+
+    if (videoStreamRef.current) {
+      videoStreamRef.current.getTracks().forEach(track => track.stop());
+      videoStreamRef.current = null;
+    }
+
     if (audioElementRef.current) {
       audioElementRef.current.pause();
       audioElementRef.current = null;
     }
-    
+
     setIsConnected(false);
     setIsConnecting(false);
     setIsSpeaking(false);
     setIsListening(false);
+    setCameraError(null);
   }, []);
   
   const sendMessage = useCallback((message: any) => {
@@ -348,6 +366,7 @@ This focused approach ensures we understand them comprehensively while respectin
     isConnecting,
     isConnected,
     isSpeaking,
-    isListening
+    isListening,
+    cameraError
   };
 }

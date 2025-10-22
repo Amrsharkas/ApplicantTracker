@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { toFile } from "openai/uploads";
+import { wrapOpenAIRequest } from "./openaiTracker";
 
 // Using the latest OpenAI model gpt-4o (May 13, 2024). Note: ChatGPT-5 is not yet publicly available
 const openai = new OpenAI({ 
@@ -37,6 +38,10 @@ export interface GeneratedProfile {
   careerGoals: string;
   workStyle: string;
   summary: string;
+  matchScorePercentage?: number;
+  experiencePercentage?: number;
+  techSkillsPercentage?: number;
+  culturalFitPercentage?: number;
   brutallyHonestProfile?: any;
 }
 
@@ -45,11 +50,20 @@ export class AIInterviewAgent {
   public openai = openai;
 
   async generateWelcomeMessage(userData: any, language: string = 'english'): Promise<string> {
-    const prompt = `You are an AI interviewer for Plato, an AI-powered job matching platform. Generate a professional welcome message for a candidate starting their comprehensive interview process.
+    const prompt = `You are an AI interviewer for Plato, an AI-powered job matching platform. Generate a professional but natural-sounding welcome message for a candidate starting their comprehensive interview process. This welcome message must sound human, flow smoothly, and include the rules in a casual conversational style (not numbered).
 
-${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Generate this welcome message ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Generate this welcome message entirely in English.'}
+${language === 'arabic'
+  ? `LANGUAGE INSTRUCTION (EGYPTIAN ARABIC ONLY):
+- Write ONLY in Egyptian Arabic slang (اللهجة المصرية العامية).
+- Talk like a friendly but serious Egyptian explaining something clearly. Imagine chatting in a Cairo ahwa (café) but keeping it professional.
+- Examples of words/phrases to use naturally: "إزيك"، "عامل إيه"، "تمام"، "ماشي"، "خلاص"، "كدا"، "دلوقتي"، "يلا نبدأ"، "معلش"، "براحتك"، "خلي بالك"، "واخد بالك"، "على مهلك"، "إحنا هنا"، "من غير لف ودوران"، "ده الطبيعي"، "هو ده"، "بالظبط"، "بص"، "بلاش"، "أيوه"، "لأ"، "ليه"، "فين"، "لسه"، "برضه"، "قوي"، "طبعًا"، "مش مشكلة"، "من غير كتر كلام".
+- Use informal pronouns: "انت" / "انتي". Use "دي" not "هذه"، "كدا" not "هكذا"، "ليه" not "لماذا"، "فين" not "أين"، "علشان" not "لكي".
+- Absolutely forbidden: فصحى (formal Arabic). Must sound relaxed, local, and natural.`
+  : `LANGUAGE INSTRUCTION (ENGLISH ONLY):
+- Write ONLY in neutral, professional English.
+- Keep the tone calm, direct, and natural — not robotic, not overly formal.`}
 
-COMPREHENSIVE CANDIDATE DATA:
+COMPREHENSIVE CANDIDATE DATA (OPTIONAL PERSONALIZATION):
 ${userData?.name ? `Name: ${userData.name}` : 'Candidate'}
 ${userData?.workExperiences?.[0] ? `Current Role: ${userData.workExperiences[0].position} at ${userData.workExperiences[0].company}` : ''}
 ${userData?.totalYearsOfExperience ? `Experience: ${userData.totalYearsOfExperience} years` : ''}
@@ -58,17 +72,29 @@ ${userData?.skillsList?.length ? `Key Skills: ${userData.skillsList.slice(0, 3).
 ${userData?.careerLevel ? `Career Level: ${userData.careerLevel}` : ''}
 ${userData?.jobTitles?.[0] ? `Target Role: ${userData.jobTitles[0]}` : ''}
 
-Create a professional welcome message that:
-1. Welcomes them to Plato professionally
-2. Explains this is a comprehensive interview process with three connected phases
-3. Mentions you'll be the same AI interviewer throughout all phases
-4. Sets a neutral, professional tone
-5. Personalizes it with their name if available
-6. Emphasizes continuity - that you'll remember their answers throughout
+OUTPUT REQUIREMENTS:
+- Start by saying: "Welcome to Plato" (in the chosen language).
+- Clearly explain there are FOUR interviews: Personal, Professional, Technical, and Job-Tailored.
+- Mention you (the AI interviewer) will stay with them through all phases and remember their answers.
+- Then, introduce the rules casually and clearly, as if talking normally:
+   • No switching tabs or opening other windows.
+   • No using phones or other devices.
+   • No screen sharing.
+   • You must be the one doing the interview, no one else.
+   • Keep your focus on the screen, don't look away too much.
+   • Keep your mouse active in the interview window.
+   • Sit alone in a quiet room and make sure nobody comes in.
+   • If the internet cuts out, unfortunately, the interview will be disqualified.
+- State the rules smoothly, like natural speech, not as a numbered list. Be very clear but conversational.
+- Add one short sentence about WHY these rules exist (privacy, fairness, and focus).
+- End by telling them what to do next, e.g., "When you're ready, let me know so we can begin." (in the selected language).
+- Keep the message complete but natural — no JSON, no metadata, no formatting.
 
-Keep it professional and neutral - avoid overly positive or encouraging language. The message should be 3-4 sentences maximum. Sound like a professional interviewer who will assess and understand them thoroughly.
-
-Return ONLY the welcome message text, no JSON or additional formatting.`;
+ROBUSTNESS / SAFETY:
+- If any candidate data is missing, skip it naturally without breaking flow.
+- If there's ANY ambiguity (even 1%), ask a short clarifying question in the same language before continuing.
+- Never output in the wrong language.
+- Always sound like a human interviewer who knows Egyptian slang (if Arabic is chosen) or a professional recruiter (if English is chosen).`;
 
     try {
       const messages = language === 'arabic' ? [
@@ -81,12 +107,19 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
         { role: "user" as const, content: prompt }
       ];
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-        temperature: 0.7,
-        max_completion_tokens: 200
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages,
+          temperature: 0.7,
+          max_completion_tokens: 200
+        }),
+        {
+          requestType: "generateWelcomeMessage",
+          model: "gpt-4o",
+          userId: userData?.id || null,
+        }
+      );
 
       return response.choices[0].message.content?.trim() || this.getFallbackWelcomeMessage(userData?.firstName, language);
     } catch (error) {
@@ -98,25 +131,25 @@ Return ONLY the welcome message text, no JSON or additional formatting.`;
   private getFallbackWelcomeMessage(firstName?: string, language: string = 'english'): string {
     if (language === 'arabic') {
       const name = firstName ? ` يا ${firstName}` : '';
-      return `إزيك${name}! أهلاً وسهلاً بيك في بلاتو. أنا هكون المحاور اللي هعمل معاك مقابلة شاملة النهاردة. إحنا هنمر بتلات مراحل مترابطة - شخصية ومهنية وتقنية - عشان نفهم خلفيتك وقدراتك كدا. هحافظ على الاستمرارية في كل المراحل عشان نبني ملف شخصي متكامل. يلا نبدأ!`;
+      return `إزيك${name}! أهلاً وسهلاً بيك في بلاتو. أنا هكون المحاور اللي هعمل معاك مقابلة شاملة النهاردة. إحنا هنمر بأربع مراحل مترابطة - شخصية ومهنية وتقنية ومتخصصة للوظيفة - عشان نفهم خلفيتك وقدراتك كدا. هحافظ على الاستمرارية في كل المراحل عشان نبني ملف شخصي متكامل. بس قبل ما نبدأ، فيه حاجات لازم ننتبه ليها: مفيش تبديل تابات أو فتح نوافذ تانية، مفيش استخدام موبايل أو أي devices تانية، مفيش screen sharing، ولازم تكون انت اللي بتعمل المقابلة لوحدك في مكان هادي. لو الإنترنت قطع، للأسف المقابلة هتتشطب. القواعد دي علشان الخصوصية والعدالة والتركيز. يلا لما تكون جاهز، قولي عشان نبدأ.`;
     } else {
       const name = firstName ? `, ${firstName}` : '';
-      return `Welcome to Plato${name}. I'll be conducting a comprehensive interview process with you today. We'll proceed through three connected phases - personal, professional, and technical - to understand your background and capabilities. I'll maintain continuity throughout all phases to build a complete profile.`;
+      return `Welcome to Plato${name}. I'll be conducting a comprehensive interview process with you today. We'll proceed through four connected phases - personal, professional, technical, and job-tailored - to understand your background and capabilities. I'll maintain continuity throughout all phases to build a complete profile. Before we begin, I need to mention a few important rules: no switching tabs or opening other windows, no using phones or other devices, no screen sharing, and you must be the one doing the interview alone in a quiet room. If your internet disconnects, unfortunately the interview will be disqualified. These rules exist to ensure privacy, fairness, and focus. When you're ready, let me know so we can begin.`;
     }
   }
 
   async generateComprehensiveInterviewSets(userData: any, resumeContent?: string): Promise<InterviewSet[]> {
     // Generate all three interview sets: personal, professional, and technical
-    
+
     const personalSet = await this.generatePersonalInterview(userData, resumeContent);
     const professionalSet = await this.generateProfessionalInterview(userData, resumeContent);
     const technicalSet = await this.generateTechnicalInterview(userData, resumeContent);
-    
+
     return [personalSet, professionalSet, technicalSet];
   }
 
   async generatePersonalInterview(userData: any, resumeContent?: string, resumeAnalysis?: any, language: string = 'english'): Promise<InterviewSet> {
-    const prompt = `You are a continuous AI interviewer conducting the Background phase of a comprehensive interview process. 
+    const prompt = `You are a continuous AI interviewer conducting the Background phase of a comprehensive interview process.
 
 ${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
 
@@ -199,21 +232,30 @@ CRITICAL INSTRUCTIONS:
 4. Ask questions that build on their existing profile data
 5. Establish your conversational tone to match their profile style
 6. Remember: this is the foundation for Professional and Technical interviews
+7. Your ultimate goal is to learn more about them and their personality, character, and life decisions – not just their work history
 
 QUESTION QUALITY STANDARDS:
 - Ask human, high-quality questions - avoid templates and clichés
 - Be sharp, contextual, and judgment-based
 - Prioritize clarity, depth, and specificity
 - Make every question purposeful and custom to this person
-- Focus on gaps, clarity, and reflection
-- Push for concrete examples, logic, outcomes, and learning
+- Focus on gaps, clarity, reflection, and judgment
+- Push for concrete examples, logic, habits, and life choices
+- Explore discipline, consistency, resilience, teamwork, and personal growth
+- Invite reflection about their values, routines, and approach to solving problems
 
-Create 5 background questions that demonstrate you've analyzed their profile:
-1. Reference their educational background or career path in context - ask about specific decisions or transitions
-2. Build on their stated career goals or work style - explore the reasoning behind their choices
-3. Connect their current role to their personal values - dig into what drives their professional decisions
-4. Explore motivations behind their career choices - ask about specific resistance or challenges they faced
-5. Understand what drives them beyond what's already stated - focus on judgment calls and learning
+Create 11 personal background questions that demonstrate you've analyzed their profile:
+1. Reference their educational background or career path in context – ask why they made certain key transitions and what they learned from them.
+2. Build on their stated career goals or work style – explore the reasoning behind their long-term choices and whether they have clear systems for personal growth.
+3. Connect their current role to their personal values – ask what gives them a sense of purpose, fulfillment, and alignment.
+4. Explore motivations behind their career and life choices – ask about sacrifices, trade-offs, and moments that shaped them.
+5. Understand what drives them beyond what's already stated – focus on decision-making, mental frameworks, and real-life examples.
+6. Ask about habits, routines, and systems of discipline – learn how they structure their day, manage focus, and keep promises to themselves.
+7. Ask about moments of adversity – how they react under pressure, recover from setbacks, and maintain consistency.
+8. Explore interpersonal dynamics – how they work with others, manage conflicts, and motivate people around them.
+9. Dig into long-term vision – where they see themselves in 5–10 years, what they're building toward, and why.
+10. Ask about personal inspirations – mentors, books, philosophies, or experiences that shaped their worldview.
+11. Invite them to share a story that reveals who they are as a person – something outside of work that taught them a life lesson.
 
 RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
 - Respond professionally - never overly positive or flattering
@@ -233,6 +275,8 @@ Return ONLY JSON:
     {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
     {"question": "...", "context": "..."}
   ]
 }`;
@@ -248,12 +292,19 @@ Return ONLY JSON:
         { role: "user" as const, content: prompt }
       ];
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-        response_format: { type: "json_object" },
-        temperature: 0.7
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.7
+        }),
+        {
+          requestType: "generatePersonalInterview",
+          model: "gpt-4o",
+          userId: userData?.id || null,
+        }
+      );
 
       const result = JSON.parse(response.choices[0].message.content || '{}');
       return {
@@ -278,7 +329,7 @@ Return ONLY JSON:
     const conversationStyle = previousInterviewData?.conversationStyle || '';
     const keyThemes = previousInterviewData?.keyThemes || [];
     const previousQuestions = previousInterviewData?.previousQuestions || [];
-    
+
     const prompt = `You are continuing as the same AI interviewer. You have full knowledge of this candidate's profile AND their previous interview answers.
 
 ${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
@@ -354,6 +405,7 @@ Impressive Achievements to Validate: ${resumeAnalysis.interview_notes?.impressiv
 Skill Gaps to Probe: ${resumeAnalysis.interview_notes?.skill_gaps?.join(', ') || 'None identified'}
 Experience Inconsistencies: ${resumeAnalysis.interview_notes?.experience_inconsistencies?.join(', ') || 'None identified'}
 Career Progression Assessment: ${resumeAnalysis.interview_notes?.career_progression_notes?.join(', ') || 'Standard progression'}
+Overall Credibility: ${resumeAnalysis.raw_analysis?.credibility_assessment || 'Standard assessment'}
 ` : ''}
 
 ${contextInsights}
@@ -368,28 +420,33 @@ ${previousQuestions.map((q: string) => `- ${q}`).join('\n')}
 CRITICAL INSTRUCTIONS:
 1. You are the SAME interviewer who knows their full profile AND previous answers
 2. Reference specific details from BOTH their profile AND previous responses
-3. Use phrases like "You mentioned earlier..." or "Building on what you shared about..." 
-4. DO NOT repeat any previously asked questions or themes
-5. DO NOT ask for information already in their profile
+3. Use phrases like "You mentioned earlier..." or "Building on what you shared about..."
+4. DO NOT repeat previously asked questions or themes
+5. DO NOT ask for information already available in their profile
 6. Maintain the exact same tone and conversation style
 7. Show you remember everything - profile + previous answers
+8. Go deeper into how they THINK, DECIDE, and EXECUTE professionally – this round is about work patterns, judgment, and practical experiences
 
 QUESTION QUALITY STANDARDS:
-- Ask human, high-quality questions - avoid templates and clichés like "Tell me about a time..."
+- Ask high-quality, insight-driven questions - avoid generic templates and clichés
 - Be sharp, contextual, and judgment-based
-- Ask deeper, not broader - dig into what's already been shared
-- Focus on gaps, clarity, and reflection - push for concrete examples, logic, outcomes, and learning
-- Be strategic and natural - sequence questions with logical flow
-- Use context smartly - reference past answers naturally without mentioning interview structure
+- Dig into their problem-solving process, decision-making under pressure, and real-world execution
+- Focus on clarity, specificity, and actionable examples
+- Ask them to walk through trade-offs, priorities, conflicts, and outcomes
+- Explore how they collaborate, communicate, and lead – especially in high-stakes situations
+- Sequence questions logically to feel like a natural, evolving conversation
 
-Create 7 professional questions that demonstrate full knowledge:
-1. Reference their career progression from profile - ask about specific resistance or challenges they faced during transitions
-2. Build on their stated career goals - explore the reasoning and trade-offs behind their choices
-3. Connect their current role to their motivations - dig into specific judgment calls they've made
-4. Explore leadership based on achievements AND personal philosophy - ask about concrete situations where they had to make difficult decisions
-5. Ask about career transitions using educational background - focus on WHY they made specific choices
-6. Connect their target role to personal aspirations - explore what specific obstacles they anticipate
-7. Understand their professional preferences - ask about times when their work style was challenged
+Create 7–10 professional questions that demonstrate full knowledge and go beyond surface-level:
+1. Reference their career progression from profile – ask how they adapted to challenges, overcame resistance, or redefined their role.
+2. Build on their stated career goals – ask about the systems and strategies they've used to stay on track or pivot when necessary.
+3. Connect their current role to their decision-making – explore a specific project or task where their judgment significantly influenced results.
+4. Explore leadership and collaboration – ask about moments they had to align conflicting stakeholders, motivate teams, or resolve tensions.
+5. Ask about mistakes, failures, or missed opportunities – focus on what they learned and how they've applied it since.
+6. Explore how they handle pressure – deadlines, resource constraints, or conflicting priorities – and how they keep quality high.
+7. Connect their educational or technical background to their problem-solving ability – ask how it shaped their approach to real-world situations.
+8. Explore their growth mindset – how they measure progress, seek feedback, and continuously improve professionally.
+9. Understand how they evaluate opportunities – what criteria they use to accept projects, roles, or responsibilities.
+10. Ask how they'd bring value to the target role specifically – what unique contribution they'd make in the first 90 days.
 
 RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
 - Respond professionally - never overly positive or flattering
@@ -424,12 +481,19 @@ Return ONLY JSON:
         { role: "user" as const, content: prompt }
       ];
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-        response_format: { type: "json_object" },
-        temperature: 0.7
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.7
+        }),
+        {
+          requestType: "generateProfessionalInterview",
+          model: "gpt-4o",
+          userId: userData?.id || null,
+        }
+      );
 
       const result = JSON.parse(response.choices[0].message.content || '{}');
       return {
@@ -449,125 +513,49 @@ Return ONLY JSON:
     }
   }
 
-  async generateTechnicalInterview(userData: any, resumeContent?: string, previousInterviewData?: any, resumeAnalysis?: any, language: string = 'english'): Promise<InterviewSet> {
+  async generateTechnicalInterview(userData: any, resumeContent?: string, language: string = 'english'): Promise<InterviewSet> {
     const userRole = userData?.currentRole || 'professional';
     const userField = this.determineUserField(userData, resumeContent);
-    const contextInsights = previousInterviewData?.insights || '';
-    const conversationStyle = previousInterviewData?.conversationStyle || '';
-    const keyThemes = previousInterviewData?.keyThemes || [];
-    const previousQuestions = previousInterviewData?.previousQuestions || [];
     
     const prompt = `You are completing the final interview phase as the same AI interviewer. You have comprehensive knowledge of this candidate's full profile AND all previous interview answers.
 
 ${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
 
 COMPREHENSIVE CANDIDATE PROFILE DATA:
-=== PERSONAL DETAILS ===
-${userData?.name ? `Full Name: ${userData.name}` : ''}
-${userData?.email ? `Email: ${userData.email}` : ''}
-${userData?.phone ? `Phone: ${userData.phone}` : ''}
-${userData?.birthdate ? `Date of Birth: ${new Date(userData.birthdate).toLocaleDateString()}` : ''}
-${userData?.gender ? `Gender: ${userData.gender}` : ''}
-${userData?.nationality ? `Nationality: ${userData.nationality}` : ''}
-${userData?.maritalStatus ? `Marital Status: ${userData.maritalStatus}` : ''}
-${userData?.dependents ? `Dependents: ${userData.dependents}` : ''}
-${userData?.militaryStatus ? `Military Status: ${userData.militaryStatus}` : ''}
-
-=== LOCATION & MOBILITY ===
-${userData?.country ? `Country: ${userData.country}` : ''}
-${userData?.city ? `City: ${userData.city}` : ''}
-${userData?.willingToRelocate !== undefined ? `Willing to Relocate: ${userData.willingToRelocate ? 'Yes' : 'No'}` : ''}
-${userData?.preferredWorkCountries?.length ? `Preferred Work Countries: ${userData.preferredWorkCountries.join(', ')}` : ''}
-${userData?.workplaceSettings ? `Work Arrangement Preference: ${userData.workplaceSettings}` : ''}
-
-=== ONLINE PRESENCE & PORTFOLIO ===
-${userData?.linkedinUrl ? `LinkedIn: ${userData.linkedinUrl}` : ''}
-${userData?.githubUrl ? `GitHub: ${userData.githubUrl}` : ''}
-${userData?.websiteUrl ? `Personal Website: ${userData.websiteUrl}` : ''}
-${userData?.facebookUrl ? `Facebook: ${userData.facebookUrl}` : ''}
-${userData?.twitterUrl ? `Twitter: ${userData.twitterUrl}` : ''}
-${userData?.instagramUrl ? `Instagram: ${userData.instagramUrl}` : ''}
-${userData?.youtubeUrl ? `YouTube: ${userData.youtubeUrl}` : ''}
-${userData?.otherUrls?.length ? `Other URLs: ${userData.otherUrls.join(', ')}` : ''}
-
-=== EDUCATION ===
-${userData?.currentEducationLevel ? `Current Education Level: ${userData.currentEducationLevel}` : ''}
-${userData?.degrees?.length ? `Degrees:\n${userData.degrees.map((deg: any) => `  • ${deg.degree} in ${deg.field || 'N/A'} from ${deg.institution} (${deg.startDate} - ${deg.endDate || 'Present'})${deg.gpa ? ` - GPA: ${deg.gpa}` : ''}`).join('\n')}` : ''}
-${userData?.highSchools?.length ? `High School Education:\n${userData.highSchools.map((hs: any) => `  • ${hs.institution} (${hs.startDate} - ${hs.endDate || 'Present'})`).join('\n')}` : ''}
-
-=== WORK EXPERIENCE ===
-${userData?.totalYearsOfExperience ? `Total Years of Experience: ${userData.totalYearsOfExperience}` : ''}
-${userData?.workExperiences?.length ? `Work Experience:\n${userData.workExperiences.map((exp: any) => `  • ${exp.position} at ${exp.company} (${exp.startDate} - ${exp.endDate || 'Present'})\n    Responsibilities: ${exp.responsibilities || 'N/A'}`).join('\n')}` : ''}
-
-=== SKILLS & LANGUAGES ===
-${userData?.skillsList?.length ? `Skills: ${userData.skillsList.join(', ')}` : ''}
-${userData?.languages?.length ? `Languages:\n${userData.languages.map((lang: any) => `  • ${lang.language}: ${lang.proficiency}${lang.certification ? ` (Certified: ${lang.certification})` : ''}`).join('\n')}` : ''}
-
-=== CERTIFICATIONS & TRAINING ===
-${userData?.certifications?.length ? `Certifications:\n${userData.certifications.map((cert: any) => `  • ${cert.name} by ${cert.issuer || 'N/A'} (${cert.issueDate}${cert.expiryDate ? ` - expires ${cert.expiryDate}` : ''})`).join('\n')}` : ''}
-${userData?.trainingCourses?.length ? `Training Courses:\n${userData.trainingCourses.map((course: any) => `  • ${course.name} by ${course.provider || 'N/A'}`).join('\n')}` : ''}
-
-=== CAREER GOALS & PREFERENCES ===
-${userData?.jobTitles?.length ? `Target Job Titles: ${userData.jobTitles.join(', ')}` : ''}
-${userData?.jobCategories?.length ? `Target Industries: ${userData.jobCategories.join(', ')}` : ''}
-${userData?.careerLevel ? `Career Level: ${userData.careerLevel}` : ''}
-${userData?.minimumSalary ? `Minimum Salary Expectation: ${userData.minimumSalary}` : ''}
-${userData?.jobTypes?.length ? `Preferred Job Types: ${userData.jobTypes.join(', ')}` : ''}
-${userData?.jobSearchStatus ? `Job Search Status: ${userData.jobSearchStatus}` : ''}
-
-=== ACHIEVEMENTS & SUMMARY ===
-${userData?.achievements ? `Notable Achievements: ${userData.achievements}` : ''}
-${userData?.summary ? `Professional Summary: ${userData.summary}` : ''}
-${resumeContent ? `RESUME CONTENT: ${resumeContent}` : ''}
-
-${resumeAnalysis ? `
-RESUME ANALYSIS - INTERVIEW GUIDANCE:
-Critical Areas to Explore: ${resumeAnalysis.interview_notes?.verification_points?.join(', ') || 'None identified'}
-Red Flags to Investigate: ${resumeAnalysis.interview_notes?.red_flags?.join(', ') || 'None identified'}
-Impressive Achievements to Validate: ${resumeAnalysis.interview_notes?.impressive_achievements?.join(', ') || 'None identified'}
-Skill Gaps to Probe: ${resumeAnalysis.interview_notes?.skill_gaps?.join(', ') || 'None identified'}
-Experience Inconsistencies: ${resumeAnalysis.interview_notes?.experience_inconsistencies?.join(', ') || 'None identified'}
-Career Progression Assessment: ${resumeAnalysis.interview_notes?.career_progression_notes?.join(', ') || 'Standard progression'}
-` : ''}
-
-${contextInsights}
-
-${conversationStyle}
-
-KEY THEMES FROM ALL PREVIOUS INTERVIEWS: ${keyThemes.join(', ')}
-
-QUESTIONS ALREADY ASKED (DO NOT REPEAT):
-${previousQuestions.map((q: string) => `- ${q}`).join('\n')}
+...
 
 CRITICAL INSTRUCTIONS:
-1. You are the SAME interviewer who knows their full profile AND all previous answers
-2. Reference specific details from their profile, background answers, AND professional answers
-3. Use phrases like "Based on your ${userRole} experience..." or "You mentioned in our earlier conversation..."
-4. DO NOT repeat any previously asked questions or themes
-5. DO NOT ask for information already in their profile
-6. Maintain the exact same tone and conversation style from the beginning
-7. Show complete memory of profile + all previous discussions
+1. You are the SAME interviewer with full memory of their profile and all previous answers
+2. Your questions must be technical, domain-specific, and deeply contextual
+3. Reference their specific tech stack, projects, and skills mentioned in their profile
+4. Build on themes from previous interviews - connect their technical skills to their professional experiences
+5. Use phrases like "In your role at ${userData?.previousCompany || 'your last company'}, you mentioned using..." or "Let's dig into the technical details of the project where you..."
+6. DO NOT repeat any previously asked questions
+7. Maintain the same neutral, professional tone
+8. Your goal is to assess technical depth, problem-solving skills, and real-world application of knowledge
+9. Go beyond theory – focus on how they actually execute, debug, optimize, and scale solutions
 
 QUESTION QUALITY STANDARDS:
-- Ask human, high-quality questions - avoid templates and clichés
-- Be sharp, contextual, and judgment-based
-- Ask deeper, not broader - dig into what's already been shared
-- Focus on gaps, clarity, and reflection - push for concrete examples, logic, outcomes, and learning
-- Be strategic and natural - sequence questions with logical flow
-- Use context smartly - reference past answers naturally without mentioning interview structure
+- Ask highly specific, scenario-based technical questions - avoid generic textbook questions
+- Be sharp, contextual, and judgment-based - test their decision-making process
+- Prioritize depth and specificity - push for concrete examples of how they solved a complex technical problem
+- Make every question purposeful and custom to this person's technical background
+- Focus on trade-offs, design choices, and debugging scenarios
+- Push for code examples, architectural diagrams, or step-by-step problem-solving logic
+- Include opportunities to test their ability to simplify complex ideas for non-technical people
 
-Create 11 technical questions for a ${userRole} in ${userField} that demonstrate total continuity:
-1. Reference their ${userData?.education || 'educational background'} - ask about specific technical decisions or trade-offs they had to make
-2. Connect their ${userData?.skills?.join(' and ') || 'technical skills'} - explore reasoning behind their technical approach choices
-3. Use their ${userData?.achievements || 'professional achievements'} - dig into specific resistance or obstacles they overcame
-4. Build on their stated ${userData?.careerGoals || 'career goals'} - ask about technical challenges they anticipate
-5. Test cognitive abilities through specific scenarios related to their ${userData?.yearsOfExperience || 'stated experience'} level
-6. Evaluate analytical thinking using concrete examples from their ${userData?.workStyle || 'work approach'} 
-7. Assess technical communication - ask them to explain complex concepts they've mentioned
-8. Test adaptability through specific technical challenges they've faced during career transitions
-9. Evaluate memory and processing using scenarios from their ${userData?.currentRole || 'professional'} context
-10. Challenge creative problem-solving with specific technical obstacles they've encountered
-11. Assess technical leadership using concrete examples from their management experiences discussed earlier
+Create 11 technical questions that assess deep expertise for a ${userRole} in ${userField}:
+1. Ask a deep-dive question about a core technology or methodology they claim expertise in – focus on an advanced or non-obvious aspect.
+2. Present a realistic, complex problem scenario related to their past projects and ask them to design or debug a solution step-by-step.
+3. Ask about a critical technical trade-off they had to make – explore what constraints existed, what options they considered, and how they measured success.
+4. Challenge them with a relevant system design or architecture question – test scalability, fault-tolerance, and performance considerations.
+5. Explore their debugging process – give them a subtle bug or performance issue and ask how they'd isolate and resolve it.
+6. Ask about security, reliability, or compliance considerations – how they ensure robustness in production environments.
+7. Explore optimization thinking – ask how they would improve efficiency or reduce cost in one of their previous solutions.
+8. Ask them to compare multiple technical approaches – explain when they'd use one over the other and why.
+9. Test their ability to work in constraints – limited time, legacy systems, or cross-team dependencies – and still deliver.
+10. Explore how they review and write code – what standards, documentation, and testing practices they follow.
+11. Ask them to explain a very complex technical concept from their work to a non-technical stakeholder, testing clarity and communication.
 
 RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
 - Respond professionally - never overly positive or flattering
@@ -575,18 +563,12 @@ RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
 - Never provide emotional reactions or value judgments
 - Don't evaluate how "good" an answer was - ask the next smart question
 - Maintain a calm, consistent tone - focused, observant, and neutral
-- Examples of good responses: "Thank you. Could you clarify how you prioritized tasks in that situation?" or "Got it. What was the biggest trade-off you had to make?"
-- Avoid: "That's amazing!" "Fantastic answer!" "Wow, that really shows how great you are!"
+- Examples of good responses: "Thank you. Could you walk me through the data model for that solution?" or "Interesting. What were the performance implications of that approach?"
+- Avoid: "That's brilliant!" "Perfect answer!" "Wow, you're a real expert!"
 
 Return ONLY JSON:
 {
   "questions": [
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."},
-    {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
     {"question": "...", "context": "..."},
@@ -606,12 +588,19 @@ Return ONLY JSON:
         { role: "user" as const, content: prompt }
       ];
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-        response_format: { type: "json_object" },
-        temperature: 0.7
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.7
+        }),
+        {
+          requestType: "generateTechnicalInterview",
+          model: "gpt-4o",
+          userId: userData?.id || null,
+        }
+      );
 
       const result = JSON.parse(response.choices[0].message.content || '{}');
       return {
@@ -823,21 +812,28 @@ Provide a comprehensive assessment in JSON format:
 Be thorough, honest, and evidence-based. This assessment will help employers make informed hiring decisions.`;
 
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: "You are a brutally honest HR expert who provides evidence-based candidate assessments for employers. Your assessments are known for their accuracy and honesty."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.2, // Lower temperature for consistent, honest assessments
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          messages: [
+            {
+              role: "system",
+              content: "You are a brutally honest HR expert who provides evidence-based candidate assessments for employers. Your assessments are known for their accuracy and honesty."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.2, // Lower temperature for consistent, honest assessments
+        }),
+        {
+          requestType: "generateBrutallyHonestProfile",
+          model: "gpt-4o",
+          userId: userData?.id || null,
+        }
+      );
 
       const analysis = JSON.parse(response.choices[0].message.content || "{}");
       return analysis;
@@ -884,11 +880,18 @@ Return JSON with:
 }`;
 
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" }
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" }
+        }),
+        {
+          requestType: "analyzeJobApplication",
+          model: "gpt-4o",
+          userId: userProfile?.userId || null,
+        }
+      );
 
       const analysis = JSON.parse(response.choices[0].message.content || '{}');
       
@@ -914,29 +917,41 @@ export class AIProfileAnalysisAgent {
   // and return the raw text content. This avoids local OCR/PDF parsing.
   async extractResumeTextWithOpenAI(file: { buffer: Buffer; originalname: string; mimetype: string }): Promise<string> {
     try {
-      const uploaded = await openai.files.create({
-        file: await toFile(file.buffer, file.originalname, { type: file.mimetype }),
-        purpose: "assistants"
-      });
+      const uploaded = await wrapOpenAIRequest(
+        async () => openai.files.create({
+          file: await toFile(file.buffer, file.originalname, { type: file.mimetype }),
+          purpose: "assistants"
+        }),
+        {
+          requestType: "uploadResumeFile",
+          model: "gpt-4o-mini",
+        }
+      );
 
       const extractionPrompt = "Extract and return the full plain text from this resume file. Preserve reading order and line breaks. Do not summarize, translate, or add any commentary. Output ONLY the raw plaintext.";
 
       // Use Responses API to have the model read the uploaded file and emit plaintext
       // Using a cost-effective model for extraction; downstream structured parsing will use GPT-5
-      const response: any = await (openai as any).responses.create({
-        model: "gpt-4o-mini",
-        input: [
-          {
-            role: "user",
-            content: [
-              { type: "input_text", text: extractionPrompt },
-              { type: "input_file", file_id: uploaded.id }
-            ]
-          }
-        ],
-        // Allow long outputs for multi-page resumes
-        max_output_tokens: 64000
-      });
+      const response: any = await wrapOpenAIRequest(
+        async () => await (openai as any).responses.create({
+          model: "gpt-4o-mini",
+          input: [
+            {
+              role: "user",
+              content: [
+                { type: "input_text", text: extractionPrompt },
+                { type: "input_file", file_id: uploaded.id }
+              ]
+            }
+          ],
+          // Allow long outputs for multi-page resumes
+          max_output_tokens: 64000
+        }),
+        {
+          requestType: "extractResumeTextWithOpenAI",
+          model: "gpt-4o-mini",
+        }
+      );
 
       // Best-effort extraction of output text across SDK versions
       let text = "";
@@ -966,160 +981,457 @@ export class AIProfileAnalysisAgent {
     }
   }
 
+  // Extract plain text directly from an existing OpenAI file by its file_id
+  async extractResumeTextFromOpenAIFileId(fileId: string): Promise<string> {
+    try {
+      const extractionPrompt = "Extract and return the full plain text from this resume file. Preserve reading order and line breaks. Do not summarize, translate, or add any commentary. Output ONLY the raw plaintext.";
+
+      const response: any = await wrapOpenAIRequest(
+        () => (openai as any).responses.create({
+          model: "gpt-4o-mini",
+          input: [
+            {
+              role: "user",
+              content: [
+                { type: "input_text", text: extractionPrompt },
+                { type: "input_file", file_id: fileId }
+              ]
+            }
+          ],
+          max_output_tokens: 64000
+        }),
+        {
+          requestType: "extractResumeTextFromOpenAIFileId",
+          model: "gpt-4o-mini",
+        }
+      );
+
+      let text = "";
+      if (response?.output_text) {
+        text = response.output_text;
+      } else if (Array.isArray(response?.output)) {
+        for (const item of response.output) {
+          if (Array.isArray(item?.content)) {
+            for (const c of item.content) {
+              if (c?.type === "output_text" && typeof c?.text === "string") {
+                text += c.text;
+              } else if (c?.type === "text" && typeof c?.text === "string") {
+                text += c.text;
+              }
+            }
+          }
+        }
+      }
+
+      return (text || "").trim();
+    } catch (error) {
+      console.error("Failed to extract resume text from file_id via OpenAI:", error);
+      return "";
+    }
+  }
+
   async generateComprehensiveProfile(
     userData: any,
     resumeContent: string | null,
-    interviewResponses: InterviewResponse[]
+    interviewResponses: InterviewResponse[],
+    resumeAnalysis?: any,
+    jobDescription?: string
   ): Promise<GeneratedProfile> {
-    const conversationHistory = interviewResponses.map(qa => 
-      `Q: ${qa.question}\nA: ${qa.answer}`
-    ).join('\n\n');
+    const prompt = `You are an elite, world-class HR strategist and assessment analyst.
+You must produce the most detailed, evidence-based, brutally honest, employer-facing candidate profile possible.
 
-    const prompt = `You are a brutally honest professional analyst creating an employer-facing candidate profile. Your role is to be a tough, fair recruiter who has just completed an in-depth interview. You MUST be critical, evidence-based, and blunt—no promotional fluff.
+CRITICAL CONTEXT (READ FIRST):
+- This comprehensive profile is generated ONLY AFTER all three inputs are complete and available:
+  (1) the candidate's structured profile, (2) the full multi-phase interview transcript, and (3) the resume/CV analysis.
+- You MUST cross-reference across ALL THREE. If any input is missing/partial, explicitly say so, lower confidence accordingly,
+  and label any conclusions that rely on missing data as "provisional".
 
-🧩 CRITICAL ANALYSIS RULES:
-- Be brutally honest and grounded in evidence
-- Every strength MUST be followed by a "but" that points out what's lacking
-- Call out vague answers, contradictions, and unsupported claims
-- No sugarcoating or generic praise
-- Focus solely on what the candidate actually demonstrated vs. claimed
+TONE & GOAL:
+- Mirror the candidate exactly as they are — no flattery, no unfair harshness — just precise truth, backed by evidence.
+- Write like a top HR director preparing a board-level dossier that will influence a hiring decision.
 
-📊 CANDIDATE DATA:
-${userData?.firstName ? `Name: ${userData.firstName} ${userData.lastName || ''}` : ''}
-${userData?.email ? `Email: ${userData.email}` : ''}
-${userData?.currentRole ? `Current Role: ${userData.currentRole}${userData.company ? ` at ${userData.company}` : ''}` : ''}
-${userData?.totalYearsOfExperience ? `Claimed Experience: ${userData.totalYearsOfExperience} years` : ''}
-${userData?.currentEducationLevel ? `Education: ${userData.currentEducationLevel}` : ''}
-${userData?.skillsList ? `Self-Reported Skills: ${Array.isArray(userData.skillsList) ? userData.skillsList.join(', ') : userData.skillsList}` : ''}
-${userData?.location ? `Location: ${userData.location}` : ''}
-${userData?.age ? `Age: ${userData.age}` : ''}
+---
 
-${resumeContent ? `📄 RESUME CONTENT:
-${resumeContent}
+### INPUT DATA
 
-` : ''}🎤 INTERVIEW RESPONSES (3 interviews: Background/Soft Skills, Professional/Experience, Technical/Problem Solving):
-${conversationHistory}
+CANDIDATE STRUCTURED PROFILE:
+${JSON.stringify(userData, null, 2)}
 
-📘 GENERATE BRUTALLY HONEST PROFILE IN JSON:
+RESUME ANALYSIS:
+${JSON.stringify(resumeAnalysis, null, 2)}
+
+INTERVIEW TRANSCRIPT:
+${interviewResponses.map((r: any) => `Q: ${r.question}\nA: ${r.answer}`).join('\n\n')}
+
+${jobDescription ? `TARGET JOB DESCRIPTION:
+${jobDescription}` : ''}
+
+---
+
+### GOLDEN PRINCIPLES
+
+1) Truth as a Mirror
+- Reflect the candidate as-is: not harsher, not softer.
+- Where evidence is thin/absent: write "This area lacks sufficient evidence."
+
+2) Evidence Anchoring
+- EVERY claim/score must cite evidence from: resume, interview quote, profile fact, OR explicitly "no evidence found".
+- If there is a contradiction, show BOTH sides with direct quotations and explain the conflict + impact.
+
+3) Scoring with Missing Percentages (Mandatory)
+- For EACH score (1–10) or percentage:
+  • Explain earned points (why they got them) WITH evidence.
+  • Explain lost points (what's missing/inadequate/contradictory) WITH evidence or "no evidence found".
+  • Include a "lostPercentageReasons" array that itemizes where the missing % went (reason + % share).
+  Example: "7/10 Communication → earned 7 for clear structure; lost 3 due to vague outcomes (2 pts) and filler words under pressure (1 pt)."
+
+4) Balanced Strengths & Weaknesses
+- Pair every strength with a realistic limiter.
+- Pair every weakness with a possible compensator (if any).
+
+5) Granular Breakdown & Employer Usefulness
+- Cover technical depth, soft skills, problem-solving, consistency, credibility, growth, culture fit, risks.
+- End each section with concrete employer actions or questions when relevant.
+
+6) Non-Speculation Rule
+- Do NOT invent facts or infer beyond the evidence. Label uncertainties. Lower confidence when inputs are missing.
+
+---
+
+### SCORING CALIBRATION RUBRIC (apply consistently)
+
+- 9–10: Expert-level, repeatedly evidenced, realistic, consistent, ready with minimal guidance.
+- 7–8: Strong, mostly evidenced, minor gaps, generally consistent; succeeds with normal onboarding.
+- 5–6: Adequate baseline, notable gaps or thin evidence; needs support and validation.
+- 3–4: Weak; significant missing skills/evidence; high risk; requires close supervision.
+- 0–2: Absent or contradicted; critical risk; not suitable without substantial remediation.
+
+When giving %: map from 10-point scale (e.g., 7/10 ≈ 70%), then allocate the "lost" % to explicit, itemized reasons.
+
+---
+
+### OUTPUT FORMAT (RETURN JSON ONLY — no extra text)
+
 {
-  "candidateSummary": "Max 3-5 lines: Honest overview evaluating their claims vs actual demonstration. Do NOT repeat what they said—evaluate it critically.",
+  "meta": {
+    "dataCoverage": {
+      "profileCoveragePercentage": number,   // % of key items supported by the structured profile
+      "interviewCoveragePercentage": number, // % supported by interview quotes
+      "resumeCoveragePercentage": number     // % supported by resume facts
+    },
+    "confidenceScore": {
+      "value": number, // 1–10
+      "justification": "Why this confidence based on coverage, contradictions, and evidence quality."
+    },
+    "missingInputs": ["List any missing/partial inputs, or empty array if complete"]
+  },
+
+  "candidateSummary": {
+    "executiveNote": "3–5 lines: role, experience level, defining takeaway (positive or negative), rooted in evidence.",
+    "overallVerdict": "One line for executives (e.g., 'Promising IC, risky for lead due to evidence gaps in budgeting.')"
+  },
+
   "keyStrengths": [
     {
-      "strength": "Specific strength clearly demonstrated",
-      "butCritique": "What's still lacking or unclear about this strength"
+      "strength": "Evidence-based strength.",
+      "supportingEvidence": "Direct quote/resume line/profile fact.",
+      "butCritique": "Limiter/constraint that keeps it realistic (with evidence if possible)."
     }
   ],
+
   "weaknessesAndGaps": [
-    "Direct weaknesses: missing skills, vague answers, inconsistencies, overstatements"
+    {
+      "gap": "Specific gap/weakness.",
+      "evidence": "Exact quote, resume data, or 'no evidence found'.",
+      "impact": "Why this matters to an employer.",
+      "possibleCompensation": "Any mitigating factor (or 'none')."
+    }
   ],
+
+  "contradictionMatrix": [
+    {
+      "topic": "Area of conflict (e.g., leadership years).",
+      "resumeQuote": "Verbatim resume line",
+      "interviewQuote": "Verbatim interview line",
+      "profileReference": "Optional profile datum",
+      "impact": "How this contradiction affects credibility/fit."
+    }
+  ],
+
+  "evidenceMap": {
+    "claimsSupported": [
+      { "claim": "What is supported", "source": "resume|interview|profile", "quoteOrLine": "verbatim" }
+    ],
+    "claimsUnsupported": [
+      { "claim": "What lacks support", "expectedEvidence": "what would verify it (docs, metrics, example)" }
+    ]
+  },
+
   "softSkillsReview": {
-    "communicationClarity": "Critical assessment of how clearly they expressed ideas",
-    "evidenceQuality": "Assessment of whether they provided real examples or just buzzwords",
-    "emotionalIntelligence": "Based on tone and responses about teamwork/conflict",
-    "overallTone": "Confident/hesitant/unclear/defensive assessment"
+    "communicationClarity": {
+      "score": "X/10",
+      "earnedReasons": ["Evidence-backed reasons for points earned"],
+      "lostPercentageReasons": [
+        { "reason": "Specific deficiency", "percent": number, "evidence": "quote or 'no evidence found'" }
+      ],
+      "contradictions": ["Quoted inconsistencies, if any"]
+    },
+    "evidenceQuality": {
+      "rating": "Strongly | Moderately | Weakly",
+      "examples": "Where they did/didn't provide proof",
+      "lostPercentageReasons": [
+        { "reason": "Vague outcomes", "percent": number }
+      ]
+    },
+    "emotionalIntelligence": {
+      "score": "X/10",
+      "analysis": "Evidence of self-awareness/empathy",
+      "lostPercentageReasons": [
+        { "reason": "Avoids conflict", "percent": number, "evidence": "quoted line" }
+      ]
+    },
+    "overallTone": {
+      "descriptor": "Confident | Nervous | Defensive | etc.",
+      "justification": "Evidence-based"
+    },
+    "adaptability": {
+      "score": "X/10",
+      "analysis": "How well they shift across topics/scenarios (with quotes)",
+      "lostPercentageReasons": [
+        { "reason": "Struggled with ambiguity scenario", "percent": number, "evidence": "quote" }
+      ]
+    }
   },
+
   "technicalKnowledge": {
-    "claimedVsActual": "Skills they claimed vs what they could actually demonstrate",
-    "gapsIdentified": "Technical areas where knowledge was clearly lacking",
-    "problemSolvingApproach": "Assessment of logical thinking in technical scenarios"
+    "claimedVsActual": {
+      "analysis": "Alignment vs reality with citations",
+      "contradictions": ["Quoted mismatches"],
+      "score": "X/10",
+      "earnedReasons": ["What is clearly demonstrated"],
+      "lostPercentageReasons": [
+        { "reason": "Missing Docker", "percent": number, "evidence": "no evidence found" },
+        { "reason": "Shallow AWS depth", "percent": number, "evidence": "quote showing theory-only" }
+      ]
+    },
+    "gapsIdentified": [
+      { "gap": "Specific shortfall", "evidence": "quote/fact", "impact": "practical risk" }
+    ],
+    "problemSolvingApproach": {
+      "description": "Method as evidenced by transcript",
+      "score": "X/10",
+      "earnedReasons": ["Concrete, stepwise reasoning"],
+      "lostPercentageReasons": [
+        { "reason": "No trade-off analysis", "percent": number, "evidence": "quote" }
+      ]
+    },
+    "realismCheck": {
+      "assessment": "Grounded / Theoretical / Inconsistent",
+      "examples": ["Quotes showing realism or lack thereof"]
+    }
   },
+
   "problemSolvingCriticalThinking": {
-    "approachClarity": "How well-structured was their thinking process",
-    "realismFactoring": "Did they consider practical constraints and real-world factors",
-    "logicalConsistency": "Were their solutions logical and well-reasoned"
+    "approachClarity": {
+      "score": "X/10",
+      "earnedReasons": ["evidence…"],
+      "lostPercentageReasons": [
+        { "reason": "High-level only, no metrics", "percent": number, "evidence": "quote" }
+      ]
+    },
+    "realismFactoring": {
+      "score": "X/10",
+      "analysis": "Trade-offs/constraints considered?",
+      "lostPercentageReasons": [
+        { "reason": "Ignores constraints", "percent": number }
+      ]
+    },
+    "logicalConsistency": {
+      "score": "X/10",
+      "contradictions": ["quote inconsistencies"],
+      "lostPercentageReasons": [
+        { "reason": "Internal contradiction", "percent": number, "evidence": "two quotes" }
+      ]
+    },
+    "creativity": {
+      "score": "X/10",
+      "examples": "Original ideas vs textbook",
+      "lostPercentageReasons": [
+        { "reason": "Template answers only", "percent": number }
+      ]
+    }
   },
+
+  "growthPotential": {
+    "coachability": {
+      "score": "X/10",
+      "evidence": "proof of learning mindset",
+      "lostPercentageReasons": [
+        { "reason": "Defensive under challenge", "percent": number, "evidence": "quote" }
+      ]
+    },
+    "trajectory": {
+      "assessment": "Plateauing | Growing | Declining",
+      "evidence": "resume/interview facts driving the view"
+    },
+    "longTermFit": {
+      "assessment": "Best environment for growth",
+      "evidence": "why this is likely"
+    }
+  },
+
+  "culturalFit": {
+    "teamDynamics": {
+      "assessment": "Likely team role",
+      "evidence": "quotes/examples"
+    },
+    "organizationalFit": {
+      "fit": "Structured corp | startup | hybrid",
+      "reasoning": "why (evidence)"
+    },
+    "riskFactors": [
+      { "risk": "Behavioral/cultural red flag", "evidence": "quote/fact", "severity": "Low|Med|High" }
+    ]
+  },
+
   "unverifiedClaims": [
-    "Things they stated with no supporting evidence or examples"
+    {
+      "claim": "Unverified statement",
+      "reasonForFlag": "Why questionable",
+      "followUp": "Exact question/documentation to request"
+    }
   ],
-  "communicationScore": 7,
-  "credibilityScore": 6,
-  "consistencyScore": 8,
+
+  "scores": {
+    "communicationScore": {
+      "value": "X/10",
+      "breakdown": "Narrative of earned vs lost points with quotes",
+      "lostPercentageReasons": [
+        { "reason": "Vague outcomes", "percent": number, "evidence": "quote" }
+      ]
+    },
+    "credibilityScore": {
+      "value": "X/10",
+      "breakdown": "Believability w/ contradictions cited",
+      "lostPercentageReasons": [
+        { "reason": "Resume vs interview mismatch on leadership", "percent": number, "evidence": "two quotes" }
+      ]
+    },
+    "consistencyScore": {
+      "value": "X/10",
+      "breakdown": "Resume/profile/interview alignment",
+      "lostPercentageReasons": [
+        { "reason": "Shifting definitions across answers", "percent": number }
+      ]
+    },
+    "problemSolvingScore": {
+      "value": "X/10",
+      "breakdown": "Method, realism, creativity",
+      "lostPercentageReasons": [
+        { "reason": "No metrics/trade-offs", "percent": number }
+      ]
+    },
+    "technicalDepthScore": {
+      "value": "X/10",
+      "breakdown": "Specific knowledge shown vs claimed",
+      "lostPercentageReasons": [
+        { "reason": "Missing core tool from resume claim", "percent": number, "evidence": "quote or 'no evidence found'" }
+      ]
+    },
+    "overallEmployabilityScore": {
+      "value": "X/10",
+      "justification": "Integrated view: strengths, gaps, risks, contradictions. Include why remaining points were lost."
+    }
+  },
+
   "readinessAssessment": {
     "faceToFaceReady": true,
-    "areasToClarity": ["Specific areas that need clarification in face-to-face interview"],
-    "recommendation": "Clear statement on interview readiness with specific focus areas"
+    "areasToClarify": [
+      "Targeted questions to resolve doubts (each tied to a gap/contradiction)."
+    ],
+    "recommendation": {
+      "level": "'Highly Recommended' | 'Recommended' | 'Recommended with Reservations' | 'Not Recommended'",
+      "justification": "2–3 sentences, explicitly citing evidence and noting missing percentages."
+    }
   }
 }
 
-❌ DO NOT:
-- Fill gaps with assumptions
-- Give praise for vague statements  
-- Sound optimistic or promotional
-- Use generic career advice language
+---
 
-✅ WRITE LIKE:
-A tough, fair recruiter who just finished an in-depth interview—credible, nuanced, trustworthy, with no marketing fluff.`;
+### QUALITY ENFORCEMENT (HARD REQUIREMENTS)
+
+- JSON ONLY. No extra text.
+- Every score MUST include both earned reasons AND lostPercentageReasons (reasons + %).
+- Every contradiction MUST be quoted in the contradictionMatrix and referenced where relevant.
+- Every claim MUST be supported (with a quote/line) OR labeled "no evidence found".
+- Always note when inputs are missing/partial and lower confidence accordingly.
+- Keep language precise, neutral, and professional; avoid generic fluff.`;
 
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert career analyst. Provide detailed, accurate professional assessments based on all available candidate data."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.1,
-        max_completion_tokens: 1500
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: "You are an elite HR strategist and assessment analyst producing evidence-based candidate profiles for executive decision-making."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.1
+        }),
+        {
+          requestType: "generateComprehensiveProfile",
+          model: "gpt-4o",
+          userId: userData?.id || null,
+        }
+      );
 
       const profile = JSON.parse(response.choices[0].message.content || '{}');
-      
-      // Store the brutally honest comprehensive profile for employers
-      const comprehensiveProfile = {
-        candidateSummary: profile.candidateSummary || "Candidate assessment could not be completed.",
-        keyStrengths: profile.keyStrengths || [],
-        weaknessesAndGaps: profile.weaknessesAndGaps || [],
-        softSkillsReview: profile.softSkillsReview || {
-          communicationClarity: "Communication assessment not available",
-          evidenceQuality: "Evidence quality not assessed",
-          emotionalIntelligence: "Emotional intelligence not evaluated",
-          overallTone: "Overall tone not determined"
-        },
-        technicalKnowledge: profile.technicalKnowledge || {
-          claimedVsActual: "Technical claims not verified",
-          gapsIdentified: "Technical gaps not identified",
-          problemSolvingApproach: "Problem-solving approach not assessed"
-        },
-        problemSolvingCriticalThinking: profile.problemSolvingCriticalThinking || {
-          approachClarity: "Approach clarity not assessed",
-          realismFactoring: "Realism factoring not evaluated", 
-          logicalConsistency: "Logical consistency not determined"
-        },
-        unverifiedClaims: profile.unverifiedClaims || [],
-        communicationScore: profile.communicationScore || 5,
-        credibilityScore: profile.credibilityScore || 5,
-        consistencyScore: profile.consistencyScore || 5,
-        readinessAssessment: profile.readinessAssessment || {
-          faceToFaceReady: false,
-          areasToClarity: ["Assessment incomplete"],
-          recommendation: "Further assessment required"
-        }
-      };
+
+      // Store the comprehensive profile for employers
+      const comprehensiveProfile = profile;
 
       // Extract basic info for backward compatibility
-      const legacySkills = comprehensiveProfile.keyStrengths.map((item: any) => 
+      const legacySkills = comprehensiveProfile.keyStrengths?.map((item: any) =>
         typeof item === 'object' && item.strength ? item.strength : 'Not specified'
+      ) || [];
+
+      // Calculate legacy percentages from new scores
+      const calculatePercentage = (scoreValue: string) => {
+        const score = parseInt(scoreValue?.split('/')[0] || '0');
+        return Math.round(score * 10);
+      };
+
+      // Calculate overall match percentage from multiple factors
+      const overallMatchPercentage = Math.round(
+        (calculatePercentage(comprehensiveProfile.scores?.overallEmployabilityScore?.value) +
+         calculatePercentage(comprehensiveProfile.scores?.communicationScore?.value) +
+         calculatePercentage(comprehensiveProfile.scores?.technicalDepthScore?.value) +
+         calculatePercentage(comprehensiveProfile.scores?.problemSolvingScore?.value)) / 4
       );
 
       // Return legacy format for backward compatibility with new comprehensive data
       return {
-        summary: comprehensiveProfile.candidateSummary,
+        summary: comprehensiveProfile.candidateSummary?.executiveNote || "Candidate assessment could not be completed.",
         skills: legacySkills,
-        personality: comprehensiveProfile.softSkillsReview.overallTone,
+        personality: comprehensiveProfile.softSkillsReview?.overallTone?.descriptor || "Not assessed",
         experience: [], // Will be populated from existing profile data
-        strengths: comprehensiveProfile.keyStrengths.map((item: any) => 
-          typeof item === 'object' && item.strength ? 
+        strengths: comprehensiveProfile.keyStrengths?.map((item: any) =>
+          typeof item === 'object' && item.strength ?
           `${item.strength} - but ${item.butCritique}` : item
-        ),
-        careerGoals: "Assessment from interview responses",
-        workStyle: comprehensiveProfile.softSkillsReview.communicationClarity,
-        // Store the full brutally honest profile for employer access
+        ) || [],
+        careerGoals: comprehensiveProfile.growthPotential?.longTermFit?.assessment || "Assessment from interview responses",
+        workStyle: comprehensiveProfile.softSkillsReview?.communicationClarity?.score || "Not assessed",
+        matchScorePercentage: overallMatchPercentage,
+        experiencePercentage: calculatePercentage(comprehensiveProfile.scores?.credibilityScore?.value),
+        techSkillsPercentage: calculatePercentage(comprehensiveProfile.scores?.technicalDepthScore?.value),
+        culturalFitPercentage: calculatePercentage(comprehensiveProfile.scores?.communicationScore?.value),
+        // Store the full comprehensive profile for employer access
         brutallyHonestProfile: comprehensiveProfile
       };
     } catch (error) {
@@ -1131,7 +1443,7 @@ A tough, fair recruiter who just finished an in-depth interview—credible, nuan
         experience: [],
         strengths: [],
         careerGoals: "Looking to advance career in chosen field.",
-        workStyle: "Team-oriented with focus on results."
+        workStyle: "Team-oriented with focus on results.",
       };
     }
   }
@@ -1166,11 +1478,17 @@ Return a JSON object with:
 }`;
 
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" }
-      });
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" }
+        }),
+        {
+          requestType: "parseResume",
+          model: "gpt-5",
+        }
+      );
 
       return JSON.parse(response.choices[0].message.content || '{}');
     } catch (error) {
@@ -1363,27 +1681,32 @@ Return a JSON object with:
     try {
       const instruction = `You are an expert resume parser and career analyst. Extract ALL available information into the provided JSON schema. Use nulls/empty arrays for missing info. Be precise; do not invent data.`;
 
-      const response: any = await (openai as any).responses.create({
-        model: "gpt-5",
-        input: [
-          {
-            role: "user",
-            content: [
-              { type: "input_text", text: instruction },
-              { type: "input_text", text: `RESUME CONTENT:\n${resumeContent}` }
-            ]
-          }
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "ApplicantProfile",
-            schema: resumeProfileSchema,
-            strict: true
-          }
-        },
-        max_output_tokens: 4000
-      });
+      const response: any = await wrapOpenAIRequest(
+        () => (openai as any).responses.create({
+          model: "gpt-5",
+          input: [
+            {
+              role: "user",
+              content: [
+                { type: "input_text", text: instruction },
+                { type: "input_text", text: `RESUME CONTENT:\n${resumeContent}` }
+              ]
+            }
+          ],
+          text: {
+            format: {
+              type: "json_schema",
+              name: "ApplicantProfile",
+              schema: resumeProfileSchema,
+              strict: true
+            }
+          },
+        }),
+        {
+          requestType: "parseResumeForProfile",
+          model: "gpt-5",
+        }
+      );
 
       let text = "";
       if (response?.output_text) {
@@ -1406,15 +1729,20 @@ Return a JSON object with:
       console.error("Full error details:", JSON.stringify(error, null, 2));
       // Fallback to simple chat completion JSON mode as last resort
       try {
-        const fallback = await openai.chat.completions.create({
-          model: "gpt-5",
-          messages: [
-            { role: "system", content: "Return only valid JSON matching the requested structure." },
-            { role: "user", content: `Extract structured JSON for this resume:\n${resumeContent}` }
-          ],
-          response_format: { type: "json_object" },
-          max_completion_tokens: 2000
-        });
+        const fallback = await wrapOpenAIRequest(
+          () => openai.chat.completions.create({
+            model: "gpt-5",
+            messages: [
+              { role: "system", content: "Return only valid JSON matching the requested structure." },
+              { role: "user", content: `Extract structured JSON for this resume:\n${resumeContent}` }
+            ],
+            response_format: { type: "json_object" },
+          }),
+          {
+            requestType: "parseResumeForProfile-fallback",
+            model: "gpt-5",
+          }
+        );
         return JSON.parse(fallback.choices[0].message.content || "{}");
       } catch (fallbackError) {
         console.error("Fallback parsing also failed:", fallbackError);
@@ -1436,7 +1764,177 @@ export const aiInterviewService = {
   generatePersonalInterview: aiInterviewAgent.generatePersonalInterview.bind(aiInterviewAgent),
   generateProfessionalInterview: aiInterviewAgent.generateProfessionalInterview.bind(aiInterviewAgent),
   generateTechnicalInterview: aiInterviewAgent.generateTechnicalInterview.bind(aiInterviewAgent),
-  generateProfile: aiProfileAnalysisAgent.generateComprehensiveProfile.bind(aiProfileAnalysisAgent),
+  // New: job-specific practice interview
+  generateJobPracticeInterview: async (userData: any, jobDetails: any, language: string = 'english') => {
+    const jobTitle = jobDetails?.jobTitle || 'the role';
+    const companyName = jobDetails?.companyName || 'the company';
+    const jobDescription = jobDetails?.jobDescription || '';
+    const providedSkills: string[] = Array.isArray(jobDetails?.skills) ? jobDetails.skills : [];
+    const aiPromptContext = jobDetails.aiPrompt || ''
+
+    // Extract skills from job description if not provided
+    let extractedSkills: string[] = [];
+    try {
+      const skillPatterns = [
+        /(?:skills?|requirements?|qualifications?|experience)[:\s]*([^.]*)/gi,
+        /(?:proficiency|knowledge|expertise)\s+(?:in|with|of)[:\s]*([^.]*)/gi,
+        /(?:must have|required|essential)[:\s]*([^.]*)/gi
+      ];
+
+      skillPatterns.forEach((pattern: RegExp) => {
+        const matches: RegExpMatchArray | null = jobDescription.match(pattern);
+        if (matches) {
+          matches.forEach((match: string) => {
+            const text = match.replace(/(?:skills?|requirements?|qualifications?|experience|proficiency|knowledge|expertise|must have|required|essential)[:\s]*/gi, '');
+            const parts: string[] = text.split(/[,;•\-\n]/)
+              .map((s: string) => s.trim().toLowerCase())
+              .filter((s: string) => s.length > 2 && s.length < 40);
+            extractedSkills.push(...parts);
+          });
+        }
+      });
+      const stopWords = new Set(['and','or','with','in','of','the','to','for','on','a','an']);
+      extractedSkills = Array.from(new Set(extractedSkills)).filter((s) => !stopWords.has(s));
+    } catch {}
+
+    const combinedSkills = Array.from(new Set([
+      ...providedSkills.map((s: string) => s.trim()),
+      ...extractedSkills.map((s: string) => s.trim())
+    ].filter(Boolean as unknown as (value: string | undefined) => value is string)));
+    const requiredSkills = combinedSkills.join(', ');
+
+    // Rough responsibilities extraction for better grounding
+    const responsibilities = (jobDescription.match(/(^|\n)\s*(?:[-•])\s+.+/g) || [])
+      .map((line: string) => line.replace(/^[\s\n]*[-•]\s*/, '').trim())
+      .slice(0, 10);
+
+    // Build candidate profile block from available user data
+    const safeJoin = (arr: unknown, sep: string = ', '): string => Array.isArray(arr) ? (arr.filter(Boolean) as string[]).join(sep) : '';
+    const experienceLines: string[] = Array.isArray((userData as any)?.workExperiences)
+      ? ((userData as any).workExperiences as any[]).map((exp: any) => {
+          const position: string = typeof exp?.position === 'string' ? exp.position : '';
+          const company: string = typeof exp?.company === 'string' ? exp.company : '';
+          const dateRange: string = [exp?.startDate, exp?.endDate].filter(Boolean).join(' - ');
+          const responsibilitiesText: string = typeof exp?.responsibilities === 'string' ? exp.responsibilities : '';
+          return `• ${position}${company ? ` at ${company}` : ''}${dateRange ? ` (${dateRange})` : ''}${responsibilitiesText ? `\n  Responsibilities: ${responsibilitiesText}` : ''}`.trim();
+        })
+      : [];
+    const educationLines: string[] = Array.isArray((userData as any)?.degrees)
+      ? ((userData as any).degrees as any[]).map((deg: any) => {
+          const degree: string = typeof deg?.degree === 'string' ? deg.degree : '';
+          const field: string = typeof deg?.field === 'string' ? deg.field : '';
+          const institution: string = typeof deg?.institution === 'string' ? deg.institution : '';
+          const dateRange: string = [deg?.startDate, deg?.endDate].filter(Boolean).join(' - ');
+          return `• ${degree}${field ? ` in ${field}` : ''}${institution ? ` from ${institution}` : ''}${dateRange ? ` (${dateRange})` : ''}`.trim();
+        })
+      : [];
+    const languageLines: string[] = Array.isArray((userData as any)?.languages)
+      ? ((userData as any).languages as any[]).map((lang: any) => {
+          const language: string = typeof lang?.language === 'string' ? lang.language : '';
+          const proficiency: string = typeof lang?.proficiency === 'string' ? lang.proficiency : '';
+          return `• ${language}${proficiency ? `: ${proficiency}` : ''}`;
+        })
+      : [];
+    const portfolioLines: string[] = [
+      (userData as any)?.linkedinUrl,
+      (userData as any)?.githubUrl,
+      (userData as any)?.websiteUrl
+    ]
+      .filter((v: unknown): v is string => typeof v === 'string' && v.trim().length > 0)
+      .map((url: string) => `• ${url}`);
+    const skillsList: string = safeJoin((userData as any)?.skillsList, ', ');
+    const targetJobTitles: string = safeJoin((userData as any)?.jobTitles, ', ');
+    const targetIndustries: string = safeJoin((userData as any)?.jobCategories, ', ');
+    const aiProfileRaw: unknown = (userData as any)?.aiProfile;
+    const aiProfileFormatted: string = typeof aiProfileRaw === 'string'
+      ? aiProfileRaw
+      : (typeof (aiProfileRaw as any)?.formattedProfile === 'string' ? (aiProfileRaw as any).formattedProfile : '');
+    const aiProfileExcerpt: string = aiProfileFormatted ? aiProfileFormatted.slice(0, 1200) : '';
+
+    const candidateProfileBlock = `\nCANDIDATE PROFILE DATA:\nName: ${(userData as any)?.name || ''}\nSummary: ${(userData as any)?.summary || ''}\nTarget Roles: ${targetJobTitles}\nTarget Industries: ${targetIndustries}\nSkills: ${skillsList}\nExperience:\n${experienceLines.join('\n')}\nEducation:\n${educationLines.join('\n')}\nLanguages:\n${languageLines.join('\n')}\nPortfolio:\n${portfolioLines.join('\n')}\n${aiProfileExcerpt ? `\nAI Profile Excerpt:\n${aiProfileExcerpt}\n` : ''}`;
+
+    const prompt = `You are an expert interviewer helping a candidate practice specifically for a job they just applied to.
+
+JOB DETAILS:
+- Title: ${jobTitle}
+- Company: ${companyName}
+- Required skills: ${requiredSkills || 'Not explicitly listed'}
+- Description:\n${jobDescription}
+${responsibilities.length ? `\nTop responsibilities parsed from the post:\n- ${responsibilities.join('\n- ')}` : ''}
+
+${candidateProfileBlock}
+
+Based on these job details and the candidate's profile (assume you know it), create 7 sharp, role-specific practice questions that:
+- Focus on responsibilities and skills explicitly relevant to this job
+- Probe for concrete outcomes, metrics, and decision-making
+- Avoid generic prompts; be targeted to the described role
+- Sequence questions progressively (from calibration to deep dives)
+- Explicitly reference at least one listed skill or responsibility in each question
+- Personalize using the candidate's background above; if a listed skill is missing in their profile, create a bridging/hypothetical relevant to their experience
+
+${aiPromptContext}
+
+Return ONLY JSON:
+{
+  "questions": [
+    {"question": "...", "context": "why this matters for the role"},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."},
+    {"question": "...", "context": "..."}
+  ]
+}`;
+
+    const messages = language === 'arabic' ? [
+      { role: "system" as const, content: "انت مصري من القاهرة وبتتكلم عامية مصرية بس. الأسئلة لازم تكون عملية ومناسبة للوظيفة، وتركز على نتائج ومقاييس." },
+      { role: "user" as const, content: prompt }
+    ] : [
+      { role: "user" as const, content: prompt }
+    ];
+
+    try {
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.6
+        }),
+        {
+          requestType: "generateJobPracticeInterview",
+          model: "gpt-4o",
+          userId: userData?.id || null,
+        }
+      );
+      const result = JSON.parse(response.choices[0].message.content || '{}');
+      return {
+        type: 'job-practice',
+        title: `Practice Interview for ${jobTitle}`,
+        description: `Targeted practice based on ${companyName} - ${jobTitle}`,
+        questions: result.questions || []
+      };
+    } catch (error) {
+      console.error('Error generating job practice interview:', error);
+      return {
+        type: 'job-practice',
+        title: `Practice Interview for ${jobTitle}`,
+        description: `Targeted practice based on ${companyName} - ${jobTitle}`,
+        questions: [
+          { question: `Walk me through a project most relevant to ${jobTitle}. What measurable outcomes did you deliver?`, context: 'Align past work to the role' },
+          { question: `Which of the listed skills (${requiredSkills || 'core skills'}) is your strongest? Provide a detailed example.`, context: 'Skill depth' },
+          { question: `Describe a time you handled a responsibility similar to those in the description.`, context: 'Role responsibilities' },
+          { question: `If you joined ${companyName}, what would your 30/60/90-day plan look like?`, context: 'Impact plan' },
+          { question: `Tell me about a decision with trade-offs similar to this role. How did you choose?`, context: 'Decision-making' },
+          { question: `What metric would you own in this role and how would you move it?`, context: 'Metrics ownership' },
+          { question: `What gaps do you see compared to the description and how would you address them?`, context: 'Self-awareness' }
+        ]
+      };
+    }
+  },
+  generateProfile: (userData: any, resumeContent: string | null, interviewResponses: InterviewResponse[], resumeAnalysis?: any, jobDescription?: string) =>
+    aiProfileAnalysisAgent.generateComprehensiveProfile(userData, resumeContent, interviewResponses, resumeAnalysis, jobDescription),
   parseResume: aiProfileAnalysisAgent.parseResume.bind(aiProfileAnalysisAgent),
   parseResumeForProfile: aiProfileAnalysisAgent.parseResumeForProfile.bind(aiProfileAnalysisAgent)
 };

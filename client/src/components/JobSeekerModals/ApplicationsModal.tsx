@@ -311,7 +311,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
 
 
                   {/* Action Buttons */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 rtl:space-x-reverse">
                     {(application.status === 'pending' || application.status === 'closed') && (
                       <Button 
                         variant="outline" 
@@ -357,7 +357,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
               This will permanently remove it from your applications and cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end gap-3 mt-6">
+          <div className="flex justify-end gap-3 rtl:space-x-reverse mt-6">
             <Button
               variant="outline"
               onClick={cancelWithdraw}

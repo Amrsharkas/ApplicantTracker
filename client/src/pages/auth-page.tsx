@@ -82,7 +82,7 @@ export default function AuthPage() {
             </div>
 
             <div className="grid gap-6">
-              <div className="flex items-start space-x-4">
+              <div className="flex items-start space-x-4 rtl:space-x-reverse">
                 <div className="bg-blue-100 p-3 rounded-lg">
                   <Briefcase className="h-6 w-6 text-blue-600" />
                 </div>
@@ -92,7 +92,7 @@ export default function AuthPage() {
                 </div>
               </div>
 
-              <div className="flex items-start space-x-4">
+              <div className="flex items-start space-x-4 rtl:space-x-reverse">
                 <div className="bg-purple-100 p-3 rounded-lg">
                   <Users className="h-6 w-6 text-purple-600" />
                 </div>
@@ -102,7 +102,7 @@ export default function AuthPage() {
                 </div>
               </div>
 
-              <div className="flex items-start space-x-4">
+              <div className="flex items-start space-x-4 rtl:space-x-reverse">
                 <div className="bg-green-100 p-3 rounded-lg">
                   <Zap className="h-6 w-6 text-green-600" />
                 </div>

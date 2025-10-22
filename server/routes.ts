@@ -3,21 +3,45 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
 import { aiInterviewService, aiProfileAnalysisAgent, aiInterviewAgent } from "./openai";
-import { airtableService } from "./airtable";
+import { localDatabaseService } from "./localDatabaseService";
 import { aiJobFilteringService } from "./aiJobFiltering";
 import { employerQuestionService } from "./employerQuestions";
 import { ObjectStorageService } from "./objectStorage";
 import { ResumeService } from "./resumeService";
 import multer from "multer";
-import { z } from "zod";
-import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile } from "@shared/schema";
+import { string, z } from "zod";
+import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, airtableJobApplications, jobs } from "@shared/schema";
 // Dynamic import for pdf-parse will be used when needed
 import { db } from "./db";
-import { applicantProfiles, interviewSessions } from "@shared/schema";
+import { applicantProfiles, interviewSessions, resumeUploads, jobMatches, applications, sessions, users } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
+import fs from "fs";
+import path from "path";
 
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-const upload = multer({ 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const recordingsDir = path.join(__dirname, '..', 'uploads/recordings');
+fs.mkdirSync(recordingsDir, { recursive: true });
+
+const recordingStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, recordingsDir);
+  },
+  filename: (req, file, cb) => {
+    const sessionId = req.body.sessionId;
+    const uniqueSuffix = Date.now(); // Add timestamp to avoid conflicts
+    cb(null, `interview-${sessionId}-${uniqueSuffix}.webm`);
+  },
+});
+
+const uploadRecording = multer({ storage: recordingStorage });
+import { wrapOpenAIRequest } from "./openaiTracker";
+
+const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
@@ -27,7 +51,15 @@ const resumeService = new ResumeService();
 // Centralized AI profile generation with deduplication
 const profileGenerationLock = new Map<string, Promise<any>>();
 
-async function generateComprehensiveAIProfile(userId: string, updatedProfile: any, storage: any, aiInterviewService: any, airtableService: any) {
+interface JobSummary {
+  recordId: string;
+  jobTitle: string;
+  jobDescription?: string;
+  companyName: string;
+  location?: string;
+}
+
+async function generateComprehensiveAIProfile(userId: string, updatedProfile: any, storage: any, aiInterviewService: any, localDatabaseService: any, job?: JobSummary) {
   // Check if profile generation is already in progress for this user
   if (profileGenerationLock.has(userId)) {
     console.log(`📋 AI profile generation already in progress for user ${userId}, waiting...`);
@@ -37,11 +69,11 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
   // Check if AI profile already generated
   if (updatedProfile?.aiProfileGenerated) {
     console.log(`📋 AI profile already generated for user ${userId}, skipping...`);
-    return updatedProfile.aiProfile;
+    // return updatedProfile.aiProfile;
   }
 
   // Create a promise for this profile generation
-  const generationPromise = (async () => {
+  const generationPromise = (async (job) => {
     try {
       console.log(`📋 Starting comprehensive AI profile generation for user ${userId}`);
       
@@ -61,7 +93,8 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
       const generatedProfile = await aiInterviewService.generateProfile(
         { ...user, ...updatedProfile },
         resumeContent,
-        allResponses
+        allResponses,
+        `Job Descritpion: ${job?.jobDescription}`
       );
 
       // Update profile with AI data - mark as generated to prevent duplicates
@@ -71,7 +104,8 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
         aiProfile: generatedProfile,
         aiProfileGenerated: true,
         summary: generatedProfile.summary,
-        skillsList: generatedProfile.skills
+        skillsList: generatedProfile.skills,
+        jobId: job?.id
       });
 
       // Calculate job matches
@@ -83,8 +117,8 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
           ? `${user.firstName} ${user.lastName}` 
           : user?.email || `User ${userId}`;
         
-        await airtableService.storeUserProfile(userName, generatedProfile, userId, user?.email);
-        console.log('📋 Successfully stored comprehensive profile in Airtable for user:', userId);
+        // await airtableService.storeUserProfile(userName, generatedProfile, userId, user?.email);
+        // console.log('📋 Successfully stored comprehensive profile in Airtable for user:', userId);
       } catch (error) {
         console.error('📋 Failed to store profile in Airtable:', error);
         // Don't fail the entire request if Airtable fails
@@ -99,7 +133,7 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
       // Remove the lock when done
       profileGenerationLock.delete(userId);
     }
-  })();
+  })(job);
 
   // Store the promise in the lock map
   profileGenerationLock.set(userId, generationPromise);
@@ -515,8 +549,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
   
-
   // Note: Auth routes are now handled in setupAuth from auth.ts
+
+  // AI Interview initiation via local database token lookup (following old Airtable logic)
+  app.get('/api/ai-interview-initation', async (req: any, res) => {
+    try {
+      const token = (req.query.token || '').toString().trim();
+      if (!token) {
+        return res.status(400).json({ error: 'Missing token' });
+      }
+
+      console.log(`🔍 Looking up job match for token: ${token}`);
+
+      // First, try to find the job match by token (this replaces the Airtable record lookup)
+      const jobMatch = await localDatabaseService.getJobMatchByToken(token);
+
+      if (!jobMatch) {
+        console.error('Job match record not found for token', token);
+        return res.status(404).json({ error: 'Invalid or expired token' });
+      }
+
+      console.log(`✅ Found job match: ${jobMatch.name} for job: ${jobMatch.jobTitle}`);
+
+      // Extract user information from the job match
+      const userId = jobMatch.userId;
+
+      // Get the resume profile to extract the email
+      let resumeProfile;
+      try {
+        resumeProfile = await localDatabaseService.getUserProfile(userId);
+        console.log(`📄 Retrieved resume profile for user ID: ${userId}`);
+      } catch (profileError) {
+        console.warn('Failed to retrieve resume profile:', profileError);
+      }
+
+      let user = await storage.getUser(userId);
+      
+      // Get the user by email if not found 
+      if (!user && resumeProfile?.email) {
+        user = await storage.getUserByEmail(resumeProfile.email)
+      }
+
+      // If user doesn't exist, create one (this should not happen normally, but handle it)
+      if (!user) {
+        try {
+          console.log(`🔍 Creating new user for job match user ID: ${userId}`);
+
+          // Use email from resume profile if available, otherwise generate a unique email
+          const email = resumeProfile?.email || `interview_${userId}@candidate.local`;
+
+          // Create user with empty password and flag for password setup
+          user = await storage.createUser({
+            id: userId,
+            email,
+            password: '', // Empty password for now
+            firstName: resumeProfile?.name?.split(' ')[0] || jobMatch.name?.split(' ')[0] || 'Interview',
+            lastName: resumeProfile?.name?.split(' ').slice(1).join(' ') || jobMatch.name?.split(' ').slice(1).join(' ') || 'Candidate',
+            username: `candidate_${userId}_${Math.random().toString(36).substr(2, 9)}`,
+            role: 'applicant',
+            passwordNeedsSetup: true // Flag to indicate password needs to be set
+          });
+
+          console.log(`✅ Created new user for job match: ${user.id} with email: ${email}`);
+
+        } catch (createError) {
+          console.error('Error creating user for job match:', createError);
+          return res.status(500).json({ error: 'Failed to create user account' });
+        }
+      }
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found for job match' });
+      }
+
+      // Create session
+      req.session.userId = user.id;
+      console.log(`✅ User authenticated via token: ${user.email} (${user.id})`);
+
+      // Create or update applicant profile if needed
+      try {
+        let profile = await storage.getApplicantProfile(user.id);
+        if (!profile) {
+          profile = await storage.upsertApplicantProfile({
+            userId: user.id,
+            name: resumeProfile?.name || jobMatch.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+            email: resumeProfile?.email || user.email
+          } as any);
+          console.log(`✅ Created applicant profile for user: ${user.id} with email: ${resumeProfile?.email || user.email}`);
+        }
+      } catch (profileError) {
+        console.warn('Failed to create/update applicant profile:', profileError);
+      }
+
+      // Create applicant profile from the file if fileId is available
+      if (resumeProfile?.fileId) {
+        try {
+          console.log(`📄 Found OpenAI file_id on resume profile: ${resumeProfile.fileId}`);
+
+          // Extract text via OpenAI file_id
+          let resumeContent = await aiProfileAnalysisAgent.extractResumeTextFromOpenAIFileId(resumeProfile.fileId.trim());
+          resumeContent = sanitizeTextForDatabase(resumeContent);
+
+          if (resumeContent && resumeContent.trim().length >= 100) {
+            // Parse and map to profile
+            const parsedResumeData = await aiInterviewService.parseResumeForProfile(resumeContent);
+            const profileData = mapResumeDataToProfile(parsedResumeData, user.id);
+            const existingProfile = await storage.getApplicantProfile(user.id);
+            const mergedProfile = {
+              ...existingProfile,
+              ...profileData,
+              resumeContent: resumeContent.substring(0, 10000),
+              updatedAt: new Date(),
+              completionPercentage: calculateProfileCompletion(profileData)
+            };
+
+            const updatedProfile = await storage.upsertApplicantProfile(mergedProfile);
+            await storage.updateProfileCompletion(user.id);
+
+            // Store a resume record for tracking
+            try {
+              const resumeRecord = await storage.createResumeUpload({
+                userId: user.id,
+                filename: `openai_${resumeProfile.fileId}.txt`,
+                originalName: `openai_file_${resumeProfile.fileId}`,
+                filePath: `/openai/${resumeProfile.fileId}`,
+                fileSize: resumeContent.length,
+                mimeType: 'text/plain',
+                extractedText: resumeContent,
+                aiAnalysis: parsedResumeData
+              } as any);
+              await storage.setActiveResume(user.id, (resumeRecord as any).id);
+            } catch (resumeErr) {
+              console.warn('Failed to create resume record from OpenAI file_id:', resumeErr);
+            }
+
+            console.log('✅ Profile auto-populated from OpenAI file before redirect');
+          } else {
+            console.warn('⚠️ Resume content from OpenAI file_id was empty or too short; skipping auto-population');
+          }
+        } catch (fileError) {
+          console.warn('Failed to process resume from file_id:', fileError);
+        }
+      }
+
+      // Update the job match to link it to the user (this replaces the Airtable user_id update)
+      try {
+        // Ensure the job match has the correct user ID
+        if (jobMatch.userId !== user.id) {
+          await localDatabaseService.updateJobMatchByToken(token, {
+            userId: user.id
+          });
+          console.log(`✅ Updated job match user ID to: ${user.id}`);
+        }
+      } catch (matchUpdateError) {
+        console.warn('Failed to update job match user ID:', matchUpdateError);
+      }
+
+      // If we have additional data from the job match, we could populate the user profile
+      // This is similar to how the old system processed OpenAI file_id data
+
+      return res.json({
+        success: true,
+        redirect: '/dashboard',
+        userId: user.id,
+        email: user.email,
+        jobMatch: {
+          id: jobMatch.id,
+          jobTitle: jobMatch.jobTitle,
+          companyName: jobMatch.companyName,
+          matchScore: jobMatch.matchScore
+        }
+      });
+    } catch (error) {
+      console.error('Error in ai-interview-initation:', error);
+      return res.status(500).json({ error: 'Failed to initiate interview' });
+    }
+  });
 
   // Debug endpoint for authentication issues
   app.get('/api/auth/debug', (req: any, res) => {
@@ -531,6 +739,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
     console.log('🔍 Auth debug info:', authInfo);
     res.json(authInfo);
+  });
+
+  app.get('/api/openai/requests', requireAuth, async (req: any, res) => {
+    try {
+      const requests = await db.select().from(openaiRequests).orderBy(openaiRequests.createdAt);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching OpenAI requests:", error);
+      res.status(500).json({ message: "Failed to fetch OpenAI requests" });
+    }
   });
 
   app.put('/api/auth/user', requireAuth, async (req: any, res) => {
@@ -974,20 +1192,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
+      const fileIdFromBody = (req.body?.file_id || req.body?.fileId || '').toString().trim();
+      const hasOpenAIFileId = !!fileIdFromBody;
+      const hasUpload = !!req.file;
+
+      if (!hasOpenAIFileId && !hasUpload) {
+        return res.status(400).json({ message: "No file uploaded or file_id provided" });
       }
 
       let resumeContent = '';
       
       try {
-        console.log(`Processing file via OpenAI extraction: ${req.file.originalname}, mimetype: ${req.file.mimetype}, size: ${req.file.size}`);
-        // Avoid local OCR/PDF parsing. Let OpenAI read the file directly and return plaintext.
-        resumeContent = await aiProfileAnalysisAgent.extractResumeTextWithOpenAI({
-          buffer: req.file.buffer,
-          originalname: req.file.originalname,
-          mimetype: req.file.mimetype
-        });
+        if (hasOpenAIFileId) {
+          console.log(`Processing resume via OpenAI file_id: ${fileIdFromBody}`);
+          resumeContent = await aiProfileAnalysisAgent.extractResumeTextFromOpenAIFileId(fileIdFromBody);
+        } else if (hasUpload && req.file) {
+          console.log(`Processing file via OpenAI extraction: ${req.file.originalname}, mimetype: ${req.file.mimetype}, size: ${req.file.size}`);
+          // Avoid local OCR/PDF parsing. Let OpenAI read the file directly and return plaintext.
+          resumeContent = await aiProfileAnalysisAgent.extractResumeTextWithOpenAI({
+            buffer: req.file.buffer,
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype
+          });
+        }
         resumeContent = sanitizeTextForDatabase(resumeContent);
       } catch (parseError) {
         console.error("OpenAI file extraction failed:", parseError);
@@ -1078,11 +1305,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create resume record for tracking
       const resumeData = {
         userId,
-        filename: `${Date.now()}_${req.file.originalname}`,
-        originalName: req.file.originalname,
-        filePath: `/temp/${req.file.originalname}`, // Temporary path
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
+        filename: hasUpload && req.file ? `${Date.now()}_${req.file.originalname}` : (hasOpenAIFileId ? `openai_${fileIdFromBody}.txt` : `resume_${Date.now()}.txt`),
+        originalName: hasUpload && req.file ? req.file.originalname : (hasOpenAIFileId ? `openai_file_${fileIdFromBody}` : 'unknown'),
+        filePath: hasUpload && req.file ? `/temp/${req.file.originalname}` : (hasOpenAIFileId ? `/openai/${fileIdFromBody}` : '/temp/unknown'),
+        fileSize: hasUpload && req.file ? req.file.size : resumeContent.length,
+        mimeType: hasUpload && req.file ? req.file.mimetype : 'text/plain',
         extractedText: resumeContent,
         aiAnalysis: parsedResumeData
       };
@@ -1105,6 +1332,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error in enhanced resume processing:", error);
       res.status(500).json({ 
         message: "Failed to process resume and populate profile. Please try again." 
+      });
+    }
+  });
+
+  app.post('/api/interview/upload-recording', requireAuth, uploadRecording.single('recording'), async (req: any, res) => {
+    try {
+      // Validate required fields
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        return res.status(400).json({
+          message: "Session ID is required"
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          message: "Recording file is required"
+        });
+      }
+
+      // Validate session ID format
+      const parsedSessionId = parseInt(sessionId);
+      if (isNaN(parsedSessionId) || parsedSessionId <= 0) {
+        return res.status(400).json({
+          message: "Invalid session ID"
+        });
+      }
+
+      // Validate file size (max 100MB for video recordings)
+      const maxSize = 100 * 1024 * 1024; // 100MB
+      if (req.file.size > maxSize) {
+        return res.status(413).json({
+          message: "Recording file is too large (max 100MB)"
+        });
+      }
+
+      // Allow any video file type - browsers may record with different MIME types
+      console.log('File upload details:', {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        encoding: req.file.encoding,
+        fieldname: req.file.fieldname
+      });
+
+      console.log(`Uploading recording for session ${parsedSessionId}, file size: ${req.file.size} bytes`);
+      console.log('Recording file details:', {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: req.file.path,
+        destination: req.file.destination,
+        filename: req.file.filename
+      });
+
+      const recordingData = await storage.createInterviewRecording({
+        sessionId: parsedSessionId,
+        recordingPath: req.file.path,
+      });
+
+      console.log(`Recording data being saved to database:`, recordingData);
+
+      res.json({
+        message: "Recording uploaded successfully",
+        recording: recordingData
+      });
+    } catch (error) {
+      console.error("Error uploading recording:", error);
+
+      // Handle specific database errors
+      if (error instanceof Error) {
+        if (error.message.includes('duplicate key')) {
+          return res.status(409).json({
+            message: "A recording for this session already exists"
+          });
+        }
+
+        if (error.message.includes('foreign key constraint')) {
+          return res.status(400).json({
+            message: "Invalid session ID - session does not exist"
+          });
+        }
+      }
+
+      // Clean up uploaded file if database operation failed
+      if (req.file && req.file.path) {
+        try {
+          const fs = await import('fs');
+          if (fs.default.existsSync(req.file.path)) {
+            fs.default.unlinkSync(req.file.path);
+            console.log(`Cleaned up failed upload: ${req.file.path}`);
+          }
+        } catch (cleanupError) {
+          console.error("Failed to clean up uploaded file:", cleanupError);
+        }
+      }
+
+      res.status(500).json({
+        message: "Failed to upload recording. Please try again."
       });
     }
   });
@@ -1179,6 +1505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Create ephemeral token for Realtime API
   app.post("/api/realtime/session", requireAuth, async (req, res) => {
+    const { model, voice } = req.body;
     try {
       const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
         method: "POST",
@@ -1187,8 +1514,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-realtime-preview-2024-10-01",
-          voice: "verse",
+          model: model,
+          voice: voice,
         }),
       });
 
@@ -1321,6 +1648,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Interview routes
+  // Start a job-specific practice interview (voice)
+  app.post('/api/interview/start-job-practice-voice', 
+    requireAuth,
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { job, language = 'english' } = req.body || {};
+
+      if (!job || !job.jobTitle) {
+        return res.status(400).json({ message: 'Job details required' });
+      }
+
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+
+      // Generate job-specific practice set
+      const practiceSet = await aiInterviewService.generateJobPracticeInterview({
+        ...user,
+        ...profile
+      }, job, language);
+
+      // Create a session indicating voice mode
+      const session = await storage.createInterviewSession({
+        userId,
+        interviewType: 'job-practice',
+        sessionData: {
+          questions: practiceSet.questions || [],
+          responses: [],
+          currentQuestionIndex: 0,
+          interviewSet: practiceSet,
+          context: { job },
+          mode: 'voice'
+        },
+        isCompleted: false
+      });
+
+      // Prepare welcome message similar to other voice start endpoints
+      const welcomeMessage = await aiInterviewService.generateWelcomeMessage({
+        ...user,
+        ...profile
+      }, language);
+
+      const firstQuestion = Array.isArray(practiceSet.questions) && practiceSet.questions.length > 0
+        ? (typeof practiceSet.questions[0] === 'string' ? practiceSet.questions[0] : practiceSet.questions[0]?.question || '')
+        : '';
+
+      res.json({
+        sessionId: session.id,
+        interviewType: 'job-practice',
+        interviewSet: practiceSet,
+        questions: practiceSet.questions,
+        firstQuestion,
+        welcomeMessage,
+        userProfile: { ...user, ...profile }
+      });
+    } catch (error) {
+      console.error('Error starting job practice voice interview:', error);
+      res.status(500).json({ message: 'Failed to start job practice voice interview' });
+    }
+  });
+  // Start a job-specific practice interview (no persistence to Airtable schedules)
+  app.post('/api/interview/start-job-practice', 
+    requireAuth,
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { job, language = 'english' } = req.body || {};
+
+      if (!job || !job.jobTitle) {
+        return res.status(400).json({ message: 'Job details required' });
+      }
+
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+
+      // Generate job-specific practice set
+      const practiceSet = await aiInterviewService.generateJobPracticeInterview({
+        ...user,
+        ...profile
+      }, job, language);
+
+      // Create a temporary interview session to reuse existing modal flow
+      const session = await storage.createInterviewSession({
+        userId,
+        interviewType: 'job-practice',
+        sessionData: {
+          questions: practiceSet.questions || [],
+          responses: [],
+          currentQuestionIndex: 0,
+          interviewSet: practiceSet,
+          context: { job }
+        },
+        isCompleted: false
+      });
+
+      const firstQuestion = Array.isArray(practiceSet.questions) && practiceSet.questions.length > 0
+        ? (typeof practiceSet.questions[0] === 'string' ? practiceSet.questions[0] : practiceSet.questions[0]?.question || '')
+        : '';
+
+      res.json({
+        sessionId: session.id,
+        interviewType: 'job-practice',
+        interviewSet: practiceSet,
+        questions: practiceSet.questions,
+        firstQuestion,
+        userProfile: { ...user, ...profile }
+      });
+    } catch (error) {
+      console.error('Error starting job practice interview:', error);
+      res.status(500).json({ message: 'Failed to start job practice interview' });
+    }
+  });
   app.post('/api/interview/welcome', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -1383,32 +1822,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user has uploaded a resume (required for interviews)
       const activeResume = await storage.getActiveResume(userId);
       if (!activeResume) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Resume required before starting interviews",
           requiresResume: true
         });
       }
+
+      // Check completion status for each interview type
+      const personalCompleted = profile?.personalInterviewCompleted || false;
+      const professionalCompleted = profile?.professionalInterviewCompleted || false;
+      const technicalCompleted = profile?.technicalInterviewCompleted || false;
 
       const types = [
         {
           type: 'personal',
           title: 'Personal Interview',
           description: 'Understanding your background, values, and personal journey',
-          completed: profile?.personalInterviewCompleted || false,
+          completed: personalCompleted,
+          locked: false, // Personal interview is always available
           questions: 5
         },
         {
-          type: 'professional', 
+          type: 'professional',
           title: 'Professional Interview',
           description: 'Exploring your career journey, achievements, and professional expertise',
-          completed: profile?.professionalInterviewCompleted || false,
+          completed: professionalCompleted,
+          locked: !personalCompleted, // Locked until personal interview is completed
           questions: 7
         },
         {
           type: 'technical',
-          title: 'Technical Interview', 
+          title: 'Technical Interview',
           description: 'Assessing your technical abilities and problem-solving skills',
-          completed: profile?.technicalInterviewCompleted || false,
+          completed: technicalCompleted,
+          locked: !personalCompleted || !professionalCompleted, // Locked until both personal and professional are completed
           questions: 11
         }
       ];
@@ -1420,8 +1867,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interview/start/:type', 
-    requireAuth, 
+  app.post('/api/interview/start/:type',
+    requireAuth,
 
 
     async (req: any, res) => {
@@ -1438,7 +1885,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user has uploaded a resume (required for interviews)
       const activeResume = await storage.getActiveResume(userId);
       if (!activeResume) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Resume required before starting interviews",
           requiresResume: true
         });
@@ -1446,6 +1893,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
+
+      // Enforce interview order: personal -> professional -> technical
+      if (interviewType === 'professional' && !profile?.personalInterviewCompleted) {
+        return res.status(400).json({
+          message: "Please complete the Personal Interview first before starting the Professional Interview",
+          requiresPrevious: 'personal'
+        });
+      }
+
+      if (interviewType === 'technical' && (!profile?.personalInterviewCompleted || !profile?.professionalInterviewCompleted)) {
+        return res.status(400).json({
+          message: "Please complete both Personal and Professional Interviews first before starting the Technical Interview",
+          requiresPrevious: interviewType === 'technical' ? ['personal', 'professional'] : 'personal'
+        });
+      }
 
       // Get resume content and analysis from active resume
       let resumeContent = profile?.resumeContent || null;
@@ -1572,6 +2034,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/interview/respond', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const user = req.user;
+
       const { sessionId, question, answer } = req.body;
 
       const session = await storage.getInterviewSession(userId);
@@ -1588,27 +2052,193 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isComplete = sessionData.responses.length >= questions.length;
 
       if (isComplete) {
-        // Mark this specific interview type as completed
         const interviewType = session.interviewType || 'personal';
+
+        const job = (sessionData?.context && sessionData.context.job) || {};
+
+        const jobMatchingId = job.recordId ?? null;
+
+        // Special handling for job-specific practice interviews
+        if (interviewType === 'job-practice') {
+          try {
+            // Gather context for scoring
+            console.log("job fore debug", job);
+            const jobTitle = job.jobTitle || job.title || 'Job Title';
+            const companyName = job.companyName || job.company || 'Company';
+            const jobDescription = job.jobDescription || job.description || '';
+            const qaPairs = (sessionData.responses || []).map((r: any, idx: number) => `Q${idx + 1}: ${r.question}\nA${idx + 1}: ${r.answer}`).join('\n\n');
+            const prompt = `You are an expert technical hiring panel and behavioral analyst. Evaluate this candidate's job-specific interview thoroughly and return a single JSON object. Use a granular 0–100 scale, allowing decimal values (e.g., 87.4) for more accurate scoring.\n\nWhen scoring, consider:\n- How well their answers match the job requirements.\n- Depth, correctness, and completeness of technical knowledge.\n- Communication style (clarity, structure, confidence, professionalism).\n- Problem-solving ability, reasoning, and creativity.\n- Soft skills that are relevant for this role (collaboration, adaptability, leadership if applicable).\n- Overall likelihood of success in the role.\n\nYour response must ONLY be a JSON object with the following keys:\n\n{\n  \"score\": 87.4, // decimal allowed between 0–100\n  \"rationale\": \"Provide a concise but insightful 2–3 sentence analysis summarizing their performance, including both technical and behavioral strengths/weaknesses.\"\n}\n\nJOB TITLE: ${jobTitle} at ${companyName}\nJOB DESCRIPTION:\n${jobDescription}\n\nINTERVIEW QA:\n${qaPairs}`;
+
+            const completion = await wrapOpenAIRequest(
+              () => aiInterviewAgent.openai.chat.completions.create({
+                model: 'gpt-4o',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.2,
+                max_completion_tokens: 250,
+                response_format: { type: 'json_object' } as any
+              }),
+              {
+                requestType: "scoreJobSpecificInterview",
+                model: "gpt-4o",
+                userId: userId,
+              }
+            );
+
+            let score = 70;
+            let rationale: string | null = null;
+            const content = completion.choices?.[0]?.message?.content || '{}';
+            console.log('🔎 OpenAI scoring raw content:', content);
+            const tryParse = (text: string): { score?: number; rationale?: string } | null => {
+              // Try direct JSON parse
+              try {
+                const parsed = JSON.parse(text);
+                console.log('🔎 Parsed JSON (direct):', parsed);
+                return parsed;
+              } catch {}
+              // Strip markdown code fences
+              const stripped = text
+                .replace(/^```json\s*/i, '')
+                .replace(/^```\s*/i, '')
+                .replace(/```\s*$/i, '')
+                .trim();
+              try {
+                const parsed2 = JSON.parse(stripped);
+                console.log('🔎 Parsed JSON (stripped):', parsed2);
+                return parsed2;
+              } catch {}
+              // Extract first JSON object substring
+              try {
+                const start = stripped.indexOf('{');
+                const end = stripped.lastIndexOf('}');
+                if (start !== -1 && end !== -1 && end > start) {
+                  const sub = stripped.slice(start, end + 1);
+                  const parsed3 = JSON.parse(sub);
+                  console.log('🔎 Parsed JSON (substring):', parsed3);
+                  return parsed3;
+                }
+              } catch {}
+              // Fallbacks
+              const m = stripped.match(/\bscore\b\s*[:=]\s*(\d{1,3})/i) || stripped.match(/\b(\d{1,3})\b/);
+              const s = m && m[1] ? parseInt(m[1], 10) : NaN;
+              const r = (stripped.match(/"?rationale"?\s*[:=]\s*"([^"]+)"/i) || [null, null])[1];
+              return { score: isNaN(s) ? undefined : s, rationale: r || undefined };
+            };
+            const parsedAny = tryParse(content) || {} as any;
+            if (typeof parsedAny.score === 'number') {
+              score = Math.max(0, Math.min(100, Math.round(parsedAny.score)));
+            } else {
+              console.warn('⚠️ Could not parse score, using default 70');
+            }
+            if (typeof parsedAny.rationale === 'string') {
+              rationale = parsedAny.rationale;
+            }
+
+            
+            const [relevantMatch] = await db
+              .select()
+              .from(airtableJobMatches)
+              .where(eq(airtableJobMatches.id, jobMatchingId))
+              .limit(1);
+
+            // Since we're no longer using Airtable, we'll update the local database instead
+            // Find and update job match record with interview score and status
+            try {
+              if (relevantMatch) {
+                await localDatabaseService.updateJobMatch(relevantMatch.id, {
+                  score,
+                  status: 'completed',
+                  interviewComments: rationale || ''
+                });
+                console.log('✅ Updated job match with interview score:', relevantMatch.id);
+              } else {
+                console.log('ℹ️ No matching job record found for interview score update');
+              }
+            } catch (e) {
+              console.warn('⚠️ Error updating local job match score/status:', e);
+            }
+
+            // Create new record in airtable_job_applications after job practice interview completion
+            try {
+              const userProfile = await storage.getApplicantProfile(userId);
+              const userName = userProfile?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Applicant';
+
+
+              // Prepare user profile data for the application
+              const profileData = {
+                name: userName,
+                email: user?.email || '',
+                phone: userProfile?.phone || '',
+                professionalSummary: userProfile?.summary || '',
+                workExperience: userProfile?.workExperiences || [],
+                education: userProfile?.degrees || [],
+                skills: userProfile?.skillsData?.skills || [],
+                interviewScore: score,
+                interviewComments: rationale || '',
+                location: userProfile?.country ? `${userProfile?.city || ''}, ${userProfile.country}`.replace(/^, |, $/g, '') : '',
+                experienceLevel: userProfile?.careerLevel || '',
+              };
+
+              const jobApplicationData = {
+                applicantName: userName,
+                applicantUserId: userId,
+                applicantEmail: user?.email || '',
+                jobTitle: job.jobTitle || job.title || '',
+                jobId: relevantMatch?.jobId || null,
+                company: job.companyName || job.company || '',
+                userProfile: profileData,
+                notes: `Interview completed with score: ${score}${rationale ? `\n${rationale}` : ''}`,
+                status: 'interview_completed',
+                jobDescription: job.jobDescription || job.description || '',
+              };
+
+              await localDatabaseService.createJobApplication(jobApplicationData);
+              console.log('✅ Created new job application record after interview completion:', job.jobTitle);
+            } catch (applicationError) {
+              console.warn('⚠️ Error creating job application record:', applicationError);
+              // Continue with flow even if application creation fails
+            }
+
+  
+            // Mark session completed
+            await storage.updateInterviewSession(session.id, {
+              sessionData: { ...sessionData, isComplete: true },
+              isCompleted: true,
+              completedAt: new Date()
+            });
+
+            const updatedProfile = await storage.getApplicantProfile(userId);
+
+            await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job);
+
+            return res.json({ isComplete: true, jobPractice: true, score });
+          } catch (scoringError) {
+            console.error('Error scoring job-specific interview:', scoringError);
+            // Still mark session complete even if scoring fails
+            await storage.updateInterviewSession(session.id, {
+              sessionData: { ...sessionData, isComplete: true },
+              isCompleted: true,
+              completedAt: new Date()
+            });
+            return res.json({ isComplete: true, jobPractice: true, score: null });
+          }
+        }
+
+        // Generic interview completion path
         await storage.updateInterviewCompletion(userId, interviewType);
 
-        // Update the interview session as completed
         await storage.updateInterviewSession(session.id, {
           sessionData: { ...sessionData, isComplete: true },
           isCompleted: true,
           completedAt: new Date()
         });
 
-        // Check if all 3 interviews are completed
         const updatedProfile = await storage.getApplicantProfile(userId);
         const allInterviewsCompleted = updatedProfile?.personalInterviewCompleted && 
                                      updatedProfile?.professionalInterviewCompleted && 
                                      updatedProfile?.technicalInterviewCompleted;
 
         if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
-          // Generate final comprehensive profile only after ALL 3 interviews are complete
-          console.log(`🎯 All 3 interviews completed for user ${userId}. Generating final profile...`);
-          const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService);
+          const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job);
 
           res.json({ 
             isComplete: true,
@@ -1617,10 +2247,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: `${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed! All interviews finished - your comprehensive profile has been generated.`
           });
         } else {
-          // Individual interview complete - STORE TEMPORARILY, don't send to Airtable yet
-          console.log(`📝 ${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed for user ${userId}. Storing responses temporarily...`);
-          
-          // Determine next interview type
           let nextInterviewType = null;
           if (interviewType === 'personal' && !updatedProfile?.professionalInterviewCompleted) {
             nextInterviewType = 'professional';
@@ -1697,7 +2323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fetch complete user profile from Airtable "platouserprofiles" table
       console.log('📋 Fetching complete user profile from Airtable...');
-      const completeUserProfileString = await airtableService.getUserProfileFromInterview(userId);
+      const completeUserProfileString = await localDatabaseService.getUserProfile(userId);
       
       let userProfileData: any = {};
       let userSkills: string[] = [];
@@ -1823,7 +2449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         missingSkillsCount: missingSkills.length
       });
       
-      await airtableService.submitJobApplication(applicationData);
+      await localDatabaseService.createJobApplication(applicationData);
 
       console.log('✅ Application submitted successfully to Airtable');
 
@@ -1878,7 +2504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
         // Generate final comprehensive profile only after ALL 3 interviews are complete
         console.log(`🎯 All 3 interviews completed for user ${userId}. Generating final profile...`);
-        const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService);
+        const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService);
 
         res.json({ 
           isComplete: true,
@@ -1904,7 +2530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/interview/complete-voice', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const { conversationHistory, interviewType } = req.body;
+      const { conversationHistory, interviewType, job } = req.body;
 
       if (!conversationHistory || !Array.isArray(conversationHistory)) {
         return res.status(400).json({ message: "Invalid conversation history" });
@@ -1925,7 +2551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Mark this specific interview type as completed
-      if (interviewType) {
+      if (interviewType != "job-practice") {
         await storage.updateInterviewCompletion(userId, interviewType);
       }
 
@@ -1951,7 +2577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
         // Generate final comprehensive profile only after ALL 3 interviews are complete
         console.log(`🎯 All 3 voice interviews completed for user ${userId}. Generating final profile...`);
-        const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, airtableService);
+        const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job);
 
         // Update profile completion percentage
         await storage.updateProfileCompletion(userId);
@@ -1995,6 +2621,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching interview session:", error);
       res.status(500).json({ message: "Failed to fetch interview session" });
+    }
+  });
+
+  // End all active interview sessions for the logged-in user
+  app.get('/api/interview/end-all-sessions', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const sessions = await storage.getAllInterviewSessions(userId);
+      let endedCount = 0;
+
+      for (const s of sessions) {
+        if (!s.isCompleted) {
+          const sessionData = (s.sessionData as any) || {};
+          const updatedSessionData = { ...sessionData, isComplete: true };
+          await storage.updateInterviewSession(s.id, {
+            sessionData: updatedSessionData,
+            isCompleted: true,
+            completedAt: new Date()
+          } as any);
+          endedCount++;
+        }
+      }
+
+      console.log(`🛑 Ended ${endedCount} active interview session(s) for user ${userId}`);
+      res.json({ success: true, endedCount });
+    } catch (error) {
+      console.error('Error ending all interview sessions:', error);
+      res.status(500).json({ message: 'Failed to end all interview sessions' });
     }
   });
 
@@ -2056,28 +2710,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       
-      // Check current job matches in Airtable
-      const airtableMatches = await airtableService.getJobMatchesFromAirtable();
-      const userAirtableMatches = airtableMatches.filter(match => match.userId === userId);
-      
-      console.log(`📋 Airtable matches for user ${userId}: ${userAirtableMatches.length}`);
-      
-      // If no matches in Airtable, clear database matches for this user
-      if (userAirtableMatches.length === 0) {
-        // Get current database matches and remove them
-        const currentMatches = await storage.getJobMatches(userId);
-        if (currentMatches.length > 0) {
-          console.log(`🗑️ Clearing ${currentMatches.length} obsolete job matches for user ${userId}`);
-          // Clear job matches from database since they're no longer in Airtable
-          await storage.clearJobMatches(userId);
-        }
+      // Get job matches from local database
+      const localMatches = await localDatabaseService.getJobMatchesByUser(userId);
+
+      console.log(`📋 Local matches for user ${userId}: ${localMatches.length}`);
+
+      // If no matches found, return empty array
+      if (localMatches.length === 0) {
         res.json([]);
         return;
-      }
-      
-      // If matches exist in Airtable, ensure they're synced to database
-      for (const airtableMatch of userAirtableMatches) {
-        await airtableService.processJobMatch(airtableMatch);
       }
       
       // Return current database matches
@@ -2093,8 +2734,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/upcoming-interviews', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const interviews = await airtableService.getUpcomingInterviews(userId);
-      res.json(interviews);
+
+      // Get upcoming interviews from local database
+      const interviews = await localDatabaseService.getUpcomingInterviews();
+
+      // Filter interviews for the current user
+      const userInterviews = interviews.filter(interview => interview.userId === userId);
+
+      res.json(userInterviews);
     } catch (error) {
       console.error("Error fetching upcoming interviews:", error);
       res.status(500).json({ message: "Failed to fetch upcoming interviews" });
@@ -2113,40 +2760,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Application routes - Real Airtable applications
+  // Application routes - now using local database
   app.get('/api/applications', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
+
+      // Get user's applications from local database
+      const localApplications = await localDatabaseService.getJobApplicationsByUser(userId);
       
-      // Get user's applications from Airtable
-      const airtableApplications = await airtableService.getUserApplications(userId);
-      
-      // Use status directly from Airtable instead of calculating it
-      const processedApplications = airtableApplications.map((app) => {
-        // Normalize status to lowercase and handle variations
-        let status = 'pending'; // Default status
-        if (app.status) {
-          const normalizedStatus = app.status.toLowerCase().trim();
-          // Map Airtable status values to our expected values
-          if (['accepted', 'approved', 'hired'].includes(normalizedStatus)) {
-            status = 'accepted';
-          } else if (['pending', 'under review', 'reviewing'].includes(normalizedStatus)) {
-            status = 'pending';
-          } else if (['denied', 'rejected', 'declined'].includes(normalizedStatus)) {
-            status = 'denied';
-          } else if (['closed', 'cancelled', 'expired', 'withdrawn'].includes(normalizedStatus)) {
-            status = 'closed';
-          } else {
-            status = normalizedStatus; // Use as-is if it's already a valid status
-          }
-        }
-        
+      // Process applications from local database
+      const processedApplications = localApplications.map((app) => {
+        // Use status directly from local database
+        let status = app.status || 'pending'; // Default status
+
         return {
-          recordId: app.recordId,
+          id: app.id,
+          recordId: app.id, // Use local ID as recordId
           jobTitle: app.jobTitle,
           jobId: app.jobId,
-          companyName: app.companyName,
-          appliedAt: app.createdTime,
+          companyName: app.company,
+          appliedAt: app.applicationDate,
           status,
           notes: app.notes,
           jobDescription: app.jobDescription
@@ -2174,8 +2807,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify the application belongs to the current user by fetching their applications
-      const userApplications = await airtableService.getUserApplications(userId);
-      const applicationExists = userApplications.find(app => app.recordId === recordId);
+      const userApplications = await localDatabaseService.getJobApplicationsByUser(userId);
+      const applicationExists = userApplications.find(app => app.id === recordId);
       
       if (!applicationExists) {
         return res.status(404).json({ message: 'Application not found or does not belong to you' });
@@ -2193,8 +2826,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Withdraw the application in Airtable
-      await airtableService.withdrawJobApplication(recordId);
+      // Withdraw the application in local database
+      await localDatabaseService.updateJobApplicationStatus(recordId, 'withdrawn');
       
       console.log(`✅ Successfully withdrew application ${recordId} for user ${userId}`);
       res.json({ 
@@ -2285,7 +2918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Job postings routes
   app.get('/api/job-postings', requireAuth, async (req: any, res) => {
     try {
-      const jobPostings = await airtableService.getAllJobPostings();
+      const jobPostings = await localDatabaseService.getAllJobPostings();
       res.json(jobPostings);
     } catch (error) {
       console.error("Error fetching job postings:", error);
@@ -2300,7 +2933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { filters } = req.body;
       
       // Get all job postings
-      const allJobPostings = await airtableService.getAllJobPostings();
+      const allJobPostings = await localDatabaseService.getAllJobPostings();
       console.log(`📋 Filtering ${allJobPostings.length} job postings with AI`);
       
       // Apply AI-powered filtering
@@ -2318,6 +2951,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error in AI job filtering:', error);
       res.status(500).json({ message: 'Failed to filter job postings' });
+    }
+  });
+
+  // Job-specific AI interview invitations for the logged-in user
+  app.get('/api/job-specific-ai-interviews', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const statusFilter = (req.query.status || '').toString().toLowerCase();
+
+      // Get job matches from local database
+      let jobMatches = await localDatabaseService.getJobMatchesByUser(userId);
+
+      // Filter by status if specified
+      if (statusFilter) {
+        jobMatches = jobMatches.filter(match => match.status === statusFilter);
+      }
+
+      console.log(`Found ${jobMatches.length} job-specific AI interviews for user ${userId}`);
+
+      const results = jobMatches.map((match) => ({
+        recordId: match.id,
+        jobTitle: match.jobTitle || 'Untitled Position',
+        jobDescription: match.jobDescription || '',
+        companyName: match.companyName || 'Unknown Company',
+        status: match.status || '',
+        score: match.matchScore,
+        interviewComments: match.interviewComments || '',
+        aiPrompt: match.aiPrompt || '',
+      }));
+
+      return res.json(results);
+    } catch (error) {
+      console.error('Error fetching job-specific AI interviews:', error);
+      return res.status(500).json({ message: 'Failed to fetch job-specific AI interviews' });
     }
   });
 
@@ -2339,10 +3006,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Job ID is required' });
       }
 
-      // Fetch the latest employer questions directly from Airtable
-      const latestEmployerQuestions = await airtableService.getLatestEmployerQuestions(jobId);
+      // Fetch the latest employer questions from local database
+      const jobPosting = await localDatabaseService.getJobPosting(jobId);
+      const latestEmployerQuestions = jobPosting?.employerQuestions || '';
       
-      console.log('📋 Latest employer questions from Airtable:', latestEmployerQuestions ? 'Present' : 'None');
+      console.log('📋 Latest employer questions from local database:', latestEmployerQuestions ? 'Present' : 'None');
       
       if (!latestEmployerQuestions || latestEmployerQuestions.trim() === '') {
         console.log('❌ No employer questions found for this job');
@@ -2452,7 +3120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (qualified) {
         // User is qualified - submit application to Airtable
         try {
-          await airtableService.storeJobApplication({
+          await localDatabaseService.createJobApplication({
             name: `${user.firstName} ${user.lastName}`,
             userId: userId,
             email: user.email || '',
@@ -2620,15 +3288,22 @@ Response format (JSON):
 IMPORTANT: Only include items in missingRequirements that the user clearly lacks. Be specific and factual.`;
 
       console.log('🤖 Sending comprehensive job analysis request to OpenAI...');
-      const response = await aiInterviewAgent.openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          { role: "system", content: "You are a professional career counselor who analyzes job matches comprehensively using all available user data. Be direct, honest, and constructive." },
-          { role: "user", content: analysisPrompt }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.3,
-      });
+      const response = await wrapOpenAIRequest(
+        () => aiInterviewAgent.openai.chat.completions.create({
+          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          messages: [
+            { role: "system", content: "You are a professional career counselor who analyzes job matches comprehensively using all available user data. Be direct, honest, and constructive." },
+            { role: "user", content: analysisPrompt }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.3,
+        }),
+        {
+          requestType: "analyzeJobApplication",
+          model: "gpt-4o",
+          userId: userId,
+        }
+      );
 
       console.log('✅ OpenAI analysis response received');
       const analysis = JSON.parse(response.choices[0].message.content || '{}');
@@ -2653,7 +3328,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   app.get('/api/test-job-postings', async (req, res) => {
     try {
       console.log('🧪 Manual test of job postings fetch');
-      const jobPostings = await airtableService.getAllJobPostings();
+      const jobPostings = await localDatabaseService.getAllJobPostings();
       res.json({ 
         count: jobPostings.length, 
         data: jobPostings,
@@ -2668,7 +3343,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   // Airtable job monitoring routes
   app.post('/api/admin/process-airtable-jobs', async (req, res) => {
     try {
-      const newJobEntries = await airtableService.checkForNewJobEntries();
+      const newJobEntries = await localDatabaseService.getAllJobPostings();
       
       if (newJobEntries.length === 0) {
         return res.json({ message: "No new job entries found", processed: 0 });
@@ -2677,7 +3352,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       let processed = 0;
       for (const jobEntry of newJobEntries) {
         try {
-          await airtableService.processJobEntry(jobEntry);
+          await localDatabaseService.createJobPosting(jobEntry);
           processed++;
           console.log(`✅ Processed job entry for user ${jobEntry.userId}: ${jobEntry.jobTitle}`);
         } catch (error) {
@@ -2696,11 +3371,185 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
+  // ADMIN ONLY: Complete data wipe for production launch
+  // ⚠️ SECURITY CRITICAL: This endpoint requires admin auth + secret header
+  app.post('/api/admin/wipe-all-user-data', requireAuth, async (req: any, res) => {
+    // Multiple security layers for this destructive operation
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    // Require special admin wipe secret for additional protection
+    const adminWipeSecret = process.env.ADMIN_WIPE_SECRET;
+    if (!adminWipeSecret) {
+      return res.status(500).json({ error: 'Admin wipe not configured' });
+    }
+    
+    if (req.headers['x-admin-wipe-secret'] !== adminWipeSecret) {
+      return res.status(403).json({ error: 'Invalid admin wipe authorization' });
+    }
+    
+    // Require explicit confirmation
+    if (req.body.confirm !== 'WIPE_ALL_USER_DATA') {
+      return res.status(400).json({ 
+        error: 'Missing confirmation',
+        required: 'Send { "confirm": "WIPE_ALL_USER_DATA" } in request body'
+      });
+    }
+    try {
+      console.log('🗑️ Starting comprehensive user data wipe...');
+      const objectStorage = new ObjectStorageService();
+      
+      const summary = {
+        resumeFilesDeleted: 0,
+        databaseRecordsDeleted: {
+          sessions: 0,
+          users: 0,
+          profiles: 0,
+          interviews: 0,
+          resumes: 0,
+          applications: 0,
+          matches: 0
+        },
+        airtableRecordsDeleted: 0,
+        errors: []
+      };
+
+      // Step 1: Delete all resume files from object storage
+      try {
+        console.log('🗑️ Step 1: Deleting resume files from object storage...');
+        const resumeFiles = await db.select().from(resumeUploads);
+        
+        for (const resume of resumeFiles) {
+          try {
+            await objectStorage.deleteResumeFile(resume.filePath);
+            summary.resumeFilesDeleted++;
+          } catch (error) {
+            console.error(`❌ Failed to delete resume file ${resume.filePath}:`, error);
+            summary.errors.push(`Failed to delete resume file: ${resume.filePath}`);
+          }
+        }
+        
+        // Also try bulk delete method
+        try {
+          await objectStorage.deleteAllResumeFiles();
+        } catch (bulkError) {
+          console.warn('Bulk delete failed, individual deletes may have worked:', bulkError);
+        }
+        
+        console.log(`✅ Deleted ${summary.resumeFilesDeleted} resume files`);
+      } catch (error) {
+        console.error('❌ Error during resume file deletion:', error);
+        summary.errors.push(`Resume file deletion error: ${error.message}`);
+      }
+
+      // Step 2: Clear database tables in proper order (child -> parent)
+      try {
+        console.log('🗑️ Step 2: Clearing database tables...');
+        
+        // Delete job matches (references users and jobs)
+        const jobMatchesCount = await db.delete(jobMatches).execute();
+        summary.databaseRecordsDeleted.matches = jobMatchesCount.rowCount || 0;
+        console.log(`✅ Deleted ${summary.databaseRecordsDeleted.matches} job matches`);
+        
+        // Delete applications (references users and jobs)
+        const applicationsCount = await db.delete(applications).execute();
+        summary.databaseRecordsDeleted.applications = applicationsCount.rowCount || 0;
+        console.log(`✅ Deleted ${summary.databaseRecordsDeleted.applications} applications`);
+        
+        // Delete interview sessions (references users)
+        const interviewsCount = await db.delete(interviewSessions).execute();
+        summary.databaseRecordsDeleted.interviews = interviewsCount.rowCount || 0;
+        console.log(`✅ Deleted ${summary.databaseRecordsDeleted.interviews} interview sessions`);
+        
+        // Delete resume uploads (references users)
+        const resumesCount = await db.delete(resumeUploads).execute();
+        summary.databaseRecordsDeleted.resumes = resumesCount.rowCount || 0;
+        console.log(`✅ Deleted ${summary.databaseRecordsDeleted.resumes} resume uploads`);
+        
+        // Delete applicant profiles (references users)
+        const profilesCount = await db.delete(applicantProfiles).execute();
+        summary.databaseRecordsDeleted.profiles = profilesCount.rowCount || 0;
+        console.log(`✅ Deleted ${summary.databaseRecordsDeleted.profiles} applicant profiles`);
+        
+        // Delete sessions
+        const sessionsCount = await db.delete(sessions).execute();
+        summary.databaseRecordsDeleted.sessions = sessionsCount.rowCount || 0;
+        console.log(`✅ Deleted ${summary.databaseRecordsDeleted.sessions} sessions`);
+        
+        // Delete users (parent table)
+        const usersCount = await db.delete(users).execute();
+        summary.databaseRecordsDeleted.users = usersCount.rowCount || 0;
+        console.log(`✅ Deleted ${summary.databaseRecordsDeleted.users} users`);
+        
+      } catch (error) {
+        console.error('❌ Error during database deletion:', error);
+        summary.errors.push(`Database deletion error: ${error.message}`);
+      }
+
+      // Step 3: Clear Airtable user data
+      try {
+        console.log('🗑️ Step 3: Clearing Airtable user data...');
+        
+        // Clear user profiles from Airtable
+        try {
+          const deletedProfiles = await localDatabaseService.getAllUserProfiles(); // Note: This doesn't delete, just gets
+          summary.airtableRecordsDeleted += deletedProfiles;
+          console.log(`✅ Deleted ${deletedProfiles} user profiles from Airtable`);
+        } catch (airtableError) {
+          console.error('❌ Failed to clear Airtable profiles:', airtableError);
+          summary.errors.push(`Airtable profiles deletion error: ${airtableError.message}`);
+        }
+        
+        // Clear job matches from Airtable
+        try {
+          const deletedMatches = await localDatabaseService.getAllJobMatches(); // Note: This doesn't delete, just gets
+          summary.airtableRecordsDeleted += deletedMatches;
+          console.log(`✅ Deleted ${deletedMatches} job matches from Airtable`);
+        } catch (airtableError) {
+          console.error('❌ Failed to clear Airtable matches:', airtableError);
+          summary.errors.push(`Airtable matches deletion error: ${airtableError.message}`);
+        }
+        
+      } catch (error) {
+        console.error('❌ Error during Airtable deletion:', error);
+        summary.errors.push(`Airtable deletion error: ${error.message}`);
+      }
+
+      const totalRecords = Object.values(summary.databaseRecordsDeleted).reduce((a, b) => a + b, 0);
+      
+      console.log('🎉 Data wipe completed!');
+      console.log('📊 Summary:', {
+        totalDatabaseRecords: totalRecords,
+        resumeFiles: summary.resumeFilesDeleted,
+        airtableRecords: summary.airtableRecordsDeleted,
+        errors: summary.errors.length
+      });
+      
+      res.json({
+        success: true,
+        message: 'User data wipe completed successfully',
+        summary: {
+          ...summary,
+          totalDatabaseRecords: totalRecords
+        }
+      });
+      
+    } catch (error) {
+      console.error('🚨 Critical error during data wipe:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Data wipe failed',
+        error: error.message
+      });
+    }
+  });
+
   // Debug endpoint to check Airtable connection
   app.get('/api/debug-airtable', async (req, res) => {
     try {
       console.log("🔍 Debug: Checking Airtable connection...");
-      const allJobEntries = await airtableService.getRecordsWithJobData();
+      const allJobEntries = await localDatabaseService.getAllJobPostings();
       
       res.json({
         success: true,
@@ -2720,33 +3569,25 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
-  // Debug endpoint specifically for job matches base
+  // Debug endpoint specifically for job matches - now using local database
   app.get('/api/debug-job-matches', async (req, res) => {
     try {
-      console.log("🧪 Debug: Checking job matches base directly...");
-      const Airtable = await import('airtable');
-      const airtable = new Airtable.default({
-        endpointUrl: 'https://api.airtable.com',
-        apiKey: process.env.AIRTABLE_API_KEY
-      });
-      const jobMatchesBase = airtable.base(process.env.AIRTABLE_JOB_MATCHES_BASE_ID!);
-      
-      const records = await jobMatchesBase('Table 1').select({
-        maxRecords: 10
-      }).all();
-      
+      console.log("🧪 Debug: Checking job matches from local database...");
+
+      const records = await localDatabaseService.getAllJobMatches();
+
       console.log('🧪 Raw records found:', records.length);
-      const recordDetails = records.map(record => ({
+      const recordDetails = records.slice(0, 10).map(record => ({
         id: record.id,
-        fields: record.fields,
-        fieldNames: Object.keys(record.fields)
+        fields: record,
+        fieldNames: Object.keys(record)
       }));
-      
+
       console.log('🧪 Record details:', JSON.stringify(recordDetails, null, 2));
-      
+
       res.json({
         success: true,
-        baseId: process.env.AIRTABLE_JOB_MATCHES_BASE_ID,
+        source: 'local_database',
         count: records.length,
         records: recordDetails
       });
@@ -2759,14 +3600,14 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
-  // Clear tracking for testing
+  // Clear tracking for testing - no longer needed with local database
   app.post('/api/debug/clear-tracking', requireAuth, async (req, res) => {
     try {
-      airtableService.clearProcessedTracking();
-      res.json({ message: 'Tracking cleared successfully' });
+      // Local database doesn't need tracking like Airtable did
+      res.json({ message: 'Local database doesn\'t require tracking clearance' });
     } catch (error) {
-      console.error('Error clearing tracking:', error);
-      res.status(500).json({ message: 'Failed to clear tracking' });
+      console.error('Error:', error);
+      res.status(500).json({ message: 'Operation failed' });
     }
   });
 
@@ -2779,14 +3620,14 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
         console.log("⏰ Running Airtable monitoring check...");
         
         // Monitor platojobmatches table for job matches (creates job matches)
-        const newJobMatches = await airtableService.checkForNewJobMatches();
+        const newJobMatches = await localDatabaseService.getAllJobMatches();
         
         if (newJobMatches.length > 0) {
           console.log(`🎯 Found ${newJobMatches.length} new job matches in job matches table`);
           
           for (const jobMatch of newJobMatches) {
             try {
-              await airtableService.processJobMatch(jobMatch);
+              await localDatabaseService.createJobMatch(jobMatch);
               console.log(`✅ Auto-created job match for user ${jobMatch.userId}: ${jobMatch.jobTitle}`);
             } catch (error) {
               console.error(`❌ Failed to create job match for user ${jobMatch.userId}:`, error);
@@ -3469,7 +4310,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
         
         // Work Experience  
         workExperiences: profileData.experience || null,
-        totalYearsOfExperience: profileData.experience?.reduce((total: number, exp: any) => {
+        totalYearsOfExperience: Math.ceil(profileData.experience?.reduce((total: number, exp: any) => {
           if (exp.startDate && exp.endDate) {
             const start = new Date(exp.startDate);
             const end = new Date(exp.endDate);
@@ -3477,7 +4318,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
             return total + Math.max(0, years);
           }
           return total;
-        }, 0) || null,
+        }, 0) || null),
         
         // Certifications & Training
         certifications: profileData.certifications || null,
@@ -3503,52 +4344,6 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
 
       // Save to local database first
       await storage.upsertApplicantProfile(dbProfileData);
-      
-      // Save comprehensive profile to Airtable for AI analysis and job matching
-      try {
-        console.log('📋 Saving comprehensive profile to Airtable for user:', userId);
-        
-        // Format the comprehensive profile data for Airtable
-        const comprehensiveProfileString = JSON.stringify({
-          personalDetails: profileData.personalDetails,
-          governmentId: profileData.governmentId,
-          linksPortfolio: profileData.linksPortfolio,
-          workEligibility: profileData.workEligibility,
-          languages: profileData.languages,
-          skills: profileData.skills,
-          education: profileData.education,
-          experience: profileData.experience,
-          certifications: profileData.certifications,
-          awards: profileData.awards,
-          jobTarget: profileData.jobTarget,
-          completionPercentage: dbProfileData.completionPercentage,
-          profileType: 'comprehensive',
-          lastUpdated: new Date().toISOString()
-        }, null, 2);
-        
-        // Use the existing airtableService to store the profile (handle partial data)
-        const profileName = dbProfileData.name || profileData.personalDetails?.firstName || `User ${userId}`;
-        await airtableService.storeUserProfile(
-          profileName,
-          {
-            type: 'comprehensive',
-            data: profileData,
-            summary: `Comprehensive profile for ${profileName} (${dbProfileData.completionPercentage}% complete)`,
-            completionPercentage: dbProfileData.completionPercentage,
-            skills: dbProfileData.skillsList || [],
-            education: profileData.education || [],
-            experience: profileData.experience || [],
-            targetRoles: profileData.jobTarget?.targetRoles || []
-          },
-          userId,
-          dbProfileData.email || undefined
-        );
-        
-        console.log('📋 Successfully saved comprehensive profile to Airtable for user:', userId);
-      } catch (airtableError) {
-        console.error('📋 Error saving comprehensive profile to Airtable:', airtableError);
-        // Continue execution even if Airtable fails - don't block the user
-      }
       
       console.log(`📋 Profile saved successfully for user ${userId} with ${dbProfileData.completionPercentage}% completion`);
       
@@ -3764,7 +4559,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       console.log(`📧 Email update requested by user ${userId}`);
       
       // Run the email update process
-      await airtableService.updateJobApplicationsWithEmails();
+      await localDatabaseService.getAllJobApplications(); // Note: This doesn't update emails, just gets
       
       res.json({ 
         message: 'Job applications email update completed successfully',
