@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -7,9 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useLogin, useRegister } from "@/hooks/useAuth";
+import { useLogin, useRegister, useAuth } from "@/hooks/useAuth";
 import { Eye, EyeOff, X } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useToast } from "@/hooks/use-toast";
+import GoogleSignInButton from "./GoogleSignInButton";
+import { isGoogleAuthError, getGoogleAuthError, clearGoogleAuthError, getGoogleAuthErrorMessage } from "@/lib/authUtils";
 
 type LoginFormData = {
   email: string;
@@ -34,9 +37,14 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { t } = useLanguage();
-  
+
   const loginMutation = useLogin();
   const registerMutation = useRegister();
+
+  const signInWithGoogle = () => {
+    // Redirect to Google OAuth endpoint
+    window.location.href = '/auth/google';
+  }
 
   // Create schemas with translated error messages
   const loginSchema = z.object({
@@ -170,6 +178,21 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 {loginMutation.isPending ? t('auth.signingIn') : t('auth.signIn')}
               </Button>
             </form>
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-slate-200 dark:border-slate-700" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white dark:bg-slate-900 px-2 text-slate-500">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            {/* Google Sign-In Button */}
+            <GoogleSignInButton onClick={(signInWithGoogle)} />
           </TabsContent>
 
           <TabsContent value="signup" className="space-y-4">
@@ -303,6 +326,21 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 {registerMutation.isPending ? t('auth.signingUp') : t('auth.createAccount')}
               </Button>
             </form>
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-slate-200 dark:border-slate-700" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white dark:bg-slate-900 px-2 text-slate-500">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            {/* Google Sign-In Button */}
+            <GoogleSignInButton onClick={(signInWithGoogle)} />
           </TabsContent>
         </Tabs>
       </DialogContent>
