@@ -2574,7 +2574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                    updatedProfile?.professionalInterviewCompleted && 
                                    updatedProfile?.technicalInterviewCompleted;
 
-      if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
+      if (allInterviewsCompleted) {
         // Generate final comprehensive profile only after ALL 3 interviews are complete
         console.log(`🎯 All 3 voice interviews completed for user ${userId}. Generating final profile...`);
         const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job);

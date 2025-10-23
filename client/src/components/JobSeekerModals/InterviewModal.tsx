@@ -154,6 +154,10 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
   const realtimeAPI = useRealtimeAPI({
     userProfile,
     requireCamera: false, // Don't require camera in realtime API since we'll handle it separately
+    onInterviewComplete: () => {
+      console.log('🎯 Interview completion callback triggered in InterviewModal');
+      setIsInterviewConcluded(true);
+    },
     onLanguageWarning: (detectedLanguage) => {
       toast({
         title: selectedInterviewLanguage === 'arabic' ? 'تنبيه لغوي' : 'Language Warning',
@@ -2082,23 +2086,18 @@ const startVoiceInterview = async () => {
             {realtimeAPI.isConnected && (
               <button
                 onClick={() => {
-                  if (isInterviewConcluded) {
+                  if (realtimeAPI.isInterviewComplete || isInterviewConcluded) {
                     processVoiceInterviewMutation.mutate();
                   } else {
-                    const userMessages = conversationHistory.filter(msg => msg.role === 'user');
-                    if (userMessages.length >= 3) {
-                      setIsInterviewConcluded(true);
-                      processVoiceInterviewMutation.mutate();
-                    } else {
-                      realtimeAPI.disconnect();
-                      exitFullscreen();
-                      setMode('select');
-                    }
+                    // Allow ending interview early but don't allow submit unless completed
+                    realtimeAPI.disconnect();
+                    exitFullscreen();
+                    setMode('select');
                   }
                 }}
                 disabled={isProcessingInterview || processVoiceInterviewMutation.isPending}
                 className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
-                  isInterviewConcluded || conversationHistory.filter(msg => msg.role === 'user').length >= 3
+                  realtimeAPI.isInterviewComplete || isInterviewConcluded
                     ? 'bg-green-600 hover:bg-green-700 text-white'
                     : 'bg-red-600 hover:bg-red-700 text-white'
                 }`}
@@ -2108,7 +2107,7 @@ const startVoiceInterview = async () => {
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
                     <span>Processing...</span>
                   </>
-                ) : isInterviewConcluded || conversationHistory.filter(msg => msg.role === 'user').length >= 3 ? (
+                ) : realtimeAPI.isInterviewComplete || isInterviewConcluded ? (
                   <>
                     <CheckCircle className="h-4 w-4" />
                     <span>Submit Interview</span>

@@ -7,6 +7,7 @@ interface RealtimeAPIOptions {
   onAudioEnd?: () => void;
   onError?: (error: Error) => void;
   onLanguageWarning?: (language: string) => void;
+  onInterviewComplete?: () => void;
   userProfile?: any;
   interviewType?: string;
   questions?: any[];
@@ -21,6 +22,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isInterviewComplete, setIsInterviewComplete] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -186,6 +188,65 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
           setIsListening(true);
         }
 
+        // Enhanced keyword detection for interview completion
+        if (serverEvent.type === 'response.audio_transcript.done' && serverEvent.transcript) {
+          const aiText = serverEvent.transcript;
+
+          // Strong completion indicators - these are explicit and unlikely to appear in welcome messages
+          const strongConclusionKeywords = [
+            // English explicit completion phrases
+            'interview is now complete', 'you may submit your responses', 'this concludes our interview',
+            'no more questions', 'we are all done', 'that\'s all the questions', 'no further questions',
+            'interview is over', 'thank you for your time', 'this concludes',
+            // Arabic explicit completion phrases
+            'انتهت المقابلة الآن', 'يمكنك الآن تقديم إجاباتك', 'هذا يختتم مقابلتنا',
+            'لا توجد أسئلة أخرى', 'شكراً لوقتك', 'المقابلة منتهية'
+          ];
+
+          // Weaker completion indicators - require additional context to avoid false positives
+          const weakConclusionKeywords = [
+            // English weaker phrases that could appear in other contexts
+            'interview complete', 'that concludes', 'this concludes', 'conclude', 'final',
+            'wrap up', 'end of interview', 'finished', 'done with', 'all done',
+            // Arabic weaker phrases
+            'انتهت المقابلة', 'نهاية المقابلة', 'هذا يختتم', 'انتهينا من'
+          ];
+
+          // Generic phrases that should NOT trigger completion unless combined with strong indicators
+          const genericPhrases = [
+            'thank you for', 'thank you', 'شكراً لك', 'good luck', 'best wishes',
+            'بالتوفيق', 'أتمنى لك النجاح', 'أتمنى لك'
+          ];
+
+          const containsStrongKeyword = strongConclusionKeywords.some(keyword =>
+            aiText.toLowerCase().includes(keyword.toLowerCase())
+          );
+
+          const containsWeakKeyword = weakConclusionKeywords.some(keyword =>
+            aiText.toLowerCase().includes(keyword.toLowerCase())
+          );
+
+          // Check if it's just a generic thank you without strong completion indicators
+          const containsGenericPhrase = genericPhrases.some(keyword =>
+            aiText.toLowerCase().includes(keyword.toLowerCase())
+          );
+
+          const isJustGenericThankYou = containsGenericPhrase && !containsStrongKeyword && !containsWeakKeyword;
+
+          // Only trigger completion if:
+          // 1. There's a strong completion keyword, OR
+          // 2. There's a weak completion keyword AND it's not just a generic thank you
+          const shouldTriggerCompletion = containsStrongKeyword ||
+            (containsWeakKeyword && !isJustGenericThankYou);
+
+          if (shouldTriggerCompletion && !isInterviewComplete) {
+            console.log('🎯 Interview completion detected via keywords in useRealtimeAPI - marking interview as complete');
+            console.log('📝 AI text that triggered completion:', aiText);
+            setIsInterviewComplete(true);
+            options.onInterviewComplete?.();
+          }
+        }
+
         options.onMessage?.(serverEvent);
       });
       
@@ -194,19 +255,25 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
         setIsConnected(true);
         setIsConnecting(false);
         
-        // Generate dynamic instructions based on user profile
-        const buildInstructions = (userProfile: any, interviewParams?: { interviewType?: string; questions?: any[]; interviewSet?: any; language?: string }) => {
+        // Generate dynamic instructions based on interview parameters
+        const buildInstructions = (interviewParams?: { interviewType?: string; questions?: any[]; interviewSet?: any; language?: string }) => {
           const isArabic = interviewParams?.language === 'arabic';
 
           // Get interview type and questions from parameters
           const questions = interviewParams?.questions || [];
           const questionList = questions.map((q, index) => `${index + 1}. "${q.question}"`).join('\n');
 
+          const endingInstructions = isArabic
+            ? `عندما تنتهي المقابلة، استخدم عبارات واضحة مثل "انتهت المقابلة الآن، يمكنك الآن تقديم إجاباتك" أو "شكراً لك، هذا يختتم مقابلتنا" للإشارة إلى أن المقابلة قد انتهت وأنهم يمكنهم التقديم.`
+            : `When the interview is complete, use clear phrases like "The interview is now complete, you may submit your responses" or "Thank you, this concludes our interview" to signal that the interview has ended and they can submit.`;
+
           let instructions = `You are an interviewer conducting a professional interview. Start with a natural greeting, then ask these questions one by one:
 
 ${questionList}
 
-Have a natural conversation - listen to their answers, ask brief follow-ups if needed, then move to the next question. Keep it conversational and professional. End by thanking them for their time.
+Have a natural conversation - listen to their answers, ask brief follow-ups if needed, then move to the next question. Keep it conversational and professional.
+
+${endingInstructions}
 
 IMPORTANT LANGUAGE REQUIREMENT: This interview must be conducted${isArabic ? ' ONLY in Egyptian Arabic' : ' ONLY in English'}. If the candidate responds in a different language, gently remind them to respond${isArabic ? ' in Arabic' : ' in English'} before proceeding with the conversation.`;
 
@@ -222,7 +289,7 @@ IMPORTANT LANGUAGE REQUIREMENT: This interview must be conducted${isArabic ? ' O
           type: 'session.update',
           session: {
             modalities: ['text', 'audio'],
-            instructions: buildInstructions(options.userProfile, interviewParams),
+            instructions: buildInstructions(interviewParams),
             voice,
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
@@ -332,6 +399,7 @@ IMPORTANT LANGUAGE REQUIREMENT: This interview must be conducted${isArabic ? ' O
     setIsConnecting(false);
     setIsSpeaking(false);
     setIsListening(false);
+    setIsInterviewComplete(false);
     setCameraError(null);
   }, []);
   
@@ -367,6 +435,7 @@ IMPORTANT LANGUAGE REQUIREMENT: This interview must be conducted${isArabic ? ' O
     isConnected,
     isSpeaking,
     isListening,
+    isInterviewComplete,
     cameraError
   };
 }

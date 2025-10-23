@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeAPI } from "@/hooks/useRealtimeAPI";
 import { useCameraRecorder } from '@/hooks/useCameraRecorder';
-import { MessageCircle, MessageSquare, User, Mic, MicOff, PhoneOff, Video, Circle } from "lucide-react";
+import { MessageCircle, MessageSquare, User, Mic, MicOff, PhoneOff, Video, Circle, CheckCircle } from "lucide-react";
 import { CameraPreview } from '@/components/CameraPreview';
 
 interface JobSummary {
@@ -48,6 +48,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [showTranscription, setShowTranscription] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [isInterviewComplete, setIsInterviewComplete] = useState(false);
   const { isRecording, startRecording, stopRecording, cleanup } = useCameraRecorder();
 
   // Debug: Log the environment variable value and its type
@@ -81,6 +82,10 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   // Voice realtime
   const realtimeAPI = useRealtimeAPI({
     requireCamera: false, // Don't require camera in realtime API since we'll handle it separately
+    onInterviewComplete: () => {
+      console.log('🎯 Interview completion callback triggered in JobSpecificInterviewModal');
+      setIsInterviewComplete(true);
+    },
     onMessage: (event) => {
   
       if (event.type === 'response.audio_transcript.done') {
@@ -531,12 +536,21 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                 <button
                   onClick={submitVoiceInterview}
                   disabled={processing || !realtimeAPI.isConnected || isUploading}
-                  className="bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:text-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                  className={`${
+                    realtimeAPI.isInterviewComplete || isInterviewComplete
+                      ? 'bg-green-600 hover:bg-green-700'
+                      : 'bg-red-600 hover:bg-red-700'
+                  } disabled:bg-gray-700 disabled:text-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2`}
                 >
                   {processing || isUploading ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
                       <span>{isUploading ? 'Uploading...' : 'Processing...'}</span>
+                    </>
+                  ) : realtimeAPI.isInterviewComplete || isInterviewComplete ? (
+                    <>
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Submit Interview</span>
                     </>
                   ) : (
                     <>
@@ -729,8 +743,14 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               }} disabled={processing || isUploading}>
                 <PhoneOff className="h-4 w-4 mr-1" /> End
               </Button>
-              <Button onClick={submitVoiceInterview} disabled={processing || !realtimeAPI.isConnected || isUploading}>
-                {processing || isUploading ? (isUploading ? 'Uploading...' : 'Submitting...') : 'End & Submit'}
+              <Button
+                onClick={submitVoiceInterview}
+                disabled={processing || !realtimeAPI.isConnected || isUploading}
+                className={realtimeAPI.isInterviewComplete || isInterviewComplete ? 'bg-green-600 hover:bg-green-700' : ''}
+              >
+                {processing || isUploading ? (isUploading ? 'Uploading...' : 'Submitting...') : (
+                  realtimeAPI.isInterviewComplete || isInterviewComplete ? 'Submit Interview' : 'End & Submit'
+                )}
               </Button>
             </div>
           </div>
