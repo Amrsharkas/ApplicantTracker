@@ -9,6 +9,10 @@ import { PasswordSetupModal } from "@/components/PasswordSetupModal";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import AIInterviewInitiation from "@/pages/AIInterviewInitiation";
+import VerifyEmailPage from "@/pages/VerifyEmailPage";
+import VerificationSentPage from "@/pages/VerificationSentPage";
+import EmailVerificationPendingPage from "@/pages/EmailVerificationPendingPage";
+import ResendVerificationPage from "@/pages/ResendVerificationPage";
 import { useState, useEffect } from "react";
 
 import NotFound from "@/pages/not-found";
@@ -50,6 +54,13 @@ function Router() {
 
   return (
     <Switch>
+      {/* Email verification routes - accessible without authentication */}
+      <Route path="/verify-email" component={VerifyEmailPage} />
+      <Route path="/verify-email/:token" component={VerifyEmailPage} />
+      <Route path="/verification-pending" component={EmailVerificationPendingPage} />
+      <Route path="/verification-sent" component={VerificationSentPage} />
+      <Route path="/resend-verification" component={ResendVerificationPage} />
+
       <Route path="/">
         {isAuthenticated ? <Redirect to="/dashboard" /> : <Landing />}
       </Route>
