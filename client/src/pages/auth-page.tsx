@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLogin, useRegister } from "@/hooks/useAuth";
 import { Eye, EyeOff, Briefcase, Users, Zap } from "lucide-react";
+import { ForgotPasswordModal } from "@/components/ForgotPasswordModal";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -33,6 +34,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   
   const loginMutation = useLogin();
   const registerMutation = useRegister();
@@ -177,13 +179,25 @@ export default function AuthPage() {
                         )}
                       </div>
 
-                      <Button 
-                        type="submit" 
-                        className="w-full" 
+                      <Button
+                        type="submit"
+                        className="w-full"
                         disabled={loginMutation.isPending}
                       >
                         {loginMutation.isPending ? "Signing In..." : "Sign In"}
                       </Button>
+
+                      {/* Forgot Password Link */}
+                      <div className="text-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setShowForgotPassword(true)}
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          Forgot your password?
+                        </Button>
+                      </div>
                     </form>
                   </CardContent>
                 </Card>
@@ -333,6 +347,13 @@ export default function AuthPage() {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        onBackToLogin={() => setShowForgotPassword(false)}
+      />
     </div>
   );
 }

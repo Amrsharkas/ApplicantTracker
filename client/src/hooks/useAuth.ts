@@ -218,6 +218,104 @@ export function useResendVerification() {
   });
 }
 
+export function useRequestPasswordReset() {
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ email }: { email: string }) => {
+      const res = await fetch("/api/request-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+        credentials: "include",
+      });
+
+      const data = await res.json();
+
+      // Handle error responses
+      if (!res.ok) {
+        throw new Error(data.error || data.message || 'Failed to send password reset email');
+      }
+
+      return data;
+    },
+    onSuccess: (response: { message: string }) => {
+      toast({
+        title: "Reset Email Sent",
+        description: response.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to Send Reset Email",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useResetPassword() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ token, password }: { token: string; password: string }) => {
+      const res = await fetch("/api/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password }),
+        credentials: "include",
+      });
+
+      const data = await res.json();
+
+      // Handle error responses
+      if (!res.ok) {
+        throw new Error(data.error || data.message || 'Failed to reset password');
+      }
+
+      return data;
+    },
+    onSuccess: (response: { message: string }) => {
+      // Clear any cached user data since password changed
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+
+      toast({
+        title: "Password Reset Successful",
+        description: response.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Password Reset Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useVerifyResetToken() {
+  return useMutation({
+    mutationFn: async (token: string) => {
+      const res = await fetch(`/api/verify-reset-token/${token}`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      const data = await res.json();
+
+      // Handle error responses
+      if (!res.ok) {
+        throw new Error(data.error || data.message || 'Invalid reset token');
+      }
+
+      return data;
+    }
+  });
+}
+
 export function useLogout() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
