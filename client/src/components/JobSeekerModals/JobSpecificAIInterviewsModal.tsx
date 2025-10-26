@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ReactMarkdown from 'react-markdown';
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -201,9 +202,9 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                               {job.location || 'Remote'}
                             </span>
                           </div>
-                          <p className="text-gray-700 text-sm leading-relaxed mb-4 line-clamp-3">
-                            {job.jobDescription || ''}
-                          </p>
+                          <div className="text-gray-700 text-sm leading-relaxed mb-4 line-clamp-3 prose prose-sm max-w-none">
+                            <ReactMarkdown>{job.jobDescription || ''}</ReactMarkdown>
+                          </div>
                           <div className="flex items-center gap-2">
                             <Button
                               variant="outline"
@@ -269,9 +270,9 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                                 {job.location || 'Remote'}
                               </span>
                             </div>
-                            <p className="text-gray-700 text-sm leading-relaxed mb-4 line-clamp-3">
-                              {job.jobDescription || ''}
-                            </p>
+                            <div className="text-gray-700 text-sm leading-relaxed mb-4 line-clamp-3 prose prose-sm max-w-none">
+                              <ReactMarkdown>{job.jobDescription || ''}</ReactMarkdown>
+                            </div>
 
                             {/* Interview Results Section */}
                             <div className="bg-gray-50 rounded-lg p-4 mb-4">
@@ -416,9 +417,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Description</h3>
                       <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                        {(selectedJob.jobDescription || '').split('\n').map((p, idx) => (
-                          <p key={idx} className="mb-3">{p}</p>
-                        ))}
+                        <ReactMarkdown>{selectedJob.jobDescription || ''}</ReactMarkdown>
                       </div>
                     </div>
                     {selectedJob.skills && selectedJob.skills.length > 0 && (
