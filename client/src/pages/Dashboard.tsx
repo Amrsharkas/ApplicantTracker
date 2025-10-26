@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useResumeRequirement } from "@/hooks/useResumeRequirement";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
@@ -75,7 +74,7 @@ export default function Dashboard() {
   });
 
   // Check CV requirement (renamed from resume for clarity)
-  const { hasResume: hasCV } = useResumeRequirement();
+  useResumeRequirement();
 
   if (isLoading) {
     return (
@@ -164,9 +163,10 @@ export default function Dashboard() {
       
       const result = await response.json();
 
+      const sectionsCount = Object.keys(result.extractedFields || {}).filter(key => result.extractedFields[key]).length;
       toast({
         title: t('dashboard.resumeProcessedSuccessfully'),
-        description: t('dashboard.resumeProcessedDescription', { sections: Object.keys(result.extractedFields || {}).filter(key => result.extractedFields[key]).length }),
+        description: `Successfully processed ${sectionsCount} sections from your resume.`,
       });
 
       // Refresh profile data to show updated information
@@ -199,7 +199,6 @@ export default function Dashboard() {
   const hasCompletedPersonalInterview = (profile as any)?.personalInterviewCompleted;
   const hasCompletedProfessionalInterview = (profile as any)?.professionalInterviewCompleted;
   const hasCompletedTechnicalInterview = (profile as any)?.technicalInterviewCompleted;
-  const hasAiProfileGenerated = (profile as any)?.aiProfileGenerated;
   
   const hasCompletedAllInterviews = hasCompletedPersonalInterview && hasCompletedProfessionalInterview && hasCompletedTechnicalInterview;
   const hasCompletedInterview = hasCompletedAllInterviews;

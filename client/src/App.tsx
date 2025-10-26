@@ -9,12 +9,16 @@ import { PasswordSetupModal } from "@/components/PasswordSetupModal";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import AIInterviewInitiation from "@/pages/AIInterviewInitiation";
+import VerifyEmailPage from "@/pages/VerifyEmailPage";
+import VerificationSentPage from "@/pages/VerificationSentPage";
+import EmailVerificationPendingPage from "@/pages/EmailVerificationPendingPage";
+import ResendVerificationPage from "@/pages/ResendVerificationPage";
 import { useState, useEffect } from "react";
 
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, isEmailVerified } = useAuth();
 
   // Only show loading state if we're actually loading (not during logout)
   // Add timeout to prevent infinite loading - after 10 seconds, show the landing page
@@ -50,12 +54,27 @@ function Router() {
 
   return (
     <Switch>
+      {/* Email verification routes - accessible without authentication */}
+      <Route path="/verify-email" component={VerifyEmailPage} />
+      <Route path="/verify-email/:token" component={VerifyEmailPage} />
+      <Route path="/verification-pending" component={EmailVerificationPendingPage} />
+      <Route path="/verification-sent" component={VerificationSentPage} />
+      <Route path="/resend-verification" component={ResendVerificationPage} />
+
       <Route path="/">
         {isAuthenticated ? <Redirect to="/dashboard" /> : <Landing />}
       </Route>
 
       <Route path="/dashboard">
-        {isAuthenticated ? <Dashboard /> : <Redirect to="/" />}
+        {isAuthenticated ? (
+          isEmailVerified ? (
+            <Dashboard />
+          ) : (
+            <Redirect to="/verification-pending" />
+          )
+        ) : (
+          <Redirect to="/" />
+        )}
       </Route>
 
       <Route path="/ai-interview-initation">
@@ -73,7 +92,7 @@ function AppWithPasswordSetup() {
 
   // Check if user needs password setup
   useEffect(() => {
-    if (isAuthenticated && user?.passwordNeedsSetup) {
+    if (isAuthenticated && (user as any)?.passwordNeedsSetup) {
       setShowPasswordSetup(true);
     } else {
       setShowPasswordSetup(false);
@@ -88,7 +107,7 @@ function AppWithPasswordSetup() {
 
   const handleClose = () => {
     // Only allow closing if user no longer needs password setup
-    if (!user?.passwordNeedsSetup) {
+    if (!(user as any)?.passwordNeedsSetup) {
       setShowPasswordSetup(false);
     }
   };
