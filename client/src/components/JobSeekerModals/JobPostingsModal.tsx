@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import ReactMarkdown from 'react-markdown';
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -1133,9 +1134,9 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                                     {job.postedAt ? formatDate(job.postedAt) : 'Recently posted'}
                                   </span>
                                 </div>
-                                <p className="text-gray-700 text-sm leading-relaxed mb-4 line-clamp-3">
-                                  {job.description}
-                                </p>
+                                <div className="text-gray-700 text-sm leading-relaxed mb-4 line-clamp-3 prose prose-sm max-w-none">
+                                  <ReactMarkdown>{job.description}</ReactMarkdown>
+                                </div>
                                 {job.skills && job.skills.length > 0 && (
                                   <div className="flex flex-wrap gap-2 mb-4">
                                     {job.skills.slice(0, 4).map((skill) => (
@@ -1315,9 +1316,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Description</h3>
                       <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                        {selectedJob.description.split('\n').map((paragraph, index) => (
-                          <p key={index} className="mb-3">{paragraph}</p>
-                        ))}
+                        <ReactMarkdown>{selectedJob.description}</ReactMarkdown>
                       </div>
                     </div>
 

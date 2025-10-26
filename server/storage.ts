@@ -718,6 +718,14 @@ export class DatabaseStorage implements IStorage {
       .set({ isActive: true })
       .where(and(eq(resumeUploads.id, resumeId), eq(resumeUploads.userId, userId)));
   }
+
+  async getJobsByIds(jobIds: string[]): Promise<Job[]> {
+    const jobsList = await db
+      .select()
+      .from(jobs)
+      .where(sql`${jobs.id} IN (${sql.join(jobIds, sql`,`)})`);
+    return jobsList;
+  }
 }
 
 export const storage = new DatabaseStorage();

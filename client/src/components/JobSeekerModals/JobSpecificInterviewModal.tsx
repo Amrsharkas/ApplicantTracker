@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from 'react-markdown';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ interface JobSummary {
   jobDescription?: string;
   companyName: string;
   location?: string;
+  aiPrompt?: string;
 }
 
 interface SessionData {
@@ -151,7 +153,12 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           // Start camera access first
           await startCameraAccess();
           // Then connect voice session
-          await realtimeAPI.connect({ interviewType: 'job-practice', questions: data.sessionData.questions, language: language });
+          await realtimeAPI.connect({
+            interviewType: 'job-practice',
+            questions: data.sessionData.questions,
+            language: language,
+            aiPrompt: job?.aiPrompt
+          });
         }
       } catch (e: any) {
         toast({ title: 'Error', description: e?.message || 'Failed to load session', variant: 'destructive' });
@@ -588,6 +595,11 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               <div>
                 <div className="text-sm text-slate-600">Text mode • {language === 'arabic' ? 'Arabic' : 'English'}</div>
                 <h3 className="text-lg font-semibold">{job?.jobTitle}</h3>
+                {job?.jobDescription && (
+                  <div className="mt-2 text-sm text-slate-600 prose prose-sm max-w-none">
+                    <ReactMarkdown>{job.jobDescription}</ReactMarkdown>
+                  </div>
+                )}
               </div>
               <Badge variant="outline">Question {(session.sessionData.responses?.length || 0) + 1} of {session.sessionData.questions?.length || 5}</Badge>
             </div>
@@ -647,6 +659,11 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               <div>
                 <div className="text-sm text-slate-600">Voice mode • {language === 'arabic' ? 'Arabic' : 'English'}</div>
                 <h3 className="text-lg font-semibold">{job?.jobTitle}</h3>
+                {job?.jobDescription && (
+                  <div className="mt-2 text-sm text-slate-600 prose prose-sm max-w-none">
+                    <ReactMarkdown>{job.jobDescription}</ReactMarkdown>
+                  </div>
+                )}
               </div>
               <Badge variant="outline">Live</Badge>
             </div>

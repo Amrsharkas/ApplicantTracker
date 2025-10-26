@@ -33,7 +33,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
   
   const { toast } = useToast();
 
-  const connect = useCallback(async (interviewParams?: { interviewType?: string; questions?: any[]; interviewSet?: any; language?: string }) => {
+  const connect = useCallback(async (interviewParams?: { interviewType?: string; questions?: any[]; interviewSet?: any; language?: string; aiPrompt?: string }) => {
     if (isConnecting || isConnected) return;
     
     setIsConnecting(true);
@@ -256,12 +256,15 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
         setIsConnecting(false);
         
         // Generate dynamic instructions based on interview parameters
-        const buildInstructions = (interviewParams?: { interviewType?: string; questions?: any[]; interviewSet?: any; language?: string }) => {
+        const buildInstructions = (interviewParams?: { interviewType?: string; questions?: any[]; interviewSet?: any; language?: string; aiPrompt?: string }) => {
           const isArabic = interviewParams?.language === 'arabic';
 
           // Get interview type and questions from parameters
           const questions = interviewParams?.questions || [];
           const questionList = questions.map((q, index) => `${index + 1}. "${q.question}"`).join('\n');
+
+          // Get custom AI prompt if available
+          const customPrompt = interviewParams?.aiPrompt;
 
           const endingInstructions = isArabic
             ? `عندما تنتهي المقابلة، استخدم عبارات واضحة مثل "انتهت المقابلة الآن، يمكنك الآن تقديم إجاباتك" أو "شكراً لك، هذا يختتم مقابلتنا" للإشارة إلى أن المقابلة قد انتهت وأنهم يمكنهم التقديم.`
@@ -273,7 +276,16 @@ ${questionList}
 
 Have a natural conversation - listen to their answers, ask brief follow-ups if needed, then move to the next question. Keep it conversational and professional.
 
-${endingInstructions}
+${endingInstructions}`;
+
+          // Add custom AI prompt if provided
+          if (customPrompt) {
+            instructions += `
+
+ADDITIONAL INTERVIEWER INSTRUCTIONS: ${customPrompt}`;
+          }
+
+          instructions += `
 
 IMPORTANT LANGUAGE REQUIREMENT: This interview must be conducted${isArabic ? ' ONLY in Egyptian Arabic' : ' ONLY in English'}. If the candidate responds in a different language, gently remind them to respond${isArabic ? ' in Arabic' : ' in English'} before proceeding with the conversation.`;
 
