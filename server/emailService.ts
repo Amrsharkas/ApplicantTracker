@@ -11,6 +11,12 @@ interface VerificationSuccessEmailData {
   firstName: string;
 }
 
+interface PasswordResetEmailData {
+  email: string;
+  firstName: string;
+  resetLink: string;
+}
+
 class EmailService {
   private mailService: MailService | null;
 
@@ -90,6 +96,36 @@ class EmailService {
       return true;
     } catch (error) {
       console.error('❌ SendGrid verification success email error:', error);
+      return false;
+    }
+  }
+
+  async sendPasswordResetEmail(data: PasswordResetEmailData): Promise<boolean> {
+    try {
+      if (!this.mailService) {
+        console.warn('📧 Skipping password reset email: SendGrid not configured');
+        return false;
+      }
+
+      const subject = 'Reset Your Password - Plato Applicant Tracker';
+      const html = this.generatePasswordResetEmailHTML(data);
+      const text = this.generatePasswordResetEmailText(data);
+
+      const fromEmail = (process.env.SENDGRID_FROM || 'noreply@platoapp.com').trim();
+      const fromName = (process.env.SENDGRID_FROM_NAME || 'Plato Applicant Tracker').trim();
+
+      await this.mailService.send({
+        to: data.email,
+        from: { email: fromEmail, name: fromName },
+        subject,
+        text,
+        html,
+      });
+
+      console.log(`✅ Password reset email sent to ${data.email}`);
+      return true;
+    } catch (error) {
+      console.error('❌ SendGrid password reset email error:', error);
       return false;
     }
   }
@@ -300,7 +336,128 @@ Best regards,
 The Plato Applicant Tracker Team
     `.trim();
   }
+
+  private generatePasswordResetEmailHTML(data: PasswordResetEmailData): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Reset Your Password</title>
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 20px;">
+
+        <div style="text-align: center; margin-bottom: 40px;">
+          <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+            <span style="color: white; font-size: 32px;">🔐</span>
+          </div>
+          <h1 style="color: #1f2937; margin: 0; font-size: 28px;">Reset Your Password</h1>
+          <p style="color: #6b7280; margin: 8px 0 0 0; font-size: 16px;">Plato Applicant Tracker</p>
+        </div>
+
+        <div style="background-color: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 32px; margin-bottom: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+
+          <div style="text-align: center; margin-bottom: 32px;">
+            <h2 style="color: #1f2937; margin: 0; font-size: 24px;">Hi ${data.firstName}!</h2>
+            <p style="color: #6b7280; margin: 8px 0 0 0;">We received a request to reset your password.</p>
+          </div>
+
+          <div style="margin: 24px 0; padding: 20px; background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-radius: 12px; border: 2px solid #ef4444;">
+            <h3 style="color: #991b1b; margin: 0 0 12px 0;">Security Notice</h3>
+            <p style="color: #374151; margin: 0; line-height: 1.6;">
+              If you didn't request this password reset, please ignore this email. Your account will remain secure.
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 32px; border-radius: 12px; margin-bottom: 24px;">
+              <h3 style="color: white; margin: 0 0 16px 0; font-size: 20px;">🔑 Reset Your Password</h3>
+              <p style="color: #fecaca; margin: 0 0 24px 0; font-size: 16px;">Click below to create a new password for your account</p>
+              <a href="${data.resetLink}"
+                 style="background: white; color: #dc2626; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; font-size: 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+                Reset Password
+              </a>
+            </div>
+
+            <div style="background-color: #fef3c7; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+              <p style="color: #92400e; margin: 0; font-weight: 600;">Important:</p>
+              <p style="color: #92400e; margin: 8px 0 0 0; font-size: 14px;">This reset link will expire in 1 hour for security reasons.</p>
+            </div>
+
+            <p style="color: #6b7280; margin: 0; font-size: 14px;">
+              If the button doesn't work, copy and paste this link into your browser:
+            </p>
+            <p style="word-break: break-all; color: #ef4444; font-size: 12px; margin: 8px 0 0 0;">
+              ${data.resetLink}
+            </p>
+          </div>
+
+          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #f3f4f6;">
+            <h3 style="color: #374151; margin: 0 0 12px 0;">Password Security Tips:</h3>
+            <ul style="color: #6b7280; margin: 0; padding-left: 20px; line-height: 1.8;">
+              <li>Use a strong, unique password</li>
+              <li>Include a mix of letters, numbers, and symbols</li>
+              <li>Don't reuse passwords from other accounts</li>
+              <li>Consider using a password manager</li>
+            </ul>
+          </div>
+
+        </div>
+
+        <div style="text-align: center; color: #9ca3af; font-size: 14px; margin-top: 24px;">
+          <p style="margin: 0;">
+            Best regards,<br>
+            The Plato Applicant Tracker Team
+          </p>
+        </div>
+
+      </body>
+      </html>
+    `;
+  }
+
+  private generatePasswordResetEmailText(data: PasswordResetEmailData): string {
+    return `
+🔐 RESET YOUR PASSWORD - PLATO APPLICANT TRACKER
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Hi ${data.firstName}!
+
+We received a request to reset your password for your Plato Applicant Tracker account.
+
+SECURITY NOTICE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+If you didn't request this password reset, please ignore this email.
+Your account will remain secure and no changes will be made.
+
+RESET YOUR PASSWORD:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+To create a new password, click the link below:
+
+${data.resetLink}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 CLICK THE LINK ABOVE TO RESET YOUR PASSWORD
+
+IMPORTANT: This reset link will expire in 1 hour for security reasons.
+
+PASSWORD SECURITY TIPS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Use a strong, unique password
+• Include a mix of letters, numbers, and symbols
+• Don't reuse passwords from other accounts
+• Consider using a password manager
+
+If you didn't request this password reset, you can safely ignore this email.
+The reset link will expire automatically.
+
+Best regards,
+The Plato Applicant Tracker Team
+    `.trim();
+  }
 }
 
 export const emailService = new EmailService();
-export { VerificationEmailData, VerificationSuccessEmailData };
+export { VerificationEmailData, VerificationSuccessEmailData, PasswordResetEmailData };

@@ -35,11 +35,14 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByGoogleId(googleId: string): Promise<User | undefined>;
   getUserByVerificationToken(token: string): Promise<User | undefined>;
+  getUserByResetPasswordToken(token: string): Promise<User | undefined>;
   createUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, data: Partial<User>): Promise<User>;
   updateUserGoogleAuth(id: string, googleAuth: { googleId: string; authProvider: string; profileImageUrl?: string }): Promise<User>;
   verifyUserEmail(id: string): Promise<User>;
   updateVerificationToken(id: string, token: string): Promise<User>;
+  setResetPasswordToken(id: string, token: string, expires: Date): Promise<User>;
+  clearResetPasswordToken(id: string): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>; // Keep for backward compatibility
 
   // Applicant profile operations
@@ -108,6 +111,14 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByResetPasswordToken(token: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.resetPasswordToken, token));
+    return user;
+  }
+
   async createUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -160,6 +171,32 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({
         verificationToken: token,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async setResetPasswordToken(id: string, token: string, expires: Date): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        resetPasswordToken: token,
+        resetPasswordExpires: expires,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async clearResetPasswordToken(id: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        resetPasswordToken: null,
+        resetPasswordExpires: null,
         updatedAt: new Date()
       })
       .where(eq(users.id, id))

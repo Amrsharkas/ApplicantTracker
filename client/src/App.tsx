@@ -13,6 +13,7 @@ import VerifyEmailPage from "@/pages/VerifyEmailPage";
 import VerificationSentPage from "@/pages/VerificationSentPage";
 import EmailVerificationPendingPage from "@/pages/EmailVerificationPendingPage";
 import ResendVerificationPage from "@/pages/ResendVerificationPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import { useState, useEffect } from "react";
 
 import NotFound from "@/pages/not-found";
@@ -60,6 +61,9 @@ function Router() {
       <Route path="/verification-pending" component={EmailVerificationPendingPage} />
       <Route path="/verification-sent" component={VerificationSentPage} />
       <Route path="/resend-verification" component={ResendVerificationPage} />
+
+      {/* Password reset routes - accessible without authentication */}
+      <Route path="/reset-password/:token" component={ResetPasswordPage} />
 
       <Route path="/">
         {isAuthenticated ? <Redirect to="/dashboard" /> : <Landing />}

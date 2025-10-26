@@ -12,6 +12,7 @@ import { Eye, EyeOff, X } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import GoogleSignInButton from "./GoogleSignInButton";
+import { ForgotPasswordModal } from "./ForgotPasswordModal";
 import { isGoogleAuthError, getGoogleAuthError, clearGoogleAuthError, getGoogleAuthErrorMessage } from "@/lib/authUtils";
 
 type LoginFormData = {
@@ -36,6 +37,7 @@ interface AuthModalProps {
 export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const { t } = useLanguage();
 
   const loginMutation = useLogin();
@@ -103,6 +105,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -178,6 +181,18 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 {loginMutation.isPending ? t('auth.signingIn') : t('auth.signIn')}
               </Button>
             </form>
+
+            {/* Forgot Password Link */}
+            <div className="text-center">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-blue-600 hover:text-blue-800 text-sm"
+              >
+                Forgot your password?
+              </Button>
+            </div>
 
             {/* Divider */}
             <div className="relative my-6">
@@ -345,5 +360,13 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </Tabs>
       </DialogContent>
     </Dialog>
+
+    {/* Forgot Password Modal */}
+    <ForgotPasswordModal
+      isOpen={showForgotPassword}
+      onClose={() => setShowForgotPassword(false)}
+      onBackToLogin={() => setShowForgotPassword(false)}
+    />
+    </>
   );
 }
