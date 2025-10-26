@@ -23,6 +23,7 @@ interface InvitedJob {
   status?: string;
   score?: number;
   interviewComments?: string;
+  aiPrompt?: string;
 }
 
 interface JobSpecificAIInterviewsModalProps {

@@ -2980,16 +2980,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Found ${jobMatches.length} job-specific AI interviews for user ${userId}`);
 
-      const results = jobMatches.map((match) => ({
-        recordId: match.id,
-        jobTitle: match.jobTitle || 'Untitled Position',
-        jobDescription: match.jobDescription || '',
-        companyName: match.companyName || 'Unknown Company',
-        status: match.status || '',
-        score: match.matchScore,
-        interviewComments: match.interviewComments || '',
-        aiPrompt: match.aiPrompt || '',
-      }));
+      const jobIds = jobMatches.map(match => match.jobId) ;
+      const jobs = await storage.getJobsByIds(jobIds);
+      const results = jobMatches.map((match) => {
+        const job = jobs.find(job => job.id == match.jobId) || {};
+
+        return {
+          recordId: match.id,
+          jobTitle: match.jobTitle || 'Untitled Position',
+          jobDescription: match.jobDescription || '',
+          companyName: match.companyName || 'Unknown Company',
+          status: match.status || '',
+          score: match.matchScore,
+          interviewComments: match.interviewComments || '',
+          aiPrompt: job.aiPrompt || '',
+        }
+      });
 
       return res.json(results);
     } catch (error) {
