@@ -7,8 +7,25 @@ import { storage } from "./storage";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 import { z } from "zod";
+import { emailService } from "./emailService";
 
 const scryptAsync = promisify(scrypt);
+
+// Email verification utilities
+function generateVerificationToken(): string {
+  return randomBytes(32).toString("hex");
+}
+
+function getAppBaseUrl(): string {
+  const baseUrl = process.env.APP_URL || process.env.BASE_URL || 'http://localhost:5000';
+  // Ensure no trailing slash and proper URL format
+  return baseUrl.replace(/\/$/, '');
+}
+
+function generateVerificationLink(token: string): string {
+  const baseUrl = getAppBaseUrl();
+  return `${baseUrl}/verify-email/${token}`;
+}
 
 // Session configuration
 export function getSession() {
@@ -196,6 +213,9 @@ export async function setupAuth(app: Express) {
         }
       }
 
+      // Generate verification token
+      const verificationToken = generateVerificationToken();
+
       // Hash password and create user
       const hashedPassword = await hashPassword(password);
       const userId = randomBytes(16).toString('hex'); // Generate unique ID
@@ -207,7 +227,9 @@ export async function setupAuth(app: Express) {
         firstName,
         lastName,
         username,
-        role: 'applicant'
+        role: 'applicant',
+        isVerified: false, // Require email verification
+        verificationToken,
       });
 
       // Create basic applicant profile
@@ -222,12 +244,29 @@ export async function setupAuth(app: Express) {
         // Continue with registration even if profile creation fails
       }
 
-      // Create session
+      // Send verification email
+      try {
+        await emailService.sendVerificationEmail({
+          email: user.email,
+          firstName: user.firstName,
+          verificationLink: generateVerificationLink(verificationToken),
+        });
+        console.log(`✅ Verification email sent to ${user.email}`);
+      } catch (emailError) {
+        console.error("❌ Failed to send verification email:", emailError);
+        // Still allow registration to continue, but log the error
+      }
+
+      // Create session for the user (authenticated but not verified)
       req.session.userId = user.id;
 
-      // Return user without password
-      const { password: _, ...userWithoutPassword } = user;
-      res.json({ user: userWithoutPassword, message: 'Registration successful' });
+      // Return success with user data and session
+      const { password: _, verificationToken: __, ...userWithoutSensitiveData } = user;
+      res.status(201).json({
+        message: "Registration successful! Please check your email to verify your account.",
+        user: userWithoutSensitiveData,
+        requiresVerification: !user.isVerified
+      });
 
     } catch (error) {
       console.error('Registration error:', error);
@@ -260,12 +299,22 @@ export async function setupAuth(app: Express) {
         return res.status(401).json({ error: 'Invalid email or password' });
       }
 
+      // Check if email is verified
+      if (!user.isVerified && user.authProvider === 'local') {
+        return res.status(403).json({
+          error: 'Email verification required',
+          message: 'Please verify your email address before logging in. Check your inbox for the verification email.',
+          requiresVerification: true,
+          email: user.email
+        });
+      }
+
       // Create session
       req.session.userId = user.id;
 
       // Return user without password
-      const { password: _, ...userWithoutPassword } = user;
-      res.json({ user: userWithoutPassword, message: 'Login successful' });
+      const { password: _, verificationToken: __, ...userWithoutSensitiveData } = user;
+      res.json({ user: userWithoutSensitiveData, message: 'Login successful' });
 
     } catch (error) {
       console.error('Login error:', error);
@@ -286,6 +335,125 @@ export async function setupAuth(app: Express) {
       res.clearCookie('connect.sid');
       res.json({ message: 'Logout successful' });
     });
+  });
+
+  // Email verification endpoint
+  app.get('/api/verify-email/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+
+      if (!token) {
+        return res.status(400).json({ error: 'Verification token is required' });
+      }
+
+      // Find user by verification token
+      const user = await storage.getUserByVerificationToken(token);
+      if (!user) {
+        return res.status(400).json({
+          error: 'Invalid or expired verification token',
+          message: 'The verification link is invalid or has expired. Please request a new verification email.'
+        });
+      }
+
+      // Check if already verified
+      if (user.isVerified) {
+        return res.status(200).json({
+          message: 'Email already verified',
+          alreadyVerified: true
+        });
+      }
+
+      // Verify the user's email
+      const updatedUser = await storage.verifyUserEmail(user.id);
+      console.log(`✅ Email verified for user: ${user.email}`);
+
+      // Send success email
+      try {
+        await emailService.sendVerificationSuccessEmail({
+          email: user.email,
+          firstName: user.firstName,
+        });
+        console.log(`✅ Verification success email sent to ${user.email}`);
+      } catch (emailError) {
+        console.error("❌ Failed to send verification success email:", emailError);
+        // Continue with the process even if email fails
+      }
+
+      res.json({
+        message: 'Email verified successfully! You can now log in to your account.',
+        success: true
+      });
+
+    } catch (error) {
+      console.error('Email verification error:', error);
+      res.status(500).json({
+        error: 'Email verification failed',
+        message: 'An error occurred during email verification. Please try again or contact support.'
+      });
+    }
+  });
+
+  // Resend verification email endpoint
+  app.post('/api/resend-verification', async (req, res) => {
+    try {
+      const resendSchema = z.object({
+        email: z.string().email('Invalid email format'),
+      });
+
+      const { email } = resendSchema.parse(req.body);
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({
+          error: 'User not found',
+          message: 'No account found with this email address.'
+        });
+      }
+
+      // Check if user is already verified
+      if (user.isVerified) {
+        return res.status(400).json({
+          error: 'Email already verified',
+          message: 'This email address has already been verified. You can log in to your account.'
+        });
+      }
+
+      // Generate new verification token
+      const newVerificationToken = generateVerificationToken();
+      await storage.updateVerificationToken(user.id, newVerificationToken);
+
+      // Send verification email
+      try {
+        await emailService.sendVerificationEmail({
+          email: user.email,
+          firstName: user.firstName,
+          verificationLink: generateVerificationLink(newVerificationToken),
+        });
+        console.log(`✅ New verification email sent to ${user.email}`);
+      } catch (emailError) {
+        console.error("❌ Failed to send verification email:", emailError);
+        return res.status(500).json({
+          error: 'Failed to send verification email',
+          message: 'We could not send the verification email. Please try again later.'
+        });
+      }
+
+      res.json({
+        message: 'Verification email sent successfully! Please check your inbox.',
+        success: true
+      });
+
+    } catch (error) {
+      console.error('Resend verification error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      res.status(500).json({
+        error: 'Failed to resend verification email',
+        message: 'An error occurred while resending the verification email. Please try again.'
+      });
+    }
   });
 
   // Set password endpoint (for users with passwordNeedsSetup flag)
