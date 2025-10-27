@@ -682,6 +682,9 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
     formData.append('recording', blob, `interview-${currentSession.id}.${fileExtension}`);
     formData.append('sessionId', currentSession.id.toString());
 
+    // Note: This is a general interview, not job-specific, so no jobMatchId is included
+    // userId will be added by the server from the authenticated user
+
     try {
       console.log(`Uploading recording for session ${currentSession.id}, size: ${blob.size} bytes`);
 

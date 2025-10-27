@@ -1339,11 +1339,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/interview/upload-recording', requireAuth, uploadRecording.single('recording'), async (req: any, res) => {
     try {
       // Validate required fields
-      const { sessionId } = req.body;
+      const { sessionId, jobMatchId, userId } = req.body;
 
       if (!sessionId) {
         return res.status(400).json({
           message: "Session ID is required"
+        });
+      }
+
+      // userId is required (get from authenticated user if not provided)
+      const currentUserId = userId || req.user?.id;
+      if (!currentUserId) {
+        return res.status(400).json({
+          message: "User ID is required"
         });
       }
 
@@ -1389,6 +1397,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const recordingData = await storage.createInterviewRecording({
         sessionId: parsedSessionId,
+        userId: currentUserId,
+        jobMatchId: jobMatchId || null,
         recordingPath: req.file.path,
       });
 

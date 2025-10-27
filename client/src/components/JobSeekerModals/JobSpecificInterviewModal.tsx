@@ -263,6 +263,13 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
     formData.append('recording', blob, `interview-${session.id}.${fileExtension}`);
     formData.append('sessionId', session.id.toString());
 
+    // Add jobMatchId if available from job record
+    if (job?.recordId) {
+      formData.append('jobMatchId', job.recordId);
+    }
+
+    // Note: userId will be added by the server from the authenticated user
+
     try {
       console.log(`Uploading recording for session ${session.id}, size: ${blob.size} bytes`);
 

@@ -346,6 +346,8 @@ export const interviewSessions = pgTable("interview_sessions", {
 export const interviewRecordings = pgTable("interview_recordings", {
   id: serial("id").primaryKey(),
   sessionId: integer("session_id").notNull(),
+  userId: varchar("user_id"),
+  jobMatchId: varchar("job_match_id"),
   recordingPath: varchar("recording_path").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
