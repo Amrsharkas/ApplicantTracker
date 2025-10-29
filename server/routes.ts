@@ -607,6 +607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lastName: resumeProfile?.name?.split(' ').slice(1).join(' ') || jobMatch.name?.split(' ').slice(1).join(' ') || 'Candidate',
             username: `candidate_${userId}_${Math.random().toString(36).substr(2, 9)}`,
             role: 'applicant',
+            isVerified: true,
             passwordNeedsSetup: true // Flag to indicate password needs to be set
           });
 
@@ -2569,19 +2570,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const session = await storage.createInterviewSession({
         userId,
         interviewType: interviewType || 'personal',
-        sessionData: { 
+        sessionData: {
           questions: conversationHistory.map(item => ({ question: item.question })),
           responses: conversationHistory,
-          currentQuestionIndex: conversationHistory.length 
+          currentQuestionIndex: conversationHistory.length
         },
         isCompleted: true,
         generatedProfile: null // Don't save individual profiles
       });
 
+      // Create new record in airtable_job_applications after job practice voice interview completion
+      if (interviewType === 'job-practice' && job) {
+        try {
+          const userProfile = await storage.getApplicantProfile(userId);
+          const userName = userProfile?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Applicant';
+
+          // Prepare user profile data for the application
+          const profileData = {
+            name: userName,
+            email: user?.email || '',
+            phone: userProfile?.phone || '',
+            professionalSummary: userProfile?.summary || '',
+            workExperience: userProfile?.workExperiences || [],
+            education: userProfile?.degrees || [],
+            skills: userProfile?.skillsData?.skills || [],
+            location: userProfile?.country ? `${userProfile?.city || ''}, ${userProfile.country}`.replace(/^, |, $/g, '') : '',
+            experienceLevel: userProfile?.careerLevel || '',
+          };
+
+          const jobApplicationData = {
+            applicantName: userName,
+            applicantUserId: userId,
+            applicantEmail: user?.email || '',
+            jobTitle: job.jobTitle || job.title || '',
+            jobId: null,
+            company: job.companyName || job.company || '',
+            userProfile: profileData,
+            notes: `Interview completed via voice`,
+            status: 'interview_completed',
+            jobDescription: job.jobDescription || job.description || '',
+          };
+
+          await localDatabaseService.createJobApplication(jobApplicationData);
+          console.log('✅ Created new job application record after voice interview completion:', job.jobTitle);
+        } catch (applicationError) {
+          console.warn('⚠️ Error creating job application record:', applicationError);
+          // Continue with flow even if application creation fails
+        }
+      }
+
       // Check if all 3 interviews are completed
       const updatedProfile = await storage.getApplicantProfile(userId);
-      const allInterviewsCompleted = updatedProfile?.personalInterviewCompleted && 
-                                   updatedProfile?.professionalInterviewCompleted && 
+      const allInterviewsCompleted = updatedProfile?.personalInterviewCompleted &&
+                                   updatedProfile?.professionalInterviewCompleted &&
                                    updatedProfile?.technicalInterviewCompleted;
 
       if (allInterviewsCompleted) {
