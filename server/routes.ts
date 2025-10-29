@@ -10,7 +10,7 @@ import { ObjectStorageService } from "./objectStorage";
 import { ResumeService } from "./resumeService";
 import multer from "multer";
 import { string, z } from "zod";
-import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, airtableJobApplications, jobs } from "@shared/schema";
+import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, airtableJobApplications, jobs, organizations } from "@shared/schema";
 // Dynamic import for pdf-parse will be used when needed
 import { db } from "./db";
 import { applicantProfiles, interviewSessions, resumeUploads, jobMatches, applications, sessions, users } from "@shared/schema";
@@ -2301,7 +2301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // New Job Application Endpoint with AI Skill Analysis
-  app.post('/api/job-applications/submit', 
+  app.post('/api/job-applications/submit',
     requireAuth,
 
 
@@ -2309,13 +2309,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const { job } = req.body;
-
-      console.log('📝 Job application submission attempt:', {
-        userId,
-        jobTitle: job?.jobTitle,
-        jobId: job?.recordId,
-        hasEmployerAnswers: !!job?.notes
-      });
 
       if (!job) {
         console.error('❌ No job data provided in request body');
@@ -2332,148 +2325,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      // Fetch complete user profile from Airtable "platouserprofiles" table
-      console.log('📋 Fetching complete user profile from Airtable...');
-      const completeUserProfileString = await localDatabaseService.getUserProfile(userId);
-      
-      let userProfileData: any = {};
-      let userSkills: string[] = [];
-      
-      if (completeUserProfileString) {
-        // The profile is stored as formatted markdown text, not JSON
-        // Extract skills from the markdown text using regex
-        const skillsMatch = completeUserProfileString.match(/## ✅ \*\*VERIFIED SKILLS\*\*[\s\S]*?(?=##|$)/);
-        if (skillsMatch) {
-          const skillsSection = skillsMatch[0];
-          const skillLines = skillsSection.match(/• \*\*(.*?)\*\*/g);
-          if (skillLines) {
-            userSkills = skillLines.map(line => 
-              line.replace(/• \*\*(.*?)\*\*.*/, '$1').toLowerCase().trim()
-            ).filter(Boolean);
-          }
-        }
-        
-        // If no verified skills section, try to extract from any skills mentions
-        if (userSkills.length === 0) {
-          const allSkillMatches = completeUserProfileString.match(/\*\*([\w\s]+)\*\*/g);
-          if (allSkillMatches) {
-            userSkills = allSkillMatches
-              .map(match => match.replace(/\*\*/g, '').toLowerCase().trim())
-              .filter(skill => 
-                skill.length > 2 && 
-                !skill.includes('overview') && 
-                !skill.includes('profile') &&
-                !skill.includes('skills') &&
-                !skill.includes('insights')
-              );
-          }
-        }
-        
-        userProfileData = { formattedProfile: completeUserProfileString };
-        console.log('✅ Using complete user profile from Airtable interview');
+      // Get applicant profile to extract resume content
+      console.log('📋 Fetching applicant profile...');
+      const applicantProfile = await storage.getApplicantProfile(userId);
+      if (!applicantProfile) {
+        return res.status(404).json({ message: 'Applicant profile not found' });
+      }
+
+      const resumeContent = applicantProfile.resumeContent || null;
+      if (!resumeContent) {
+        console.warn('⚠️ No resume content found in applicant profile');
+        return res.status(400).json({ message: 'Resume content not found. Please upload a resume first.' });
+      }
+
+      console.log('✅ Resume content found, length:', resumeContent.length);
+
+      // Call HiringIntelligence resume processing endpoint
+      console.log('🤖 Calling HiringIntelligence resume processing...');
+      const HIRING_INTELLIGENCE_URL = process.env.HIRING_INTELLIGENCE_URL || 'http://localhost:5000';
+      const SERVICE_API_KEY = process.env.SERVICE_API_KEY;
+
+      let resumeProcessingResult = null;
+      let resumeProcessingJobId = null;
+
+      if (!SERVICE_API_KEY) {
+        console.warn('⚠️ SERVICE_API_KEY not configured, skipping resume processing');
       } else {
-        console.warn('⚠️ No complete user profile found in Airtable');
-      }
-
-      // Extract job skills from job description text instead of job.skills array
-      let jobSkills: string[] = [];
-      const jobDescription = job.jobDescription || '';
-      
-      // Look for skills in various formats within the job description
-      const skillPatterns = [
-        /(?:skills?|requirements?|qualifications?|experience)[:\s]*([^.]*)/gi,
-        /(?:proficiency|knowledge|expertise)\s+(?:in|with|of)[:\s]*([^.]*)/gi,
-        /(?:must have|required|essential)[:\s]*([^.]*)/gi
-      ];
-      
-      skillPatterns.forEach(pattern => {
-        const matches = jobDescription.match(pattern);
-        if (matches) {
-          matches.forEach(match => {
-            // Extract individual skills from the matched text
-            const skillText = match.replace(/(?:skills?|requirements?|qualifications?|experience|proficiency|knowledge|expertise|must have|required|essential)[:\s]*/gi, '');
-            const extractedSkills = skillText.split(/[,;•\-\n]/)
-              .map(skill => skill.trim().toLowerCase())
-              .filter(skill => skill.length > 2 && skill.length < 30);
-            jobSkills.push(...extractedSkills);
+        try {
+          const resumeProcessingResponse = await fetch(`${HIRING_INTELLIGENCE_URL}/api/resume-profiles/process`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SERVICE_API_KEY}`
+            },
+            body: JSON.stringify({
+              resumeText: resumeContent,
+              fileType: 'text',
+              fileName: 'resume.txt',
+              jobId: job.id,
+              organizationId: job.organizationId || null,
+              userId: userId,
+              customRules: null
+            })
           });
+
+          if (!resumeProcessingResponse.ok) {
+            const errorText = await resumeProcessingResponse.text();
+            console.error('❌ Resume processing failed:', errorText);
+            // Don't fail the entire submission, just log the error
+            console.warn('⚠️ Continuing with application submission without resume processing');
+          } else {
+            resumeProcessingResult = await resumeProcessingResponse.json();
+            resumeProcessingJobId = resumeProcessingResult.jobId;
+            console.log('✅ Resume processing initiated, job ID:', resumeProcessingJobId);
+          }
+        } catch (processingError) {
+          console.error('❌ Error calling resume processing:', processingError);
+          // Don't fail the entire submission, just log the error
+          console.warn('⚠️ Continuing with application submission without resume processing');
         }
-      });
-      
-      // Remove duplicates and common words
-      jobSkills = [...new Set(jobSkills)].filter(skill => 
-        !['and', 'or', 'with', 'in', 'of', 'the', 'to', 'for', 'on'].includes(skill)
-      );
-      
-      console.log('📋 Extracted job skills from description:', jobSkills);
-      
-      // If no skills found in description, allow application to proceed
-      if (jobSkills.length === 0) {
-        console.warn("⚠️ No specific skills extracted from job description");
-        jobSkills = ['general experience']; // Use generic requirement
       }
-      
-      if (userSkills.length === 0) {
-        console.warn("⚠️ User has no skills in their AI profile");
-      }
-      
-      console.log('📋 Job Skills:', jobSkills);
-      console.log('📋 User Skills:', userSkills);
-
-      // Perform skill comparison
-      const missingSkills = jobSkills.filter(skill => !userSkills.includes(skill));
-      const matchedSkills = jobSkills.length - missingSkills.length;
-      const totalSkills = jobSkills.length;
-
-      console.log(`📊 Skills Analysis: ${matchedSkills}/${totalSkills} matched, ${missingSkills.length} missing`);
-
-      // Generate notes based on missing skills  
-      const skillsNotesString = missingSkills.length > 0
-        ? missingSkills.map(skill => `• Missing: ${skill}`).join('\n')
-        : "No missing skills";
-
-      // Combine employer question answers with skill analysis notes
-      let combinedNotes = skillsNotesString;
-      if (employerQuestionAnswers && employerQuestionAnswers.trim() !== '') {
-        combinedNotes = employerQuestionAnswers + '\n\n--- Skills Analysis ---\n' + skillsNotesString;
-      }
-
-      // Prepare application data with complete profile from Airtable
-      const applicationData = {
-        jobTitle: job.jobTitle,
-        jobId: job.recordId,
-        jobDescription: job.jobDescription,
-        companyName: job.companyName,
-        applicantName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email || `User ${userId}`,
-        applicantId: userId,
-        applicantEmail: user.email, // Include user email
-        aiProfile: userProfileData, // Use complete profile from Airtable
-        notes: combinedNotes
-      };
-
-      // Submit to Airtable
-      console.log('📤 Submitting to Airtable:', {
-        jobTitle: applicationData.jobTitle,
-        applicantName: applicationData.applicantName,
-        totalSkills,
-        matchedSkills,
-        missingSkillsCount: missingSkills.length
-      });
-      
-      await localDatabaseService.createJobApplication(applicationData);
-
-      console.log('✅ Application submitted successfully to Airtable');
 
       res.json({
-        success: true,
         message: 'Application submitted successfully',
-        analysis: {
-          missingSkills,
-          notes: combinedNotes,
-          totalRequiredSkills: totalSkills,
-          matchedSkills: matchedSkills
-        }
-      });
+      })
 
     } catch (error) {
       console.error('Error submitting job application:', error);
