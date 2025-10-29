@@ -4,9 +4,7 @@ import { Mic, MessageCircle, Languages } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ModeSelectionComponentProps {
-  selectedInterviewType: string;
   selectedInterviewLanguage: string;
-  onInterviewTypeChange: (value: string) => void;
   onLanguageChange: (value: string) => void;
   onStartVoiceInterview: () => void;
   onStartTextInterview: () => void;
@@ -16,9 +14,7 @@ interface ModeSelectionComponentProps {
 }
 
 export function ModeSelectionComponent({
-  selectedInterviewType,
   selectedInterviewLanguage,
-  onInterviewTypeChange,
   onLanguageChange,
   onStartVoiceInterview,
   onStartTextInterview,
@@ -35,25 +31,6 @@ export function ModeSelectionComponent({
         <p className="text-sm text-muted-foreground">
           Choose how you'd like to complete your professional interview
         </p>
-      </div>
-
-      {/* Interview Type Selection */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-center space-x-2 rtl:space-x-reverse">
-          <div className="h-4 w-4 text-muted-foreground" />
-          <label className="text-sm font-medium">Interview Type</label>
-        </div>
-        <Select
-          value={selectedInterviewType}
-          onValueChange={onInterviewTypeChange}
-        >
-          <SelectTrigger className="w-full max-w-xs mx-auto">
-            <SelectValue placeholder="Select interview type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="professional">Professional Interview</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Language Selection */}

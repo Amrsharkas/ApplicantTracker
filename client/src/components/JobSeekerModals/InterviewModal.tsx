@@ -23,7 +23,6 @@ import {
 
 export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: InterviewModalProps) {
   const [mode, setMode] = useState<'select' | 'text' | 'voice'>('select');
-  const [selectedInterviewType, setSelectedInterviewType] = useState<string>('professional');
   const [selectedInterviewLanguage, setSelectedInterviewLanguage] = useState<string>('english');
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState("");
@@ -63,7 +62,6 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
   useEffect(() => {
     if (isOpen) {
       setMode('select');
-      setSelectedInterviewType('professional');
       setMessages([]);
       setCurrentAnswer('');
       setCurrentQuestionIndex(0);
@@ -166,7 +164,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
           ];
           
           // Also check for question count completion - if we've reached expected count
-          const expectedQuestionCount = getQuestionCount(selectedInterviewType);
+          const expectedQuestionCount = getQuestionCount();
           const currentQuestionCount = conversationHistory.filter(msg => msg.role === 'assistant').length;
           
           if (conclusionKeywords.some(keyword => aiText.toLowerCase().includes(keyword.toLowerCase())) || 
@@ -236,10 +234,8 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
 
   const startInterviewMutation = useMutation({
     mutationFn: async () => {
-      const endpoint = selectedInterviewType 
-        ? `/api/interview/start/${selectedInterviewType}`
-        : "/api/interview/start";
-      
+      const endpoint = "/api/interview/start/professional";
+
       console.log('Starting interview with endpoint:', endpoint, 'language:', selectedInterviewLanguage);
       const response = await apiRequest("POST", endpoint, {
         language: selectedInterviewLanguage
@@ -435,14 +431,14 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         }
       }
 
-      console.log('Sending voice interview data:', { 
-        conversationHistory: responses, 
-        interviewType: selectedInterviewType 
+      console.log('Sending voice interview data:', {
+        conversationHistory: responses,
+        interviewType: 'professional'
       });
 
       const response = await apiRequest("POST", "/api/interview/complete-voice", {
         conversationHistory: responses,
-        interviewType: selectedInterviewType
+        interviewType: 'professional'
       });
       return response;
     },
@@ -688,7 +684,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
   };
 
   const processInterviewCompletion = async () => {
-    if (!currentSession || !selectedInterviewType) return;
+    if (!currentSession) return;
     
     try {
       // Submit final answer and process completion
@@ -702,12 +698,12 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           conversationHistory: allResponses.map((answer, index) => ({
             question: currentSession.sessionData?.questions?.[index] || `Question ${index + 1}`,
             answer: answer
           })),
-          interviewType: selectedInterviewType
+          interviewType: 'professional'
         })
       });
 
@@ -849,14 +845,6 @@ useEffect(() => {
 }, []);
 
 const startVoiceInterview = async () => {
-    if (!selectedInterviewType) {
-      toast({
-        title: t('interview.selectInterviewTypeError') || 'Error',
-        description: t('interview.selectInterviewTypeErrorDescription') || 'Please select an interview type first.',
-        variant: 'destructive'
-      });
-      return;
-    }
 
     // First show violation rules if not accepted yet
     if (!violationRulesAccepted) {
@@ -893,7 +881,7 @@ const startVoiceInterview = async () => {
         },
         credentials: 'include',
         body: JSON.stringify({
-          interviewType: selectedInterviewType,
+          interviewType: 'professional',
           language: selectedInterviewLanguage
         })
       });
@@ -937,7 +925,7 @@ const startVoiceInterview = async () => {
 
       // Connect to realtime API with the interview data
       await realtimeAPI.connect({
-        interviewType: selectedInterviewType,
+        interviewType: 'professional',
         questions: interviewData.questions,
         language: selectedInterviewLanguage
       });
@@ -969,14 +957,6 @@ const startVoiceInterview = async () => {
   };
 
   const startTextInterview = async () => {
-    if (!selectedInterviewType) {
-      toast({
-        title: t('interview.selectInterviewTypeError') || 'Error',
-        description: t('interview.selectInterviewTypeErrorDescription') || 'Please select an interview type first.',
-        variant: 'destructive'
-      });
-      return;
-    }
 
     setIsStartingInterview(true);
     setMode('text');
@@ -1001,7 +981,7 @@ const startVoiceInterview = async () => {
         },
         credentials: 'include',
         body: JSON.stringify({ 
-          interviewType: selectedInterviewType,
+          interviewType: 'professional',
           language: selectedInterviewLanguage
         })
       });
@@ -1085,11 +1065,8 @@ const startVoiceInterview = async () => {
     }
   };
 
-  const getQuestionCount = (interviewType: string) => {
-    switch (interviewType) {
-      case 'professional': return 11;
-      default: return 11;
-    }
+  const getQuestionCount = () => {
+    return 11;
   };
 
   const resetInterview = () => {
@@ -1107,7 +1084,6 @@ const startVoiceInterview = async () => {
     }
 
     setMode('select');
-    setSelectedInterviewType('professional');
     setMessages([]);
     setCurrentAnswer('');
     setCurrentQuestionIndex(0);
@@ -1138,7 +1114,7 @@ const startVoiceInterview = async () => {
     if (!isOpen || sessionTerminated) return;
 
     const handleBlur = () => {
-      if (mode === 'voice' || (mode === 'select' && selectedInterviewType)) {
+      if (mode === 'voice' || mode === 'select') {
         const newCount = windowBlurCount + 1;
         setWindowBlurCount(newCount);
         setWarningVisible(true);
@@ -1180,7 +1156,7 @@ const startVoiceInterview = async () => {
     return () => {
       window.removeEventListener('blur', handleBlur);
     };
-  }, [isOpen, mode, selectedInterviewType, windowBlurCount, sessionTerminated, toast, realtimeAPI]);
+  }, [isOpen, mode, windowBlurCount, sessionTerminated, toast, realtimeAPI]);
 
   // Cleanup voice interview and recording when modal closes
   useEffect(() => {
@@ -1301,7 +1277,7 @@ const startVoiceInterview = async () => {
         },
         credentials: 'include',
         body: JSON.stringify({
-          interviewType: selectedInterviewType,
+          interviewType: 'professional',
           language: selectedInterviewLanguage
         })
       });
@@ -1345,7 +1321,7 @@ const startVoiceInterview = async () => {
 
       // Connect to realtime API with the interview data
       await realtimeAPI.connect({
-        interviewType: selectedInterviewType,
+        interviewType: 'professional',
         questions: interviewData.questions,
         language: selectedInterviewLanguage
       });
@@ -1382,15 +1358,6 @@ const startVoiceInterview = async () => {
   };
 
   const handleStartVoiceInterview = () => {
-    if (!selectedInterviewType) {
-      toast({
-        title: t('interview.selectInterviewTypeError') || 'Error',
-        description: t('interview.selectInterviewTypeErrorDescription') || 'Please select an interview type first.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
     // First show violation rules if not accepted yet
     if (!violationRulesAccepted) {
       setShowViolationRules(true);
@@ -1468,7 +1435,7 @@ const startVoiceInterview = async () => {
                 </span>
               </div>
               <div className="text-gray-400 text-sm">
-                {selectedInterviewType && `${selectedInterviewType.charAt(0).toUpperCase() + selectedInterviewType.slice(1)} Interview`} • {selectedInterviewLanguage === 'arabic' ? 'Arabic' : 'English'}
+                {'professional' && `${'professional'.charAt(0).toUpperCase() + 'professional'.slice(1)} Interview`} • {selectedInterviewLanguage === 'arabic' ? 'Arabic' : 'English'}
               </div>
 
               {/* Transcription toggle */}
@@ -1530,7 +1497,6 @@ const startVoiceInterview = async () => {
                 windowBlurCount={windowBlurCount}
                 maxBlurCount={maxBlurCount}
                 showTranscription={showTranscription}
-                selectedInterviewType={selectedInterviewType}
                 selectedInterviewLanguage={selectedInterviewLanguage}
                 realtimeAPI={realtimeAPI}
                 processVoiceInterviewMutation={processVoiceInterviewMutation}
@@ -1569,7 +1535,7 @@ const startVoiceInterview = async () => {
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>{t('interview.aiInterview') || 'AI Interview'}</DialogTitle>
-              {(mode === 'select' && selectedInterviewType) && (
+              {mode === 'select' && (
                 <div className="flex items-center space-x-2">
                   <div className={`h-2 w-2 rounded-full ${sessionTerminated ? 'bg-red-500' : windowBlurCount > 0 ? 'bg-yellow-500' : 'bg-green-500'}`} />
                   <span className="text-xs text-muted-foreground">
@@ -1612,9 +1578,7 @@ const startVoiceInterview = async () => {
 
           {mode === 'select' && (
             <ModeSelectionComponent
-              selectedInterviewType={selectedInterviewType}
               selectedInterviewLanguage={selectedInterviewLanguage}
-              onInterviewTypeChange={setSelectedInterviewType}
               onLanguageChange={setSelectedInterviewLanguage}
               onStartVoiceInterview={handleStartVoiceInterview}
               onStartTextInterview={startTextInterview}
@@ -1635,7 +1599,7 @@ const startVoiceInterview = async () => {
               isRespondPending={respondMutation.isPending}
               isStartPending={startInterviewMutation.isPending}
               currentQuestionIndex={currentQuestionIndex}
-              totalQuestions={currentSession?.sessionData?.questions?.length || getQuestionCount(selectedInterviewType)}
+              totalQuestions={currentSession?.sessionData?.questions?.length || getQuestionCount('professional')}
               sessionCompleted={currentSession?.isCompleted || false}
             />
           )}

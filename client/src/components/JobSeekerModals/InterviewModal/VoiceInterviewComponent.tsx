@@ -18,7 +18,6 @@ interface VoiceInterviewComponentProps {
   windowBlurCount: number;
   maxBlurCount: number;
   showTranscription: boolean;
-  selectedInterviewType: string;
   selectedInterviewLanguage: string;
   realtimeAPI: any;
   processVoiceInterviewMutation: any;
@@ -42,7 +41,6 @@ export function VoiceInterviewComponent({
   windowBlurCount,
   maxBlurCount,
   showTranscription,
-  selectedInterviewType,
   selectedInterviewLanguage,
   realtimeAPI,
   processVoiceInterviewMutation,
@@ -118,15 +116,13 @@ export function VoiceInterviewComponent({
           </div>
 
           <div className="flex items-center space-x-3">
-            {selectedInterviewType !== 'job-practice' && (
-              <button
+            <button
                 onClick={onExitInterview}
                 className="text-gray-400 hover:text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
                 disabled={isAiSpeaking || isProcessingInterview || isUploading}
               >
                 ← Exit Interview
               </button>
-            )}
 
             {isConnected && (
               <button
