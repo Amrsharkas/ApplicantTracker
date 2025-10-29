@@ -2,11 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Mic, MessageCircle, PhoneOff, Briefcase, Target, User, CheckCircle, Languages, Video, Circle } from 'lucide-react';
+import { PhoneOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRealtimeAPI } from '@/hooks/useRealtimeAPI';
 import { useResumeRequirement } from '@/hooks/useResumeRequirement';
@@ -15,59 +11,19 @@ import { isUnauthorizedError } from '@/lib/authUtils';
 import { ResumeRequiredModal } from '@/components/ResumeRequiredModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCameraRecorder } from '@/hooks/useCameraRecorder';
-import { CameraPreview } from '@/components/CameraPreview';
-
-interface InterviewQuestion {
-  question: string;
-  text?: string; // Alternative property for question text
-  context?: string;
-}
-
-interface InterviewMessage {
-  type: 'question' | 'answer';
-  content: string;
-  timestamp: Date;
-}
-
-interface InterviewType {
-  type: string;
-  title: string;
-  description: string;
-  completed: boolean;
-  questions: number;
-  locked?: boolean;
-}
-
-interface InterviewSession {
-  id: number;
-  sessionData: {
-    questions: InterviewQuestion[];
-    responses: Array<{ question: string; answer: string }>;
-    currentQuestionIndex: number;
-    isComplete?: boolean;
-    mode?: 'voice' | 'text'; // Added mode property
-  };
-  isCompleted: boolean;
-  generatedProfile?: any;
-  interviewType?: string;
-}
-
-interface UserProfile {
-  personalInterviewCompleted?: boolean;
-  professionalInterviewCompleted?: boolean;
-  technicalInterviewCompleted?: boolean;
-  [key: string]: any;
-}
-
-interface InterviewModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onAllInterviewsCompleted?: () => void;
-}
+import {
+  ViolationRulesComponent,
+  ModeSelectionComponent,
+  TextInterviewComponent,
+  VoiceInterviewComponent,
+  InterviewMessage,
+  InterviewSession,
+  InterviewModalProps
+} from './InterviewModal/index';
 
 export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: InterviewModalProps) {
-  const [mode, setMode] = useState<'types' | 'select' | 'text' | 'voice'>('types');
-  const [selectedInterviewType, setSelectedInterviewType] = useState<string>('');
+  const [mode, setMode] = useState<'select' | 'text' | 'voice'>('select');
+  const [selectedInterviewType, setSelectedInterviewType] = useState<string>('professional');
   const [selectedInterviewLanguage, setSelectedInterviewLanguage] = useState<string>('english');
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState("");
@@ -92,7 +48,6 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
   const [showViolationRules, setShowViolationRules] = useState(false);
   const [violationRulesAccepted, setViolationRulesAccepted] = useState(false);
   const maxBlurCount = 3; // Maximum allowed window switches before termination
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { t, isRTL } = useLanguage();
@@ -107,8 +62,8 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
   // Reset interview state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setMode('types');
-      setSelectedInterviewType('');
+      setMode('select');
+      setSelectedInterviewType('professional');
       setMessages([]);
       setCurrentAnswer('');
       setCurrentQuestionIndex(0);
@@ -136,17 +91,11 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
     retry: false,
   });
 
-  // Fetch interview types
-  const { data: interviewTypesData } = useQuery({
-    queryKey: ["/api/interview/types"],
-    enabled: isOpen,
-    retry: false,
-  });
-
+  
   // Fetch welcome message
   const { data: welcomeMessageData } = useQuery({
     queryKey: ["/api/interview/welcome"],
-    enabled: isOpen && mode !== 'select' && mode !== 'types',
+    enabled: isOpen && mode !== 'select',
     retry: false,
   });
 
@@ -396,7 +345,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
           onAllInterviewsCompleted?.();
 
           // Reset to interview types view to show all completed
-          setMode('types');
+          setMode('select');
           setSelectedInterviewType('');
         } else if (data.nextInterviewType) {
           // Continue to next interview type automatically
@@ -453,63 +402,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
     },
   });
 
-  const processTextInterviewMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/interview/complete", {
-        sessionId: currentSession?.id,
-        interviewType: selectedInterviewType
-      });
-      return response;
-    },
-    onSuccess: (data) => {
-      setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
-      queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
-      
-      if (data.allInterviewsCompleted) {
-        // Final completion - show profile generation success
-        toast({
-          title: t('interview.allInterviewsComplete') || "All Interviews Complete!",
-          description: t('interview.profileGeneratedSuccessfully') || "Your comprehensive AI profile has been generated successfully.",
-        });
-
-        // Call callback to open JobSpecificAIInterviewsModal
-        onAllInterviewsCompleted?.();
-
-        // Reset to interview types view to show all completed
-        setMode('types');
-        setSelectedInterviewType('');
-      } else if (data.nextInterviewType) {
-        // Continue to next interview type automatically
-        toast({
-          title: t('interview.interviewSectionComplete') || "Interview Section Complete",
-          description: `${t('interview.movingTo') || 'Moving to'} ${data.nextInterviewType} ${t('interview.interview') || 'interview'}...`,
-        });
-        
-        // Automatically start next interview
-        setTimeout(() => {
-          setSelectedInterviewType(data.nextInterviewType);
-          setMode('select');
-        }, 1500);
-      } else {
-        // Individual interview complete with no next type
-        toast({
-          title: t('interview.interviewSectionComplete') || "Interview Section Complete!",
-          description: t('interview.continueRemainingInterviews') || "Continue with the remaining interviews to complete your profile.",
-        });
-      }
-      
-      setIsInterviewConcluded(false);
-    },
-    onError: (error) => {
-      toast({
-        title: t('interview.submissionFailed') || "Submission Failed",
-        description: t('interview.submissionFailedDescription') || "There was an issue submitting your interview. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
+  
   const processVoiceInterviewMutation = useMutation({
     mutationFn: async () => {
       setIsProcessingInterview(true);
@@ -622,7 +515,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         });
         
         // Reset to interview types view
-        setMode('types');
+        setMode('select');
         setSelectedInterviewType('');
       }
     },
@@ -846,7 +739,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         onAllInterviewsCompleted?.();
 
         // Reset to interview types view to show all completed
-        setMode('types');
+        setMode('select');
         setSelectedInterviewType('');
       } else {
         // Individual interview complete - no profile generated yet
@@ -854,7 +747,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
           title: t('interview.interviewSectionComplete') || "Interview Section Complete!",
           description: t('interview.continueRemainingInterviews') || "Continue with the remaining interviews to complete your profile.",
         });
-        setMode('types');
+        setMode('select');
         setSelectedInterviewType('');
       }
       
@@ -1194,10 +1087,8 @@ const startVoiceInterview = async () => {
 
   const getQuestionCount = (interviewType: string) => {
     switch (interviewType) {
-      case 'personal': return 5;
-      case 'professional': return 7;
-      case 'technical': return 11;
-      default: return 7;
+      case 'professional': return 11;
+      default: return 11;
     }
   };
 
@@ -1215,8 +1106,8 @@ const startVoiceInterview = async () => {
       exitFullscreen();
     }
 
-    setMode('types');
-    setSelectedInterviewType('');
+    setMode('select');
+    setSelectedInterviewType('professional');
     setMessages([]);
     setCurrentAnswer('');
     setCurrentQuestionIndex(0);
@@ -1334,10 +1225,7 @@ const startVoiceInterview = async () => {
     onClose();
   };
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, voiceTranscript]);
-
+  
   useEffect(() => {
     if (existingSession && typeof existingSession === 'object' && !currentSession) {
       const session = existingSession as InterviewSession;
@@ -1379,756 +1267,192 @@ const startVoiceInterview = async () => {
     }
   }, [existingSession, currentSession]);
 
-  const renderInterviewTypes = () => {
-    // Get completion status from user profile
-    const personalCompleted = (userProfile as UserProfile)?.personalInterviewCompleted || false;
-    const professionalCompleted = (userProfile as UserProfile)?.professionalInterviewCompleted || false;
-    const technicalCompleted = (userProfile as UserProfile)?.technicalInterviewCompleted || false;
-    
-    const interviewTypes = (interviewTypesData && typeof interviewTypesData === 'object' && 'interviewTypes' in interviewTypesData)
-      ? (interviewTypesData as any).interviewTypes || [] : [
-      {
-        type: 'personal',
-        title: t('interview.personalInterview') || 'Personal Interview',
-        description: t('interview.personalInterviewDescription') || 'Understanding your personal self, background, and history',
-        completed: personalCompleted,
-        locked: false,
-        questions: 11
-      },
-      {
-        type: 'professional',
-        title: t('interview.professionalInterview') || 'Professional Interview',
-        description: t('interview.professionalInterviewDescription') || 'Exploring your career background and professional experience',
-        completed: professionalCompleted,
-        locked: !personalCompleted,
-        questions: 11
-      },
-      {
-        type: 'technical',
-        title: t('interview.technicalInterview') || 'Technical Interview',
-        description: t('interview.technicalInterviewDescription') || 'Dynamic assessment based on your field - problem solving and IQ evaluation',
-        completed: technicalCompleted,
-        locked: !personalCompleted || !professionalCompleted,
-        questions: 11
-      }
-    ];
+  const handleViolationRulesAccept = async () => {
+    setShowViolationRules(false);
+    setViolationRulesAccepted(true);
 
-    return (
-      <div className="space-y-6">
-        <div className="text-center space-y-3">
-          <h3 className="text-lg font-semibold">Choose Your Interview</h3>
-          <p className="text-sm text-muted-foreground">
-            Complete all 3 interviews in order to generate your comprehensive AI profile
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Interviews must be completed in this order: Personal → Professional → Technical
-          </p>
-        </div>
-        
-        <div className="space-y-4">
-          {interviewTypes.map((interview: InterviewType) => (
-            <Card
-              key={interview.type}
-              id={`interview-${interview.type}-button`}
-              className={`transition-colors ${
-                interview.locked
-                  ? 'opacity-60 cursor-not-allowed border-gray-200 bg-gray-50'
-                  : 'cursor-pointer hover:bg-accent/50'
-              } ${interview.completed ? 'border-green-300 bg-green-50' : ''}`}
-              onClick={() => {
-                if (!interview.locked) {
-                  setSelectedInterviewType(interview.type);
-                  setMode('select');
-                }
-              }}
-            >
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="flex items-center space-x-4 rtl:space-x-reverse">
-                  <div className="flex-shrink-0">
-                    {interview.type === 'personal' && <User className="h-8 w-8 text-blue-600" />}
-                    {interview.type === 'professional' && <Briefcase className="h-8 w-8 text-green-600" />}
-                    {interview.type === 'technical' && <Target className="h-8 w-8 text-purple-600" />}
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium flex items-center space-x-2 rtl:space-x-reverse">
-                      <span>{interview.title}</span>
-                      {interview.completed && <CheckCircle className="h-4 w-4 text-green-600" />}
-                      {interview.locked && !interview.completed && (
-                        <span className="text-xs text-gray-500">(Locked)</span>
-                      )}
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      {interview.description}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {interview.questions} questions
-                      {interview.locked && !interview.completed && (
-                        <span className="text-xs text-orange-600 ml-2">
-                          • {t('interview.completePreviousInterviews') || 'Complete previous interviews first'}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                  {interview.completed ? (
-                    <Badge variant="default" className="bg-green-100 text-green-700">
-                      {t('interview.completed') || 'Completed'}
-                    </Badge>
-                  ) : interview.locked ? (
-                    <Badge variant="outline" className="text-gray-500">
-                      {t('interview.locked') || 'Locked'}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline">
-                      {t('interview.start') || 'Start'}
-                    </Badge>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
+    // Start voice interview directly after accepting rules
+    try {
+      setIsStartingInterview(true);
+      setMode('voice');
+      setMessages([]);
+      setIsInterviewConcluded(false);
+      setConversationHistory([]);
+
+      // Start camera access immediately when voice mode is selected
+      await startCameraAccess();
+
+      // Try to enter fullscreen immediately when switching to voice mode
+      enterFullscreen();
+
+      // Show loading message
+      const loadingMessage: InterviewMessage = {
+        type: 'question',
+        content: t('interview.startingVoiceInterviewConnecting') || 'Starting your voice interview... Camera enabled, connecting to AI interviewer...',
+        timestamp: new Date()
+      };
+      setMessages([loadingMessage]);
+
+      // Call the dedicated voice interview route
+      const response = await fetch('/api/interview/start-voice', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          interviewType: selectedInterviewType,
+          language: selectedInterviewLanguage
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Voice interview start failed:', response.status, errorData);
+        throw new Error(errorData.error || `API returned ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const htmlContent = await response.text();
+        console.error('Expected JSON but got:', contentType, htmlContent.substring(0, 200));
+        throw new Error('Server returned HTML instead of JSON');
+      }
+
+      const interviewData = await response.json();
+      console.log('Voice interview initialized:', interviewData);
+
+      // Update current session
+      setCurrentSession({
+        id: interviewData.sessionId,
+        sessionData: {
+          questions: interviewData.questions || [],
+          responses: [],
+          currentQuestionIndex: 0
+        },
+        isCompleted: false
+      });
+
+      // Update with welcome message
+      if (interviewData.welcomeMessage) {
+        const welcomeMessage: InterviewMessage = {
+          type: 'question',
+          content: interviewData.welcomeMessage,
+          timestamp: new Date()
+        };
+        setMessages([welcomeMessage]);
+      }
+
+      // Connect to realtime API with the interview data
+      await realtimeAPI.connect({
+        interviewType: selectedInterviewType,
+        questions: interviewData.questions,
+        language: selectedInterviewLanguage
+      });
+
+      setIsStartingInterview(false);
+
+      toast({
+        title: t('interview.voiceInterviewStarted') || "Voice Interview Started",
+        description: t('interview.voiceInterviewStartedDescription') || "You can now speak naturally with the AI interviewer.",
+      });
+
+      // Auto-enter fullscreen for voice mode with a small delay to ensure UI is ready
+      setTimeout(async () => {
+        await enterFullscreen();
+      }, 500);
+    } catch (error) {
+      setIsStartingInterview(false);
+      console.error('Voice interview error:', error);
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+      toast({
+        title: t('interview.connectionFailed') || 'Connection Failed',
+        description: `${t('interview.couldNotStartVoiceInterview') || 'Could not start voice interview'}: ${errorMessage}. ${t('interview.tryTextMode') || 'Please try text mode'}.`,
+        variant: 'destructive'
+      });
+      setMode('select');
+    }
   };
 
-  const renderViolationRules = () => (
-    <div className="space-y-6 px-2">
-      <div className="text-center space-y-3">
-        <div className="flex items-center justify-center space-x-2 text-red-600">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-          </svg>
-        </div>
-        <p className="text-sm text-red-600 font-medium">
-          This interview is fully monitored by advanced AI systems. Any violation ends your session immediately.
-        </p>
-      </div>
+  const handleViolationRulesDecline = () => {
+    setShowViolationRules(false);
+    setMode('select');
+  };
 
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-sm text-red-800 mb-4">
-          Sessions are recorded and reviewed by humans. By continuing you consent to video, audio, and activity recording for fraud prevention.
-        </p>
+  const handleStartVoiceInterview = () => {
+    if (!selectedInterviewType) {
+      toast({
+        title: t('interview.selectInterviewTypeError') || 'Error',
+        description: t('interview.selectInterviewTypeErrorDescription') || 'Please select an interview type first.',
+        variant: 'destructive'
+      });
+      return;
+    }
 
-        <div className="space-y-3">
-          {[
-            "Webcam ON — eye tracking is active. Looking away = flag.",
-            "No phones or extra devices — detection = instant disqualification.",
-            "Stay on this page — leaving the tab, opening apps, or refreshing ends the interview.",
-            "No shortcuts or screenshots — Ctrl/Cmd+Tab, Ctrl+C/Ctrl+V, or screenshots = automatic failure.",
-            "Mouse must stay in the window — leaving or prolonged idling triggers termination.",
-            "Microphone ON — outside voices or played audio = invalid session.",
-            "Face check active — masks, deepfakes, or identity mismatch = termination.",
-            "Random verification — follow live instructions immediately when prompted.",
-            "Exiting full screen = disqualification",
-            "One-strike policy — no warnings, no retries."
-          ].map((rule, index) => (
-            <div key={index} className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                {index + 1}
-              </div>
-              <p className="text-sm text-red-700">{rule}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+    // First show violation rules if not accepted yet
+    if (!violationRulesAccepted) {
+      setShowViolationRules(true);
+      return;
+    }
 
-      <div className="flex justify-center space-x-4">
-        <Button
-          variant="outline"
-          onClick={() => {
-            setShowViolationRules(false);
-            setMode('select');
-          }}
-          className="border-red-300 text-red-600 hover:bg-red-50"
-        >
-          Decline
-        </Button>
-        <Button
-          onClick={async () => {
-            setShowViolationRules(false);
-            setViolationRulesAccepted(true);
+    startVoiceInterview();
+  };
 
-            // Start voice interview directly after accepting rules
-            try {
-              setIsStartingInterview(true);
-              setMode('voice');
-              setMessages([]);
-              setIsInterviewConcluded(false);
-              setConversationHistory([]);
+  const handleExitInterview = async () => {
+    if (isAiSpeaking || isProcessingInterview) {
+      return;
+    }
 
-              // Start camera access immediately when voice mode is selected
-              await startCameraAccess();
+    console.log('Exit Interview button clicked, recording state:', { isRecording });
 
-              // Try to enter fullscreen immediately when switching to voice mode
-              enterFullscreen();
+    try {
+      // Disconnect OpenAI realtime connection first
+      if (realtimeAPI.isConnected) {
+        console.log('Disconnecting OpenAI realtime connection...');
+        realtimeAPI.disconnect();
+      }
 
-              // Show loading message
-              const loadingMessage: InterviewMessage = {
-                type: 'question',
-                content: t('interview.startingVoiceInterviewConnecting') || 'Starting your voice interview... Camera enabled, connecting to AI interviewer...',
-                timestamp: new Date()
-              };
-              setMessages([loadingMessage]);
+      // Stop recording and get the blob
+      console.log('Stopping recording...');
+      const recordedBlob = await stopRecording();
 
-              // Call the dedicated voice interview route
-              const response = await fetch('/api/interview/start-voice', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                  interviewType: selectedInterviewType,
-                  language: selectedInterviewLanguage
-                })
-              });
+      console.log('Recording stopped, blob info:', {
+        blob: recordedBlob,
+        size: recordedBlob?.size,
+        type: recordedBlob?.type
+      });
 
-              if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                console.error('Voice interview start failed:', response.status, errorData);
-                throw new Error(errorData.error || `API returned ${response.status}`);
-              }
+      // Upload the recording if we have data
+      if (recordedBlob && recordedBlob.size > 0) {
+        console.log('Uploading recorded blob...');
+        await uploadRecording(recordedBlob);
+      } else {
+        console.log('No recording data to upload');
+      }
+    } catch (error) {
+      console.error('Error saving recording on exit:', error);
+    } finally {
+      // Always cleanup and exit
+      cleanup();
+      exitFullscreen();
+      setMode('select');
+    }
+  };
 
-              const contentType = response.headers.get('content-type');
-              if (!contentType || !contentType.includes('application/json')) {
-                const htmlContent = await response.text();
-                console.error('Expected JSON but got:', contentType, htmlContent.substring(0, 200));
-                throw new Error('Server returned HTML instead of JSON');
-              }
+  const handleSubmitOrEndInterview = () => {
+    if (realtimeAPI.isInterviewComplete || isInterviewConcluded) {
+      processVoiceInterviewMutation.mutate();
+    } else {
+      // Allow ending interview early but don't allow submit unless completed
+      realtimeAPI.disconnect();
+      exitFullscreen();
+      setMode('select');
+    }
+  };
 
-              const interviewData = await response.json();
-              console.log('Voice interview initialized:', interviewData);
-
-              // Update current session
-              setCurrentSession({
-                id: interviewData.sessionId,
-                sessionData: {
-                  questions: interviewData.questions || [],
-                  responses: [],
-                  currentQuestionIndex: 0
-                },
-                isCompleted: false
-              });
-
-              // Update with welcome message
-              if (interviewData.welcomeMessage) {
-                const welcomeMessage: InterviewMessage = {
-                  type: 'question',
-                  content: interviewData.welcomeMessage,
-                  timestamp: new Date()
-                };
-                setMessages([welcomeMessage]);
-              }
-
-              // Connect to realtime API with the interview data
-              await realtimeAPI.connect({
-                interviewType: selectedInterviewType,
-                questions: interviewData.questions,
-                language: selectedInterviewLanguage
-              });
-
-              setIsStartingInterview(false);
-
-              toast({
-                title: t('interview.voiceInterviewStarted') || "Voice Interview Started",
-                description: t('interview.voiceInterviewStartedDescription') || "You can now speak naturally with the AI interviewer.",
-              });
-
-              // Auto-enter fullscreen for voice mode with a small delay to ensure UI is ready
-              setTimeout(async () => {
-                await enterFullscreen();
-              }, 500);
-            } catch (error) {
-              setIsStartingInterview(false);
-              console.error('Voice interview error:', error);
-
-              const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-
-              toast({
-                title: t('interview.connectionFailed') || 'Connection Failed',
-                description: `${t('interview.couldNotStartVoiceInterview') || 'Could not start voice interview'}: ${errorMessage}. ${t('interview.tryTextMode') || 'Please try text mode'}.`,
-                variant: 'destructive'
-              });
-              setMode('select');
-            }
-          }}
-          className="bg-red-600 hover:bg-red-700 text-white"
-        >
-          I Agree & Continue
-        </Button>
-      </div>
-    </div>
-  );
-
-  const renderModeSelection = () => (
-    <div className="space-y-6">
-      <div className="text-center space-y-3">
-        <h3 className="text-lg font-semibold">{t('interview.chooseStyle')}</h3>
-        <p className="text-sm text-muted-foreground">
-          {selectedInterviewType.charAt(0).toUpperCase() + selectedInterviewType.slice(1)} Interview - {t('interview.selectExperience')}
-        </p>
-      </div>
-      
-      {/* Language Selection */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-center space-x-2 rtl:space-x-reverse">
-          <Languages className="h-4 w-4 text-muted-foreground" />
-          <label className="text-sm font-medium">{t('interview.selectLanguage')}</label>
-        </div>
-        <Select 
-          value={selectedInterviewLanguage} 
-          onValueChange={setSelectedInterviewLanguage}
-        >
-          <SelectTrigger className="w-full max-w-xs mx-auto">
-            <SelectValue placeholder={t('interview.selectLanguage')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="english">{t('languages.english')}</SelectItem>
-            <SelectItem value="arabic">{t('languages.arabic')}</SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-muted-foreground text-center">
-          {t('interview.languageNote')}
-        </p>
-      </div>
-      
-      <div className={`grid ${enableTextInterviews === 'true' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
-        <Card
-          className={`transition-colors ${
-            isStartingInterview
-              ? 'opacity-50 cursor-not-allowed'
-              : 'cursor-pointer hover:bg-accent/50'
-          }`}
-          onClick={isStartingInterview ? undefined : () => setShowViolationRules(true)}
-        >
-          <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
-            {isStartingInterview && mode === 'voice' ? (
-              <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Mic className="h-8 w-8 text-primary" />
-            )}
-            <div className="text-center">
-              <h4 className="font-medium">{t('voiceInterview') || 'Voice Interview'}</h4>
-              <p className="text-sm text-muted-foreground">
-                {isStartingInterview && mode === 'voice'
-                  ? t('startingVoiceInterview') || 'Starting voice interview...'
-                  : t('speakNaturally') || 'Speak naturally with the AI interviewer'
-                }
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {enableTextInterviews === 'true' && (
-          <Card
-            className={`transition-colors ${
-              isStartingInterview
-                ? 'opacity-50 cursor-not-allowed'
-                : 'cursor-pointer hover:bg-accent/50'
-            }`}
-            onClick={isStartingInterview ? undefined : startTextInterview}
-          >
-            <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
-              {isStartingInterview && mode === 'text' ? (
-                <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <MessageCircle className="h-8 w-8 text-primary" />
-              )}
-              <div className="text-center">
-                <h4 className="font-medium">{t('textInterview') || 'Text Interview'}</h4>
-                <p className="text-sm text-muted-foreground">
-                  {isStartingInterview && mode === 'text'
-                    ? 'Preparing interview questions...'
-                    : 'Type your responses at your own pace'
-                  }
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-      
-      {currentSession?.interviewType !== 'job-practice' && (
-        <div className="flex justify-start">
-          <Button variant="outline" onClick={() => setMode('types')}>
-            ← {t('interview.backToInterviewTypes') || 'Back to Interview Types'}
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderTextInterview = () => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Text Interview</h3>
-        <Badge variant="outline">
-          Question {currentQuestionIndex + 1} of {currentSession?.sessionData?.questions?.length || getQuestionCount(selectedInterviewType)}
-        </Badge>
-      </div>
-      
-      <div className="max-h-[32rem] overflow-y-auto space-y-4 pr-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`p-3 rounded-lg ${
-              message.type === 'question'
-                ? 'bg-blue-50 border-l-4 border-blue-400'
-                : 'bg-green-50 border-l-4 border-green-400 ml-8'
-            }`}
-          >
-            <div className="flex items-start space-x-2 rtl:space-x-reverse">
-              {message.type === 'question' ? (
-                <User className="h-4 w-4 mt-1 text-blue-600" />
-              ) : (
-                <MessageCircle className="h-4 w-4 mt-1 text-green-600" />
-              )}
-              <div className="flex-1">
-                <p className="text-sm">
-                  {typeof message.content === 'string' 
-                    ? message.content 
-                    : 'Question content not available'
-                  }
-                </p>
-                <span className="text-xs text-muted-foreground">
-                  {message.timestamp.toLocaleTimeString()}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-        
-        {/* Loading indicator when processing responses */}
-        {(respondMutation.isPending || startInterviewMutation.isPending) && (
-          <div className="p-3 rounded-lg bg-gray-50 border-l-4 border-gray-400">
-            <div className="flex items-start space-x-2 rtl:space-x-reverse">
-              <div className="h-4 w-4 mt-1 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-600">
-                  {startInterviewMutation.isPending ? t('interview.preparingQuestions') || 'Preparing questions...' : t('interview.processingYourResponse') || 'Processing your response...'}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <div ref={messagesEndRef} />
-      </div>
-
-      {currentSession?.isCompleted ? (
-        <div className="space-y-4">
-          <Card className="border-green-200 bg-green-50">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                <div className="h-2 w-2 bg-green-500 rounded-full" />
-                <span className="text-sm font-medium text-green-700">Interview Complete!</span>
-              </div>
-              <p className="text-sm text-green-600 mt-1">
-                {t('interview.interviewSectionCompletedSuccessfully') || 'Interview section completed successfully! Continue with remaining interviews to complete your profile.'}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <Textarea
-            placeholder="Type your answer here..."
-            value={currentAnswer}
-            onChange={(e) => setCurrentAnswer(e.target.value)}
-            className="min-h-24"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmitAnswer();
-              }
-            }}
-          />
-          <div className="flex justify-between">
-            {currentSession?.interviewType !== 'job-practice' && (
-              <Button variant="outline" onClick={() => setMode('types')}>
-                ← {t('interview.backToInterviewTypes') || 'Back to Interview Types'}
-              </Button>
-            )}
-            <div className="flex space-x-2 rtl:space-x-reverse">
-              {isInterviewConcluded ? (
-                <Button 
-                  onClick={() => processInterviewCompletion()}
-                  disabled={isProcessingInterview}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {isProcessingInterview ? t('interview.submitting') || 'Submitting...' : t('interview.submitInterview') || 'Submit Interview'}
-                </Button>
-              ) : (
-                <Button 
-                  onClick={handleSubmitAnswer}
-                  disabled={!currentAnswer.trim() || respondMutation.isPending}
-                >
-                  {respondMutation.isPending ? t('interview.processing') || 'Processing...' : t('interview.submitAnswer') || 'Submit Answer'}
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderVoiceInterview = () => (
-    <div className="flex-1 flex flex-col h-full min-h-0">
-      {/* Main content area */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-0 min-h-0 overflow-hidden relative">
-        {/* Video section - takes full width when transcription is hidden */}
-        <div className={`${showTranscription ? 'lg:col-span-1' : 'lg:col-span-2'} relative bg-gray-900 overflow-hidden`}>
-          <CameraPreview
-            stream={cameraStream}
-            isActive={realtimeAPI.isConnected}
-            isRecording={isRecording}
-            error={realtimeAPI.cameraError}
-            connecting={isStartingInterview}
-            className="h-full"
-          />
-
-          {/* Video overlay with status and AI info */}
-          <div className="absolute inset-0 flex flex-col">
-            {/* Top overlay */}
-            <div className="bg-gradient-to-b from-black/60 to-transparent p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm">
-                    You
-                  </div>
-                  {realtimeAPI.isConnected && (
-                    <div className="flex items-center space-x-2 bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full">
-                      <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                      <span className="text-sm">Speaking</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* AI Interviewer status */}
-                <div className="bg-black/50 backdrop-blur-sm text-white px-4 py-2 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                      isStartingInterview ? 'bg-yellow-500' :
-                      isAiSpeaking ? 'bg-blue-500 animate-pulse' :
-                      realtimeAPI.isConnected ? 'bg-green-500' : 'bg-gray-500'
-                    }`}>
-                      <User className="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">AI Interviewer</p>
-                      <p className="text-xs opacity-75">
-                        {isStartingInterview ? 'Setting up...' :
-                         isAiSpeaking ? 'Speaking...' :
-                         realtimeAPI.isConnected ? 'Listening' : 'Connecting...'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom overlay with current AI text */}
-            {isAiSpeaking && voiceTranscript && (
-              <div className="mt-auto bg-gradient-to-t from-black/60 to-transparent p-4">
-                <div className="bg-black/50 backdrop-blur-sm text-white p-3 rounded-lg max-w-2xl">
-                  <p className="text-sm font-medium mb-1">AI Interviewer is saying:</p>
-                  <p className="text-sm">{voiceTranscript}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Transcription panel - only shown when enabled */}
-        {showTranscription && (
-          <div className="bg-gray-900 border-l border-gray-800 flex flex-col h-full">
-            {/* Transcription header */}
-            <div className="bg-gray-800 px-4 py-3 border-b border-gray-700 flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <h3 className="text-white font-medium flex items-center space-x-2">
-                  <MessageCircle className="h-4 w-4" />
-                  <span>Live Transcription</span>
-                </h3>
-                <span className="text-gray-400 text-xs">
-                  {conversationHistory.length} messages
-                </span>
-              </div>
-            </div>
-
-            {/* Transcription content */}
-            <div className="overflow-y-auto overflow-x-hidden p-4 space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800" style={{ height: 'calc(100vh - 250px)', minHeight: '200px' }}>
-              {conversationHistory.length > 0 ? (
-                conversationHistory.map((item, index) => (
-                  <div key={`${item.role}-${index}`} className={`flex ${
-                    item.role === 'assistant' ? 'justify-start' : 'justify-end'
-                  }`}>
-                    <div className={`max-w-full px-3 py-2 rounded-lg text-sm ${
-                      item.role === 'assistant'
-                        ? 'bg-blue-600/20 text-blue-100 border border-blue-600/30'
-                        : 'bg-green-600/20 text-green-100 border border-green-600/30'
-                    }`}>
-                      <div className="flex items-center space-x-1 mb-1">
-                        <span className="text-xs font-medium opacity-75">
-                          {item.role === 'assistant' ? 'AI' : 'You'}
-                        </span>
-                      </div>
-                      <p className="text-sm leading-relaxed">{item.content}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center text-gray-500 py-8">
-                  <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Waiting for conversation...</p>
-                </div>
-              )}
-
-              {/* AI speaking indicator in transcription */}
-              {isAiSpeaking && (
-                <div className="flex justify-start">
-                  <div className="bg-blue-600/20 text-blue-100 border border-blue-600/30 px-3 py-2 rounded-lg">
-                    <div className="flex items-center space-x-2">
-                      <div className="h-3 w-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
-                      <span className="text-sm">AI is speaking...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Meeting controls */}
-      <div className="bg-gray-900 border-t border-gray-800 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            {/* Recording status indicator */}
-            {isRecording && (
-              <div className="flex items-center space-x-2 bg-red-600 text-white px-3 py-1 rounded-full animate-pulse">
-                <Video className="h-4 w-4" />
-                <span className="text-xs font-medium">Recording</span>
-                <Circle className="h-2 w-2 bg-red-800 rounded-full animate-pulse" />
-              </div>
-            )}
-
-            <div className={`h-3 w-3 rounded-full ${
-              sessionTerminated ? 'bg-red-500' : windowBlurCount > 0 ? 'bg-yellow-500' : 'bg-green-500'
-            } animate-pulse`} />
-            <span className="text-gray-400 text-sm">
-              {sessionTerminated ? 'Session Terminated' :
-               windowBlurCount > 0 ? `${windowBlurCount}/${maxBlurCount} violations` :
-               realtimeAPI.isConnected ? (isRecording ? '🔴 Recording' : '🟢 Live') : '🟡 Connecting...'}
-            </span>
-
-            {showTranscription && (
-              <span className="text-gray-500 text-xs">
-                • Transcription enabled
-              </span>
-            )}
-
-            {/* Language indicator */}
-            <span className="text-gray-500 text-xs">
-              • Language: {selectedInterviewLanguage === 'arabic' ? 'العربية' : 'English'}
-            </span>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            {currentSession?.interviewType !== 'job-practice' && (
-              <button
-                onClick={async () => {
-                  if (isAiSpeaking || isProcessingInterview) {
-                    return;
-                  }
-
-                  console.log('Exit Interview button clicked, recording state:', { isRecording });
-
-                  try {
-                    // Disconnect OpenAI realtime connection first
-                    if (realtimeAPI.isConnected) {
-                      console.log('Disconnecting OpenAI realtime connection...');
-                      realtimeAPI.disconnect();
-                    }
-
-                    // Stop recording and get the blob
-                    console.log('Stopping recording...');
-                    const recordedBlob = await stopRecording();
-
-                    console.log('Recording stopped, blob info:', {
-                      blob: recordedBlob,
-                      size: recordedBlob?.size,
-                      type: recordedBlob?.type
-                    });
-
-                    // Upload the recording if we have data
-                    if (recordedBlob && recordedBlob.size > 0) {
-                      console.log('Uploading recorded blob...');
-                      await uploadRecording(recordedBlob);
-                    } else {
-                      console.log('No recording data to upload');
-                    }
-                  } catch (error) {
-                    console.error('Error saving recording on exit:', error);
-                  } finally {
-                    // Always cleanup and exit
-                    cleanup();
-                    exitFullscreen();
-                    setMode('types');
-                  }
-                }}
-                className="text-gray-400 hover:text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
-                disabled={isAiSpeaking || isProcessingInterview || isUploading}
-              >
-                ← Exit Interview
-              </button>
-            )}
-
-            {realtimeAPI.isConnected && (
-              <button
-                onClick={() => {
-                  if (realtimeAPI.isInterviewComplete || isInterviewConcluded) {
-                    processVoiceInterviewMutation.mutate();
-                  } else {
-                    // Allow ending interview early but don't allow submit unless completed
-                    realtimeAPI.disconnect();
-                    exitFullscreen();
-                    setMode('select');
-                  }
-                }}
-                disabled={isProcessingInterview || processVoiceInterviewMutation.isPending}
-                className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
-                  realtimeAPI.isInterviewComplete || isInterviewConcluded
-                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                    : 'bg-red-600 hover:bg-red-700 text-white'
-                }`}
-              >
-                {isProcessingInterview || processVoiceInterviewMutation.isPending ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                    <span>Processing...</span>
-                  </>
-                ) : realtimeAPI.isInterviewComplete || isInterviewConcluded ? (
-                  <>
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Submit Interview</span>
-                  </>
-                ) : (
-                  <>
-                    <PhoneOff className="h-4 w-4" />
-                    <span>End Interview</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
+  
   // Voice mode uses a different, full-screen interface
   if (mode === 'voice') {
     return (
@@ -2192,7 +1516,29 @@ const startVoiceInterview = async () => {
           <div className="flex-1 flex flex-col lg:flex-row">
             {/* Main content area */}
             <div className="flex-1 flex flex-col p-4 min-h-0">
-              {renderVoiceInterview()}
+              <VoiceInterviewComponent
+                cameraStream={cameraStream}
+                isRecording={isRecording}
+                isConnected={realtimeAPI.isConnected}
+                isStartingInterview={isStartingInterview}
+                isAiSpeaking={isAiSpeaking}
+                isProcessingInterview={isProcessingInterview}
+                isUploading={isUploading}
+                voiceTranscript={voiceTranscript}
+                conversationHistory={conversationHistory}
+                sessionTerminated={sessionTerminated}
+                windowBlurCount={windowBlurCount}
+                maxBlurCount={maxBlurCount}
+                showTranscription={showTranscription}
+                selectedInterviewType={selectedInterviewType}
+                selectedInterviewLanguage={selectedInterviewLanguage}
+                realtimeAPI={realtimeAPI}
+                processVoiceInterviewMutation={processVoiceInterviewMutation}
+                onExitInterview={handleExitInterview}
+                onToggleTranscription={() => setShowTranscription(!showTranscription)}
+                onSubmitOrEndInterview={handleSubmitOrEndInterview}
+                cameraError={realtimeAPI.cameraError}
+              />
             </div>
           </div>
         </div>
@@ -2264,9 +1610,35 @@ const startVoiceInterview = async () => {
             </div>
           )}
 
-          {mode === 'types' && renderInterviewTypes()}
-          {mode === 'select' && renderModeSelection()}
-          {mode === 'text' && renderTextInterview()}
+          {mode === 'select' && (
+            <ModeSelectionComponent
+              selectedInterviewType={selectedInterviewType}
+              selectedInterviewLanguage={selectedInterviewLanguage}
+              onInterviewTypeChange={setSelectedInterviewType}
+              onLanguageChange={setSelectedInterviewLanguage}
+              onStartVoiceInterview={handleStartVoiceInterview}
+              onStartTextInterview={startTextInterview}
+              isStartingInterview={isStartingInterview}
+              currentMode={mode}
+              enableTextInterviews={enableTextInterviews}
+            />
+          )}
+          {mode === 'text' && (
+            <TextInterviewComponent
+              messages={messages}
+              currentAnswer={currentAnswer}
+              onAnswerChange={setCurrentAnswer}
+              onSubmitAnswer={handleSubmitAnswer}
+              onSubmitInterview={processInterviewCompletion}
+              isInterviewConcluded={isInterviewConcluded}
+              isProcessingInterview={isProcessingInterview}
+              isRespondPending={respondMutation.isPending}
+              isStartPending={startInterviewMutation.isPending}
+              currentQuestionIndex={currentQuestionIndex}
+              totalQuestions={currentSession?.sessionData?.questions?.length || getQuestionCount(selectedInterviewType)}
+              sessionCompleted={currentSession?.isCompleted || false}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
@@ -2276,7 +1648,10 @@ const startVoiceInterview = async () => {
           <DialogHeader>
             <DialogTitle className="text-center text-red-600">Interview Violation Rules</DialogTitle>
           </DialogHeader>
-          {renderViolationRules()}
+          <ViolationRulesComponent
+            onAccept={handleViolationRulesAccept}
+            onDecline={handleViolationRulesDecline}
+          />
         </DialogContent>
       </Dialog>
 
