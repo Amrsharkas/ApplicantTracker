@@ -8,6 +8,7 @@ import { aiJobFilteringService } from "./aiJobFiltering";
 import { employerQuestionService } from "./employerQuestions";
 import { ObjectStorageService } from "./objectStorage";
 import { ResumeService } from "./resumeService";
+import { ragService } from "./ragService";
 import multer from "multer";
 import { string, z } from "zod";
 import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, airtableJobApplications, jobs, organizations } from "@shared/schema";
@@ -2693,6 +2694,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching job matches:", error);
       res.status(500).json({ message: "Failed to fetch job matches" });
+    }
+  });
+
+  // RAG-based job matches endpoint
+  app.get('/api/job-matches/rag', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+
+      // Get user's applicant profile
+      const profile = await storage.getApplicantProfile(userId);
+
+      if (!profile) {
+        console.warn(`⚠️ No applicant profile found for user ${userId}`);
+        res.json([]);
+        return;
+      }
+
+      // Extract AI profile from JSONB column
+      const aiProfileRaw = profile.aiProfile;
+
+      console.log({
+        aiProfileRaw,
+        s: aiProfileRaw.summary
+      });
+      
+      let aiProfileQuery = aiProfileRaw.summary;
+
+      // Search for jobs using RAG API with the applicant's AI profile
+      const ragResults = await ragService.searchJobs(
+        aiProfileQuery,
+        10, // top_k: return up to 10 results
+        undefined // no score threshold
+      );
+
+      // Transform RAG results to match the expected job match format
+      const matches = ragService.transformToJobMatches(ragResults);
+
+      console.log(`✅ Returning ${matches.length} RAG-based job matches for user ${userId}`);
+      res.json(matches);
+    } catch (error) {
+      console.error("❌ Error fetching RAG job matches:", error);
+
+      // Return more detailed error message for debugging
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({
+        message: "Failed to fetch RAG job matches",
+        error: errorMessage
+      });
     }
   });
 

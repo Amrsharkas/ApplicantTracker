@@ -5,8 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import ReactMarkdown from "react-markdown";
 
-import { MapPin, DollarSign, Target, Building, RefreshCw } from "lucide-react";
+import { MapPin, Target, Building, RefreshCw, Briefcase, ChevronDown, ChevronUp } from "lucide-react";
 
 interface JobMatch {
   id: number;
@@ -17,12 +18,15 @@ interface JobMatch {
     title: string;
     company: string;
     description: string;
+    requirements?: string;
     location: string;
     salaryMin?: number;
     salaryMax?: number;
     experienceLevel?: string;
     skills?: string[];
     jobType?: string;
+    workplaceType?: string;
+    industry?: string;
   };
 }
 
@@ -34,25 +38,26 @@ interface MatchesModalProps {
 export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
   const queryClient = useQueryClient();
 
-  const { data: matches = [], isLoading } = useQuery({
-    queryKey: ["/api/job-matches"],
+  const { data: matches = [], isLoading } = useQuery<JobMatch[]>({
+    queryKey: ["/api/job-matches/rag"],
     enabled: isOpen,
-    refetchInterval: isOpen ? 30000 : false, // Refresh every 30 seconds when modal is open to sync with Airtable
+    refetchInterval: isOpen ? 30000 : false, // Refresh every 30 seconds when modal is open to sync with RAG
   });
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [expandedJobs, setExpandedJobs] = useState<Record<number, boolean>>({});
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await queryClient.invalidateQueries({ queryKey: ["/api/job-matches"] });
+    await queryClient.invalidateQueries({ queryKey: ["/api/job-matches/rag"] });
     setTimeout(() => setIsRefreshing(false), 1000); // Show animation for 1 second
   };
 
-  const formatSalary = (min?: number, max?: number) => {
-    if (!min && !max) return "Salary not specified";
-    if (min && max) return `$${(min / 1000).toFixed(0)}k - $${(max / 1000).toFixed(0)}k`;
-    if (min) return `$${(min / 1000).toFixed(0)}k+`;
-    return `Up to $${(max! / 1000).toFixed(0)}k`;
+  const toggleExpanded = (jobId: number) => {
+    setExpandedJobs(prev => ({
+      ...prev,
+      [jobId]: !prev[jobId]
+    }));
   };
 
   return (
@@ -113,89 +118,151 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
               </div>
             </div>
           ) : (
-            matches.map((match: JobMatch, index: number) => (
-              <motion.div
-                key={match.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card className="glass-card hover:shadow-lg transition-all duration-200">
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-slate-800 text-lg">
-                            {match.job.title}
-                          </h3>
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                            <Badge className="text-green-600 bg-green-100 font-semibold">
-                              Employer Selected
-                            </Badge>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 mb-2">
-                          <Building className="w-4 h-4 text-blue-600" />
-                          <p className="text-blue-600 font-medium">{match.job.company}</p>
-                        </div>
-                        
-                        <p className="text-slate-600 mb-3 line-clamp-2">
-                          {match.job.description}
-                        </p>
-                        
-                        <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500 mb-3">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4" />
-                            <span>{match.job.location}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <DollarSign className="w-4 h-4" />
-                            <span>{formatSalary(match.job.salaryMin, match.job.salaryMax)}</span>
-                          </div>
-                          {match.job.jobType && (
-                            <Badge variant="outline" className="capitalize">
-                              {match.job.jobType}
-                            </Badge>
-                          )}
-                        </div>
+            matches.map((match: JobMatch, index: number) => {
+              const isExpanded = expandedJobs[match.id] || false;
 
-                        {match.job.skills && match.job.skills.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            {match.job.skills.slice(0, 4).map((skill) => (
-                              <Badge 
-                                key={skill} 
-                                variant="secondary"
-                                className="bg-blue-100 text-blue-700 hover:bg-blue-200"
-                              >
-                                {skill}
+              return (
+                <motion.div
+                  key={match.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Card className="glass-card hover:shadow-lg transition-all duration-200">
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1">
+                          {/* Header Section */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-slate-800 text-xl mb-2">
+                                {match.job.title}
+                              </h3>
+                              <div className="flex items-center gap-2 mb-2">
+                                <Building className="w-4 h-4 text-blue-600" />
+                                <p className="text-blue-600 font-medium">{match.job.company}</p>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <Badge className="bg-green-500 text-white">
+                                {Math.round(match.matchScore * 100)}% Match
                               </Badge>
-                            ))}
-                            {match.job.skills.length > 4 && (
-                              <Badge variant="outline">
-                                +{match.job.skills.length - 4} more
-                              </Badge>
+                            </div>
+                          </div>
+
+                          {/* Match Reasons */}
+                          {match.matchReasons && match.matchReasons.length > 0 && (
+                            <div className="bg-green-50 rounded-lg p-3 border border-green-200 mb-3">
+                              <p className="text-sm font-medium text-green-700 mb-1">✨ Why this matches you:</p>
+                              <ul className="text-sm text-green-600 list-disc list-inside">
+                                {match.matchReasons.slice(0, 3).map((reason, idx) => (
+                                  <li key={idx}>{reason}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Job Details Grid */}
+                          <div className="grid grid-cols-2 gap-3 mb-3">
+                            <div className="flex items-center gap-2 text-sm">
+                              <MapPin className="w-4 h-4 text-slate-500" />
+                              <span className="text-slate-700">{match.job.location}</span>
+                            </div>
+                            {match.job.experienceLevel && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <Briefcase className="w-4 h-4 text-slate-500" />
+                                <span className="text-slate-700">{match.job.experienceLevel}</span>
+                              </div>
+                            )}
+                            {match.job.jobType && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <Badge variant="outline" className="capitalize">
+                                  {match.job.jobType}
+                                </Badge>
+                              </div>
+                            )}
+                            {match.job.workplaceType && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <Badge variant="outline" className="capitalize">
+                                  {match.job.workplaceType}
+                                </Badge>
+                              </div>
                             )}
                           </div>
-                        )}
 
-                        <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-                          <p className="text-sm font-medium text-green-700 mb-1">✨ Pre-Approved Position</p>
-                          <p className="text-sm text-green-600">
-                            Congratulations! The employer has already reviewed your profile and selected you for this position.
-                          </p>
+                          {/* Skills Section */}
+                          {match.job.skills && match.job.skills.length > 0 && (
+                            <div className="mb-3">
+                              <p className="text-sm font-medium text-slate-700 mb-2">Required Skills:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {match.job.skills.slice(0, 6).map((skill) => (
+                                  <Badge
+                                    key={skill}
+                                    variant="secondary"
+                                    className="bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                  >
+                                    {skill}
+                                  </Badge>
+                                ))}
+                                {match.job.skills.length > 6 && (
+                                  <Badge variant="outline">
+                                    +{match.job.skills.length - 6} more
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Description Preview */}
+                          <div className="mb-3">
+                            <p className="text-sm font-medium text-slate-700 mb-2">Description:</p>
+                            {!isExpanded ? (
+                              <div className="text-slate-600 text-sm line-clamp-3">
+                                {match.job.description}
+                              </div>
+                            ) : (
+                              <div className="prose prose-sm max-w-none text-slate-600">
+                                <ReactMarkdown>{match.job.description}</ReactMarkdown>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Requirements Section (only shown when expanded) */}
+                          {isExpanded && match.job.requirements && (
+                            <div className="mb-3 border-t pt-3">
+                              <p className="text-sm font-medium text-slate-700 mb-2">Requirements:</p>
+                              <div className="prose prose-sm max-w-none text-slate-600">
+                                <ReactMarkdown>{match.job.requirements}</ReactMarkdown>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Expand/Collapse Button */}
+                          <Button
+                            onClick={() => toggleExpanded(match.id)}
+                            variant="ghost"
+                            size="sm"
+                            className="w-full mt-2"
+                          >
+                            {isExpanded ? (
+                              <>
+                                <ChevronUp className="w-4 h-4 mr-2" />
+                                Show Less
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="w-4 h-4 mr-2" />
+                                Show More Details
+                              </>
+                            )}
+                          </Button>
                         </div>
                       </div>
-                      
-                      <div className="flex flex-col items-end gap-2 ml-4">
-                        {/* Removed "Arrange Interview" button */}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })
           )}
         </div>
       </DialogContent>
