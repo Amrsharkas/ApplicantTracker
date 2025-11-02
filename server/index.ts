@@ -49,12 +49,43 @@ app.use((req, res, next) => {
     const message = err.message || "Internal Server Error";
 
     console.error(`Error in ${req.method} ${req.path}:`, err);
-    
-    res.status(status).json({ 
+
+    res.status(status).json({
       error: message,
       path: req.path,
       method: req.method
     });
+  });
+
+  // Security middleware: block requests to system files
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const suspiciousPatterns = [
+      /^\/home\//,
+      /^\/root\//,
+      /^\/etc\//,
+      /^\/var\//,
+      /^\/usr\//,
+      /^\/bin\//,
+      /^\/sbin\//,
+      /^\/proc\//,
+      /^\/sys\//,
+      /\.\.\//, // Path traversal
+      /\.bash_history$/,
+      /\.ssh\//,
+      /\.env$/,
+      /passwd$/,
+      /shadow$/,
+    ];
+
+    const path = req.path;
+    const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(path));
+
+    if (isSuspicious) {
+      console.warn(`[SECURITY] Blocked suspicious request: ${req.method} ${path} from ${req.ip}`);
+      return res.status(404).json({ error: 'Not Found' });
+    }
+
+    next();
   });
 
   // importantly only setup vite in development and after
