@@ -2745,55 +2745,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create job match record for RAG-based interview
-  app.post('/api/job-matches/rag/create-interview', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const user = req.user;
-      const { ragMatch } = req.body;
-
-      if (!ragMatch || !ragMatch.job) {
-        return res.status(400).json({ message: 'Invalid RAG match data' });
-      }
-
-      // Get user name from profile or user object
-      const userProfile = await storage.getApplicantProfile(userId);
-      const userName = userProfile?.name ||
-                      `${user?.firstName || ''} ${user?.lastName || ''}`.trim() ||
-                      user?.email ||
-                      'Applicant';
-
-      // Create job match record
-      const jobMatchData = {
-        userId,
-        name: userName,
-        jobId: ragMatch.job.id.toString(),
-        jobTitle: ragMatch.job.title,
-        jobDescription: ragMatch.job.description || '',
-        companyName: ragMatch.job.company || 'Company',
-        matchScore: Math.round((ragMatch.matchScore || 0) * 100),
-        status: 'invited',
-        token: crypto.randomUUID(),
-      };
-
-      const jobMatch = await localDatabaseService.createJobMatch(jobMatchData);
-
-      console.log(`✅ Created job match record ${jobMatch.id} for RAG interview - User: ${userId}, Job: ${ragMatch.job.title}`);
-
-      res.json({
-        recordId: jobMatch.id,
-        jobMatch
-      });
-    } catch (error) {
-      console.error("❌ Error creating RAG job match record:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      res.status(500).json({
-        message: "Failed to create job match record",
-        error: errorMessage
-      });
-    }
-  });
-
   // Upcoming interviews endpoint
   app.get('/api/upcoming-interviews', requireAuth, async (req: any, res) => {
     try {

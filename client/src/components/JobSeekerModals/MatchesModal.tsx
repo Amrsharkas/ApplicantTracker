@@ -6,17 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import ReactMarkdown from "react-markdown";
-import { JobSpecificInterviewOptionsModal } from "./JobSpecificInterviewOptionsModal";
-import { JobSpecificInterviewModal } from "./JobSpecificInterviewModal";
-import { useToast } from "@/hooks/use-toast";
 
-import { MapPin, Target, Building, RefreshCw, Briefcase, ChevronDown, ChevronUp, Video } from "lucide-react";
+import { MapPin, Target, Building, RefreshCw, Briefcase, ChevronDown, ChevronUp } from "lucide-react";
 
 interface JobMatch {
   id: number;
   matchScore: number;
   matchReasons: string[];
-  recordId?: string; // Job match record ID for interview tracking
   job: {
     id: number;
     title: string;
@@ -34,15 +30,6 @@ interface JobMatch {
   };
 }
 
-interface JobSummary {
-  recordId: string;
-  jobTitle: string;
-  jobDescription?: string;
-  companyName: string;
-  location?: string;
-  aiPrompt?: string;
-}
-
 interface MatchesModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -50,7 +37,6 @@ interface MatchesModalProps {
 
 export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const { data: matches = [], isLoading } = useQuery<JobMatch[]>({
     queryKey: ["/api/job-matches/rag"],
@@ -60,13 +46,6 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [expandedJobs, setExpandedJobs] = useState<Record<number, boolean>>({});
-
-  // Interview state management
-  const [selectedJob, setSelectedJob] = useState<JobSummary | null>(null);
-  const [optionsOpen, setOptionsOpen] = useState(false);
-  const [interviewOpen, setInterviewOpen] = useState(false);
-  const [interviewMode, setInterviewMode] = useState<'text' | 'voice'>('voice');
-  const [interviewLanguage, setInterviewLanguage] = useState<'english' | 'arabic'>('english');
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -79,86 +58,6 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
       ...prev,
       [jobId]: !prev[jobId]
     }));
-  };
-
-  const handleStartInterview = async (match: JobMatch) => {
-    try {
-      // First, create a job match record in the database
-      const response = await fetch('/api/job-matches/rag/create-interview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ ragMatch: match })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create interview record');
-      }
-
-      const { recordId } = await response.json();
-
-      // Create job summary for interview modal
-      const jobSummary: JobSummary = {
-        recordId,
-        jobTitle: match.job.title,
-        jobDescription: match.job.description,
-        companyName: match.job.company,
-        location: match.job.location,
-      };
-
-      setSelectedJob(jobSummary);
-      setOptionsOpen(true);
-    } catch (error) {
-      console.error('Error starting interview:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to start interview',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleOptionsSubmit = async (opts: { mode: 'text' | 'voice'; language: 'english' | 'arabic' }) => {
-    setInterviewMode(opts.mode);
-    setInterviewLanguage(opts.language);
-
-    try {
-      // Start the interview session with the selected options
-      const response = await fetch('/api/interview/start-job-practice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          job: selectedJob,
-          language: opts.language
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to start interview');
-      }
-
-      setOptionsOpen(false);
-      setInterviewOpen(true);
-    } catch (error) {
-      console.error('Error starting interview session:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to start interview session',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleInterviewComplete = () => {
-    // Refresh matches to update status
-    queryClient.invalidateQueries({ queryKey: ["/api/job-matches/rag"] });
-    toast({
-      title: 'Interview Complete',
-      description: 'Your interview has been saved successfully.',
-    });
   };
 
   return (
@@ -248,14 +147,6 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
                               <Badge className="bg-green-500 text-white">
                                 {Math.round(match.matchScore * 100)}% Match
                               </Badge>
-                              <Button
-                                onClick={() => handleStartInterview(match)}
-                                size="sm"
-                                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white flex items-center gap-2"
-                              >
-                                <Video className="w-4 h-4" />
-                                Start Interview
-                              </Button>
                             </div>
                           </div>
 
@@ -375,30 +266,6 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
           )}
         </div>
       </DialogContent>
-
-      {/* Interview Options Modal */}
-      <JobSpecificInterviewOptionsModal
-        isOpen={optionsOpen}
-        onClose={() => {
-          setOptionsOpen(false);
-          setSelectedJob(null);
-        }}
-        job={selectedJob}
-        onConfirm={handleOptionsSubmit}
-      />
-
-      {/* Interview Modal */}
-      <JobSpecificInterviewModal
-        isOpen={interviewOpen}
-        onClose={() => {
-          setInterviewOpen(false);
-          setSelectedJob(null);
-        }}
-        job={selectedJob}
-        mode={interviewMode}
-        language={interviewLanguage}
-        onInterviewComplete={handleInterviewComplete}
-      />
     </Dialog>
   );
 }
