@@ -56,6 +56,30 @@ export const organizations = pgTable("organizations", {
   companySize: varchar("company_size"),
   description: text("description"),
   ownerId: varchar("owner_id"),
+  creditLimit: integer("credit_limit").notNull().default(100),
+  currentCredits: integer("current_credits").notNull().default(100),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Credit transactions table
+export const creditTransactions = pgTable("credit_transactions", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: varchar("organization_id").notNull(),
+  amount: integer("amount").notNull(),
+  type: varchar("type").notNull(), // 'resume_processing', 'interview_scheduling', 'manual_adjustment'
+  description: text("description"),
+  relatedId: varchar("related_id"), // Can reference resume profile ID, interview session ID, or other entities
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Credit pricing table - defines how much each action costs
+export const creditPricing = pgTable("credit_pricing", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  actionType: varchar("action_type").notNull().unique(), // 'resume_processing', 'ai_matching', 'interview_scheduling', etc.
+  cost: integer("cost").notNull(), // How many credits this action costs
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -525,6 +549,31 @@ export const insertResumeUploadSchema = createInsertSchema(resumeUploads).omit({
   uploadedAt: true,
 });
 
+// Credit system insert schemas
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCreditTransactionSchema = createInsertSchema(creditTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCreditPricingSchema = createInsertSchema(creditPricing).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertOrganizationInvitationSchema = createInsertSchema(organizationInvitations).omit({
+  id: true,
+  token: true,
+  status: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -662,13 +711,31 @@ export const insertAirtableJobMatchSchema = createInsertSchema(airtableJobMatche
 
 // Additional types for compatibility
 export type Organization = typeof organizations.$inferSelect;
+export type InsertOrganization = typeof organizations.$inferInsert;
 export type Candidate = typeof candidates.$inferSelect;
 export type Match = typeof matches.$inferSelect;
 export type CandidateApplication = typeof candidateApplications.$inferSelect;
+export type InsertCandidateApplication = typeof candidateApplications.$inferInsert;
 export type Interview = typeof interviews.$inferSelect;
+export type InsertInterview = typeof interviews.$inferInsert;
 export type AcceptedApplicant = typeof acceptedApplicants.$inferSelect;
+export type InsertAcceptedApplicant = typeof acceptedApplicants.$inferInsert;
 export type RealInterview = typeof realInterviews.$inferSelect;
+export type InsertRealInterview = typeof realInterviews.$inferInsert;
 export type ScoredApplicant = typeof scoredApplicants.$inferSelect;
+export type InsertScoredApplicant = typeof scoredApplicants.$inferInsert;
 export type ResumeProfile = typeof resumeProfiles.$inferSelect;
+export type InsertResumeProfile = typeof resumeProfiles.$inferInsert;
 export type ResumeJobScore = typeof resumeJobScores.$inferSelect;
+export type InsertResumeJobScore = typeof resumeJobScores.$inferInsert;
 export type ShortlistedApplicant = typeof shortlistedApplicants.$inferSelect;
+export type InsertShortlistedApplicant = typeof shortlistedApplicants.$inferInsert;
+export type OrganizationMember = typeof organizationMembers.$inferSelect;
+export type OrganizationInvitation = typeof organizationInvitations.$inferSelect;
+export type InsertOrganizationInvitation = typeof organizationInvitations.$inferInsert;
+
+// Credit system types
+export type CreditTransaction = typeof creditTransactions.$inferSelect;
+export type InsertCreditTransaction = typeof creditTransactions.$inferInsert;
+export type CreditPricing = typeof creditPricing.$inferSelect;
+export type InsertCreditPricing = typeof creditPricing.$inferInsert;

@@ -12,6 +12,7 @@ import { ragService } from "./ragService";
 import multer from "multer";
 import { string, z } from "zod";
 import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, airtableJobApplications, jobs, organizations } from "@shared/schema";
+import { creditService } from './creditService';
 // Dynamic import for pdf-parse will be used when needed
 import { db } from "./db";
 import { applicantProfiles, interviewSessions, resumeUploads, jobMatches, applications, sessions, users } from "@shared/schema";
@@ -2171,6 +2172,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // Create new record in airtable_job_applications after job practice interview completion
             try {
+              // Get job details to find organization and charge credits
+              const jobRecord = await db
+                .select()
+                .from(jobs)
+                .where(eq(jobs.id, relevantMatch?.jobId || 0))
+                .limit(1);
+
+              // Charge credits if organization exists
+              if (jobRecord[0]?.organizationId) {
+                const organizationId = jobRecord[0].organizationId;
+                try {
+                  const interviewCost = await creditService.getActionCost('interview_scheduling');
+                  await creditService.deductCredits(
+                    organizationId,
+                    interviewCost,
+                    'interview_scheduling',
+                    `Job-specific interview: ${job.jobTitle || job.title || 'Unknown'}`,
+                    session.id
+                  );
+                  console.log(`💳 Charged ${interviewCost} credits to org ${organizationId} for interview: ${job.jobTitle}`);
+                } catch (creditError) {
+                  console.error('⚠️ Failed to deduct interview credits:', creditError);
+                  // Continue with flow - log for manual review
+                }
+              } else {
+                console.log('ℹ️ Job has no organization ID - skipping credit charging');
+              }
+
               const userProfile = await storage.getApplicantProfile(userId);
               const userName = userProfile?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Applicant';
 
@@ -2498,6 +2527,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create new record in airtable_job_applications after job practice voice interview completion
       if (interviewType === 'job-practice' && job) {
         try {
+          // Get job match details to find organization and charge credits
+          const jobMatchRecord = await db
+            .select()
+            .from(airtableJobMatches)
+            .where(eq(airtableJobMatches.id, job.recordId || ''))
+            .limit(1);
+
+          // Get job details from the match record to find organization
+          let jobRecord = null;
+          if (jobMatchRecord[0]?.jobId) {
+            const jobDetails = await db
+              .select()
+              .from(jobs)
+              .where(eq(jobs.id, jobMatchRecord[0].jobId))
+              .limit(1);
+            jobRecord = jobDetails[0];
+          }
+
+          // Charge credits if organization exists
+          if (jobRecord?.organizationId) {
+            const organizationId = jobRecord.organizationId;
+            try {
+              const interviewCost = await creditService.getActionCost('interview_scheduling');
+              await creditService.deductCredits(
+                organizationId,
+                interviewCost,
+                'interview_scheduling',
+                `Job-specific interview: ${job.jobTitle || job.title || 'Unknown'}`,
+                session.id
+              );
+              console.log(`💳 Charged ${interviewCost} credits to org ${organizationId} for interview: ${job.jobTitle}`);
+            } catch (creditError) {
+              console.error('⚠️ Failed to deduct interview credits:', creditError);
+              // Continue with flow - log for manual review
+            }
+          } else {
+            console.log('ℹ️ Job has no organization ID - skipping credit charging');
+          }
+
           const userProfile = await storage.getApplicantProfile(userId);
           const userName = userProfile?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Applicant';
 
