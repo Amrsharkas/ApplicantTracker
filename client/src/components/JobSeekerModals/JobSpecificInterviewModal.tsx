@@ -584,12 +584,12 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   // Regular dialog for text mode
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-screen h-screen max-w-none max-h-none p-0">
-        <DialogHeader className="px-6 py-4 border-b">
+      <DialogContent className="w-screen h-screen max-w-none max-h-none p-0 flex flex-col">
+        <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle>Job-specific Interview</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto px-6 py-4">
+        <div className="flex-1 overflow-auto px-6 py-4 min-h-0">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <div className="h-10 w-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -597,8 +597,8 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           ) : !session ? (
             <div className="text-center text-slate-600 h-full flex items-center justify-center">No active job-specific interview session.</div>
           ) : (enableTextInterviews === 'true' && mode === 'text') ? (
-            <div className="max-w-4xl mx-auto space-y-6 h-full flex flex-col">
-            <div className="flex items-center justify-between">
+            <div className="max-w-4xl mx-auto h-full flex flex-col gap-6">
+            <div className="flex items-center justify-between shrink-0">
               <div>
                 <div className="text-sm text-slate-600">Text mode • {language === 'arabic' ? 'Arabic' : 'English'}</div>
                 <h3 className="text-lg font-semibold">{job?.jobTitle}</h3>
@@ -611,7 +611,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               <Badge variant="outline">Question {(session.sessionData.responses?.length || 0) + 1} of {session.sessionData.questions?.length || 5}</Badge>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4">
+            <div className="flex-1 overflow-y-auto space-y-4 min-h-0">
 
               {/* Display previous Q&A pairs */}
               {session.sessionData.responses?.map((response, index) => (
@@ -649,7 +649,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               </div>
             </div>
 
-            <div className="border-t pt-4 space-y-4">
+            <div className="border-t pt-4 space-y-4 shrink-0">
               <Textarea value={currentAnswer} onChange={(e) => setCurrentAnswer(e.target.value)} placeholder="Type your answer here" rows={4} />
 
               <div className="flex justify-end gap-2">
