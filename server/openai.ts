@@ -2,8 +2,8 @@ import OpenAI from "openai";
 import { toFile } from "openai/uploads";
 import { wrapOpenAIRequest } from "./openaiTracker";
 
-// Using the latest OpenAI model gpt-4o (May 13, 2024). Note: ChatGPT-5 is not yet publicly available
-const openai = new OpenAI({ 
+// OpenAI client - models are configured via environment variables
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key"
 });
 
@@ -109,14 +109,14 @@ ROBUSTNESS / SAFETY:
 
       const response = await wrapOpenAIRequest(
         () => openai.chat.completions.create({
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_WELCOME_MESSAGE || "gpt-4o",
           messages,
           temperature: 0.7,
           max_completion_tokens: 200
         }),
         {
           requestType: "generateWelcomeMessage",
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_WELCOME_MESSAGE || "gpt-4o",
           userId: userData?.id || null,
         }
       );
@@ -294,14 +294,14 @@ Return ONLY JSON:
 
       const response = await wrapOpenAIRequest(
         () => openai.chat.completions.create({
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_PERSONAL_INTERVIEW || "gpt-4o",
           messages,
           response_format: { type: "json_object" },
           temperature: 0.7
         }),
         {
           requestType: "generatePersonalInterview",
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_PERSONAL_INTERVIEW || "gpt-4o",
           userId: userData?.id || null,
         }
       );
@@ -483,14 +483,14 @@ Return ONLY JSON:
 
       const response = await wrapOpenAIRequest(
         () => openai.chat.completions.create({
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_PROFESSIONAL_INTERVIEW || "gpt-4o",
           messages,
           response_format: { type: "json_object" },
           temperature: 0.7
         }),
         {
           requestType: "generateProfessionalInterview",
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_PROFESSIONAL_INTERVIEW || "gpt-4o",
           userId: userData?.id || null,
         }
       );
@@ -590,14 +590,14 @@ Return ONLY JSON:
 
       const response = await wrapOpenAIRequest(
         () => openai.chat.completions.create({
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_TECHNICAL_INTERVIEW || "gpt-4o",
           messages,
           response_format: { type: "json_object" },
           temperature: 0.7
         }),
         {
           requestType: "generateTechnicalInterview",
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_TECHNICAL_INTERVIEW || "gpt-4o",
           userId: userData?.id || null,
         }
       );
@@ -814,7 +814,7 @@ Be thorough, honest, and evidence-based. This assessment will help employers mak
     try {
       const response = await wrapOpenAIRequest(
         () => openai.chat.completions.create({
-          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          model: process.env.OPENAI_MODEL_BRUTALLY_HONEST_PROFILE || "gpt-4o",
           messages: [
             {
               role: "system",
@@ -830,7 +830,7 @@ Be thorough, honest, and evidence-based. This assessment will help employers mak
         }),
         {
           requestType: "generateBrutallyHonestProfile",
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_BRUTALLY_HONEST_PROFILE || "gpt-4o",
           userId: userData?.id || null,
         }
       );
@@ -882,13 +882,13 @@ Return JSON with:
     try {
       const response = await wrapOpenAIRequest(
         () => openai.chat.completions.create({
-          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          model: process.env.OPENAI_MODEL_JOB_APPLICATION_ANALYSIS || "gpt-4o",
           messages: [{ role: "user", content: prompt }],
           response_format: { type: "json_object" }
         }),
         {
           requestType: "analyzeJobApplication",
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_JOB_APPLICATION_ANALYSIS || "gpt-4o",
           userId: userProfile?.userId || null,
         }
       );
@@ -924,7 +924,7 @@ export class AIProfileAnalysisAgent {
         }),
         {
           requestType: "uploadResumeFile",
-          model: "gpt-4o-mini",
+          model: process.env.OPENAI_MODEL_RESUME_TEXT_EXTRACTION || "gpt-4o-mini",
         }
       );
 
@@ -934,7 +934,7 @@ export class AIProfileAnalysisAgent {
       // Using a cost-effective model for extraction; downstream structured parsing will use GPT-5
       const response: any = await wrapOpenAIRequest(
         async () => await (openai as any).responses.create({
-          model: "gpt-4o-mini",
+          model: process.env.OPENAI_MODEL_RESUME_TEXT_EXTRACTION || "gpt-4o-mini",
           input: [
             {
               role: "user",
@@ -949,7 +949,7 @@ export class AIProfileAnalysisAgent {
         }),
         {
           requestType: "extractResumeTextWithOpenAI",
-          model: "gpt-4o-mini",
+          model: process.env.OPENAI_MODEL_RESUME_TEXT_EXTRACTION || "gpt-4o-mini",
         }
       );
 
@@ -988,7 +988,7 @@ export class AIProfileAnalysisAgent {
 
       const response: any = await wrapOpenAIRequest(
         () => (openai as any).responses.create({
-          model: "gpt-4o-mini",
+          model: process.env.OPENAI_MODEL_RESUME_TEXT_EXTRACTION || "gpt-4o-mini",
           input: [
             {
               role: "user",
@@ -1002,7 +1002,7 @@ export class AIProfileAnalysisAgent {
         }),
         {
           requestType: "extractResumeTextFromOpenAIFileId",
-          model: "gpt-4o-mini",
+          model: process.env.OPENAI_MODEL_RESUME_TEXT_EXTRACTION || "gpt-4o-mini",
         }
       );
 
@@ -1370,7 +1370,7 @@ When giving %: map from 10-point scale (e.g., 7/10 ≈ 70%), then allocate the "
     try {
       const response = await wrapOpenAIRequest(
         () => openai.chat.completions.create({
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_COMPREHENSIVE_PROFILE || "gpt-4o",
           messages: [
             {
               role: "system",
@@ -1386,7 +1386,7 @@ When giving %: map from 10-point scale (e.g., 7/10 ≈ 70%), then allocate the "
         }),
         {
           requestType: "generateComprehensiveProfile",
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_COMPREHENSIVE_PROFILE || "gpt-4o",
           userId: userData?.id || null,
         }
       );
@@ -1480,13 +1480,13 @@ Return a JSON object with:
     try {
       const response = await wrapOpenAIRequest(
         () => openai.chat.completions.create({
-          model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+          model: process.env.OPENAI_MODEL_RESUME_PARSING || "gpt-5",
           messages: [{ role: "user", content: prompt }],
           response_format: { type: "json_object" }
         }),
         {
           requestType: "parseResume",
-          model: "gpt-5",
+          model: process.env.OPENAI_MODEL_RESUME_PARSING || "gpt-5",
         }
       );
 
@@ -1683,7 +1683,7 @@ Return a JSON object with:
 
       const response: any = await wrapOpenAIRequest(
         () => (openai as any).responses.create({
-          model: "gpt-5",
+          model: process.env.OPENAI_MODEL_RESUME_PROFILE_PARSING || "gpt-5",
           input: [
             {
               role: "user",
@@ -1704,7 +1704,7 @@ Return a JSON object with:
         }),
         {
           requestType: "parseResumeForProfile",
-          model: "gpt-5",
+          model: process.env.OPENAI_MODEL_RESUME_PROFILE_PARSING || "gpt-5",
         }
       );
 
@@ -1731,7 +1731,7 @@ Return a JSON object with:
       try {
         const fallback = await wrapOpenAIRequest(
           () => openai.chat.completions.create({
-            model: "gpt-5",
+            model: process.env.OPENAI_MODEL_RESUME_PROFILE_PARSING || "gpt-5",
             messages: [
               { role: "system", content: "Return only valid JSON matching the requested structure." },
               { role: "user", content: `Extract structured JSON for this resume:\n${resumeContent}` }
@@ -1740,7 +1740,7 @@ Return a JSON object with:
           }),
           {
             requestType: "parseResumeForProfile-fallback",
-            model: "gpt-5",
+            model: process.env.OPENAI_MODEL_RESUME_PROFILE_PARSING || "gpt-5",
           }
         );
         return JSON.parse(fallback.choices[0].message.content || "{}");
@@ -1897,14 +1897,14 @@ Return ONLY JSON:
     try {
       const response = await wrapOpenAIRequest(
         () => openai.chat.completions.create({
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_JOB_PRACTICE_INTERVIEW || "gpt-4o",
           messages,
           response_format: { type: "json_object" },
           temperature: 0.6
         }),
         {
           requestType: "generateJobPracticeInterview",
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_JOB_PRACTICE_INTERVIEW || "gpt-4o",
           userId: userData?.id || null,
         }
       );

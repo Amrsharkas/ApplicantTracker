@@ -2084,7 +2084,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             const completion = await wrapOpenAIRequest(
               () => aiInterviewAgent.openai.chat.completions.create({
-                model: 'gpt-4o',
+                model: process.env.OPENAI_MODEL_JOB_SPECIFIC_INTERVIEW_SCORING || 'gpt-4o',
                 messages: [{ role: 'user', content: prompt }],
                 temperature: 0.2,
                 max_completion_tokens: 250,
@@ -2092,7 +2092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }),
               {
                 requestType: "scoreJobSpecificInterview",
-                model: "gpt-4o",
+                model: process.env.OPENAI_MODEL_JOB_SPECIFIC_INTERVIEW_SCORING || "gpt-4o",
                 userId: userId,
               }
             );
@@ -3379,7 +3379,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       console.log('🤖 Sending comprehensive job analysis request to OpenAI...');
       const response = await wrapOpenAIRequest(
         () => aiInterviewAgent.openai.chat.completions.create({
-          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          model: process.env.OPENAI_MODEL_JOB_APPLICATION_ANALYSIS || "gpt-4o",
           messages: [
             { role: "system", content: "You are a professional career counselor who analyzes job matches comprehensively using all available user data. Be direct, honest, and constructive." },
             { role: "user", content: analysisPrompt }
@@ -3389,7 +3389,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
         }),
         {
           requestType: "analyzeJobApplication",
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_JOB_APPLICATION_ANALYSIS || "gpt-4o",
           userId: userId,
         }
       );

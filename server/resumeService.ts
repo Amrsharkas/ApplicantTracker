@@ -136,7 +136,7 @@ ${resumeText}`;
 
       const response = await wrapOpenAIRequest(
         () => openai.chat.completions.create({
-          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          model: process.env.OPENAI_MODEL_RESUME_ANALYSIS || "gpt-4o",
           messages: [
             {
               role: "system",
@@ -152,7 +152,7 @@ ${resumeText}`;
         }),
         {
           requestType: "analyzeResume",
-          model: "gpt-4o",
+          model: process.env.OPENAI_MODEL_RESUME_ANALYSIS || "gpt-4o",
         }
       );
 
