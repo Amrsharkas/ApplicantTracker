@@ -7,6 +7,9 @@ import { AuthModal } from "@/components/AuthModal";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
+// Import logo
+import logo from "@assets/logo.png";
+
 // Import company logos
 import moderatorLogo from "@assets/image_1752003560205.png";
 import quantaLogo from "@assets/image_1752003568386.png";
@@ -171,9 +174,13 @@ export default function Landing() {
           <div className="flex items-center justify-between max-w-7xl mx-auto">
             <motion.div
               whileHover={{ scale: 1.05 }}
-              className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
+              className="flex items-center"
             >
-              Plato
+              <img
+                src={logo}
+                alt="Plato"
+                className="h-10 w-auto p-2"
+              />
             </motion.div>
             
             <div className="flex items-center space-x-4 rtl:space-x-reverse">

@@ -15,6 +15,9 @@ import { useResumeRequirement } from "@/hooks/useResumeRequirement";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
+// Import logo
+import logo from "@assets/logo.png";
+
 import { MatchesModal } from "@/components/JobSeekerModals/MatchesModal";
 import { ComprehensiveProfileModal } from "@/components/JobSeekerModals/ComprehensiveProfileModal";
 import { UserProfileModal } from "@/components/JobSeekerModals/UserProfileModal";
@@ -258,12 +261,11 @@ export default function Dashboard() {
         <div className="max-w-5xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3 rtl:space-x-reverse">
-              <div className="bg-blue-600 text-white p-2 rounded-lg">
-                <TrendingUp className="h-5 w-5" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">{t('plato')}</h1>
-              </div>
+              <img
+                src={logo}
+                alt="Plato"
+                className="h-10 w-auto p-2"
+              />
             </div>
             
             <div className="flex items-center space-x-4 rtl:space-x-reverse">
