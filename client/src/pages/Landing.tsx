@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Brain, Target, Zap, CheckCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Brain, Target, Zap, CheckCircle, Briefcase, MapPin, Calendar, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthModal } from "@/components/AuthModal";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -29,6 +30,287 @@ const companyLogos = [
   { name: "Grove", logo: groveLogo },
   { name: "Melanite", logo: melaniteLogo }
 ];
+
+interface PublicJobPosting {
+  recordId?: string;
+  id: number;
+  title: string;
+  description: string;
+  requirements?: string;
+  location?: string | null;
+  salaryRange?: string | null;
+  employmentType?: string | null;
+  workplaceType?: string | null;
+  seniorityLevel?: string | null;
+  industry?: string | null;
+  experienceLevel?: string | null;
+  skills?: string[] | null;
+  postedAt?: string | null;
+  companyName?: string | null;
+  jobType?: string | null;
+}
+
+function FeaturedJobsSection({
+  t,
+  language,
+  onOpenAuthModal,
+}: {
+  t: (key: string) => string;
+  language: string;
+  onOpenAuthModal: () => void;
+}) {
+  const MAX_JOBS_DISPLAY = 6;
+  const [jobs, setJobs] = useState<PublicJobPosting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+
+    const loadJobs = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/public/job-postings?limit=6`, {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const data = await response.json();
+        if (isMounted) {
+          setJobs(Array.isArray(data) ? data : []);
+          setHasError(false);
+        }
+      } catch (error) {
+        if (!controller.signal.aborted && isMounted) {
+          console.error('Failed to load public job postings:', error);
+          setHasError(true);
+          setJobs([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadJobs();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, []);
+
+  const formatPostedDate = (value?: string | null) => {
+    if (!value) {
+      return "";
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+
+    try {
+      return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }).format(date);
+    } catch {
+      return "";
+    }
+  };
+
+  const getDescriptionPreview = (description: string) => {
+    const cleanDescription = description.replace(/[#*_`>\-]/g, "").replace(/\s+/g, " ").trim();
+    if (cleanDescription.length <= 200) {
+      return cleanDescription;
+    }
+    return `${cleanDescription.slice(0, 200)}…`;
+  };
+
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="grid gap-6 lg:grid-cols-3">
+          {[0, 1, 2].map((index) => (
+            <div
+              key={index}
+              className="rounded-2xl border border-slate-200/60 bg-white/60 p-6 shadow-sm animate-pulse space-y-4"
+            >
+              <div className="h-6 w-3/4 rounded-lg bg-slate-200" />
+              <div className="h-4 w-1/2 rounded-lg bg-slate-200" />
+              <div className="h-20 rounded-lg bg-slate-100" />
+              <div className="flex gap-2">
+                <div className="h-6 w-20 rounded-full bg-slate-200" />
+                <div className="h-6 w-16 rounded-full bg-slate-200" />
+              </div>
+              <div className="h-4 w-1/3 rounded-lg bg-slate-200" />
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (hasError) {
+      return (
+        <div className="space-y-6 text-center">
+          <div className="rounded-2xl border border-red-100 bg-red-50/80 p-6 text-red-600">
+            {t('landing.jobs.error')}
+          </div>
+          <div>
+            <Button
+              onClick={onOpenAuthModal}
+              variant="outline"
+              className="inline-flex items-center gap-2 rounded-full border-2 border-slate-300 px-6 py-3 text-slate-700 transition-colors hover:border-blue-500 hover:text-blue-600"
+            >
+              {t('landing.jobs.viewAll')}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    if (jobs.length === 0) {
+      return (
+        <div className="space-y-6 text-center">
+          <Card className="border-0 bg-white/70 shadow-sm">
+            <CardContent className="p-8 text-center text-slate-600">
+              {t('landing.jobs.empty')}
+            </CardContent>
+          </Card>
+          <div>
+            <Button
+              onClick={onOpenAuthModal}
+              variant="outline"
+              className="inline-flex items-center gap-2 rounded-full border-2 border-slate-300 px-6 py-3 text-slate-700 transition-colors hover:border-blue-500 hover:text-blue-600"
+            >
+              {t('landing.jobs.viewAll')}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    const visibleJobs = jobs.slice(0, MAX_JOBS_DISPLAY);
+
+    return (
+      <div className="space-y-8">
+        <div className="grid gap-6 lg:grid-cols-3">
+          {visibleJobs.map((job, index) => {
+          const badges = [job.employmentType, job.workplaceType, job.industry]
+            .filter((value): value is string => Boolean(value));
+          const postedDate = formatPostedDate(job.postedAt);
+
+          return (
+            <motion.div
+              key={job.recordId || job.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * index }}
+            >
+              <Card className="group h-full border-0 bg-white/70 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+                <CardContent className="flex h-full flex-col gap-6 p-6">
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-2xl font-semibold text-slate-800">
+                          {job.title}
+                        </h3>
+                        {job.companyName && (
+                          <p className="text-sm text-slate-500">
+                            {job.companyName}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        onClick={onOpenAuthModal}
+                        size="sm"
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md hover:from-blue-700 hover:to-purple-700"
+                      >
+                        {t('landing.jobs.applyCta')}
+                      </Button>
+                    </div>
+                    <p className="text-sm text-slate-600">
+                      {getDescriptionPreview(job.description)}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {badges.map((badge) => (
+                      <Badge
+                        key={badge}
+                        variant="secondary"
+                        className="rounded-full bg-blue-50 text-blue-700"
+                      >
+                        <span className="flex items-center gap-1">
+                          <Briefcase className="h-3.5 w-3.5" />
+                          {badge}
+                        </span>
+                      </Badge>
+                    ))}
+                  </div>
+
+                  <div className="mt-auto flex flex-wrap items-center gap-4 text-sm text-slate-500">
+                    {postedDate && (
+                      <span className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        {t('landing.jobs.posted')} {postedDate}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      {job.location?.trim() || t('landing.jobs.locationUnknown')}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          );
+          })}
+        </div>
+
+        <div className="flex justify-center">
+          <Button
+            onClick={onOpenAuthModal}
+            variant="outline"
+            className="group inline-flex items-center gap-2 rounded-full border-2 border-slate-300 px-6 py-3 text-slate-700 transition-colors hover:border-blue-500 hover:text-blue-600"
+          >
+            {t('landing.jobs.viewAll')}
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <section className="mt-20 space-y-8">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="space-y-3 text-center"
+      >
+        <h2 className="text-4xl font-bold text-slate-800">
+          {t('landing.jobs.title')}
+        </h2>
+        <p className="mx-auto max-w-3xl text-lg text-slate-600">
+          {t('landing.jobs.subtitle')}
+        </p>
+      </motion.div>
+
+      {renderContent()}
+    </section>
+  );
+}
 
 // Carousel component
 function CompanyCarousel({ t }: { t: (key: string) => string }) {
@@ -145,7 +427,7 @@ function CompanyCarousel({ t }: { t: (key: string) => string }) {
 
 export default function Landing() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
   
   const openAuthModal = () => {
     setIsAuthModalOpen(true);
@@ -197,7 +479,7 @@ export default function Landing() {
 
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-6 py-12">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
             
             {/* Left Column - Hero Content */}
             <motion.div
@@ -345,6 +627,12 @@ export default function Landing() {
               </motion.div>
             </motion.div>
           </div>
+
+          <FeaturedJobsSection
+            t={t}
+            language={language}
+            onOpenAuthModal={openAuthModal}
+          />
 
           {/* Company Carousel Section */}
           <CompanyCarousel t={t} />

@@ -166,6 +166,43 @@ export class LocalDatabaseService {
     }
   }
 
+  async getRecentActiveJobPostings(limit = 6) {
+    try {
+      const rows = await db
+        .select()
+        .from(schema.jobs)
+        .where(eq(schema.jobs.is_active, true))
+        .orderBy(desc(schema.jobs.postedAt), desc(schema.jobs.createdAt))
+        .limit(limit);
+
+      return rows.map((job) => ({
+        recordId: job.id?.toString() ?? '',
+        id: job.id,
+        title: job.title,
+        description: job.description,
+        requirements: job.requirements,
+        location: job.location,
+        salaryRange: job.salaryRange,
+        salaryMin: job.salaryMin,
+        salaryMax: job.salaryMax,
+        employmentType: job.employmentType,
+        workplaceType: job.workplaceType,
+        seniorityLevel: job.seniorityLevel,
+        industry: job.industry,
+        experienceLevel: job.experienceLevel,
+        skills: job.skills ?? [],
+        postedAt: job.postedAt ?? job.createdAt,
+        employerQuestions: job.employerQuestions ?? [],
+        aiPrompt: job.aiPrompt,
+        companyName: job.company ?? '',
+        jobType: job.jobType,
+      }));
+    } catch (error) {
+      console.error('Error getting recent job postings:', error);
+      throw error;
+    }
+  }
+
   async searchJobPostings(query: string): Promise<AirtableJobPosting[]> {
     try {
       return await db

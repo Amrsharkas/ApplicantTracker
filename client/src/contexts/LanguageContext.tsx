@@ -147,6 +147,16 @@ const translations = {
         testimonial: "Revolutionary approach to talent acquisition",
         subtitle2: "Join the companies shaping the future of hiring"
       },
+      jobs: {
+        title: "Roles hiring right now",
+        subtitle: "A snapshot of the latest opportunities from teams using Plato.",
+        empty: "New opportunities are being added soon — check back shortly.",
+        error: "Unable to load jobs right now. Please try again later.",
+        posted: "Posted",
+        locationUnknown: "Flexible location",
+        applyCta: "Join to apply",
+        viewAll: "View all jobs (login required)"
+      },
       cta: {
         title: "Ready to find your perfect job match?",
         subtitle: "Join thousands of professionals who've discovered their dream careers with AI-powered job matching",
@@ -955,6 +965,16 @@ const translations = {
         subtitle: "انضم إلى آلاف المحترفين الذين وجدوا المطابقة المهنية المثالية من خلال منصتنا المدعومة بالذكاء الاصطناعي",
         testimonial: "نهج ثوري في اكتساب المواهب",
         subtitle2: "انضم إلى الشركات التي تشكل مستقبل التوظيف"
+      },
+      jobs: {
+        title: "وظائف متاحة الآن",
+        subtitle: "نظرة سريعة على أحدث الفرص من الشركات التي تستخدم بلاتو.",
+        empty: "يتم إضافة فرص جديدة قريباً — عد لاحقاً.",
+        error: "تعذر تحميل الوظائف حالياً. يرجى المحاولة لاحقاً.",
+        posted: "تاريخ النشر",
+        locationUnknown: "موقع مرن",
+        applyCta: "انضم للتقديم",
+        viewAll: "عرض كل الوظائف (يتطلب تسجيل الدخول)"
       },
       cta: {
         title: "هل أنت مستعد للعثور على وظيفتك المثالية؟",

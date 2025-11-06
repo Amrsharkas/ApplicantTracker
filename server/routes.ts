@@ -2998,6 +2998,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public job postings route for landing page
+  app.get('/api/public/job-postings', async (req: any, res) => {
+    try {
+      const limitParam = req.query?.limit ? parseInt(req.query.limit.toString(), 10) : NaN;
+      const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 20) : 6;
+      const jobPostings = await localDatabaseService.getRecentActiveJobPostings(limit);
+      res.json(jobPostings);
+    } catch (error) {
+      console.error("Error fetching public job postings:", error);
+      res.status(500).json({ message: "Failed to fetch job postings" });
+    }
+  });
+
   // Job postings routes
   app.get('/api/job-postings', requireAuth, async (req: any, res) => {
     try {
