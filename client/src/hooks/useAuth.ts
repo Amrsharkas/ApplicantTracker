@@ -106,6 +106,8 @@ export function useRegister() {
       firstName: string;
       lastName: string;
       username?: string;
+      acceptedTerms: boolean;
+      acceptedTermsText: string;
     }) => {
       const res = await fetch("/api/register", {
         method: "POST",

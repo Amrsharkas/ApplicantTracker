@@ -8,6 +8,7 @@ import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 import { z } from "zod";
 import { emailService } from "./emailService";
+import { registerSchema } from "@shared/schema";
 
 const scryptAsync = promisify(scrypt);
 
@@ -198,15 +199,16 @@ export async function setupAuth(app: Express) {
   // Register endpoint
   app.post('/api/register', async (req: any, res) => {
     try {
-      const registerSchema = z.object({
-        email: z.string().email('Invalid email format'),
-        password: z.string().min(6, 'Password must be at least 6 characters'),
-        firstName: z.string().min(1, 'First name is required'),
-        lastName: z.string().min(1, 'Last name is required'),
-        username: z.string().min(3, 'Username must be at least 3 characters').optional(),
-      });
+      const parsed = registerSchema.safeParse(req.body);
+      if (!parsed.success) {
+        const firstIssue = parsed.error.issues[0];
+        return res.status(400).json({
+          error: firstIssue?.message ?? 'Invalid registration data',
+          issues: parsed.error.issues,
+        });
+      }
 
-      const { email, password, firstName, lastName, username } = registerSchema.parse(req.body);
+      const { email, password, firstName, lastName, username, acceptedTermsText } = parsed.data;
 
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(email);
@@ -239,6 +241,8 @@ export async function setupAuth(app: Express) {
         role: 'applicant',
         isVerified: false, // Require email verification
         verificationToken,
+        termsAcceptedAt: new Date(),
+        termsAcceptedText: acceptedTermsText,
       });
 
       // Create basic applicant profile
