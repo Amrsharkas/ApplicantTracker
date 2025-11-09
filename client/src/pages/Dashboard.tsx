@@ -1,19 +1,22 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { 
-  User, 
-  Target, 
-  FileText, 
+import {
+  User,
+  Target,
+  FileText,
   TrendingUp,
   MessageCircle,
   Briefcase,
-  Upload
+  Upload,
+  AlertCircle,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useResumeRequirement } from "@/hooks/useResumeRequirement";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { Button } from "@/components/ui/button";
 
 // Import logo
 import logo from "@assets/logo.png";
@@ -38,6 +41,7 @@ export default function Dashboard() {
   const [selectedJobDetails, setSelectedJobDetails] = useState<{title: string, id: string} | null>(null);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingJobApplication, setPendingJobApplication] = useState<{jobId: string, jobTitle: string, timestamp: number, isActive: boolean} | null>(null);
 
   const { data: profile, refetch: refetchProfile } = useQuery({
     queryKey: ["/api/candidate/profile"],
@@ -228,6 +232,29 @@ export default function Dashboard() {
     }
   }, [showFullDashboard, (profile as any)?.aiProfileGenerated, (user as any)?.id, toast]);
 
+  // Check for pending job application from localStorage
+  useEffect(() => {
+    if (user && showFullDashboard) {
+      const stored = localStorage.getItem('pendingJobApplication');
+      if (stored) {
+        try {
+          const data = JSON.parse(stored);
+          // Check if timestamp is not older than 7 days
+          const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+          if (Date.now() - data.timestamp < sevenDaysInMs) {
+            setPendingJobApplication(data);
+          } else {
+            // Clear expired pending application
+            localStorage.removeItem('pendingJobApplication');
+          }
+        } catch (error) {
+          console.error('Failed to parse pending job application:', error);
+          localStorage.removeItem('pendingJobApplication');
+        }
+      }
+    }
+  }, [user, showFullDashboard]);
+
   // End all interview sessions on dashboard load
   useEffect(() => {
     const endAllSessions = async () => {
@@ -239,7 +266,7 @@ export default function Dashboard() {
           },
           credentials: 'include',
         });
-        
+
         if (!response.ok) {
           console.error('Failed to end all sessions:', response.statusText);
         }
@@ -432,6 +459,47 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+
+        {/* Pending Job Application Banner */}
+        {showFullDashboard && pendingJobApplication && (
+          <div className="mb-8 animate-in fade-in slide-in-from-top duration-500">
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-6 shadow-lg">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4 flex-1">
+                  <div className="bg-blue-600 rounded-full p-3 mt-1">
+                    <AlertCircle className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      Ready to Apply: {pendingJobApplication.jobTitle}
+                    </h3>
+                    <p className="text-gray-700 mb-4">
+                      Great job completing your profile and interviews! The position you wanted to apply for is now highlighted in the Job Postings section below.
+                    </p>
+                    <Button
+                      onClick={() => {
+                        openModal('jobPostings');
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      View Job & Apply Now
+                    </Button>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setPendingJobApplication(null);
+                    localStorage.removeItem('pendingJobApplication');
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Dismiss"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Job Features - Only show if interview is complete or profile is 80%+ */}
         {showFullDashboard && (

@@ -150,6 +150,16 @@ export default function JobDetailsPage() {
   };
 
   const handleApply = () => {
+    // Store intended job application in localStorage for post-auth highlighting
+    if (job && jobId) {
+      localStorage.setItem('pendingJobApplication', JSON.stringify({
+        jobId: jobId,
+        jobTitle: job.title,
+        timestamp: Date.now(),
+        isActive: job.is_active ?? true
+      }));
+    }
+
     // Navigate to landing page with auth modal
     navigate("/?action=apply&jobId=" + jobId);
   };

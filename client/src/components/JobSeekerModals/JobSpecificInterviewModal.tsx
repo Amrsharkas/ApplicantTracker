@@ -9,6 +9,7 @@ import { useRealtimeAPI } from "@/hooks/useRealtimeAPI";
 import { useCameraRecorder } from '@/hooks/useCameraRecorder';
 import { MessageCircle, MessageSquare, User, Mic, MicOff, PhoneOff, Video, Circle, CheckCircle } from "lucide-react";
 import { CameraPreview } from '@/components/CameraPreview';
+import { getInterviewLanguage, getLanguageDisplayName } from '@/lib/interviewUtils';
 
 interface JobSummary {
   recordId: string;
@@ -17,6 +18,7 @@ interface JobSummary {
   companyName: string;
   location?: string;
   aiPrompt?: string;
+  interviewLanguage?: string;
 }
 
 interface SessionData {
@@ -152,11 +154,14 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         if (mode === 'voice' && data?.sessionData?.questions) {
           // Start camera access first
           await startCameraAccess();
+          // Use job-specific interview language, fallback to provided language
+          const interviewLanguage = getInterviewLanguage(job, language);
+          console.log('🎤 Using interview language:', interviewLanguage, 'from job:', job?.interviewLanguage);
           // Then connect voice session
           await realtimeAPI.connect({
             interviewType: 'job-practice',
             questions: data.sessionData.questions,
-            language: language,
+            language: interviewLanguage,
             aiPrompt: job?.aiPrompt
           });
         }
@@ -362,7 +367,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               </span>
             </div>
             <div className="text-gray-400 text-sm">
-              Job Interview • {job?.jobTitle} • {language === 'arabic' ? 'Arabic' : 'English'}
+              Job Interview • {job?.jobTitle} • {getLanguageDisplayName(getInterviewLanguage(job, language))}
             </div>
           </div>
 
@@ -497,7 +502,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                 </div>
 
                 <div className="text-sm text-gray-500">
-                  {job?.jobTitle} • {language === 'arabic' ? 'Arabic' : 'English'}
+                  {job?.jobTitle} • {getLanguageDisplayName(getInterviewLanguage(job, language))}
                 </div>
               </div>
 
@@ -600,7 +605,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
             <div className="max-w-4xl mx-auto space-y-6 h-full flex flex-col">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-slate-600">Text mode • {language === 'arabic' ? 'Arabic' : 'English'}</div>
+                <div className="text-sm text-slate-600">Text mode • {getLanguageDisplayName(getInterviewLanguage(job, language))}</div>
                 <h3 className="text-lg font-semibold">{job?.jobTitle}</h3>
                 {job?.jobDescription && (
                   <div className="mt-2 text-sm text-slate-600 prose prose-sm max-w-none">
@@ -664,7 +669,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-slate-600">Voice mode • {language === 'arabic' ? 'Arabic' : 'English'}</div>
+                <div className="text-sm text-slate-600">Voice mode • {getLanguageDisplayName(getInterviewLanguage(job, language))}</div>
                 <h3 className="text-lg font-semibold">{job?.jobTitle}</h3>
                 {job?.jobDescription && (
                   <div className="mt-2 text-sm text-slate-600 prose prose-sm max-w-none">

@@ -24,6 +24,7 @@ interface InvitedJob {
   score?: number;
   interviewComments?: string;
   aiPrompt?: string;
+  interviewLanguage?: string;
 }
 
 interface JobSpecificAIInterviewsModalProps {
@@ -36,6 +37,7 @@ interface JobSpecificAIInterviewsModalProps {
 
 import { JobSpecificInterviewOptionsModal } from "./JobSpecificInterviewOptionsModal";
 import { JobSpecificInterviewModal } from "./JobSpecificInterviewModal";
+import { getInterviewLanguage } from "@/lib/interviewUtils";
 
 export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPractice, onStartJobPracticeVoice, onInterviewComplete }: JobSpecificAIInterviewsModalProps) {
   const { toast } = useToast();
@@ -477,12 +479,16 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
           job={selectedJob}
           onConfirm={async ({ mode, language }) => {
             try {
+              // Use job-specific interview language, fallback to user selection
+              const interviewLanguage = getInterviewLanguage(selectedJob, language);
+              console.log('🎤 Starting interview with language:', interviewLanguage, 'from job:', selectedJob?.interviewLanguage, 'user selected:', language);
+
               const endpoint = mode === 'voice' ? '/api/interview/start-job-practice-voice' : '/api/interview/start-job-practice';
               const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ job: selectedJob, language })
+                body: JSON.stringify({ job: selectedJob, language: interviewLanguage })
               });
               if (!res.ok) throw new Error('Failed to start');
               // leave options open until interview modal opens
@@ -492,7 +498,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
               } else {
                 setInterviewMode('text');
               }
-              setInterviewLanguage(language);
+              setInterviewLanguage(interviewLanguage);
               setInterviewOpen(true);
               setOptionsOpen(false);
             } catch (e: any) {

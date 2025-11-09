@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmployerQuestionsModal } from "./EmployerQuestionsModal";
-import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft, Mic } from "lucide-react";
+import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft, Mic, AlertCircle } from "lucide-react";
 
 // Country-City data structure
 const COUNTRIES_CITIES = {
@@ -128,6 +128,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
   const [filterMessage, setFilterMessage] = useState("");
   const [hasExpandedSearch, setHasExpandedSearch] = useState(false);
   const [isFilteringInProgress, setIsFilteringInProgress] = useState(false);
+  const [pendingJobId, setPendingJobId] = useState<string | null>(null);
+  const [pendingJobValidated, setPendingJobValidated] = useState(false);
   const { toast } = useToast();
 
   // AI-powered filtering mutation
@@ -275,21 +277,55 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     enabled: isOpen,
   });
 
+  // Check for pending job application from localStorage
+  useEffect(() => {
+    if (isOpen && !pendingJobValidated) {
+      const stored = localStorage.getItem('pendingJobApplication');
+      if (stored) {
+        try {
+          const data = JSON.parse(stored);
+          // Check if timestamp is not older than 7 days
+          const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+          if (Date.now() - data.timestamp < sevenDaysInMs) {
+            setPendingJobId(data.jobId);
+            setPendingJobValidated(true);
+          } else {
+            // Clear expired pending application
+            localStorage.removeItem('pendingJobApplication');
+            setPendingJobValidated(true);
+          }
+        } catch (error) {
+          console.error('Failed to parse pending job application:', error);
+          localStorage.removeItem('pendingJobApplication');
+          setPendingJobValidated(true);
+        }
+      } else {
+        setPendingJobValidated(true);
+      }
+    }
+  }, [isOpen, pendingJobValidated]);
+
   // Auto-open specific job when modal opens with initial job parameters
   useEffect(() => {
     if (isOpen && initialJobTitle && jobPostings.length > 0 && !selectedJob) {
       // Find the job by title or job ID
-      const targetJob = jobPostings.find(job => 
-        job.title === initialJobTitle || 
+      const targetJob = jobPostings.find(job =>
+        job.title === initialJobTitle ||
         (initialJobId && job.recordId === initialJobId)
       );
-      
+
       if (targetJob) {
         setSelectedJob(targetJob);
         setViewedJobDetails(prev => new Set([...prev, targetJob.recordId]));
       }
     }
   }, [isOpen, initialJobTitle, initialJobId, jobPostings, selectedJob]);
+
+  // Clear pending application after user has seen it (when they view details or apply)
+  const clearPendingApplication = () => {
+    localStorage.removeItem('pendingJobApplication');
+    setPendingJobId(null);
+  };
 
   // Reset selectedJob when modal closes
   useEffect(() => {
@@ -298,6 +334,9 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       setFilteredJobs([]);
       setFilterMessage("");
       setHasExpandedSearch(false);
+      setPendingJobValidated(false);
+      // Clear notification flag when modal closes
+      sessionStorage.removeItem('pendingJobNotificationShown');
     }
   }, [isOpen]);
 
@@ -567,7 +606,39 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
   // STRICT FILTERING: If filters are applied, ONLY show filtered results (even if empty)
   // If no filters are applied, show all jobs
-  const displayedJobs = hasActiveFilters ? filteredJobs : jobPostings;
+  let displayedJobs = hasActiveFilters ? filteredJobs : jobPostings;
+
+  // Pin pending job application to the top if it exists and is valid
+  if (pendingJobId && displayedJobs.length > 0) {
+    const pendingJob = displayedJobs.find(job => String(job.id) === String(pendingJobId));
+
+    if (pendingJob) {
+      // Remove pending job from its current position and add to top with marker
+      const jobsWithoutPending = displayedJobs.filter(job => String(job.id) !== String(pendingJobId));
+      displayedJobs = [
+        { ...pendingJob, isPendingApplication: true } as any,
+        ...jobsWithoutPending
+      ];
+    } else {
+      // Job not found in current list - might be inactive or doesn't exist
+      // Check if we've already shown the notification
+      const notificationShown = sessionStorage.getItem('pendingJobNotificationShown');
+
+      if (!notificationShown) {
+        toast({
+          title: "Job No Longer Available",
+          description: "The job you wanted to apply for is no longer active or has been removed.",
+          variant: "destructive",
+        });
+        sessionStorage.setItem('pendingJobNotificationShown', 'true');
+      }
+
+      // Clear the pending application
+      localStorage.removeItem('pendingJobApplication');
+      setPendingJobId(null);
+    }
+  }
+
   const showingRelatedJobs = hasExpandedSearch;
 
   // Helper functions
@@ -1073,7 +1144,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                   {displayedJobs.map((job: JobPosting, index: number) => {
                     const matchScore = calculateAIMatchScore(job);
                     const jobTags = getJobTags(job);
-                    
+                    const isPending = (job as any).isPendingApplication === true;
+
                     return (
                       <motion.div
                         key={job.recordId}
@@ -1082,6 +1154,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         transition={{ delay: index * 0.05 }}
                       >
                         <Card className={`hover:shadow-lg transition-all duration-200 cursor-pointer group ${
+                          isPending ? 'border-4 border-blue-500 bg-blue-50/50 shadow-xl ring-4 ring-blue-100' :
                           matchScore >= 80 ? 'border-green-200 bg-green-50/30' :
                           matchScore >= 60 ? 'border-yellow-200 bg-yellow-50/30' :
                           'border-gray-200'
@@ -1093,6 +1166,14 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                                   <h3 className="font-semibold text-blue-600 text-lg hover:text-blue-800 cursor-pointer">
                                     {job.title}
                                   </h3>
+                                  {isPending && (
+                                    <div className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-full animate-pulse">
+                                      <AlertCircle className="h-4 w-4" />
+                                      <span className="text-xs font-bold">
+                                        You Wanted to Apply
+                                      </span>
+                                    </div>
+                                  )}
                                   <div className={`flex items-center gap-1 px-2 py-1 rounded ${
                                     matchScore >= 80 ? 'bg-green-100 text-green-800' :
                                     matchScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
@@ -1162,6 +1243,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                                     onClick={() => {
                                       setSelectedJob(job);
                                       setViewedJobDetails(prev => new Set([...prev, job.recordId]));
+                                      if (isPending) clearPendingApplication();
                                     }}
                                     className="flex items-center gap-1"
                                   >
@@ -1170,7 +1252,10 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                                   </Button>
                                   <Button
                                     size="sm"
-                                    onClick={() => handleApply(job)}
+                                    onClick={() => {
+                                      handleApply(job);
+                                      if (isPending) clearPendingApplication();
+                                    }}
                                     disabled={newApplicationMutation.isPending}
                                     className="flex items-center gap-1"
                                   >
