@@ -203,6 +203,52 @@ export class LocalDatabaseService {
     }
   }
 
+  async getJobPostingById(jobId: number) {
+    try {
+      const [job] = await db
+        .select()
+        .from(schema.jobs)
+        .where(eq(schema.jobs.id, jobId));
+
+      if (!job) {
+        return null;
+      }
+
+      return {
+        recordId: job.id?.toString() ?? '',
+        id: job.id,
+        title: job.title,
+        description: job.description,
+        requirements: job.requirements,
+        location: job.location,
+        salaryRange: job.salaryRange,
+        salaryMin: job.salaryMin,
+        salaryMax: job.salaryMax,
+        salaryNegotiable: job.salaryNegotiable,
+        employmentType: job.employmentType,
+        workplaceType: job.workplaceType,
+        seniorityLevel: job.seniorityLevel,
+        industry: job.industry,
+        experienceLevel: job.experienceLevel,
+        skills: job.skills ?? [],
+        softSkills: job.softSkills ?? [],
+        technicalSkills: job.technicalSkills ?? [],
+        benefits: job.benefits,
+        certifications: job.certifications,
+        languagesRequired: job.languagesRequired,
+        interviewLanguage: job.interviewLanguage,
+        postedAt: job.postedAt ?? job.createdAt,
+        companyName: job.company ?? '',
+        jobType: job.jobType,
+        is_active: job.is_active,
+        views: job.views,
+      };
+    } catch (error) {
+      console.error('Error getting job posting by ID:', error);
+      throw error;
+    }
+  }
+
   async searchJobPostings(query: string): Promise<AirtableJobPosting[]> {
     try {
       return await db

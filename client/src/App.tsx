@@ -14,6 +14,7 @@ import VerificationSentPage from "@/pages/VerificationSentPage";
 import EmailVerificationPendingPage from "@/pages/EmailVerificationPendingPage";
 import ResendVerificationPage from "@/pages/ResendVerificationPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
+import JobDetailsPage from "@/pages/JobDetailsPage";
 import { useState, useEffect } from "react";
 
 import NotFound from "@/pages/not-found";
@@ -64,6 +65,9 @@ function Router() {
 
       {/* Password reset routes - accessible without authentication */}
       <Route path="/reset-password/:token" component={ResetPasswordPage} />
+
+      {/* Public job details page - accessible without authentication */}
+      <Route path="/jobs/:id" component={JobDetailsPage} />
 
       <Route path="/">
         {isAuthenticated ? <Redirect to="/dashboard" /> : <Landing />}

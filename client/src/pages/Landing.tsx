@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Brain, Target, Zap, CheckCircle, Briefcase, MapPin, Calendar, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { AuthModal } from "@/components/AuthModal";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -54,10 +55,12 @@ function FeaturedJobsSection({
   t,
   language,
   onOpenAuthModal,
+  navigate,
 }: {
   t: (key: string) => string;
   language: string;
   onOpenAuthModal: () => void;
+  navigate: (path: string) => void;
 }) {
   const MAX_JOBS_DISPLAY = 6;
   const [jobs, setJobs] = useState<PublicJobPosting[]>([]);
@@ -231,11 +234,11 @@ function FeaturedJobsSection({
                         )}
                       </div>
                       <Button
-                        onClick={onOpenAuthModal}
+                        onClick={() => navigate(`/jobs/${job.id}`)}
                         size="sm"
                         className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md hover:from-blue-700 hover:to-purple-700"
                       >
-                        {t('landing.jobs.applyCta')}
+                        View Details
                       </Button>
                     </div>
                     <p className="text-sm text-slate-600">
@@ -428,7 +431,8 @@ function CompanyCarousel({ t }: { t: (key: string) => string }) {
 export default function Landing() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { t, isRTL, language } = useLanguage();
-  
+  const [, navigate] = useLocation();
+
   const openAuthModal = () => {
     setIsAuthModalOpen(true);
   };
@@ -632,6 +636,7 @@ export default function Landing() {
             t={t}
             language={language}
             onOpenAuthModal={openAuthModal}
+            navigate={navigate}
           />
 
           {/* Company Carousel Section */}

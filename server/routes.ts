@@ -3011,6 +3011,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public job details route - get single job by ID
+  app.get('/api/public/job-postings/:id', async (req: any, res) => {
+    try {
+      const jobId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(jobId) || jobId <= 0) {
+        return res.status(400).json({ message: "Invalid job ID" });
+      }
+
+      const job = await localDatabaseService.getJobPostingById(jobId);
+
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+
+      // Only return active jobs to public
+      if (!job.is_active) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+
+      res.json(job);
+    } catch (error) {
+      console.error("Error fetching public job details:", error);
+      res.status(500).json({ message: "Failed to fetch job details" });
+    }
+  });
+
   // Job postings routes
   app.get('/api/job-postings', requireAuth, async (req: any, res) => {
     try {
