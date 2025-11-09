@@ -54,6 +54,7 @@ export const users = pgTable("users", {
 // Organizations table (from HiringIntelligence)
 export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  url: varchar("url").notNull().unique(),
   companyName: varchar("company_name").notNull(),
   industry: varchar("industry"),
   companySize: varchar("company_size"),
@@ -262,6 +263,7 @@ export const jobs = pgTable("jobs", {
   seniorityLevel: varchar("seniority_level").notNull(),
   industry: varchar("industry").notNull(),
   languagesRequired: jsonb("languages_required"),
+  interviewLanguage: varchar("interview_language"),
   certifications: text("certifications"),
   organizationId: varchar("organization_id"),
   createdById: varchar("created_by_id"),
@@ -726,7 +728,9 @@ export type InsertOpenAIRequest = typeof openaiRequests.$inferInsert;
 export type OrganizationInvitation = typeof organizationInvitations.$inferSelect;
 export type InsertOrganizationInvitation = typeof organizationInvitations.$inferInsert;
 
-export const insertOrganizationSchema = createInsertSchema(organizations).omit({
+export const insertOrganizationSchema = createInsertSchema(organizations, {
+  url: (schema) => schema.trim().min(1, "Organization URL is required"),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
