@@ -1679,7 +1679,16 @@ Return a JSON object with:
     };
 
     try {
-      const instruction = `You are an expert resume parser and career analyst. Extract ALL available information into the provided JSON schema. Use nulls/empty arrays for missing info. Be precise; do not invent data.`;
+      const instruction = `You are an expert resume parser and career analyst. Extract ALL available information into the provided JSON schema.
+
+CRITICAL REQUIREMENTS:
+- For work experience: ALWAYS extract startDate and endDate (format as "Month Year" or "YYYY-MM" or "YYYY")
+- For education: ALWAYS extract startDate and endDate (format as "Month Year" or "YYYY-MM" or "YYYY")
+- For certifications: ALWAYS extract dateObtained and expiryDate if mentioned
+- If exact dates are not provided, use approximate dates based on context (e.g., "2020" if only year is mentioned)
+- If no date information is available at all, use null
+- Be precise; do not invent data that isn't in the resume
+- Use nulls/empty arrays for missing non-date info`;
 
       const response: any = await wrapOpenAIRequest(
         () => (openai as any).responses.create({
