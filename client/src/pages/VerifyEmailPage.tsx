@@ -2,15 +2,39 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle, XCircle, Loader2, Mail } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function VerifyEmailPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { t } = useLanguage();
+
+  const statusTitle = useMemo(() => {
+    if (status === 'loading') return t('auth.verifyEmail.status.loading.title');
+    if (status === 'success') return t('auth.verifyEmail.status.success.title');
+    return t('auth.verifyEmail.status.error.title');
+  }, [status, t]);
+
+  const nextSteps = useMemo(() => (
+    [
+      t('auth.verifyEmail.nextSteps.signIn'),
+      t('auth.verifyEmail.nextSteps.completeProfile'),
+      t('auth.verifyEmail.nextSteps.uploadResume'),
+    ]
+  ), [t]);
+
+  const helpSteps = useMemo(() => (
+    [
+      t('auth.verifyEmail.help.items.ensureCompleteLink'),
+      t('auth.verifyEmail.help.items.checkExpiry'),
+      t('auth.verifyEmail.help.items.contactSupport'),
+    ]
+  ), [t]);
 
   useEffect(() => {
     const verifyEmail = async () => {
@@ -21,7 +45,7 @@ export default function VerifyEmailPage() {
 
         if (!token) {
           setStatus('error');
-          setMessage('Verification token is missing. Please check your email and try again.');
+          setMessage(t('auth.verifyEmail.errors.missingToken'));
           return;
         }
 
@@ -42,17 +66,17 @@ export default function VerifyEmailPage() {
           queryClient.invalidateQueries({ queryKey: ["/api/user"] });
         } else {
           setStatus('error');
-          setMessage(data.error || 'Email verification failed. Please try again or contact support.');
+          setMessage(data.error || t('auth.verifyEmail.errors.failed'));
         }
       } catch (error) {
         console.error('Email verification error:', error);
         setStatus('error');
-        setMessage('An error occurred during email verification. Please try again or contact support.');
+        setMessage(t('auth.verifyEmail.errors.unexpected'));
       }
     };
 
     verifyEmail();
-  }, [setLocation]);
+  }, [queryClient, t]);
 
   const handleContinue = () => {
     setLocation('/');
@@ -79,18 +103,14 @@ export default function VerifyEmailPage() {
               <XCircle className="h-8 w-8 text-red-600" />
             )}
           </div>
-          <CardTitle className="text-2xl text-gray-900">
-            {status === 'loading' && 'Verifying Your Email'}
-            {status === 'success' && 'Email Verified!'}
-            {status === 'error' && 'Verification Failed'}
-          </CardTitle>
+          <CardTitle className="text-2xl text-gray-900">{statusTitle}</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-6">
           {status === 'loading' && (
             <div className="text-center">
               <p className="text-gray-600 mb-4">
-                Please wait while we verify your email address...
+                {t('auth.verifyEmail.status.loading.message')}
               </p>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div className="bg-blue-600 h-2 rounded-full animate-pulse w-3/4"></div>
@@ -108,11 +128,11 @@ export default function VerifyEmailPage() {
               </Alert>
 
               <div className="bg-blue-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-blue-900 mb-2">What's Next?</h3>
+                <h3 className="font-semibold text-blue-900 mb-2">{t('auth.verifyEmail.nextSteps.title')}</h3>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Sign in to your Plato Applicant Tracker account</li>
-                  <li>• Complete your applicant profile</li>
-                  <li>• Upload your resume and get matched with jobs</li>
+                  {nextSteps.map((step) => (
+                    <li key={step}>• {step}</li>
+                  ))}
                 </ul>
               </div>
 
@@ -121,7 +141,7 @@ export default function VerifyEmailPage() {
                 className="w-full bg-green-600 hover:bg-green-700"
                 size="lg"
               >
-                Continue to Sign In
+                {t('auth.verifyEmail.continueButton')}
               </Button>
             </div>
           )}
@@ -136,11 +156,11 @@ export default function VerifyEmailPage() {
               </Alert>
 
               <div className="bg-amber-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-amber-900 mb-2">Need Help?</h3>
+                <h3 className="font-semibold text-amber-900 mb-2">{t('auth.verifyEmail.help.title')}</h3>
                 <ul className="text-sm text-amber-800 space-y-1">
-                  <li>• Make sure you clicked the complete verification link</li>
-                  <li>• Check if the verification link has expired</li>
-                  <li>• Contact support if the problem persists</li>
+                  {helpSteps.map((step) => (
+                    <li key={step}>• {step}</li>
+                  ))}
                 </ul>
               </div>
 
@@ -151,14 +171,14 @@ export default function VerifyEmailPage() {
                   className="w-full"
                 >
                   <Mail className="h-4 w-4 mr-2" />
-                  Resend Verification Email
+                  {t('auth.verification.sent.resendButton')}
                 </Button>
 
                 <Button
                   onClick={handleContinue}
                   className="w-full"
                 >
-                  Back to Sign In
+                  {t('auth.verification.sent.backToSignIn')}
                 </Button>
               </div>
             </div>

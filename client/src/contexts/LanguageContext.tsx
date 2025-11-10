@@ -1,11 +1,14 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-type Language = 'en' | 'ar';
+const SUPPORTED_LANGUAGES = ['en', 'ar', 'fr'] as const;
+export type Language = (typeof SUPPORTED_LANGUAGES)[number];
+const RTL_LANGUAGES = new Set<Language>(['ar']);
 
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   isRTL: boolean;
+  availableLanguages: Language[];
   t: (key: string) => string;
 }
 
@@ -15,6 +18,10 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 const translations = {
   en: {
     plato: "Plato",
+
+    app: {
+      loadingAccount: "Loading your account...",
+    },
 
     // Navigation & General
     welcome: "Welcome to Plato!",
@@ -115,6 +122,9 @@ const translations = {
     
     // Language switch
     switchLanguage: "العربية",
+    languageSwitcher: {
+      placeholder: "Select language",
+    },
     
     // Landing page
     landing: {
@@ -170,6 +180,7 @@ const translations = {
       signUp: "Sign Up", 
       email: "Email",
       password: "Password",
+      newPassword: "New Password",
       confirmPassword: "Confirm Password",
       firstName: "First Name",
       lastName: "Last Name",
@@ -193,7 +204,158 @@ const translations = {
       lastNameRequired: "Last name is required",
       usernameMinLength: "Username must be at least 3 characters",
       passwordsDontMatch: "Passwords don't match",
-      welcomeToPlato: "Welcome to Plato"
+      welcomeToPlato: "Welcome to Plato",
+      page: {
+        heroTitlePrefix: "Welcome to",
+        heroSubtitle: "The AI-powered job platform that transforms how you find your perfect career match through intelligent interviews and personalized job recommendations.",
+        features: {
+          interviews: {
+            title: "AI-Powered Interviews",
+            description: "Complete comprehensive interviews that build your professional profile automatically.",
+          },
+          matching: {
+            title: "Smart Job Matching",
+            description: "Get matched with opportunities that align with your skills and career goals.",
+          },
+          applications: {
+            title: "Instant Applications",
+            description: "Apply to jobs with confidence using your AI-generated professional profile.",
+          },
+        },
+        login: {
+          title: "Welcome Back",
+          description: "Sign in to your account to continue your job search journey.",
+          forgotPassword: "Forgot your password?",
+        },
+        register: {
+          title: "Create Account",
+          description: "Join thousands of job seekers who found their dream careers with Plato.",
+          placeholders: {
+            firstNameExample: "John",
+            lastNameExample: "Doe",
+            emailExample: "john@example.com",
+            usernameExample: "johndoe",
+            passwordExample: "Create a strong password",
+          },
+        },
+      },
+      verification: {
+        sent: {
+          title: "Email Sent Successfully",
+          description: "Verification email has been sent successfully to your registered email address.",
+          emailSentTo: "Email sent to:",
+          steps: {
+            checkInbox: "Check your email inbox",
+            clickLink: "Click verification link in email",
+            startUsing: "Start using Plato Applicant Tracker",
+          },
+          importantLabel: "Important:",
+          importantMessage: "If you don't receive the email within a few minutes, please check your spam folder. The verification link will expire in 1 week.",
+          resendButton: "Resend Email",
+          backToSignIn: "Back to Sign In",
+        },
+        pending: {
+          registrationSuccess: "Registration successful!",
+          registrationMessage: "We've sent a verification email to your registered email address. Please check your inbox and click the verification link to activate your account.",
+          enterEmailPrompt: "Please enter your email address",
+          resendFailed: "Failed to resend verification email",
+          resendError: "An error occurred while resending the verification email",
+          formTitle: "Didn't receive the email?",
+          formSubtitle: "Enter your email address to resend the verification link",
+          continueToDashboard: "Continue to Dashboard",
+        },
+      },
+      verifyEmail: {
+        status: {
+          loading: {
+            title: "Verifying Your Email",
+            message: "Please wait while we verify your email address...",
+          },
+          success: {
+            title: "Email Verified!",
+          },
+          error: {
+            title: "Verification Failed",
+          },
+        },
+        continueButton: "Continue to Sign In",
+        nextSteps: {
+          title: "What's Next?",
+          signIn: "Sign in to your Plato Applicant Tracker account",
+          completeProfile: "Complete your applicant profile",
+          uploadResume: "Upload your resume and get matched with jobs",
+        },
+        help: {
+          title: "Need Help?",
+          items: {
+            ensureCompleteLink: "Make sure you clicked the complete verification link",
+            checkExpiry: "Check if the verification link has expired",
+            contactSupport: "Contact support if the problem persists",
+          },
+        },
+        errors: {
+          missingToken: "Verification token is missing. Please check your email and try again.",
+          failed: "Email verification failed. Please try again or contact support.",
+          unexpected: "An error occurred during email verification. Please try again or contact support.",
+        },
+      },
+      passwordSetup: {
+        title: "Set Your Password",
+        subtitle: "Please set a secure password for your account to continue.",
+        enterNewPassword: "Enter your new password",
+        requirementsTitle: "Password requirements:",
+        setting: "Setting Password...",
+        submit: "Set Password",
+      },
+      passwordRules: {
+        minLength: "Password must be at least 8 characters",
+        uppercase: "Password must contain at least one uppercase letter",
+        lowercase: "Password must contain at least one lowercase letter",
+        number: "Password must contain at least one number",
+        special: "Password must contain at least one special character",
+      },
+      passwordStrength: {
+        weak: "Weak",
+        fair: "Fair",
+        good: "Good",
+        strong: "Strong",
+      },
+      resetPassword: {
+        verifyingLink: "Verifying reset link...",
+        invalidLinkTitle: "Invalid Reset Link",
+        invalidLinkDescription: "This reset link is invalid or has expired.",
+        invalidLinkBody: "This password reset link is invalid or has expired. Please request a new password reset.",
+        missingTokenMessage: "This password reset link is missing a required token.",
+        backToLogin: "Back to Login",
+        successTitle: "Password Reset Successful",
+        successDescription: "Your password has been reset successfully. You can now log in with your new password.",
+        failureTitle: "Reset Failed",
+        failureDescription: "Failed to reset password",
+        completeTitle: "Password Reset Complete!",
+        completeDescription: "Your password has been successfully reset",
+        successBadge: "Success!",
+        successMessage: "Your password has been reset successfully.",
+        successFollowUp: "You can now use your new password to log in to your account.",
+        goToLogin: "Go to Login",
+        backToHome: "Back to Home",
+        title: "Reset Your Password",
+        greeting: "Hi {{name}}! Create a new password for your account",
+        userFallback: "there",
+        passwordStrengthLabel: "Password Strength",
+        confirmNewPassword: "Confirm your new password",
+        resetting: "Resetting...",
+        submit: "Reset Password",
+      }
+    },
+
+    manualCvModal: {
+      title: "Complete Your CV Information",
+      subtitle: "Enter your professional details to unlock interviews and job matching",
+    },
+    profileModal: {
+      resumeTitle: "Resume",
+      resumeUploaded: "Resume uploaded (+15% completion)",
+      resumeUploadPrompt: "Upload your resume for AI analysis (+15% completion)",
     },
     
     // Interview Modal
@@ -303,6 +465,16 @@ const translations = {
       english: "English",
       arabic: "العربية"
     },
+
+    manualCvModal: {
+      title: "أكمل معلومات سيرتك الذاتية",
+      subtitle: "أدخل بياناتك المهنية لفتح المقابلات ومطابقة الوظائف",
+    },
+    profileModal: {
+      resumeTitle: "السيرة الذاتية",
+      resumeUploaded: "تم رفع السيرة الذاتية (+15% اكتمال)",
+      resumeUploadPrompt: "قم برفع سيرتك الذاتية لتحليل الذكاء الاصطناعي (+15% اكتمال)",
+    },
     
     // Dashboard
     dashboard: {
@@ -323,6 +495,7 @@ const translations = {
       uploadResume: "Upload Resume",
       uploading: "Uploading...",
       editProfile: "Edit Profile",
+      resumeUploadTip: "💡 Tip: Upload your resume and we'll extract as much information as we can to auto-fill your profile!",
       excellentInterviewComplete: "Excellent! Your AI interview is complete.",
       reviewInterview: "Review Interview",
       jobSpecificAI: "Job specific AI interviews",
@@ -872,6 +1045,10 @@ const translations = {
     
     // Brand name
     plato: "بلاتو",
+
+    app: {
+      loadingAccount: "جارٍ تحميل حسابك...",
+    },
     
     // Profile completion
     profileProgress: "تم حفظ تقدم الملف الشخصي!",
@@ -934,6 +1111,9 @@ const translations = {
     
     // Language switch
     switchLanguage: "English",
+    languageSwitcher: {
+      placeholder: "اختر اللغة",
+    },
     
     // Landing page
     landing: {
@@ -989,6 +1169,7 @@ const translations = {
       signUp: "إنشاء حساب",
       email: "البريد الإلكتروني",
       password: "كلمة المرور",
+      newPassword: "كلمة مرور جديدة",
       confirmPassword: "تأكيد كلمة المرور",
       firstName: "الاسم الأول",
       lastName: "اسم العائلة",
@@ -1012,7 +1193,148 @@ const translations = {
       lastNameRequired: "اسم العائلة مطلوب",
       usernameMinLength: "يجب أن يكون اسم المستخدم ٣ أحرف على الأقل",
       passwordsDontMatch: "كلمات المرور غير متطابقة",
-      welcomeToPlato: "أهلاً بك في بلاتو"
+      welcomeToPlato: "أهلاً بك في بلاتو",
+      page: {
+        heroTitlePrefix: "مرحبًا بك في",
+        heroSubtitle: "منصة الوظائف المدعومة بالذكاء الاصطناعي التي تحول طريقة إيجادك لوظيفتك المثالية من خلال مقابلات ذكية وتوصيات شخصية.",
+        features: {
+          interviews: {
+            title: "مقابلات مدعومة بالذكاء الاصطناعي",
+            description: "أكمل مقابلات شاملة تبني ملفك المهني تلقائيًا.",
+          },
+          matching: {
+            title: "مطابقة وظائف ذكية",
+            description: "احصل على فرص تتوافق مع مهاراتك وأهدافك المهنية.",
+          },
+          applications: {
+            title: "طلبات فورية",
+            description: "قدّم للوظائف بثقة باستخدام ملفك المهني الناتج عن الذكاء الاصطناعي.",
+          },
+        },
+        login: {
+          title: "مرحبًا بعودتك",
+          description: "قم بتسجيل الدخول إلى حسابك لمتابعة رحلة البحث عن الوظيفة.",
+          forgotPassword: "هل نسيت كلمة المرور؟",
+        },
+        register: {
+          title: "إنشاء حساب",
+          description: "انضم إلى آلاف الباحثين عن عمل الذين وجدوا وظائف أحلامهم مع بلاتو.",
+          placeholders: {
+            firstNameExample: "أحمد",
+            lastNameExample: "النجار",
+            emailExample: "ahmed@example.com",
+            usernameExample: "ahmed123",
+            passwordExample: "أنشئ كلمة مرور قوية",
+          },
+        },
+      },
+      verification: {
+        sent: {
+          title: "تم إرسال البريد الإلكتروني بنجاح",
+          description: "تم إرسال بريد التحقق بنجاح إلى بريدك الإلكتروني المسجل.",
+          emailSentTo: "تم الإرسال إلى:",
+          steps: {
+            checkInbox: "تحقق من صندوق بريدك الإلكتروني",
+            clickLink: "انقر على رابط التحقق في البريد",
+            startUsing: "ابدأ باستخدام متعقب المتقدمين من بلاتو",
+          },
+          importantLabel: "مهم:",
+          importantMessage: "إذا لم تستلم البريد خلال بضع دقائق، يرجى التحقق من مجلد الرسائل غير المرغوب فيها. تنتهي صلاحية رابط التحقق خلال أسبوع.",
+          resendButton: "إعادة إرسال البريد",
+          backToSignIn: "العودة لتسجيل الدخول",
+        },
+        pending: {
+          registrationSuccess: "تم التسجيل بنجاح!",
+          registrationMessage: "لقد أرسلنا بريد تحقق إلى بريدك الإلكتروني المسجل. يرجى التحقق من صندوق بريدك والنقر على رابط التحقق لتفعيل حسابك.",
+          enterEmailPrompt: "يرجى إدخال عنوان بريدك الإلكتروني",
+          resendFailed: "فشل في إعادة إرسال بريد التحقق",
+          resendError: "حدث خطأ أثناء إعادة إرسال بريد التحقق",
+          formTitle: "لم يصلك البريد الإلكتروني؟",
+          formSubtitle: "أدخل بريدك الإلكتروني لإعادة إرسال رابط التحقق",
+          continueToDashboard: "المتابعة إلى لوحة التحكم",
+        },
+      },
+      verifyEmail: {
+        status: {
+          loading: {
+            title: "جارٍ التحقق من بريدك الإلكتروني",
+            message: "يرجى الانتظار بينما نتحقق من عنوان بريدك الإلكتروني...",
+          },
+          success: {
+            title: "تم التحقق من البريد الإلكتروني!",
+          },
+          error: {
+            title: "فشل التحقق",
+          },
+        },
+        continueButton: "المتابعة لتسجيل الدخول",
+        nextSteps: {
+          title: "ما الخطوة التالية؟",
+          signIn: "سجّل الدخول إلى حساب متعقب المتقدمين من بلاتو",
+          completeProfile: "أكمل ملفك كمتقدم للوظيفة",
+          uploadResume: "ارفع سيرتك الذاتية واحصل على مطابقة للوظائف",
+        },
+        help: {
+          title: "بحاجة إلى مساعدة؟",
+          items: {
+            ensureCompleteLink: "تأكد من أنك نقرت رابط التحقق الكامل",
+            checkExpiry: "تحقق مما إذا كان رابط التحقق قد انتهت صلاحيته",
+            contactSupport: "تواصل مع الدعم إذا استمرت المشكلة",
+          },
+        },
+        errors: {
+          missingToken: "رمز التحقق مفقود. يرجى التحقق من بريدك الإلكتروني والمحاولة مرة أخرى.",
+          failed: "فشل التحقق من البريد الإلكتروني. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.",
+          unexpected: "حدث خطأ أثناء التحقق من البريد الإلكتروني. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.",
+        },
+      },
+      passwordSetup: {
+        title: "عيّن كلمة مرورك",
+        subtitle: "يرجى تعيين كلمة مرور آمنة لحسابك للمتابعة.",
+        enterNewPassword: "أدخل كلمة المرور الجديدة",
+        requirementsTitle: "متطلبات كلمة المرور:",
+        setting: "جارٍ تعيين كلمة المرور...",
+        submit: "تعيين كلمة المرور",
+      },
+      passwordRules: {
+        minLength: "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل",
+        uppercase: "يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل",
+        lowercase: "يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل",
+        number: "يجب أن تحتوي كلمة المرور على رقم واحد على الأقل",
+        special: "يجب أن تحتوي كلمة المرور على رمز خاص واحد على الأقل",
+      },
+      passwordStrength: {
+        weak: "ضعيفة",
+        fair: "متوسطة",
+        good: "جيدة",
+        strong: "قوية",
+      },
+      resetPassword: {
+        verifyingLink: "جارٍ التحقق من رابط إعادة التعيين...",
+        invalidLinkTitle: "رابط إعادة التعيين غير صالح",
+        invalidLinkDescription: "رابط إعادة التعيين هذا غير صالح أو منتهي الصلاحية.",
+        invalidLinkBody: "رابط إعادة تعيين كلمة المرور هذا غير صالح أو منتهي الصلاحية. يرجى طلب إعادة تعيين جديدة.",
+        missingTokenMessage: "رابط إعادة تعيين كلمة المرور هذا يفتقد الرمز المطلوب.",
+        backToLogin: "العودة لتسجيل الدخول",
+        successTitle: "تمت إعادة تعيين كلمة المرور بنجاح",
+        successDescription: "تمت إعادة تعيين كلمة المرور الخاصة بك بنجاح. يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.",
+        failureTitle: "فشلت عملية إعادة التعيين",
+        failureDescription: "تعذر إعادة تعيين كلمة المرور",
+        completeTitle: "اكتملت إعادة تعيين كلمة المرور!",
+        completeDescription: "تمت إعادة تعيين كلمة المرور الخاصة بك بنجاح",
+        successBadge: "نجاح!",
+        successMessage: "تمت إعادة تعيين كلمة المرور الخاصة بك بنجاح.",
+        successFollowUp: "يمكنك الآن استخدام كلمة المرور الجديدة لتسجيل الدخول إلى حسابك.",
+        goToLogin: "الانتقال لتسجيل الدخول",
+        backToHome: "العودة إلى الصفحة الرئيسية",
+        title: "أعد تعيين كلمة المرور الخاصة بك",
+        greeting: "مرحبًا {{name}}! أنشئ كلمة مرور جديدة لحسابك",
+        userFallback: "عزيزي المستخدم",
+        passwordStrengthLabel: "قوة كلمة المرور",
+        confirmNewPassword: "أكد كلمة المرور الجديدة",
+        resetting: "جارٍ إعادة التعيين...",
+        submit: "إعادة تعيين كلمة المرور",
+      }
     },
     
     // Dashboard
@@ -1034,6 +1356,7 @@ const translations = {
       uploadResume: "رفع السيرة الذاتية",
       uploading: "جاري الرفع...",
       editProfile: "تعديل الملف الشخصي",
+      resumeUploadTip: "💡 تلميح: قم برفع سيرتك الذاتية وسنستخرج أكبر قدر ممكن من المعلومات لملء ملفك الشخصي تلقائيًا!",
       excellentInterviewComplete: "ممتاز! مقابلة الذكاء الاصطناعي مكتملة.",
       reviewInterview: "مراجعة المقابلة",
       jobSpecificAI: "مقابلات الذكاء الاصطناعي الخاصة بالوظائف",
@@ -1428,6 +1751,880 @@ const translations = {
     otherBenefits: "مزايا أخرى",
     addOtherBenefit: "إضافة ميزة أخرى",
     otherBenefitPlaceholder: "مثال: سيارة الشركة، عضوية نادي رياضي",
+  },
+  
+  fr: {
+    plato: "Plato",
+
+    app: {
+      loadingAccount: "Chargement de votre compte...",
+    },
+
+    // Navigation & General
+    welcome: "Bienvenue sur Plato !",
+    buildProfile: "Créez votre profil complet",
+    takeInterview: "Passez l'entretien IA",
+    getStarted: "Commencer avec Plato",
+    complete: "Terminé",
+    startInterview: "Commencer l'entretien",
+    buildProfileButton: "Créer le profil",
+    
+    // Profile Section
+    profileDescription: "Créez votre profil professionnel incluant les détails personnels, l'éducation, l'expérience de travail, les compétences et les préférences de carrière. Atteignez 85% pour débloquer les entretiens.",
+    interviewDescription: "Créez votre profil à 85% d'achèvement pour débloquer l'entretien IA.",
+    
+    // Steps
+    step1: "Créez votre profil complet incluant les détails personnels, l'éducation, l'expérience de travail, les compétences et les préférences de carrière.",
+    step2: "Terminez votre entretien IA pour générer votre analyse professionnelle complète.",
+    
+    // Common buttons
+    save: "Enregistrer",
+    cancel: "Annuler",
+    continue: "Continuer",
+    next: "Suivant",
+    previous: "Précédent",
+    close: "Fermer",
+    signOut: "Se déconnecter",
+    signingOut: "Déconnexion...",
+    
+    // Interview specific
+    selectLanguage: "Sélectionner la langue de l'entretien",
+    interviewLanguagePrompt: "Dans quelle langue souhaitez-vous passer l'entretien ?",
+    english: "English",
+    arabic: "العربية",
+    french: "Français",
+    proceedInEnglish: "Continuer en anglais",
+    proceedInArabic: "Continuer en arabe",
+    proceedInFrench: "Continuer en français",
+    chooseStyle: "Choisissez votre style d'entretien",
+    selectExperience: "Entretien - Sélectionnez comment vous souhaitez vivre votre entretien IA",
+    languageNote: "L'intervieweur IA posera des questions et s'attendra à des réponses dans votre langue sélectionnée",
+    
+    // Profile completion
+    profileProgress: "Profil sauvegardé !",
+    profileComplete: "Votre profil est terminé à {{percentage}}%. {{status}}",
+    interviewsUnlocked: "Excellent ! Votre profil est prêt pour les entretiens (75%+ complété).",
+    continueBuilding: "Continuez à construire pour débloquer les entretiens à 75%.",
+    
+    // Dashboard
+    jobDashboard: "Votre tableau de bord d'emploi",
+    
+    // Dashboard sections
+    jobMatches: "Correspondances d'emploi",
+    applications: "Candidatures", 
+    upcomingInterviews: "Entretiens à venir",
+    jobPostings: "Offres d'emploi",
+    
+    // Dashboard content
+    aiCuratedOpportunities: "Opportunités sélectionnées par IA",
+    discoverPersonalizedJobs: "Découvrez les correspondances d'emploi personnalisées basées sur votre analyse d'entretien IA et vos données de profil",
+    trackApplicationProgress: "Suivre la progression des candidatures",
+    monitorApplicationStatus: "Surveillez vos candidatures et vos calendriers d'entretiens sur toutes les plateformes",
+    exploreOpportunities: "Explorer de nouvelles opportunités",
+    browseLatestJobs: "Parcourez les dernières offres d'emploi qui correspondent à vos compétences et objectifs de carrière",
+    viewUpcomingSchedule: "Voir votre calendrier à venir",
+    stayUpdated: "Restez informé de vos entretiens confirmés et dates importantes",
+    
+    // Stats and labels
+    responseRate: "taux de réponse",
+    applicationResponseRate: "taux de réponse aux candidatures",
+    whyJobSeekingChallenging: "Pourquoi la recherche d'emploi est si difficile",
+    
+    // Common actions
+    viewAll: "Voir tout",
+    noDataAvailable: "Aucune donnée disponible",
+    loadingData: "Chargement des données...",
+    
+    // Applications section
+    myApplications: "Mes candidatures",
+    trackApplicationStatus: "Suivez le statut et la progression de vos candidatures",
+    
+    // Quick stats
+    quickStats: "Statistiques rapides",
+    jobMatchesLabel: "Correspondances d'emploi",
+    applicationsLabel: "Candidatures",
+    profileCompletionLabel: "Achèvement du profil",
+    
+    // Industry challenge stats
+    avgJobSearchTime: "temps moyen de recherche d'emploi",
+    applicationsToGetOffer: "candidatures pour obtenir une offre",
+    sixMonths: "6 mois",
+    oneHundredEighteen: "118",
+    twoPercent: "2%",
+    
+    // Forms
+    personalDetails: "Informations personnelles",
+    workExperience: "Expérience",
+    education: "Éducation",
+    skills: "Compétences",
+    jobTarget: "Objectif",
+    
+    // Language switch
+    switchLanguage: "English",
+    languageSwitcher: {
+      placeholder: "Sélectionner la langue",
+    },
+    
+    // Languages
+    languages: {
+      english: "English",
+      arabic: "العربية",
+      french: "Français"
+    },
+    
+    // Landing page
+    landing: {
+      hero: {
+        title: "Obtenez votre emploi de rêve avec une correspondance IA précise",
+        subtitle: "Naviguez dans votre parcours de carrière avec une découverte d'emploi intelligente et une analyse de profil IA qui révèle votre véritable potentiel.",
+        getStarted: "Commencer maintenant",
+        learnMore: "En savoir plus"
+      },
+      features: {
+        aiPoweredMatching: "Correspondance alimentée par IA",
+        smartInterviews: "Entretiens intelligents", 
+        instantResults: "Résultats instantanés",
+        aiInterview: {
+          title: "Entretien IA",
+          description: "Ayez une conversation naturelle avec notre IA pour construire automatiquement votre profil professionnel"
+        },
+        smartMatching: {
+          title: "Correspondance intelligente",
+          description: "Obtenez des correspondances d'emploi avec notation de précision basée sur vos compétences, expériences et objectifs"
+        },
+        instantResultsFeature: {
+          title: "Résultats instantanés",
+          description: "Voyez vos correspondances immédiatement avec notation détaillée et suivi des candidatures"
+        }
+      },
+      companies: {
+        title: "Approuvé par les entreprises leaders",
+        subtitle: "Rejoignez des milliers de professionnels qui ont trouvé leur correspondance de carrière parfaite grâce à notre plateforme alimentée par IA",
+        testimonial: "Approche révolutionnaire de l'acquisition de talents",
+        subtitle2: "Rejoignez les entreprises qui façonnent l'avenir du recrutement"
+      },
+      jobs: {
+        title: "Postes recrutant maintenant",
+        subtitle: "Un aperçu des dernières opportunités des équipes utilisant Plato.",
+        empty: "De nouvelles opportunités sont bientôt ajoutées — revenez plus tard.",
+        error: "Impossible de charger les emplois maintenant. Veuillez réessayer plus tard.",
+        posted: "Publié",
+        locationUnknown: "Lieude flexible",
+        applyCta: "Rejoindre pour postuler",
+        viewAll: "Voir tous les emplois (connexion requise)"
+      },
+      cta: {
+        title: "Prêt à trouver votre correspondance d'emploi parfaite ?",
+        subtitle: "Rejoignez des milliers de professionnels qui ont découvert leurs carrières de rêve avec la correspondance d'emploi alimentée par IA",
+        startJourney: "Commencer votre parcours"
+      }
+    },
+    
+    manualCvModal: {
+      title: "Complétez vos informations CV",
+      subtitle: "Entrez vos détails professionnels pour débloquer les entretiens et la correspondance d'emploi",
+    },
+    profileModal: {
+      resumeTitle: "CV",
+      resumeUploaded: "CV téléchargé (+15% d'achèvement)",
+      resumeUploadPrompt: "Téléchargez votre CV pour analyse IA (+15% d'achèvement)",
+    },
+    
+    // Interview Modal
+    interview: {
+      chooseStyle: "Choisissez votre style d'entretien",
+      selectExperience: "Sélectionnez le type d'entretien",
+      selectLanguage: "Sélectionner la langue de l'entretien",
+      languageNote: "L'intervieweur IA posera des questions et s'attendra à des réponses dans la langue que vous sélectionnez",
+      // Error messages
+      voiceInterviewError: "Erreur d'entretien vocal",
+      voiceInterviewErrorDescription: "Il y a eu un problème avec l'entretien vocal. Veuillez essayer le mode texte à la place.",
+      unauthorized: "Non autorisé",
+      loggingOut: "Vous êtes déconnecté. Reconnexion...",
+      startError: "Erreur",
+      startErrorDescription: "Échec du démarrage de l'entretien. Veuillez réessayer.",
+      allInterviewsComplete: "Tous les entretiens terminés !",
+      profileGeneratedSuccessfully: "Votre profil IA complet a été généré avec succès.",
+      interviewSectionComplete: "Section d'entretien terminée",
+      movingTo: "Passage à",
+      interview: "entretien",
+      continueRemainingInterviews: "Continuez avec les entretiens restants pour compléter votre profil.",
+      processResponseError: "Erreur",
+      processResponseErrorDescription: "Échec du traitement de votre réponse",
+      submissionFailed: "Échec de la soumission",
+      submissionFailedDescription: "Il y a eu un problème lors de la soumission de votre entretien. Veuillez réessayer.",
+      voiceInterviewComplete: "Entretien terminé !",
+      voiceInterviewProcessedSuccessfully: "Votre entretien vocal a été traité avec succès.",
+      processingFailed: "Échec du traitement",
+      processingFailedDescription: "Il y a eu un problème lors du traitement de votre entretien",
+      processAnswerError: "Erreur",
+      processAnswerErrorDescription: "Échec du traitement de votre réponse. Veuillez réessayer.",
+      completeInterviewError: "Erreur",
+      completeInterviewErrorDescription: "Échec de l'achèvement de l'entretien. Veuillez réessayer.",
+      selectInterviewTypeError: "Erreur",
+      selectInterviewTypeErrorDescription: "Veuillez sélectionner d'abord un type d'entretien.",
+      startingVoiceInterviewConnecting: "Démarrage de votre entretien vocal... Connexion à l'intervieweur IA...",
+      voiceInterviewStarted: "Entretien vocal démarré",
+      voiceInterviewStartedDescription: "Vous pouvez maintenant parler naturellement avec l'intervieweur IA.",
+      connectionFailed: "Échec de connexion",
+      couldNotStartVoiceInterview: "Impossible de démarrer l'entretien vocal",
+      tryTextMode: "Veuillez essayer le mode texte",
+      startingTextInterview: "Démarrage de votre entretien textuel... Veuillez patienter pendant que je prépare vos questions personnalisées.",
+      questionContentNotAvailable: "Contenu de la question non disponible",
+      textInterviewStarted: "Entretien textuel démarré",
+      textInterviewStartedDescription: "Vous pouvez maintenant taper vos réponses aux questions d'entretien.",
+      failedToStartInterview: "Échec du démarrage de l'entretien",
+      couldNotStartTextInterview: "Impossible de démarrer l'entretien textuel",
+      pleaseTryAgain: "Veuillez réessayer",
+      question1: "Question 1",
+      interviewInProgress: "Entretien en cours",
+      waitBeforeClosing: "Veuillez patienter jusqu'à ce que l'interaction actuelle soit terminée avant de fermer.",
+      chooseYourInterview: "Choisissez votre entretien",
+      completeAllInterviews: "Complétez tous les 3 entretiens dans l'ordre pour générer votre profil IA complet",
+      interviewOrder: "Les entretiens doivent être complétés dans cet ordre : Personnel → Professionnel → Technique",
+      locked: "(Verrouillé)",
+      completePreviousInterviews: "Complétez d'abord les entretiens précédents",
+      completed: "Terminé",
+      start: "Commencer",
+      backToInterviewTypes: "Retour aux types d'entretiens",
+      preparingInterviewQuestions: "Préparation des questions d'entretien...",
+      typeResponsesAtOwnPace: "Tapez vos réponses à votre rythme",
+      textInterview: "Entretien textuel",
+      preparingQuestions: "Préparation des questions...",
+      processingYourResponse: "Traitement de votre réponse...",
+      interviewComplete: "Entretien terminé !",
+      interviewSectionCompletedSuccessfully: "Section d'entretien terminée avec succès ! Continuez avec les entretiens restants pour compléter votre profil.",
+      typeYourAnswerHere: "Tapez votre réponse ici...",
+      submitting: "Soumission...",
+      submitInterview: "Soumettre l'entretien",
+      processing: "Traitement...",
+      submitAnswer: "Soumettre la réponse",
+      live: "En direct",
+      startingInterview: "Démarrage de l'entretien...",
+      aiIsSpeaking: "L'IA parle...",
+      aiInterviewActive: "Entretien IA actif",
+      connecting: "Connexion...",
+      preparingYourPersonalizedQuestions: "Préparation de vos questions personnalisées...",
+      waitForAiToFinishSpeaking: "Veuillez attendre que l'IA ait fini de parler avant de répondre",
+      aiWillGuideYou: "l'IA vous guidera à travers",
+      questions: "questions",
+      settingUpVoiceInterview: "Configuration de votre entretien vocal...",
+      aiInterviewer: "Intervieweur IA",
+      you: "Vous",
+      processingInterview: "Traitement de l'entretien...",
+      hangUp: "Raccrocher",
+      aiInterview: "Entretien IA",
+      success: "Succès",
+      resumeUploadedSuccessfully: "CV téléchargé avec succès ! Vous pouvez maintenant commencer les entretiens."
+    },
+    
+    // Interview Types
+    voiceInterview: "Entretien vocal",
+    textInterview: "Entretien textuel",
+    startingVoiceInterview: "Démarrage de l'entretien vocal...",
+    speakNaturally: "Parlez naturellement avec l'intervieweur IA",
+    
+    // Interview type descriptions
+    personalInterview: "Entretien personnel",
+    personalInterviewDescription: "Comprendre votre moi personnel, votre histoire et votre origine",
+    professionalInterview: "Entretien professionnel",
+    professionalInterviewDescription: "Explorer votre parcours professionnel et votre expérience de travail",
+    technicalInterview: "Entretien technique",
+    technicalInterviewDescription: "Évaluation dynamique basée sur votre domaine - résolution de problèmes et évaluation du QI",
+    
+    // Comprehensive Dashboard (partial - would need complete translation)
+    dashboard: {
+      invalidFileType: "Type de fichier invalide",
+      invalidFileTypeDescription: "Veuillez télécharger un fichier PDF ou texte.",
+      pdfUploadTips: "Conseils de téléchargement PDF",
+      pdfUploadTipsDescription: "PDF téléchargé ! Pour une population automatique garantie, essayez également de télécharger une version texte (.txt) de votre CV si l'extraction PDF ne fonctionne pas bien.",
+      fileTooLarge: "Fichier trop volumineux",
+      fileTooLargeDescription: "Veuillez télécharger un fichier de moins de 10 Mo.",
+      resumeProcessedSuccessfully: "CV traité avec succès ! 🎉",
+      resumeProcessedDescription: "Profil automatiquement rempli avec {{sections}} sections de votre CV.",
+      uploadFailed: "Échec du téléchargement",
+      uploadFailedDescription: "Échec du traitement du CV. Veuillez réessayer.",
+      editingProfile: "Modification du profil...",
+      readyToFindRole: "Prêt à trouver votre rôle parfait ! 🎉",
+      readyToFindRoleDescription: "Votre profil est complet et votre entretien IA a généré une analyse professionnelle complète. Utilisez les outils ci-dessous pour découvrir les opportunités qui correspondent à vos compétences et objectifs de carrière uniques.",
+      completeSteps: "Complétez les deux étapes ci-dessous pour débloquer la correspondance d'emploi personnalisée et accéder à votre tableau de bord complet :",
+      uploadResume: "Télécharger le CV",
+      uploading: "Téléchargement...",
+      editProfile: "Modifier le profil",
+      resumeUploadTip: "💡 Astuce : Téléchargez votre CV et nous extrairons autant d'informations que possible pour remplir automatiquement votre profil !",
+      excellentInterviewComplete: "Excellent ! Votre entretien IA est terminé.",
+      reviewInterview: "Revoir l'entretien",
+      jobSpecificAI: "Entretiens IA spécifiques aux emplois",
+      jobSpecificAIDescription: "Voyez les invitations d'emploi personnalisées pour vous et entraînez-vous",
+      invitedJobs: "Emplois invités",
+      invitedJobsDescription: "Voyez les emplois auxquels vous êtes invité et postulez",
+      browseJobPostings: "Parcourir les offres d'emploi",
+      getStartedWithPlato: "Commencer avec Plato",
+      getStartedWithPlatoDescription: "Complétez les deux étapes ci-dessus pour débloquer votre tableau de bord d'emploi personnalisé avec correspondances, candidatures et aperçus de carrière.",
+      step1Description: "Étape 1 : Créez votre profil complet incluant les détails personnels, l'éducation, l'expérience de travail, les compétences et les préférences de carrière.",
+      step2Description: "Étape 2 : Complétez votre entretien IA pour générer votre analyse professionnelle complète.",
+      
+      // Additional missing translations
+      phone: "Téléphone",
+      selectGender: "Sélectionner le sexe",
+      selectCareerLevel: "Sélectionner le niveau de carrière",
+      entryLevel: "Débutant",
+      junior: "Junior",
+      midLevel: "Intermédiaire",
+      senior: "Senior",
+      lead: "Chef d'équipe",
+      manager: "Manager",
+      director: "Directeur",
+      executive: "Exécutif",
+      selectType: "Sélectionner le type",
+      fullTime: "Temps plein",
+      partTime: "Temps partiel",
+      contract: "Contrat",
+      freelance: "Freelance",
+      internship: "Stage",
+      selectAuthorizationStatus: "Sélectionner le statut d'autorisation",
+      citizen: "Citoyen",
+      permanentResident: "Résident permanent",
+      workVisa: "Visa de travail",
+      studentVisa: "Visa étudiant",
+      selectPreference: "Sélectionner la préférence",
+      onsite: "Sur site",
+      remote: "À distance",
+      hybrid: "Hybride",
+      flexible: "Flexible",
+      selectTravelWillingness: "Sélectionner la disponibilité pour voyager",
+      none: "Aucun",
+      minimal: "Minimale",
+      moderate: "Modérée",
+      extensive: "Étendue",
+      targetRoles: "Rôles cibles",
+      targetIndustries: "Secteurs cibles",
+      targetCompanies: "Entreprises cibles",
+      salaryExpectations: "Attentes salariales",
+      minimumSalary: "Salaire minimum",
+      maximumSalary: "Salaire maximum",
+      currency: "Devise",
+      period: "Période",
+      monthly: "Mensuel",
+      annually: "Annuel",
+      salaryIsNegotiable: "Salaire négociable",
+      careerGoals: "Objectifs de carrière",
+      describeCareerGoalsAspirations: "Décrivez vos objectifs et aspirations de carrière",
+      workStyle: "Style de travail",
+      describePreferredWorkStyle: "Décrivez votre style de travail préféré",
+      whatMotivatesYou: "Qu'est-ce qui vous motive ?",
+      whatDrivesMotivatesCareer: "Qu'est-ce qui vous motive et vous pousse dans votre carrière ?",
+      dealBreakers: "Facteurs rédhibitoires",
+      dealBreakersJob: "Quels sont vos facteurs rédhibitoires dans un emploi ?",
+      enterFirstName: "Entrez le prénom",
+      enterLastName: "Entrez le nom de famille",
+      enterEmail: "Entrez l'e-mail",
+      enterPhone: "Entrez le numéro de téléphone",
+      dateOfBirth: "Date de naissance",
+      gender: "Sexe",
+      nationality: "Nationalité",
+      enterNationality: "Entrez la nationalité",
+      address: "Adresse",
+      streetAddress: "Adresse de la rue",
+      enterStreetAddress: "Entrez l'adresse de la rue",
+      city: "Ville",
+      enterCity: "Entrez la ville",
+      stateProvince: "État/Province",
+      enterStateProvince: "Entrez l'état ou la province",
+      country: "Pays",
+      enterCountry: "Entrez le pays",
+      postalCode: "Code postal",
+      enterPostalCode: "Entrez le code postal",
+      emergencyContact: "Contact d'urgence",
+      emergencyContactName: "Nom du contact d'urgence",
+      relationshipToYou: "Relation avec vous",
+      emergencyContactPhone: "Téléphone du contact d'urgence",
+      name: "Nom",
+      relationship: "Relation",
+      saving: "Enregistrement...",
+      lastSaved: "Dernier enregistrement",
+      errorSavingProfile: "Erreur lors de l'enregistrement du profil",
+      pleaseCheckFieldsTryAgain: "Veuillez vérifier tous les champs requis et réessayer.",
+      saveError: "Erreur d'enregistrement",
+      saveErrorDescription: "Une erreur s'est produite lors de l'enregistrement de votre progression. Veuillez réessayer.",
+      saveDraft: "Enregistrer le brouillon",
+      saveProgress: "Enregistrer la progression",
+      enterZero: "0",
+      egyptianPound: "EGP",
+      usDollar: "USD",
+      euro: "EUR",
+      britishPound: "GBP",
+      saudiRiyal: "SAR",
+      uaeDirham: "AED",
+      male: "Homme",
+      female: "Femme",
+      nonBinary: "Non binaire",
+      preferNotToSay: "Préfère ne pas dire",
+      other: "Autre",
+      validEmailRequired: "Un e-mail valide est requis",
+      validPhoneNumberRequired: "Un numéro de téléphone valide est requis",
+      hourly: "À l'heure",
+      hourlyPlaceholder: "ex : 50",
+      skills: {
+        industryKnowledge: "Connaissances sectorielles",
+        tools: "Outils",
+        addIndustryKnowledge: "Ajouter des connaissances sectorielles",
+        addTools: "Ajouter des outils",
+        industryKnowledgePlaceholder: "ex : Finance, Santé, Technologie",
+        toolsPlaceholder: "ex : Figma, Adobe Creative Suite, Jira",
+      },
+      industryKnowledge: "Connaissances sectorielles",
+      tools: "Outils",
+      addIndustryKnowledge: "Ajouter des connaissances sectorielles",
+      addTools: "Ajouter des outils",
+      industryKnowledgePlaceholder: "ex : Finance, Santé, Technologie",
+      toolsPlaceholder: "ex : Figma, Adobe Creative Suite, Jira",
+      thesis: "Thèse",
+      thesisPlaceholder: "ex : 'Applications de l'apprentissage automatique dans la santé'",
+      technologies: "Technologies",
+      technologiesPlaceholder: "ex : React, Node.js, Python",
+      teamSize: "Taille de l'équipe",
+      teamSizePlaceholder: "ex : 5-10",
+      reportingTo: "Rapport à",
+      reportingToPlaceholder: "ex : Manager Ingénierie",
+      salary: "Salaire",
+      salaryAmount: "Montant du salaire",
+      salaryAmountPlaceholder: "ex : 5000",
+      benefits: "Avantages",
+      healthInsurance: "Assurance maladie",
+      retirementPlan: "Plan de retraite",
+      paidTimeOff: "Congés payés",
+      flexibleSchedule: "Horaires flexibles",
+      remoteWork: "Travail à distance",
+      professionalDevelopment: "Développement professionnel",
+      stockOptions: "Options d'achat d'actions",
+      otherBenefits: "Autres avantages",
+      addOtherBenefit: "Ajouter un autre avantage",
+      otherBenefitPlaceholder: "ex : Voiture de société, Adhésion salle de sport",
+    },
+
+    // Comprehensive Profile Modal
+    governmentIdSubmission: "Soumission de la pièce d'identité gouvernementale",
+    linksPortfolio: "Liens et portfolio",
+    workEligibility: "Éligibilité et préférences de travail",
+    language: "Langue",
+    proficiency: "Niveau de compétence",
+    certification: "Certification",
+    addLanguage: "Ajouter une langue",
+    languageExample: "ex : Anglais, Arabe, Français",
+    selectProficiency: "Sélectionner le niveau de compétence",
+    basic: "Débutant",
+    conversational: "Conversationnel",
+    fluent: "Courant",
+    native: "Langue maternelle",
+    certificationExample: "ex : TOEFL, IELTS, DELF",
+    technicalSkills: "Compétences techniques",
+    softSkills: "Compétences interpersonnelles",
+    addSkill: "Ajouter une compétence",
+    skill: "Compétence",
+    technicalSkillExample: "ex : JavaScript, React, Node.js",
+    level: "Niveau",
+    selectLevel: "Sélectionner le niveau",
+    beginner: "Débutant",
+    intermediate: "Intermédiaire",
+    advanced: "Avancé",
+    expert: "Expert",
+    yearsOfExperience: "Années d'expérience",
+    softSkillExample: "ex : Communication, Leadership, Résolution de problèmes",
+    institution: "Institution",
+    institutionPlaceholder: "ex : Université du Caire",
+    degree: "Diplôme",
+    degreePlaceholder: "ex : Bachelor of Science",
+    fieldOfStudy: "Domaine d'études",
+    fieldOfStudyPlaceholder: "ex : Informatique",
+    location: "Lieu",
+    locationPlaceholder: "ex : Le Caire, Égypte",
+    startDate: "Date de début",
+    endDate: "Date de fin",
+    gpa: "Moyenne",
+    gpaPlaceholder: "ex : 3,8/4,0",
+    currentlyStudyingHere: "J'étudie actuellement ici",
+    relevantCoursework: "Cours pertinents",
+    listRelevantCourses: "Lister les cours pertinents",
+    addEducation: "Ajouter une éducation",
+    company: "Entreprise",
+    companyPlaceholder: "ex : Google Inc.",
+    position: "Poste",
+    positionPlaceholder: "ex : Ingénieur logiciel",
+    employmentType: "Type d'emploi",
+    selectType: "Sélectionner le type",
+    fullTime: "Temps plein",
+    partTime: "Temps partiel",
+    contract: "Contrat",
+    freelance: "Freelance",
+    internship: "Stage",
+    currentlyWorkingHere: "Je travaille actuellement ici",
+    keyResponsibilitiesAchievements: "Responsabilités",
+    describeKeyResponsibilitiesAchievements: "Décrivez vos responsabilités et réalisations clés",
+    addExperience: "Ajouter une expérience",
+    certifications: "Certifications",
+    addCertification: "Ajouter une certification",
+    certificationName: "Nom de la certification",
+    certificationNamePlaceholder: "ex : Développeur AWS certifié",
+    issuingOrganization: "Organisme émetteur",
+    issuingOrganizationPlaceholder: "ex : Amazon Web Services",
+    issueDate: "Date d'émission",
+    expiryDate: "Date d'expiration",
+    credentialId: "ID de certification",
+    credentialIdPlaceholder: "ex : CERT-123456",
+    credentialUrl: "URL de la certification",
+    credentialUrlPlaceholder: "https://example.com/certification",
+    certificateFile: "Fichier de certificat",
+    uploadCertificate: "Télécharger le certificat",
+    awards: "Prix et réalisations",
+    addAward: "Ajouter un prix",
+    awardTitle: "Titre du prix",
+    awardTitlePlaceholder: "ex : Employé de l'année",
+    issuerPlaceholder: "ex : Nom de l'entreprise",
+    dateReceived: "Date de réception",
+    category: "Catégorie",
+    selectCategory: "Sélectionner la catégorie",
+    academic: "Académique",
+    professional: "Professionnel",
+    community: "Communautaire",
+    sports: "Sportif",
+    artistic: "Artistique",
+    description: "Description",
+    describeAwardAchievement: "Décrivez ce prix ou cette réalisation",
+    idType: "Type de pièce d'identité",
+    selectIdType: "Sélectionner le type de pièce d'identité",
+    passport: "Passeport",
+    nationalId: "Carte d'identité nationale",
+    drivingLicense: "Permis de conduire",
+    idNumber: "Numéro de pièce d'identité",
+    enterIdNumber: "Entrer le numéro de pièce d'identité",
+    issuingAuthority: "Autorité émettrice",
+    enterIssuingAuthority: "Entrer l'autorité émettrice",
+    linkedinUrl: "URL LinkedIn",
+    linkedinUrlPlaceholder: "https://linkedin.com/in/nomutilisateur",
+    githubUrl: "URL GitHub",
+    githubUrlPlaceholder: "https://github.com/nomutilisateur",
+    portfolioUrl: "URL du portfolio",
+    portfolioUrlPlaceholder: "https://votreportfolio.com",
+    personalWebsite: "Site web personnel",
+    personalWebsitePlaceholder: "https://votresiteweb.com",
+    behanceUrl: "URL Behance",
+    behanceUrlPlaceholder: "https://behance.net/nomutilisateur",
+    dribbbleUrl: "URL Dribbble",
+    dribbbleUrlPlaceholder: "https://dribbble.com/nomutilisateur",
+    workAuthorization: "Autorisation de travail",
+    selectAuthorizationStatus: "Sélectionner le statut d'autorisation",
+    citizen: "Citoyen",
+    permanentResident: "Résident permanent",
+    workVisa: "Visa de travail",
+    studentVisa: "Visa étudiant",
+    workArrangementPreference: "Préférence d'organisation de travail",
+    selectPreference: "Sélectionner la préférence",
+    onsite: "Sur site",
+    remote: "À distance",
+    hybrid: "Hybride",
+    flexible: "Flexible",
+    availabilityDate: "Date de disponibilité",
+    noticePeriod: "Préavis",
+    noticePeriodExample: "ex : 2 semaines, 1 mois",
+    willingToRelocate: "Prêt à déménager",
+    requireVisaSponsorship: "Nécessite un parrainage de visa",
+    travelWillingness: "Disponibilité pour voyager",
+    selectTravelWillingness: "Sélectionner la disponibilité pour voyager",
+    none: "Aucun",
+    minimal: "Minimale",
+    moderate: "Modérée",
+    extensive: "Étendue",
+    targetRoles: "Rôles cibles",
+    targetIndustries: "Secteurs cibles",
+    targetCompanies: "Entreprises cibles",
+    careerLevel: "Niveau de carrière",
+    selectCareerLevel: "Sélectionner le niveau de carrière",
+    entryLevel: "Débutant",
+    junior: "Junior",
+    midLevel: "Intermédiaire",
+    senior: "Senior",
+    lead: "Chef d'équipe",
+    manager: "Manager",
+    director: "Directeur",
+    executive: "Exécutif",
+    salaryExpectations: "Attentes salariales",
+    minimumSalary: "Salaire minimum",
+    maximumSalary: "Salaire maximum",
+    currency: "Devise",
+    period: "Période",
+    monthly: "Mensuel",
+    annually: "Annuel",
+    salaryIsNegotiable: "Salaire négociable",
+    careerGoals: "Objectifs de carrière",
+    describeCareerGoalsAspirations: "Décrivez vos objectifs et aspirations de carrière",
+    workStyle: "Style de travail",
+    describePreferredWorkStyle: "Décrivez votre style de travail préféré",
+    whatMotivatesYou: "Qu'est-ce qui vous motive ?",
+    whatDrivesMotivatesCareer: "Qu'est-ce qui vous motive et vous pousse dans votre carrière ?",
+    dealBreakers: "Facteurs rédhibitoires",
+    dealBreakersJob: "Quels sont vos facteurs rédhibitoires dans un emploi ?",
+    enterFirstName: "Entrez le prénom",
+    enterLastName: "Entrez le nom de famille",
+    enterEmail: "Entrez l'e-mail",
+    enterPhone: "Entrez le numéro de téléphone",
+    dateOfBirth: "Date de naissance",
+    gender: "Sexe",
+    selectGender: "Sélectionner le sexe",
+    nationality: "Nationalité",
+    enterNationality: "Entrez la nationalité",
+    address: "Adresse",
+    streetAddress: "Adresse de la rue",
+    enterStreetAddress: "Entrez l'adresse de la rue",
+    city: "Ville",
+    enterCity: "Entrez la ville",
+    stateProvince: "État/Province",
+    enterStateProvince: "Entrez l'état ou la province",
+    country: "Pays",
+    enterCountry: "Entrez le pays",
+    postalCode: "Code postal",
+    enterPostalCode: "Entrez le code postal",
+    emergencyContact: "Contact d'urgence",
+    emergencyContactName: "Nom du contact d'urgence",
+    relationshipToYou: "Relation avec vous",
+    emergencyContactPhone: "Téléphone du contact d'urgence",
+    name: "Nom",
+    relationship: "Relation",
+    saving: "Enregistrement...",
+    lastSaved: "Dernier enregistrement",
+    errorSavingProfile: "Erreur lors de l'enregistrement du profil",
+    pleaseCheckFieldsTryAgain: "Veuillez vérifier tous les champs requis et réessayer.",
+    saveError: "Erreur d'enregistrement",
+    saveErrorDescription: "Une erreur s'est produite lors de l'enregistrement de votre progression. Veuillez réessayer.",
+    saveDraft: "Enregistrer le brouillon",
+    saveProgress: "Enregistrer la progression",
+    enterZero: "0",
+    egyptianPound: "EGP",
+    usDollar: "USD",
+    euro: "EUR",
+    britishPound: "GBP",
+    saudiRiyal: "SAR",
+    uaeDirham: "AED",
+    male: "Homme",
+    female: "Femme",
+    nonBinary: "Non binaire",
+    preferNotToSay: "Préfère ne pas dire",
+    other: "Autre",
+    workExperience: "Expérience de travail",
+    validEmailRequired: "Un e-mail valide est requis",
+    validPhoneNumberRequired: "Un numéro de téléphone valide est requis",
+    hourly: "À l'heure",
+    hourlyPlaceholder: "ex : 50",
+    skills: {
+      industryKnowledge: "Connaissances sectorielles",
+      tools: "Outils",
+      addIndustryKnowledge: "Ajouter des connaissances sectorielles",
+      addTools: "Ajouter des outils",
+      industryKnowledgePlaceholder: "ex : Finance, Santé, Technologie",
+      toolsPlaceholder: "ex : Figma, Adobe Creative Suite, Jira",
+    },
+    industryKnowledge: "Connaissances sectorielles",
+    tools: "Outils",
+    addIndustryKnowledge: "Ajouter des connaissances sectorielles",
+    addTools: "Ajouter des outils",
+    industryKnowledgePlaceholder: "ex : Finance, Santé, Technologie",
+    toolsPlaceholder: "ex : Figma, Adobe Creative Suite, Jira",
+    thesis: "Thèse",
+    thesisPlaceholder: "ex : 'Applications de l'apprentissage automatique dans la santé'",
+    technologies: "Technologies",
+    technologiesPlaceholder: "ex : React, Node.js, Python",
+    teamSize: "Taille de l'équipe",
+    teamSizePlaceholder: "ex : 5-10",
+    reportingTo: "Rapport à",
+    reportingToPlaceholder: "ex : Manager Ingénierie",
+    salary: "Salaire",
+    salaryAmount: "Montant du salaire",
+    salaryAmountPlaceholder: "ex : 5000",
+    benefits: "Avantages",
+    healthInsurance: "Assurance maladie",
+    retirementPlan: "Plan de retraite",
+    paidTimeOff: "Congés payés",
+    flexibleSchedule: "Horaires flexibles",
+    remoteWork: "Travail à distance",
+    professionalDevelopment: "Développement professionnel",
+    stockOptions: "Options d'achat d'actions",
+    otherBenefits: "Autres avantages",
+    addOtherBenefit: "Ajouter un autre avantage",
+    otherBenefitPlaceholder: "ex : Voiture de société, Adhésion salle de sport",
+
+    // Complete Auth section
+    auth: {
+      signIn: "Se connecter",
+      signUp: "S'inscrire", 
+      email: "E-mail",
+      password: "Mot de passe",
+      newPassword: "Nouveau mot de passe",
+      confirmPassword: "Confirmer le mot de passe",
+      firstName: "Prénom",
+      lastName: "Nom de famille",
+      username: "Nom d'utilisateur",
+      enterEmail: "Entrez votre e-mail",
+      enterPassword: "Entrez votre mot de passe",
+      confirmYourPassword: "Confirmez votre mot de passe",
+      firstNamePlaceholder: "Prénom",
+      lastNamePlaceholder: "Nom de famille",
+      usernamePlaceholder: "Nom d'utilisateur",
+      usernameOptional: "Nom d'utilisateur (Optionnel)",
+      chooseUsername: "Choisissez un nom d'utilisateur",
+      createPassword: "Créer un mot de passe",
+      signingIn: "Connexion...",
+      signingUp: "Inscription...",
+      createAccount: "Créer un compte",
+      invalidEmail: "Adresse e-mail invalide",
+      passwordRequired: "Le mot de passe est requis",
+      passwordMinLength: "Le mot de passe doit contenir au moins 6 caractères",
+      firstNameRequired: "Le prénom est requis",
+      lastNameRequired: "Le nom de famille est requis",
+      usernameMinLength: "Le nom d'utilisateur doit contenir au moins 3 caractères",
+      passwordsDontMatch: "Les mots de passe ne correspondent pas",
+      welcomeToPlato: "Bienvenue sur Plato",
+      page: {
+        heroTitlePrefix: "Bienvenue sur",
+        heroSubtitle: "La plateforme d'emploi alimentée par IA qui transforme la façon dont vous trouvez votre correspondance de carrière parfaite grâce à des entretiens intelligents et des recommandations d'emploi personnalisées.",
+        features: {
+          interviews: {
+            title: "Entretiens alimentés par IA",
+            description: "Complétez des entretiens complets qui construisent automatiquement votre profil professionnel.",
+          },
+          matching: {
+            title: "Correspondance d'emploi intelligente",
+            description: "Obtenez des correspondances avec des opportunités qui correspondent à vos compétences et objectifs de carrière.",
+          },
+          applications: {
+            title: "Candidatures instantanées",
+            description: "Postulez à des emplois en toute confiance en utilisant votre profil professionnel généré par IA.",
+          },
+        },
+        login: {
+          title: "Bon retour",
+          description: "Connectez-vous à votre compte pour continuer votre parcours de recherche d'emploi.",
+          forgotPassword: "Mot de passe oublié ?",
+        },
+        register: {
+          title: "Créer un compte",
+          description: "Rejoignez des milliers de chercheurs d'emploi qui ont trouvé leurs carrières de rêve avec Plato.",
+          placeholders: {
+            firstNameExample: "Jean",
+            lastNameExample: "Dupont",
+            emailExample: "jean@example.com",
+            usernameExample: "jeandupont",
+            passwordExample: "Créer un mot de passe fort",
+          },
+        },
+      },
+      verification: {
+        sent: {
+          title: "E-mail envoyé avec succès",
+          description: "L'e-mail de vérification a été envoyé avec succès à votre adresse e-mail enregistrée.",
+          emailSentTo: "E-mail envoyé à :",
+          steps: {
+            checkInbox: "Vérifiez votre boîte de réception",
+            clickLink: "Cliquez sur le lien de vérification dans l'e-mail",
+            startUsing: "Commencer à utiliser le Tracker de Candidats Plato",
+          },
+          importantLabel: "Important :",
+          importantMessage: "Si vous ne recevez pas l'e-mail dans quelques minutes, veuillez vérifier votre dossier spam. Le lien de vérification expirera dans 1 semaine.",
+          resendButton: "Renvoyer l'e-mail",
+          backToSignIn: "Retour à la connexion",
+        },
+        pending: {
+          registrationSuccess: "Inscription réussie !",
+          registrationMessage: "Nous avons envoyé un e-mail de vérification à votre adresse e-mail enregistrée. Veuillez vérifier votre boîte de réception et cliquer sur le lien de vérification pour activer votre compte.",
+          enterEmailPrompt: "Veuillez entrer votre adresse e-mail",
+          resendFailed: "Échec du renvoi de l'e-mail de vérification",
+          resendError: "Une erreur s'est produite lors du renvoi de l'e-mail de vérification",
+          formTitle: "Vous n'avez pas reçu l'e-mail ?",
+          formSubtitle: "Entrez votre adresse e-mail pour renvoyer le lien de vérification",
+          continueToDashboard: "Continuer vers le tableau de bord",
+        },
+      },
+      verifyEmail: {
+        status: {
+          loading: {
+            title: "Vérification de votre e-mail",
+            message: "Veuillez patienter pendant que nous vérifions votre adresse e-mail...",
+          },
+          success: {
+            title: "E-mail vérifié !",
+          },
+          error: {
+            title: "Échec de la vérification",
+          },
+        },
+        continueButton: "Continuer vers la connexion",
+        nextSteps: {
+          title: "Prochaines étapes ?",
+          signIn: "Connectez-vous à votre compte Tracker de Candidats Plato",
+          completeProfile: "Complétez votre profil de candidat",
+          uploadResume: "Téléchargez votre CV et obtenez des correspondances d'emploi",
+        },
+        help: {
+          title: "Besoin d'aide ?",
+          items: {
+            ensureCompleteLink: "Assurez-vous d'avoir cliqué sur le lien de vérification complet",
+            checkExpiry: "Vérifiez si le lien de vérification a expiré",
+            contactSupport: "Contactez le support si le problème persiste",
+          },
+        },
+        errors: {
+          missingToken: "Le jeton de vérification est manquant. Veuillez vérifier votre e-mail et réessayer.",
+          failed: "Échec de la vérification de l'e-mail. Veuillez réessayer ou contacter le support.",
+          unexpected: "Une erreur s'est produite lors de la vérification de l'e-mail. Veuillez réessayer ou contacter le support.",
+        },
+      },
+      passwordSetup: {
+        title: "Définissez votre mot de passe",
+        subtitle: "Veuillez définir un mot de passe sécurisé pour votre compte pour continuer.",
+        enterNewPassword: "Entrez votre nouveau mot de passe",
+        requirementsTitle: "Exigences de mot de passe :",
+        setting: "Définition du mot de passe...",
+        submit: "Définir le mot de passe",
+      },
+      passwordRules: {
+        minLength: "Le mot de passe doit contenir au moins 8 caractères",
+        uppercase: "Le mot de passe doit contenir au moins une lettre majuscule",
+        lowercase: "Le mot de passe doit contenir au moins une lettre minuscule",
+        number: "Le mot de passe doit contenir au moins un chiffre",
+        special: "Le mot de passe doit contenir au moins un caractère spécial",
+      },
+      passwordStrength: {
+        weak: "Faible",
+        fair: "Correct",
+        good: "Bon",
+        strong: "Fort",
+      },
+      resetPassword: {
+        verifyingLink: "Vérification du lien de réinitialisation...",
+        invalidLinkTitle: "Lien de réinitialisation invalide",
+        invalidLinkDescription: "Ce lien de réinitialisation est invalide ou a expiré.",
+        invalidLinkBody: "Ce lien de réinitialisation de mot de passe est invalide ou a expiré. Veuillez demander une nouvelle réinitialisation de mot de passe.",
+        missingTokenMessage: "Ce lien de réinitialisation de mot de passe manque un jeton requis.",
+        backToLogin: "Retour à la connexion",
+        successTitle: "Réinitialisation du mot de passe réussie",
+        successDescription: "Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
+        failureTitle: "Échec de la réinitialisation",
+        failureDescription: "Échec de la réinitialisation du mot de passe",
+        completeTitle: "Réinitialisation du mot de passe terminée !",
+        completeDescription: "Votre mot de passe a été réinitialisé avec succès",
+        successBadge: "Succès !",
+        successMessage: "Votre mot de passe a été réinitialisé avec succès.",
+        successFollowUp: "Vous pouvez maintenant utiliser votre nouveau mot de passe pour vous connecter à votre compte.",
+        goToLogin: "Aller à la connexion",
+        backToHome: "Retour à l'accueil",
+        title: "Réinitialisez votre mot de passe",
+        greeting: "Bonjour {{name}} ! Créez un nouveau mot de passe pour votre compte",
+        userFallback: "utilisateur",
+        passwordStrengthLabel: "Force du mot de passe",
+        confirmNewPassword: "Confirmez votre nouveau mot de passe",
+        resetting: "Réinitialisation...",
+        submit: "Réinitialiser le mot de passe",
+      }
+    },
   }
 };
 
@@ -1437,18 +2634,23 @@ interface LanguageProviderProps {
 
 export function LanguageProvider({ children }: LanguageProviderProps) {
   const [language, setLanguageState] = useState<Language>(() => {
-    const saved = localStorage.getItem('plato-language');
-    return (saved as Language) || 'en';
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('plato-language') : null;
+    return SUPPORTED_LANGUAGES.includes(saved as Language) ? (saved as Language) : 'en';
   });
 
-  const isRTL = language === 'ar';
+  const isRTL = RTL_LANGUAGES.has(language);
+  const availableLanguages = [...SUPPORTED_LANGUAGES];
 
   const setLanguage = (lang: Language) => {
+    if (!SUPPORTED_LANGUAGES.includes(lang)) {
+      return;
+    }
+
     setLanguageState(lang);
     localStorage.setItem('plato-language', lang);
     
     // Update document direction and language
-    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.dir = RTL_LANGUAGES.has(lang) ? 'rtl' : 'ltr';
     document.documentElement.lang = lang;
   };
 
@@ -1474,7 +2676,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
   }, [language, isRTL]);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, isRTL, t }}>
+    <LanguageContext.Provider value={{ language, setLanguage, isRTL, availableLanguages, t }}>
       {children}
     </LanguageContext.Provider>
   );

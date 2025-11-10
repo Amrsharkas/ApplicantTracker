@@ -115,6 +115,13 @@ export async function setupAuth(app: Express) {
       },
       async (_accessToken: any, _refreshToken: any, profile: any, done: any) => {
         try {
+          console.log('🔍 Google OAuth callback triggered, profile:', JSON.stringify({
+            id: profile.id,
+            email: profile.emails?.[0]?.value,
+            name: profile.name,
+            hasPhoto: !!profile.photos?.[0]?.value
+          }, null, 2));
+
           const email = profile.emails?.[0]?.value;
           const googleId = profile.id;
           const firstName = profile.name?.givenName || '';
@@ -122,21 +129,24 @@ export async function setupAuth(app: Express) {
           const profileImageUrl = profile.photos?.[0]?.value;
 
           if (!email) {
+            console.error('❌ No email found in Google profile');
             return done(new Error('Email is required from Google profile'));
           }
 
+          console.log(`🔍 Processing Google OAuth for: ${email}, Google ID: ${googleId}`);
+
           // Check if user already exists with this Google ID
           let user = await storage.getUserByGoogleId(googleId);
-          if (user) {
+          if (user && user.role === "applicant") {
             console.log(`✅ Found existing Google user: ${user.email} (ID: ${user.id})`);
             return done(null, user);
           }
 
-          // Check if user exists with this email (account linking)
+          // Check if user exists with this email and same role (account linking)
           user = await storage.getUserByEmail(email);
-          if (user) {
-            // Link Google account to existing user
-            console.log(`🔗 Linking Google account to existing user: ${user.email} (ID: ${user.id})`);
+          if (user && user.role === "applicant") {
+            // Link Google account to existing user with 'applicant' role
+            console.log(`🔗 Linking Google account to existing user: ${user.email} (ID: ${user.id}, Role: ${user.role})`);
             const updatedUser = await storage.updateUserGoogleAuth(user.id, {
               googleId,
               authProvider: 'google',
@@ -144,38 +154,68 @@ export async function setupAuth(app: Express) {
             });
             console.log(`✅ Successfully linked Google account for: ${updatedUser.email}`);
             return done(null, updatedUser);
+          } else if (user && user.role !== "applicant") {
+            // Email exists but with different role - create new Google OAuth user with 'applicant' role
+            console.log(`📧 Email exists with different role (${user.role}) - creating new Google OAuth user: ${email}`);
+            try {
+              const userId = randomBytes(16).toString('hex'); // Generate unique ID
+              const newUser = await storage.createUser({
+                id: userId,
+                email,
+                password: await hashPassword(randomBytes(32).toString('hex')), // Random password for OAuth users
+                firstName,
+                lastName,
+                profileImageUrl,
+                isVerified: true, // Auto-verify Google users
+                googleId,
+                authProvider: 'google',
+                passwordNeedsSetup: false,
+                role: 'applicant', // Explicitly set role to 'applicant' for Google OAuth users
+              });
+              console.log(`✅ Created new Google OAuth user with 'applicant' role: ${email} (ID: ${newUser.id})`);
+              return done(null, newUser);
+            } catch (createError) {
+              console.error(`❌ Failed to create Google OAuth user:`, createError);
+              return done(createError as Error);
+            }
           }
 
           // Create new user from Google profile
-          const userId = randomBytes(16).toString('hex'); // Generate unique ID
-          const newUser = await storage.createUser({
-            id: userId,
-            email,
-            password: await hashPassword(randomBytes(32).toString('hex')), // Random password for OAuth users
-            firstName,
-            lastName,
-            profileImageUrl,
-            isVerified: true, // Auto-verify Google users
-            googleId,
-            authProvider: 'google',
-            passwordNeedsSetup: false,
-            role: 'applicant'
-          });
-
-          // Create basic applicant profile
+          console.log(`👤 Creating new Google user: ${email} (No existing user found)`);
           try {
-            await storage.upsertApplicantProfile({
-              userId: newUser.id,
-              name: `${firstName} ${lastName}`,
-              email: email,
+            const userId = randomBytes(16).toString('hex'); // Generate unique ID
+            const newUser = await storage.createUser({
+              id: userId,
+              email,
+              password: await hashPassword(randomBytes(32).toString('hex')), // Random password for OAuth users
+              firstName,
+              lastName,
+              profileImageUrl,
+              isVerified: true, // Auto-verify Google users
+              googleId,
+              authProvider: 'google',
+              passwordNeedsSetup: false,
+              role: 'applicant', // Explicitly set role to 'applicant' for Google OAuth users
             });
-          } catch (profileError) {
-            console.warn('Failed to create initial profile:', profileError);
-            // Continue with registration even if profile creation fails
-          }
 
-          console.log(`✅ Created new Google user: ${email} (ID: ${newUser.id})`);
-          return done(null, newUser);
+            // Create basic applicant profile
+            try {
+              await storage.upsertApplicantProfile({
+                userId: newUser.id,
+                name: `${firstName} ${lastName}`,
+                email: email,
+              });
+            } catch (profileError) {
+              console.warn('Failed to create initial profile:', profileError);
+              // Continue with registration even if profile creation fails
+            }
+
+            console.log(`✅ Created new Google user: ${email} (ID: ${newUser.id})`);
+            return done(null, newUser);
+          } catch (createError) {
+            console.error(`❌ Failed to create new Google user:`, createError);
+            return done(createError as Error);
+          }
         } catch (error) {
           console.error('Google OAuth error:', error);
           return done(error);
@@ -319,6 +359,15 @@ export async function setupAuth(app: Express) {
           message: 'Please verify your email address before logging in. Check your inbox for the verification email.',
           requiresVerification: true,
           email: user.email
+        });
+      }
+
+      // Check if user has the required role (only "applicant" role allowed)
+      if (user.role !== "applicant") {
+        return res.status(403).json({
+          error: "Access denied",
+          message: "This login is only available for users with 'applicant' role. Your account has a different role.",
+          userRole: user.role
         });
       }
 
@@ -718,7 +767,13 @@ export async function setupAuth(app: Express) {
       // Successful authentication
       if (req.user) {
         const user = req.user as any;
-        console.log(`✅ Google OAuth successful for user: ${user.email} (ID: ${user.id})`);
+        console.log(`✅ Google OAuth successful for user: ${user.email} (ID: ${user.id}, Role: ${user.role})`);
+
+        // Check if user has the required role (only "applicant" role allowed)
+        if (user.role !== "applicant") {
+          console.error(`❌ Google OAuth access denied for user: ${user.email} - Role: ${user.role} (required: applicant)`);
+          return res.redirect("/auth?error=access-denied");
+        }
 
         // Set session for user
         req.session.userId = user.id;

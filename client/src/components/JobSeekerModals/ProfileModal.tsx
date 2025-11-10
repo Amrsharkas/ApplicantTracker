@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Upload, User, FileText } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { ApplicantProfile, User as UserType } from "@shared/schema";
 
 const profileFormSchema = z.object({
@@ -39,6 +40,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { t } = useLanguage();
 
   const { data: profile, isLoading } = useQuery<ApplicantProfile>({
     queryKey: ["/api/candidate/profile"],
@@ -273,9 +275,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                 <div className="flex items-center gap-3">
                   <FileText className="w-5 h-5 text-blue-600" />
                   <div>
-                    <h4 className="font-medium text-slate-800">Resume</h4>
+                    <h4 className="font-medium text-slate-800">{t('profileModal.resumeTitle')}</h4>
                     <p className="text-sm text-slate-600">
-                      {profile?.resumeUrl ? 'Resume uploaded (+15% completion)' : 'Upload your resume for AI analysis (+15% completion)'}
+                      {profile?.resumeUrl ? t('profileModal.resumeUploaded') : t('profileModal.resumeUploadPrompt')}
                     </p>
                   </div>
                 </div>
@@ -297,7 +299,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                     >
                       <span className="flex items-center gap-2">
                         <Upload className="w-4 h-4" />
-                        {isUploading ? 'Uploading...' : 'Upload'}
+                        {isUploading ? t('dashboard.uploading') : t('dashboard.uploadResume')}
                       </span>
                     </Button>
                   </label>

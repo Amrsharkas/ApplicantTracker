@@ -29,7 +29,7 @@ export const sessions = pgTable(
 // Unified users table - combining both project schemas
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  email: varchar("email").unique().notNull(),
+  email: varchar("email").notNull(),
   password: varchar("password").notNull(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
@@ -45,7 +45,7 @@ export const users = pgTable("users", {
   termsAcceptedAt: timestamp("terms_accepted_at"),
   termsAcceptedText: text("terms_accepted_text"),
   // Google OAuth fields
-  googleId: varchar("google_id").unique(),
+  googleId: varchar("google_id"),
   authProvider: varchar("auth_provider").default("local"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

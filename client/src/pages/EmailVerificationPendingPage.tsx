@@ -5,16 +5,18 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Mail, CheckCircle } from "lucide-react";
 import { useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function EmailVerificationPendingPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const { t } = useLanguage();
 
   const handleResendVerification = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
-      setMessage({ type: 'error', text: 'Please enter your email address' });
+      setMessage({ type: 'error', text: t('auth.verification.pending.enterEmailPrompt') });
       return;
     }
 
@@ -35,10 +37,10 @@ export default function EmailVerificationPendingPage() {
       if (response.ok) {
         setMessage({ type: 'success', text: data.message });
       } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to resend verification email' });
+        setMessage({ type: 'error', text: data.error || t('auth.verification.pending.resendFailed') });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'An error occurred while resending the verification email' });
+      setMessage({ type: 'error', text: t('auth.verification.pending.resendError') });
     } finally {
       setIsLoading(false);
     }
@@ -51,35 +53,35 @@ export default function EmailVerificationPendingPage() {
           <div className="mx-auto mb-4 h-16 w-16 bg-green-100 rounded-full flex items-center justify-center">
             <Mail className="h-8 w-8 text-green-600" />
           </div>
-          <CardTitle className="text-2xl text-gray-900">Check Your Email</CardTitle>
+          <CardTitle className="text-2xl text-gray-900">{t('auth.verification.sent.title')}</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-6">
           <Alert>
             <Mail className="h-4 w-4" />
             <AlertDescription className="text-sm">
-              <strong className="text-green-600">Registration successful!</strong> We've sent a verification email to your registered email address. Please check your inbox and click the verification link to activate your account.
+              <strong className="text-green-600">{t('auth.verification.pending.registrationSuccess')}</strong> {t('auth.verification.pending.registrationMessage')}
             </AlertDescription>
           </Alert>
 
           <div className="space-y-3">
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-              <span>Check your email inbox</span>
+              <span>{t('auth.verification.sent.steps.checkInbox')}</span>
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-              <span>Click the verification link</span>
+              <span>{t('auth.verification.sent.steps.clickLink')}</span>
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-              <span>Start using Plato Applicant Tracker</span>
+              <span>{t('auth.verification.sent.steps.startUsing')}</span>
             </div>
           </div>
 
           <div className="bg-blue-50 p-3 rounded-lg">
             <p className="text-xs text-blue-800">
-              <strong>Important:</strong> The verification link will expire in 1 week for security reasons. If you don't receive the email within a few minutes, please check your spam folder.
+              <strong>{t('auth.verification.sent.importantLabel')}</strong> {t('auth.verification.sent.importantMessage')}
             </p>
           </div>
 
@@ -99,17 +101,17 @@ export default function EmailVerificationPendingPage() {
           <div className="space-y-4 pt-4 border-t">
             <div>
               <Label htmlFor="email" className="text-sm text-gray-700">
-                Didn't receive the email?
+                {t('auth.verification.pending.formTitle')}
               </Label>
               <p className="text-xs text-gray-500 mb-2">
-                Enter your email address to resend the verification link
+                {t('auth.verification.pending.formSubtitle')}
               </p>
               <form onSubmit={handleResendVerification} className="space-y-2">
                 <div className="flex space-x-2">
                   <Input
                     id="email"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder={t('auth.enterEmail')}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="flex-1"
@@ -123,7 +125,7 @@ export default function EmailVerificationPendingPage() {
                     {isLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      "Resend"
+                      t('auth.verification.sent.resendButton')
                     )}
                   </Button>
                 </div>
@@ -136,14 +138,14 @@ export default function EmailVerificationPendingPage() {
               onClick={() => window.location.href = '/dashboard'}
               className="w-full"
             >
-              Continue to Dashboard
+              {t('auth.verification.pending.continueToDashboard')}
             </Button>
             <Button
               variant="link"
               onClick={() => window.location.href = '/'}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
-              Back to Sign In
+              {t('auth.verification.sent.backToSignIn')}
             </Button>
           </div>
         </CardContent>

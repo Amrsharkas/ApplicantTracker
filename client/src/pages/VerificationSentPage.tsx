@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Mail, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function VerificationSentPage() {
   const [email, setEmail] = useState("");
+  const { t } = useLanguage();
 
   useEffect(() => {
     // Get email from URL params or localStorage if available
@@ -30,21 +32,21 @@ export default function VerificationSentPage() {
           <div className="mx-auto mb-4 h-16 w-16 bg-green-100 rounded-full flex items-center justify-center">
             <Mail className="h-8 w-8 text-green-600" />
           </div>
-          <CardTitle className="text-2xl text-gray-900">Email Sent Successfully</CardTitle>
+          <CardTitle className="text-2xl text-gray-900">{t("auth.verification.sent.title")}</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-6">
           <Alert className="border-green-200 bg-green-50">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-green-800">
-              Verification email has been sent successfully to your registered email address.
+              {t("auth.verification.sent.description")}
             </AlertDescription>
           </Alert>
 
           {email && (
             <div className="bg-gray-50 p-3 rounded-lg">
               <p className="text-sm text-gray-600">
-                <strong>Email sent to:</strong> {email}
+                <strong>{t("auth.verification.sent.emailSentTo")}</strong> {email}
               </p>
             </div>
           )}
@@ -52,21 +54,21 @@ export default function VerificationSentPage() {
           <div className="space-y-3">
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-              <span>Check your email inbox</span>
+              <span>{t("auth.verification.sent.steps.checkInbox")}</span>
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-              <span>Click verification link in email</span>
+              <span>{t("auth.verification.sent.steps.clickLink")}</span>
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-              <span>Start using Plato Applicant Tracker</span>
+              <span>{t("auth.verification.sent.steps.startUsing")}</span>
             </div>
           </div>
 
           <div className="bg-blue-50 p-3 rounded-lg">
             <p className="text-xs text-blue-800">
-              <strong>Important:</strong> If you don't receive the email within a few minutes, please check your spam folder. The verification link will expire in 1 week.
+              <strong>{t("auth.verification.sent.importantLabel")}</strong> {t("auth.verification.sent.importantMessage")}
             </p>
           </div>
 
@@ -77,14 +79,14 @@ export default function VerificationSentPage() {
               className="w-full"
             >
               <Mail className="mr-2 h-4 w-4" />
-              Resend Email
+              {t("auth.verification.sent.resendButton")}
             </Button>
 
             <Button
               onClick={() => window.location.href = '/auth'}
               className="w-full"
             >
-              Back to Sign In
+              {t("auth.verification.sent.backToSignIn")}
             </Button>
           </div>
         </CardContent>

@@ -10,21 +10,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLogin, useRegister } from "@/hooks/useAuth";
 import { Eye, EyeOff, Briefcase, Users, Zap } from "lucide-react";
 import { ForgotPasswordModal } from "@/components/ForgotPasswordModal";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email("auth.invalidEmail"),
+  password: z.string().min(1, "auth.passwordRequired"),
 });
 
 const registerSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email("auth.invalidEmail"),
+  password: z.string().min(6, "auth.passwordMinLength"),
   confirmPassword: z.string(),
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  username: z.string().min(3, "Username must be at least 3 characters").optional(),
+  firstName: z.string().min(1, "auth.firstNameRequired"),
+  lastName: z.string().min(1, "auth.lastNameRequired"),
+  username: z.string().min(3, "auth.usernameMinLength").optional(),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: "auth.passwordsDontMatch",
   path: ["confirmPassword"],
 });
 
@@ -35,6 +36,7 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const { t } = useLanguage();
   
   const loginMutation = useLogin();
   const registerMutation = useRegister();
@@ -76,10 +78,10 @@ export default function AuthPage() {
           <div className="space-y-8">
             <div className="space-y-4">
               <h1 className="text-4xl lg:text-6xl font-bold text-gray-900">
-                Welcome to <span className="text-blue-600">Plato</span>
+                {t("auth.page.heroTitlePrefix")} <span className="text-blue-600">{t("plato")}</span>
               </h1>
               <p className="text-xl text-gray-600 leading-relaxed">
-                The AI-powered job platform that transforms how you find your perfect career match through intelligent interviews and personalized job recommendations.
+                {t("auth.page.heroSubtitle")}
               </p>
             </div>
 
@@ -89,8 +91,8 @@ export default function AuthPage() {
                   <Briefcase className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">AI-Powered Interviews</h3>
-                  <p className="text-gray-600">Complete comprehensive interviews that build your professional profile automatically.</p>
+                  <h3 className="font-semibold text-gray-900">{t("auth.page.features.interviews.title")}</h3>
+                  <p className="text-gray-600">{t("auth.page.features.interviews.description")}</p>
                 </div>
               </div>
 
@@ -99,8 +101,8 @@ export default function AuthPage() {
                   <Users className="h-6 w-6 text-purple-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">Smart Job Matching</h3>
-                  <p className="text-gray-600">Get matched with opportunities that align with your skills and career goals.</p>
+                  <h3 className="font-semibold text-gray-900">{t("auth.page.features.matching.title")}</h3>
+                  <p className="text-gray-600">{t("auth.page.features.matching.description")}</p>
                 </div>
               </div>
 
@@ -109,8 +111,8 @@ export default function AuthPage() {
                   <Zap className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">Instant Applications</h3>
-                  <p className="text-gray-600">Apply to jobs with confidence using your AI-generated professional profile.</p>
+                  <h3 className="font-semibold text-gray-900">{t("auth.page.features.applications.title")}</h3>
+                  <p className="text-gray-600">{t("auth.page.features.applications.description")}</p>
                 </div>
               </div>
             </div>
@@ -120,42 +122,42 @@ export default function AuthPage() {
           <div className="max-w-md mx-auto w-full">
             <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Sign In</TabsTrigger>
-                <TabsTrigger value="register">Sign Up</TabsTrigger>
+                <TabsTrigger value="login">{t("auth.signIn")}</TabsTrigger>
+                <TabsTrigger value="register">{t("auth.signUp")}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="login">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Welcome Back</CardTitle>
+                    <CardTitle>{t("auth.page.login.title")}</CardTitle>
                     <CardDescription>
-                      Sign in to your account to continue your job search journey.
+                      {t("auth.page.login.description")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="login-email">Email</Label>
+                        <Label htmlFor="login-email">{t("auth.email")}</Label>
                         <Input
                           id="login-email"
                           type="email"
-                          placeholder="Enter your email"
+                          placeholder={t("auth.enterEmail")}
                           {...loginForm.register("email")}
                         />
                         {loginForm.formState.errors.email && (
                           <p className="text-sm text-red-600">
-                            {loginForm.formState.errors.email.message}
+                            {t(loginForm.formState.errors.email.message)}
                           </p>
                         )}
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="login-password">Password</Label>
+                        <Label htmlFor="login-password">{t("auth.password")}</Label>
                         <div className="relative">
                           <Input
                             id="login-password"
                             type={showPassword ? "text" : "password"}
-                            placeholder="Enter your password"
+                            placeholder={t("auth.enterPassword")}
                             {...loginForm.register("password")}
                           />
                           <Button
@@ -174,7 +176,7 @@ export default function AuthPage() {
                         </div>
                         {loginForm.formState.errors.password && (
                           <p className="text-sm text-red-600">
-                            {loginForm.formState.errors.password.message}
+                            {t(loginForm.formState.errors.password.message)}
                           </p>
                         )}
                       </div>
@@ -184,7 +186,7 @@ export default function AuthPage() {
                         className="w-full"
                         disabled={loginMutation.isPending}
                       >
-                        {loginMutation.isPending ? "Signing In..." : "Sign In"}
+                        {loginMutation.isPending ? t("auth.signingIn") : t("auth.signIn")}
                       </Button>
 
                       {/* Forgot Password Link */}
@@ -195,7 +197,7 @@ export default function AuthPage() {
                           onClick={() => setShowForgotPassword(true)}
                           className="text-blue-600 hover:text-blue-800 text-sm"
                         >
-                          Forgot your password?
+                          {t("auth.page.login.forgotPassword")}
                         </Button>
                       </div>
                     </form>
@@ -206,79 +208,79 @@ export default function AuthPage() {
               <TabsContent value="register">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Create Account</CardTitle>
+                    <CardTitle>{t("auth.page.register.title")}</CardTitle>
                     <CardDescription>
-                      Join thousands of job seekers who found their dream careers with Plato.
+                      {t("auth.page.register.description")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="firstName">First Name</Label>
+                          <Label htmlFor="firstName">{t("auth.firstName")}</Label>
                           <Input
                             id="firstName"
-                            placeholder="John"
+                            placeholder={t("auth.page.register.placeholders.firstNameExample")}
                             {...registerForm.register("firstName")}
                           />
                           {registerForm.formState.errors.firstName && (
                             <p className="text-sm text-red-600">
-                              {registerForm.formState.errors.firstName.message}
+                              {t(registerForm.formState.errors.firstName.message)}
                             </p>
                           )}
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="lastName">Last Name</Label>
+                          <Label htmlFor="lastName">{t("auth.lastName")}</Label>
                           <Input
                             id="lastName"
-                            placeholder="Doe"
+                            placeholder={t("auth.page.register.placeholders.lastNameExample")}
                             {...registerForm.register("lastName")}
                           />
                           {registerForm.formState.errors.lastName && (
                             <p className="text-sm text-red-600">
-                              {registerForm.formState.errors.lastName.message}
+                              {t(registerForm.formState.errors.lastName.message)}
                             </p>
                           )}
                         </div>
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="register-email">Email</Label>
+                        <Label htmlFor="register-email">{t("auth.email")}</Label>
                         <Input
                           id="register-email"
                           type="email"
-                          placeholder="john@example.com"
+                          placeholder={t("auth.page.register.placeholders.emailExample")}
                           {...registerForm.register("email")}
                         />
                         {registerForm.formState.errors.email && (
                           <p className="text-sm text-red-600">
-                            {registerForm.formState.errors.email.message}
+                            {t(registerForm.formState.errors.email.message)}
                           </p>
                         )}
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="username">Username (Optional)</Label>
+                        <Label htmlFor="username">{t("auth.usernameOptional")}</Label>
                         <Input
                           id="username"
-                          placeholder="johndoe"
+                          placeholder={t("auth.page.register.placeholders.usernameExample")}
                           {...registerForm.register("username")}
                         />
                         {registerForm.formState.errors.username && (
                           <p className="text-sm text-red-600">
-                            {registerForm.formState.errors.username.message}
+                            {t(registerForm.formState.errors.username.message)}
                           </p>
                         )}
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="register-password">Password</Label>
+                        <Label htmlFor="register-password">{t("auth.password")}</Label>
                         <div className="relative">
                           <Input
                             id="register-password"
                             type={showPassword ? "text" : "password"}
-                            placeholder="Create a strong password"
+                            placeholder={t("auth.page.register.placeholders.passwordExample")}
                             {...registerForm.register("password")}
                           />
                           <Button
@@ -297,18 +299,18 @@ export default function AuthPage() {
                         </div>
                         {registerForm.formState.errors.password && (
                           <p className="text-sm text-red-600">
-                            {registerForm.formState.errors.password.message}
+                            {t(registerForm.formState.errors.password.message)}
                           </p>
                         )}
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">Confirm Password</Label>
+                        <Label htmlFor="confirmPassword">{t("auth.confirmPassword")}</Label>
                         <div className="relative">
                           <Input
                             id="confirmPassword"
                             type={showConfirmPassword ? "text" : "password"}
-                            placeholder="Confirm your password"
+                            placeholder={t("auth.confirmYourPassword")}
                             {...registerForm.register("confirmPassword")}
                           />
                           <Button
@@ -327,7 +329,7 @@ export default function AuthPage() {
                         </div>
                         {registerForm.formState.errors.confirmPassword && (
                           <p className="text-sm text-red-600">
-                            {registerForm.formState.errors.confirmPassword.message}
+                            {t(registerForm.formState.errors.confirmPassword.message)}
                           </p>
                         )}
                       </div>
@@ -337,7 +339,7 @@ export default function AuthPage() {
                         className="w-full" 
                         disabled={registerMutation.isPending}
                       >
-                        {registerMutation.isPending ? "Creating Account..." : "Create Account"}
+                        {registerMutation.isPending ? t("auth.signingUp") : t("auth.createAccount")}
                       </Button>
                     </form>
                   </CardContent>

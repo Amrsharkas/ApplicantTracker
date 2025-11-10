@@ -364,7 +364,7 @@ export default function Dashboard() {
                         </p>
                         {!hasCompleteProfile && (
                           <p className="text-sm text-green-600 mt-1">
-                            💡 Tip: Upload your resume and we'll extract as much information as we can to auto-fill your profile!
+                            {t('dashboard.resumeUploadTip')}
                           </p>
                         )}
                       </div>
@@ -402,7 +402,7 @@ export default function Dashboard() {
                               : 'bg-blue-600 text-white hover:bg-blue-700'
                           }`}
                         >
-{hasCompleteProfile ? 'Edit Profile' : t('buildProfileButton')}
+{hasCompleteProfile ? t('dashboard.editProfile') : t('buildProfileButton')}
                         </button>
                       </div>
                     </div>
