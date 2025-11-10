@@ -285,36 +285,35 @@ export default function Dashboard() {
     <div className={`min-h-screen bg-gray-50 ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-6 py-4">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-3 rtl:space-x-reverse">
+            <div className="flex items-center space-x-2 rtl:space-x-reverse">
               <img
                 src={logo}
                 alt="Plato"
-                className="h-10 w-auto p-2"
+                className="h-8 sm:h-10 w-auto p-1 sm:p-2"
               />
             </div>
-            
-            <div className="flex items-center space-x-4 rtl:space-x-reverse">
+
+            <div className="flex items-center space-x-2 sm:space-x-4 rtl:space-x-reverse">
               <LanguageSwitcher />
-              
 
               <button
                 onClick={() => openModal('userProfile')}
-                className="flex items-center space-x-2 rtl:space-x-reverse hover:bg-gray-50 rounded-lg p-2 transition-colors"
+                className="flex items-center space-x-1 sm:space-x-2 rtl:space-x-reverse hover:bg-gray-50 rounded-lg p-1.5 sm:p-2 transition-colors min-w-0"
                 title="Edit user profile"
               >
-                <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center">
-                  <User className="h-4 w-4 text-white" />
+                <div className="w-6 h-6 sm:w-7 sm:h-7 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                 </div>
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-xs sm:text-sm font-medium text-gray-900 truncate max-w-[80px] sm:max-w-none">
                   {(user as any)?.firstName || 'Job Seeker'}
                 </span>
               </button>
               <button
                 onClick={() => logout.mutate()}
                 disabled={logout.isPending}
-                className="text-sm text-gray-600 hover:text-gray-800"
+                className="text-xs sm:text-sm text-gray-600 hover:text-gray-800 px-2 py-1 sm:px-0 sm:py-0"
               >
                 {logout.isPending ? t('signingOut') : t('signOut')}
               </button>
@@ -324,7 +323,7 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Getting Started Section or Hiring Stats */}
         <div className="mb-8">
           {/* Show full dashboard for completed users */}
@@ -335,46 +334,46 @@ export default function Dashboard() {
           ) : (
             /* Show getting started checklist for incomplete users */
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('welcome')}</h2>
-              <p className="text-gray-600 mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">{t('welcome')}</h2>
+              <p className="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base">
                 {t('dashboard.completeSteps')}
               </p>
-              
-              <div className="space-y-4">
+
+              <div className="space-y-3 sm:space-y-4">
                 {/* Step 1: Build Complete Profile (includes CV data) */}
-                <div className={`bg-white rounded-lg p-6 border-2 transition-all ${
-                  hasCompleteProfile 
-                    ? 'border-green-200 bg-green-50' 
+                <div className={`bg-white rounded-lg p-4 sm:p-6 border-2 transition-all ${
+                  hasCompleteProfile
+                    ? 'border-green-200 bg-green-50'
                     : 'border-blue-200 shadow-md'
                 }`}>
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center space-x-4 rtl:space-x-reverse">
-                      <div className={`min-w-10 min-h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-start space-x-3 sm:space-x-4 rtl:space-x-reverse">
+                      <div className={`min-w-8 min-h-8 sm:min-w-10 sm:min-h-10 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-lg flex-shrink-0 ${
                         hasCompleteProfile ? 'bg-green-600' : 'bg-blue-600'
                       }`}>
                         {hasCompleteProfile ? '✓' : '1'}
                       </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{t('buildProfile')}</h3>
-                        <p className="text-gray-600">
-                          {hasCompleteProfile 
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900">{t('buildProfile')}</h3>
+                        <p className="text-gray-600 text-sm sm:text-base">
+                          {hasCompleteProfile
                             ? t('interviewsUnlocked')
                             : t('profileDescription')
                           }
                         </p>
                         {!hasCompleteProfile && (
-                          <p className="text-sm text-green-600 mt-1">
+                          <p className="text-xs sm:text-sm text-green-600 mt-1">
                             {t('dashboard.resumeUploadTip')}
                           </p>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-4 rtl:space-x-reverse">
-                      <div className="text-end">
-                        <div className="text-2xl font-bold text-gray-900">{profileProgress}%</div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                      <div className="text-center sm:text-end">
+                        <div className="text-xl sm:text-2xl font-bold text-gray-900">{profileProgress}%</div>
                         <div className="text-xs text-gray-500">{t('complete')}</div>
                       </div>
-                      <div className="flex space-x-2 rtl:space-x-reverse ">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2 rtl:space-x-reverse">
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -385,20 +384,20 @@ export default function Dashboard() {
                         <button
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isUploadingResume}
-                          className="px-4 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 rtl:space-x-reverse"
+                          className="px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1 sm:space-x-2 rtl:space-x-reverse text-sm sm:text-base"
                         >
                           {isUploadingResume ? (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white"></div>
                           ) : (
-                            <Upload className="h-4 w-4" />
+                            <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
                           )}
-                          <span>{isUploadingResume ? t('dashboard.uploading') : t('dashboard.uploadResume')}</span>
+                          <span className="truncate">{isUploadingResume ? t('dashboard.uploading') : t('dashboard.uploadResume')}</span>
                         </button>
                         <button
                           onClick={() => openModal('profile')}
-                          className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                            hasCompleteProfile 
-                              ? 'bg-green-600 text-white hover:bg-green-700' 
+                          className={`px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
+                            hasCompleteProfile
+                              ? 'bg-green-600 text-white hover:bg-green-700'
                               : 'bg-blue-600 text-white hover:bg-blue-700'
                           }`}
                         >
@@ -410,27 +409,27 @@ export default function Dashboard() {
                 </div>
 
                 {/* Step 2: AI Interview */}
-                <div className={`bg-white rounded-lg p-6 border-2 transition-all ${
+                <div className={`bg-white rounded-lg p-4 sm:p-6 border-2 transition-all ${
                   !hasCompleteProfile
-                    ? 'border-gray-200 opacity-60' 
-                    : hasCompletedInterview 
-                      ? 'border-green-200 bg-green-50' 
+                    ? 'border-gray-200 opacity-60'
+                    : hasCompletedInterview
+                      ? 'border-green-200 bg-green-50'
                       : 'border-purple-200 shadow-md'
                 }`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 rtl:space-x-reverse">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-start space-x-3 sm:space-x-4 rtl:space-x-reverse">
+                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-lg flex-shrink-0 ${
                         !hasCompleteProfile
-                          ? 'bg-gray-400' 
-                          : hasCompletedInterview 
-                            ? 'bg-green-600' 
+                          ? 'bg-gray-400'
+                          : hasCompletedInterview
+                            ? 'bg-green-600'
                             : 'bg-purple-600'
                       }`}>
                         {hasCompletedInterview ? '✓' : '2'}
                       </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{t('takeInterview')}</h3>
-                        <p className="text-gray-600">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900">{t('takeInterview')}</h3>
+                        <p className="text-gray-600 text-sm sm:text-base">
                           {!hasCompleteProfile
                             ? t('interviewDescription')
                             : hasCompletedInterview
@@ -443,11 +442,11 @@ export default function Dashboard() {
                     <button
                       onClick={() => openModal('interview')}
                       disabled={!hasCompleteProfile}
-                      className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                      className={`px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base w-full sm:w-auto ${
                         !hasCompleteProfile
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                          : hasCompletedInterview 
-                            ? 'bg-green-600 text-white hover:bg-green-700' 
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : hasCompletedInterview
+                            ? 'bg-green-600 text-white hover:bg-green-700'
                             : 'bg-purple-600 text-white hover:bg-purple-700'
                       }`}
                     >
@@ -462,25 +461,25 @@ export default function Dashboard() {
 
         {/* Pending Job Application Banner */}
         {showFullDashboard && pendingJobApplication && (
-          <div className="mb-8 animate-in fade-in slide-in-from-top duration-500">
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-6 shadow-lg">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4 flex-1">
-                  <div className="bg-blue-600 rounded-full p-3 mt-1">
-                    <AlertCircle className="h-6 w-6 text-white" />
+          <div className="mb-6 sm:mb-8 animate-in fade-in slide-in-from-top duration-500">
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-4 sm:p-6 shadow-lg">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div className="flex items-start gap-3 sm:gap-4 flex-1">
+                  <div className="bg-blue-600 rounded-full p-2 sm:p-3 mt-1 flex-shrink-0">
+                    <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
                       Ready to Apply: {pendingJobApplication.jobTitle}
                     </h3>
-                    <p className="text-gray-700 mb-4">
+                    <p className="text-gray-700 mb-3 sm:mb-4 text-sm sm:text-base">
                       Great job completing your profile and interviews! The position you wanted to apply for is now highlighted in the Job Postings section below.
                     </p>
                     <Button
                       onClick={() => {
                         openModal('jobPostings');
                       }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
                     >
                       View Job & Apply Now
                     </Button>
@@ -491,10 +490,10 @@ export default function Dashboard() {
                     setPendingJobApplication(null);
                     localStorage.removeItem('pendingJobApplication');
                   }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 transition-colors self-start sm:self-center flex-shrink-0"
                   title="Dismiss"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               </div>
             </div>
@@ -508,42 +507,42 @@ export default function Dashboard() {
               <h3 className="text-2xl font-bold text-gray-900 mb-8">{t('jobDashboard')}</h3>
 
               {/* Large Action Buttons */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 <button
                   onClick={() => openModal('matches')}
-                  className="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
+                  className="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
                 >
-                  <div className="flex items-center space-x-4 rtl:space-x-reverse mb-4">
-                    <div className="bg-white bg-opacity-20 rounded-lg p-3">
-                      <Target className="h-8 w-8 text-white" />
+                  <div className="flex items-center space-x-3 sm:space-x-4 rtl:space-x-reverse mb-3 sm:mb-4">
+                    <div className="bg-white bg-opacity-20 rounded-lg p-2 sm:p-3">
+                      <Target className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                     </div>
                     <div>
-                      <h4 className="text-2xl font-bold">{t('jobMatches')}</h4>
-                      <p className="text-blue-100 text-lg">{t('aiCuratedOpportunities')}</p>
+                      <h4 className="text-xl sm:text-2xl font-bold">{t('jobMatches')}</h4>
+                      <p className="text-blue-100 text-sm sm:text-lg">{t('aiCuratedOpportunities')}</p>
                     </div>
                   </div>
-                  <p className="text-blue-100 text-base leading-relaxed">
+                  <p className="text-blue-100 text-sm sm:text-base leading-relaxed">
                     {t('discoverPersonalizedJobs')}
                   </p>
                 </button>
 
                 <button
                   onClick={() => openModal('jobPostings')}
-                  className="bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
+                  className="bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
                 >
-                  <div className="flex items-center space-x-4 rtl:space-x-reverse mb-4">
-                    <div className="bg-white bg-opacity-20 rounded-lg p-3">
-                      <Briefcase className="h-8 w-8 text-white" />
+                  <div className="flex items-center space-x-3 sm:space-x-4 rtl:space-x-reverse mb-3 sm:mb-4">
+                    <div className="bg-white bg-opacity-20 rounded-lg p-2 sm:p-3">
+                      <Briefcase className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                     </div>
                     <div>
-                      <h4 className="text-2xl font-bold">{t('jobPostings')}</h4>
-                      <p className="text-green-100 text-lg">{t('exploreOpportunities')}</p>
+                      <h4 className="text-xl sm:text-2xl font-bold">{t('jobPostings')}</h4>
+                      <p className="text-green-100 text-sm sm:text-lg">{t('exploreOpportunities')}</p>
                     </div>
                   </div>
-                  <p className="text-green-100 text-base leading-relaxed">
+                  <p className="text-green-100 text-sm sm:text-base leading-relaxed">
                     {t('browseLatestJobs')}
                   </p>
-                </button> 
+                </button>
               </div>
 
               {/* Job specific AI interviews - New widget (above upcoming) */}
@@ -649,21 +648,21 @@ export default function Dashboard() {
               </button> */}
 
               {/* Small Stats Section */}
-              <div className="mt-8 pt-6 border-t border-gray-200">
+              <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
                 <h4 className="text-sm font-medium text-gray-500 mb-3">{t('quickStats')}</h4>
-                <div className="flex items-center space-x-8 rtl:space-x-reverse text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-sm">
                   <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                    <Target className="h-3 w-3 text-green-600" />
+                    <Target className="h-3 w-3 text-green-600 flex-shrink-0" />
                     <span className="text-gray-600">{t('jobMatchesLabel')}:</span>
                     <span className="font-medium text-gray-900">{(matches as any[]).length}</span>
                   </div>
                   <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                    <FileText className="h-3 w-3 text-purple-600" />
+                    <FileText className="h-3 w-3 text-purple-600 flex-shrink-0" />
                     <span className="text-gray-600">{t('applicationsLabel')}:</span>
                     <span className="font-medium text-gray-900">{(applications as any[]).length}</span>
                   </div>
                   <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                    <User className="h-3 w-3 text-blue-600" />
+                    <User className="h-3 w-3 text-blue-600 flex-shrink-0" />
                     <span className="text-gray-600">{t('profileCompletionLabel')}:</span>
                     <span className="font-medium text-gray-900">{profileProgress}%</span>
                   </div>
@@ -671,10 +670,10 @@ export default function Dashboard() {
               </div>
 
               {/* Compact Industry Stats */}
-              <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <div className="mt-4 sm:mt-6 bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
                 <div className="text-center">
                   <h5 className="text-xs font-medium text-gray-500 mb-3">{t('whyJobSeekingChallenging')}</h5>
-                  <div className="flex justify-center items-center space-x-8 rtl:space-x-reverse text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8 text-xs">
                     <div className="text-center">
                       <div className="text-lg font-bold text-red-600">{t('sixMonths')}</div>
                       <p className="text-gray-600">{t('avgJobSearchTime')}</p>
