@@ -24,6 +24,7 @@ import {
 export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: InterviewModalProps) {
   const [mode, setMode] = useState<'select' | 'text' | 'voice'>('select');
   const [selectedInterviewLanguage, setSelectedInterviewLanguage] = useState<string>('english');
+  const [selectedInterviewType, setSelectedInterviewType] = useState<string>('');
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
