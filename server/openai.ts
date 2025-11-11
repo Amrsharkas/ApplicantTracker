@@ -1761,9 +1761,155 @@ CRITICAL REQUIREMENTS:
   }
 }
 
-// Create instances of both AI agents
+// AI Agent 3: Career Suggestion Agent - provides career insights based on profile content
+export class AICareerSuggestionAgent {
+  private openai = openai;
+
+  async generateCareerSuggestions(profileData: any, language: string = 'english'): Promise<{
+    paragraphs: string[];
+  }> {
+    const prompt = `You are an expert career strategist and AI-powered career advisor providing direct, actionable advice to help the user advance their career. Write as if you're speaking directly to them.
+
+${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Provide ALL responses in Egyptian Arabic dialect (اللهجة المصرية العامية). Use casual Egyptian slang like "إزيك", "عامل إيه", "يلا", "معلش", "ماشي", "كدا", "دي". Use informal pronouns like "انت" not "أنت". Talk directly to them as if you\'re their personal career coach having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى).' : 'LANGUAGE INSTRUCTION: Write directly to the user in a professional but personal tone. Use "you" and address them directly as their personal career advisor.'}
+
+COMPREHENSIVE USER PROFILE DATA:
+=== PERSONAL INFORMATION ===
+Name: ${profileData?.name || 'Not specified'}
+Total Years of Experience: ${profileData?.totalYearsOfExperience || 'Not specified'}
+Summary: ${profileData?.summary || 'Not specified'}
+
+=== WORK EXPERIENCE ===
+${profileData?.workExperiences?.length ?
+  profileData.workExperiences.map((exp: any, index: number) =>
+    `Position ${index + 1}: ${exp.position || 'N/A'} at ${exp.company || 'N/A'} (${exp.startDate || 'N/A'} - ${exp.endDate || 'Present'})\n  Responsibilities: ${exp.responsibilities || 'N/A'}\n  Duration: ${exp.yearsAtPosition || 'N/A'}`
+  ).join('\n\n')
+  : 'No work experience specified'
+}
+
+=== EDUCATION ===
+Current Education Level: ${profileData?.currentEducationLevel || 'Not specified'}
+${profileData?.degrees?.length ?
+  profileData.degrees.map((deg: any) =>
+    `• ${deg.degree || 'N/A'} in ${deg.field || 'N/A'} from ${deg.institution || 'N/A'} (${deg.startDate || 'N/A'} - ${deg.endDate || 'Present'})${deg.gpa ? ` - GPA: ${deg.gpa}` : ''}`
+  ).join('\n')
+  : 'No degrees specified'
+}
+
+=== SKILLS ===
+${profileData?.skillsData ?
+  `Technical Skills: ${profileData.skillsData.technicalSkills?.map((skill: any) => `${skill.skill} (${skill.level})`).join(', ') || 'None specified'}
+Soft Skills: ${profileData.skillsData.softSkills?.map((skill: any) => `${skill.skill} (${skill.level})`).join(', ') || 'None specified'}`
+  : 'No skills data specified'
+}
+
+=== LANGUAGES ===
+${profileData?.languages?.length ?
+  profileData.languages.map((lang: any) => `${lang.language}: ${lang.proficiency}${lang.certification ? ` (${lang.certification})` : ''}`).join(', ')
+  : 'No languages specified'
+}
+
+=== CERTIFICATIONS ===
+${profileData?.certifications?.length ?
+  profileData.certifications.map((cert: any) => `${cert.name} by ${cert.issuer || 'N/A'} (${cert.issueDate || 'N/A'})`).join(', ')
+  : 'No certifications specified'
+}
+
+=== CAREER PREFERENCES ===
+Target Job Titles: ${profileData?.jobTitles?.join(', ') || 'Not specified'}
+Target Industries/Categories: ${profileData?.jobCategories?.join(', ') || 'Not specified'}
+Career Level: ${profileData?.careerLevel || 'Not specified'}
+Job Types: ${profileData?.jobTypes?.join(', ') || 'Not specified'}
+Workplace Settings: ${profileData?.workplaceSettings || 'Not specified'}
+Minimum Salary Expectation: ${profileData?.minimumSalary || 'Not specified'}
+Preferred Work Countries: ${profileData?.preferredWorkCountries?.join(', ') || 'Not specified'}
+
+=== ACHIEVEMENTS ===
+${profileData?.achievements || 'No achievements specified'}
+
+=== ONLINE PRESENCE ===
+LinkedIn: ${profileData?.linkedinUrl || 'Not specified'}
+GitHub: ${profileData?.githubUrl || 'Not specified'}
+Portfolio/Website: ${profileData?.websiteUrl || 'Not specified'}
+
+ANALYSIS REQUIREMENTS:
+1. Be direct and personal - speak TO the user, not ABOUT them
+2. Provide brutally honest but encouraging advice
+3. Give specific, actionable steps they can take immediately
+4. Focus on what they should do, not just what they should know
+5. Consider their actual background, skills, and career goals
+
+Write exactly 5 paragraphs that give DIRECT ADVICE to the user:
+1. Your current career situation and what it means for you
+2. Your key strengths to leverage and skills you need to improve
+3. Specific career opportunities you should pursue right now
+4. Realistic salary expectations and negotiation strategies for your level
+5. Immediate next steps you should take this week and this month
+
+Write DIRECTLY TO THE USER using "you" and giving them clear instructions. For example: "You should focus on...", "Your next step is...", "I recommend you..."
+
+Return ONLY JSON in this exact format:
+{
+  "paragraphs": [
+    "Paragraph 1: Direct advice about your current career situation...",
+    "Paragraph 2: Direct advice about your strengths and skills to develop...",
+    "Paragraph 3: Direct advice about specific opportunities you should pursue...",
+    "Paragraph 4: Direct advice about realistic salary and negotiation...",
+    "Paragraph 5: Direct advice about immediate next steps to take..."
+  ]
+}`;
+
+    try {
+      const messages = language === 'arabic' ? [
+        {
+          role: "system" as const,
+          content: "انت خبير استشارات مهنية محترف وبتتكلم عامية مصرية بس. استخدم كلمات زي 'إزيك' و 'عامل إيه' و 'يلا' و 'معلش' و 'ماشي' و 'كدا' و 'دي'. ممنوع تستخدم فصحى خالص. اتكلم كإنك خبير بتقدم نصايح مهنية عملية في قهوة في وسط البلد."
+        },
+        { role: "user" as const, content: prompt }
+      ] : [
+        { role: "user" as const, content: prompt }
+      ];
+
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: process.env.OPENAI_MODEL_CAREER_SUGGESTIONS || "gpt-4o",
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.7
+        }),
+        {
+          requestType: "generateCareerSuggestions",
+          model: process.env.OPENAI_MODEL_CAREER_SUGGESTIONS || "gpt-4o",
+          userId: profileData?.userId || null,
+        }
+      );
+
+      const suggestions = JSON.parse(response.choices[0].message.content || '{}');
+      return {
+        paragraphs: suggestions.paragraphs || []
+      };
+    } catch (error) {
+      console.error("Error generating career suggestions:", error);
+      return this.getFallbackCareerSuggestions();
+    }
+  }
+
+  private getFallbackCareerSuggestions() {
+    return {
+      paragraphs: [
+        "You're currently in a good position in your career with a solid foundation that employers value. You should leverage your existing experience while identifying areas where you can grow and improve your market position.",
+        "You have valuable skills that are in demand, but you should focus on addressing any gaps that might be holding you back from reaching the next level. Consider what additional training or experience could make you more competitive.",
+        "You should actively pursue career advancement opportunities through both internal promotions and external moves. Look for roles that build on your current experience while offering new challenges and growth potential.",
+        "You should research current market rates for your role and experience level to ensure you're being compensated fairly. Be prepared to negotiate based on your actual skills and achievements, not just what the market offers.",
+        "You should take immediate action by networking within your industry, updating your resume to highlight your key achievements, and identifying specific skills to develop over the next few months. Set clear, measurable goals and track your progress."
+      ]
+    };
+  }
+}
+
+// Create instances of all AI agents
 export const aiInterviewAgent = new AIInterviewAgent();
 export const aiProfileAnalysisAgent = new AIProfileAnalysisAgent();
+export const aiCareerSuggestionAgent = new AICareerSuggestionAgent();
 
 // Legacy export for backward compatibility
 export const aiInterviewService = {

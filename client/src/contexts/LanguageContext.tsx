@@ -895,6 +895,36 @@ const translations = {
     otherBenefits: "Other Benefits",
     addOtherBenefit: "Add Other Benefit",
     otherBenefitPlaceholder: "e.g., Company Car, Gym Membership",
+
+    // Career Suggestions
+    careerSuggestions: {
+      title: "Career Insights & Suggestions",
+      subtitle: "AI-Powered Guidance",
+      description: "Get personalized career development suggestions based on your profile",
+      loading: "Analyzing your profile...",
+      loadingSubtitle: "Generating personalized career insights",
+      error: "Failed to load career suggestions",
+      errorDescription: "We couldn't generate your career insights. Please try again or contact support if the issue persists.",
+      insufficientData: "Complete your profile to get personalized career suggestions",
+      insufficientDataDescription: "Add more details to your profile including work experience, skills, and education to receive comprehensive career insights.",
+      tryAgain: "Try Again",
+      close: "Close",
+      refresh: "Refresh",
+      refreshed: "Career suggestions refreshed",
+      refreshedDescription: "Your career insights have been updated",
+      refreshFailed: "Failed to refresh",
+      refreshFailedDescription: "Please try again later",
+      generatedAt: "Generated",
+      profileCompleteness: "Profile Completeness",
+      insight: "Career Insight",
+      paragraphTitles: {
+        overview: "Your Career Position",
+        skills: "Your Skills & Development",
+        opportunities: "Your Next Opportunities",
+        market: "Your Value & Salary",
+        recommendations: "Your Next Steps"
+      }
+    },
   },
   ar: {
     // Navigation & General
@@ -1751,8 +1781,38 @@ const translations = {
     otherBenefits: "مزايا أخرى",
     addOtherBenefit: "إضافة ميزة أخرى",
     otherBenefitPlaceholder: "مثال: سيارة الشركة، عضوية نادي رياضي",
+
+    // Career Suggestions
+    careerSuggestions: {
+      title: "رؤى وتوصيات مهنية",
+      subtitle: "إرشادات مدعومة بالذكاء الاصطناعي",
+      description: "احصل على توصيات مخصصة لتطوير مسيرتك المهنية بناءً على ملفك الشخصي",
+      loading: "جاري تحليل ملفك الشخصي...",
+      loadingSubtitle: "توليد رؤى مهنية مخصصة",
+      error: "فشل في تحميل رؤى المهنية",
+      errorDescription: "لم نتمكن من توليد رؤى مهنية. يرجى المحاولة مرة أخرى أو التواصل مع الدعم إذا استمرت المشكلة.",
+      insufficientData: "أكمل ملفك الشخصي للحصول على رؤى مهنية مخصصة",
+      insufficientDataDescription: "أضف المزيد من التفاصيل إلى ملفك الشخصي بما في ذلك الخبرة العملية والمهارات والتعليم لتلقي رؤى مهنية شاملة.",
+      tryAgain: "حاول مرة أخرى",
+      close: "إغلاق",
+      refresh: "تحديث",
+      refreshed: "تم تحديث رؤى المهنية",
+      refreshedDescription: "تم تحديث رؤى مهنية",
+      refreshFailed: "فشل في التحديث",
+      refreshFailedDescription: "يرجى المحاولة مرة أخرى لاحقًا",
+      generatedAt: "تم الإنشاء",
+      profileCompleteness: "اكتمال الملف الشخصي",
+      insight: "رؤية مهنية",
+      paragraphTitles: {
+        overview: "مكانتك المهنية الحالية",
+        skills: "مهاراتك وتطويرك",
+        opportunities: "فرصك التالية",
+        market: "قيمتك وراتبك",
+        recommendations: "خطواتك التالية"
+      }
+    },
   },
-  
+
   fr: {
     plato: "Plato",
 
@@ -2625,6 +2685,36 @@ const translations = {
         submit: "Réinitialiser le mot de passe",
       }
     },
+
+    // Career Suggestions
+    careerSuggestions: {
+      title: "Conseils de carrière",
+      subtitle: "Orientation alimentée par l'IA",
+      description: "Obtenez des suggestions personnalisées pour développer votre carrière basées sur votre profil",
+      loading: "Analyse de votre profil...",
+      loadingSubtitle: "Génération de conseils de carrière personnalisés",
+      error: "Échec du chargement des conseils de carrière",
+      errorDescription: "Nous n'avons pas pu générer vos conseils de carrière. Veuillez réessayer ou contacter le support si le problème persiste.",
+      insufficientData: "Complétez votre profil pour obtenir des conseils de carrière personnalisés",
+      insufficientDataDescription: "Ajoutez plus de détails à votre profil, y compris l'expérience professionnelle, les compétences et l'éducation pour recevoir des conseils de carrière complets.",
+      tryAgain: "Réessayer",
+      close: "Fermer",
+      refresh: "Actualiser",
+      refreshed: "Conseils de carrière actualisés",
+      refreshedDescription: "Vos conseils de carrière ont été mis à jour",
+      refreshFailed: "Échec de l'actualisation",
+      refreshFailedDescription: "Veuillez réessayer plus tard",
+      generatedAt: "Généré",
+      profileCompleteness: "Complétude du profil",
+      insight: "Conseil de carrière",
+      paragraphTitles: {
+        overview: "Votre position professionnelle",
+        skills: "Vos compétences et développement",
+        opportunities: "Vos prochaines opportunités",
+        market: "Votre valeur et salaire",
+        recommendations: "Vos prochaines étapes"
+      }
+    }
   }
 };
 

@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
-import { aiInterviewService, aiProfileAnalysisAgent, aiInterviewAgent } from "./openai";
+import { aiInterviewService, aiProfileAnalysisAgent, aiInterviewAgent, aiCareerSuggestionAgent } from "./openai";
 import { localDatabaseService } from "./localDatabaseService";
 import { aiJobFilteringService } from "./aiJobFiltering";
 import { employerQuestionService } from "./employerQuestions";
@@ -3669,6 +3669,62 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
         success: false,
         message: 'Data wipe failed',
         error: error.message
+      });
+    }
+  });
+
+  // Career suggestions endpoint - provides AI-powered career insights based on profile
+  app.get('/api/career-suggestions', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'User authentication required' });
+      }
+
+      console.log(`🎯 Generating career suggestions for user ${userId}`);
+
+      // Get user's comprehensive profile data
+      const profileData = await db.select()
+        .from(applicantProfiles)
+        .where(eq(applicantProfiles.userId, userId))
+        .limit(1);
+
+      if (!profileData || profileData.length === 0) {
+        return res.status(404).json({
+          error: 'Profile not found. Please complete your profile first.'
+        });
+      }
+
+      const profile = profileData[0];
+
+      // Check if profile has enough data for meaningful suggestions
+      const hasBasicData = profile.name || profile.workExperiences || profile.skillsData || profile.totalYearsOfExperience;
+      if (!hasBasicData) {
+        return res.status(400).json({
+          error: 'Insufficient profile data. Please complete your profile including work experience, skills, and education to get career suggestions.'
+        });
+      }
+
+      // Determine language preference (could be stored in user profile or session)
+      const language = req.query.language as string || 'english';
+
+      // Generate career suggestions using AI
+      const careerSuggestions = await aiCareerSuggestionAgent.generateCareerSuggestions(profile, language);
+
+      console.log(`✅ Career suggestions generated for user ${userId}`);
+
+      res.json({
+        success: true,
+        suggestions: careerSuggestions,
+        profileCompleteness: profile.completionPercentage || 0,
+        generatedAt: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('Error generating career suggestions:', error);
+      res.status(500).json({
+        error: 'Failed to generate career suggestions',
+        message: 'An error occurred while analyzing your profile. Please try again later.'
       });
     }
   });

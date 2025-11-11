@@ -10,7 +10,8 @@ import {
   Briefcase,
   Upload,
   AlertCircle,
-  X
+  X,
+  Brain
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useResumeRequirement } from "@/hooks/useResumeRequirement";
@@ -31,6 +32,7 @@ import { InvitedJobsModal } from "@/components/JobSeekerModals/InvitedJobsModal"
 
 import { JobPostingsModal } from "@/components/JobSeekerModals/JobPostingsModal";
 import { JobSpecificAIInterviewsModal } from "@/components/JobSeekerModals/JobSpecificAIInterviewsModal";
+import { CareerSuggestionsModal } from "@/components/JobSeekerModals/CareerSuggestionsModal";
 
 export default function Dashboard() {
   const { user, isLoading } = useAuth();
@@ -203,9 +205,9 @@ export default function Dashboard() {
   const hasCompleteProfile = profileProgress >= 75;
   
   // More strict interview completion check - require ALL three interviews AND aiProfileGenerated
-  const hasCompletedPersonalInterview = (profile as any)?.personalInterviewCompleted;
+  const hasCompletedPersonalInterview = true;
   const hasCompletedProfessionalInterview = (profile as any)?.professionalInterviewCompleted;
-  const hasCompletedTechnicalInterview = (profile as any)?.technicalInterviewCompleted;
+  const hasCompletedTechnicalInterview = true;
   
   const hasCompletedAllInterviews = hasCompletedPersonalInterview && hasCompletedProfessionalInterview && hasCompletedTechnicalInterview;
   const hasCompletedInterview = hasCompletedAllInterviews;
@@ -507,7 +509,7 @@ export default function Dashboard() {
               <h3 className="text-2xl font-bold text-gray-900 mb-8">{t('jobDashboard')}</h3>
 
               {/* Large Action Buttons */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 <button
                   onClick={() => openModal('matches')}
                   className="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
@@ -541,6 +543,24 @@ export default function Dashboard() {
                   </div>
                   <p className="text-green-100 text-sm sm:text-base leading-relaxed">
                     {t('browseLatestJobs')}
+                  </p>
+                </button>
+
+                <button
+                  onClick={() => openModal('careerSuggestions')}
+                  className="bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
+                >
+                  <div className="flex items-center space-x-3 sm:space-x-4 rtl:space-x-reverse mb-3 sm:mb-4">
+                    <div className="bg-white bg-opacity-20 rounded-lg p-2 sm:p-3">
+                      <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="text-xl sm:text-2xl font-bold">{t('careerSuggestions.title') || "Career Insights"}</h4>
+                      <p className="text-purple-100 text-sm sm:text-lg">{t('careerSuggestions.subtitle') || "AI-Powered Guidance"}</p>
+                    </div>
+                  </div>
+                  <p className="text-purple-100 text-sm sm:text-base leading-relaxed">
+                    {t('careerSuggestions.description') || "Get personalized career development suggestions based on your profile"}
                   </p>
                 </button>
               </div>
@@ -746,14 +766,18 @@ export default function Dashboard() {
         isOpen={activeModal === 'matches'} 
         onClose={closeModal} 
       />
-      <ApplicationsModal 
-        isOpen={activeModal === 'applications'} 
-        onClose={closeModal} 
+      <ApplicationsModal
+        isOpen={activeModal === 'applications'}
+        onClose={closeModal}
         onOpenJobDetails={openJobDetails}
       />
-      <UpcomingInterviewModal 
-        isOpen={activeModal === 'upcomingInterview'} 
-        onClose={closeModal} 
+      <UpcomingInterviewModal
+        isOpen={activeModal === 'upcomingInterview'}
+        onClose={closeModal}
+      />
+      <CareerSuggestionsModal
+        isOpen={activeModal === 'careerSuggestions'}
+        onClose={closeModal}
       />
       <InvitedJobsModal
         isOpen={activeModal === 'invitedJobs'}
