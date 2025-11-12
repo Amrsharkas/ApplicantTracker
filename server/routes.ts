@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
@@ -550,7 +551,12 @@ function getExtractedFieldsSummary(parsedData: any): any {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
-  
+
+  // Serve uploaded files statically
+  const uploadsDir = path.join(__dirname, '..', 'uploads');
+  app.use('/uploads', express.static(uploadsDir));
+  console.log(`📁 Serving uploads from: ${uploadsDir}`);
+
   // Note: Auth routes are now handled in setupAuth from auth.ts
 
   // AI Interview initiation via local database token lookup (following old Airtable logic)
@@ -1402,7 +1408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionId: parsedSessionId,
         userId: currentUserId,
         jobMatchId: jobMatchId || null,
-        recordingPath: req.file.path,
+        recordingPath: req.file.filename,
       });
 
       console.log(`Recording data being saved to database:`, recordingData);
@@ -2737,7 +2743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const recordingData = {
         id: recording.id,
         sessionId: recording.sessionId,
-        recordingUrl: `/uploads/interviews/${recording.recordingPath}`,
+        recordingUrl: `/uploads/recordings/${recording.recordingPath}`,
         createdAt: recording.createdAt
       };
 
