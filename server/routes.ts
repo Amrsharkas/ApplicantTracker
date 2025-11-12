@@ -4,6 +4,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
 import { aiInterviewService, aiProfileAnalysisAgent, aiInterviewAgent, aiCareerSuggestionAgent } from "./openai";
+import { generatePlatoAiProfile } from "./profileAnalyzerService";
 import { localDatabaseService } from "./localDatabaseService";
 import { aiJobFilteringService } from "./aiJobFiltering";
 import { employerQuestionService } from "./employerQuestions";
@@ -4023,12 +4024,90 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
 
     } catch (error) {
       console.error("Error generating honest profile:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to generate honest profile",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
+
+  // =============================================
+  // STATIC QUESTIONS & NEW AI PROFILE GENERATION
+  // =============================================
+
+  app.post('/api/profile/submit-static-questions',
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.id;
+        const { answers } = req.body;
+
+        // Validate that all 5 answers are provided
+        if (!answers || typeof answers !== 'object') {
+          return res.status(400).json({
+            message: "Invalid answers format. Expected an object with question-answer pairs."
+          });
+        }
+
+        const questionKeys = ['question1', 'question2', 'question3', 'question4', 'question5'];
+        const missingQuestions = questionKeys.filter(key => !answers[key] || answers[key].trim() === '');
+
+        if (missingQuestions.length > 0) {
+          return res.status(400).json({
+            message: "All 5 questions must be answered",
+            missingQuestions
+          });
+        }
+
+        // Get user profile
+        const profile = await storage.getApplicantProfile(userId);
+
+        if (!profile) {
+          return res.status(404).json({ message: "Profile not found" });
+        }
+
+        // Save the Q&A answers
+        const staticQuestionsAnswers = {
+          question1: answers.question1,
+          question2: answers.question2,
+          question3: answers.question3,
+          question4: answers.question4,
+          question5: answers.question5,
+          submittedAt: new Date().toISOString()
+        };
+
+        console.log('[STATIC_QUESTIONS] Saving Q&A for user:', userId);
+
+        // Generate AI profile using PLATO_PROFILE_ANALYZER
+        console.log('[STATIC_QUESTIONS] Generating new AI profile...');
+        const newAiProfile = await generatePlatoAiProfile(profile);
+
+        // Update profile with both Q&As and AI profile
+        await storage.updateApplicantProfile(userId, {
+          staticQuestionsAnswers: staticQuestionsAnswers as any,
+          staticQuestionsCompletedAt: new Date(),
+          newAiProfile: newAiProfile as any,
+          newAiProfileGenerated: true
+        });
+
+        console.log('[STATIC_QUESTIONS] Successfully saved Q&A and generated AI profile');
+
+        res.json({
+          message: "Static questions submitted and AI profile generated successfully",
+          staticQuestionsAnswers,
+          newAiProfile,
+          success: true
+        });
+
+      } catch (error) {
+        console.error("Error submitting static questions:", error);
+        res.status(500).json({
+          message: "Failed to submit static questions and generate AI profile",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    }
+  );
 
   // =============================================
   // PREMIUM FEATURE ROUTES - PROFILE VIEWS & VISIBILITY

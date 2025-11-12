@@ -26,19 +26,25 @@ const translations = {
     // Navigation & General
     welcome: "Welcome to Plato!",
     buildProfile: "Build Your Complete Profile",
-    takeInterview: "Take AI Interview",
+    takeInterview: "Complete Profile Questions",
     getStarted: "Get Started with Plato",
     complete: "Complete",
     startInterview: "Start Interview",
     buildProfileButton: "Build Profile",
-    
+
     // Profile Section
-    profileDescription: "Build your professional profile including personal details, education, work experience, skills, and career preferences. Reach 85% to unlock interviews.",
-    interviewDescription: "Build your profile to 85% completion to unlock the AI interview.",
+    profileDescription: "Build your professional profile including personal details, education, work experience, skills, and career preferences. Reach 85% to unlock profile questions.",
+    interviewDescription: "Build your profile to 85% completion to unlock the profile questions.",
+
+    // Static Questions
+    completeProfileQuestions: "Complete Your Profile Questions",
+    typeYourAnswer: "Type your answer here...",
+    submitAnswers: "Submit Answers",
+    submitting: "Submitting...",
     
     // Steps
     step1: "Build your complete profile including personal details, education, work experience, skills, and career preferences.",
-    step2: "Complete your AI interview to generate your comprehensive professional analysis.",
+    step2: "Answer 5 profile questions to generate your AI-powered professional analysis.",
     
     // Common buttons
     save: "Save",
@@ -466,16 +472,6 @@ const translations = {
       arabic: "العربية"
     },
 
-    manualCvModal: {
-      title: "أكمل معلومات سيرتك الذاتية",
-      subtitle: "أدخل بياناتك المهنية لفتح المقابلات ومطابقة الوظائف",
-    },
-    profileModal: {
-      resumeTitle: "السيرة الذاتية",
-      resumeUploaded: "تم رفع السيرة الذاتية (+15% اكتمال)",
-      resumeUploadPrompt: "قم برفع سيرتك الذاتية لتحليل الذكاء الاصطناعي (+15% اكتمال)",
-    },
-    
     // Dashboard
     dashboard: {
       invalidFileType: "Invalid File Type",
@@ -867,12 +863,6 @@ const translations = {
       industryKnowledgePlaceholder: "e.g., Finance, Healthcare, Technology",
       toolsPlaceholder: "e.g., Figma, Adobe Creative Suite, Jira",
     },
-    industryKnowledge: "Industry Knowledge",
-    tools: "Tools",
-    addIndustryKnowledge: "Add Industry Knowledge",
-    addTools: "Add Tools",
-    industryKnowledgePlaceholder: "e.g., Finance, Healthcare, Technology",
-    toolsPlaceholder: "e.g., Figma, Adobe Creative Suite, Jira",
     thesis: "Thesis",
     thesisPlaceholder: "e.g., 'Machine Learning Applications in Healthcare'",
     technologies: "Technologies",
@@ -930,19 +920,25 @@ const translations = {
     // Navigation & General
     welcome: "مرحباً بك في بلاتو!",
     buildProfile: "أنشئ ملفك الشخصي الكامل",
-    takeInterview: "خذ مقابلة الذكاء الاصطناعي",
+    takeInterview: "أكمل أسئلة الملف الشخصي",
     getStarted: "ابدأ مع بلاتو",
     complete: "مكتمل",
     startInterview: "ابدأ المقابلة",
     buildProfileButton: "أنشئ الملف الشخصي",
-    
+
     // Profile Section
-    profileDescription: "أنشئ ملفك الشخصي المهني بما في ذلك التفاصيل الشخصية والتعليم وخبرة العمل والمهارات والتفضيلات المهنية. اوصل إلى 75% لفتح المقابلات.",
-    interviewDescription: "أنشئ ملفك الشخصي إلى 75% من الاكتمال لفتح مقابلة الذكاء الاصطناعي.",
+    profileDescription: "أنشئ ملفك الشخصي المهني بما في ذلك التفاصيل الشخصية والتعليم وخبرة العمل والمهارات والتفضيلات المهنية. اوصل إلى 85% لفتح أسئلة الملف الشخصي.",
+    interviewDescription: "أنشئ ملفك الشخصي إلى 85% من الاكتمال لفتح أسئلة الملف الشخصي.",
+
+    // Static Questions
+    completeProfileQuestions: "أكمل أسئلة ملفك الشخصي",
+    typeYourAnswer: "اكتب إجابتك هنا...",
+    submitAnswers: "إرسال الإجابات",
+    submitting: "جاري الإرسال...",
     
     // Steps
     step1: "أنشئ ملفك الشخصي الكامل بما في التفاصيل الشخصية والتعليم وخبرة العمل والمهارات والتفضيلات المهنية.",
-    step2: "أكمل مقابلة الذكاء الاصطناعي لإنشاء تحليلك المهني الشامل.",
+    step2: "أجب على 5 أسئلة الملف الشخصي لإنشاء تحليلك المهني بالذكاء الاصطناعي.",
     
     // Common buttons
     save: "حفظ",
@@ -1753,12 +1749,6 @@ const translations = {
       industryKnowledgePlaceholder: "مثال: المالية، الرعاية الصحية، التكنولوجيا",
       toolsPlaceholder: "مثال: Figma، Adobe Creative Suite، Jira",
     },
-    industryKnowledge: "المعرفة الصناعية",
-    tools: "الأدوات",
-    addIndustryKnowledge: "إضافة معرفة صناعية",
-    addTools: "إضافة أدوات",
-    industryKnowledgePlaceholder: "مثال: المالية، الرعاية الصحية، التكنولوجيا",
-    toolsPlaceholder: "مثال: Figma، Adobe Creative Suite، Jira",
     thesis: "الأطروحة",
     thesisPlaceholder: "مثال: 'تطبيقات التعلم الآلي في الرعاية الصحية'",
     technologies: "التقنيات",
@@ -2483,12 +2473,6 @@ const translations = {
       industryKnowledgePlaceholder: "ex : Finance, Santé, Technologie",
       toolsPlaceholder: "ex : Figma, Adobe Creative Suite, Jira",
     },
-    industryKnowledge: "Connaissances sectorielles",
-    tools: "Outils",
-    addIndustryKnowledge: "Ajouter des connaissances sectorielles",
-    addTools: "Ajouter des outils",
-    industryKnowledgePlaceholder: "ex : Finance, Santé, Technologie",
-    toolsPlaceholder: "ex : Figma, Adobe Creative Suite, Jira",
     thesis: "Thèse",
     thesisPlaceholder: "ex : 'Applications de l'apprentissage automatique dans la santé'",
     technologies: "Technologies",

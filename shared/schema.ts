@@ -444,6 +444,13 @@ export const applicantProfiles = pgTable("applicant_profiles", {
   honestProfile: jsonb("honest_profile"),
   honestProfileGenerated: boolean("honest_profile_generated").default(false),
   profileGeneratedAt: timestamp("profile_generated_at"),
+
+  // New AI profile from static questions
+  staticQuestionsAnswers: jsonb("static_questions_answers"),
+  newAiProfile: jsonb("new_ai_profile"),
+  newAiProfileGenerated: boolean("new_ai_profile_generated").default(false),
+  staticQuestionsCompletedAt: timestamp("static_questions_completed_at"),
+
   personalInterviewCompleted: boolean("personal_interview_completed").default(false),
   professionalInterviewCompleted: boolean("professional_interview_completed").default(false),
   technicalInterviewCompleted: boolean("technical_interview_completed").default(false),

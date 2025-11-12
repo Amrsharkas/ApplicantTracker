@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth, useLogout } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   User,
   Target,
@@ -26,7 +26,7 @@ import { MatchesModal } from "@/components/JobSeekerModals/MatchesModal";
 import { ComprehensiveProfileModal } from "@/components/JobSeekerModals/ComprehensiveProfileModal";
 import { UserProfileModal } from "@/components/JobSeekerModals/UserProfileModal";
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
-import { InterviewModal } from "@/components/JobSeekerModals/InterviewModal";
+import { StaticQuestionsModal } from "@/components/JobSeekerModals/StaticQuestionsModal";
 import { UpcomingInterviewModal } from "@/components/JobSeekerModals/UpcomingInterviewModal";
 import { InvitedJobsModal } from "@/components/JobSeekerModals/InvitedJobsModal";
 
@@ -38,6 +38,7 @@ export default function Dashboard() {
   const { user, isLoading } = useAuth();
   const logout = useLogout();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { t, isRTL } = useLanguage();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedJobDetails, setSelectedJobDetails] = useState<{title: string, id: string} | null>(null);
@@ -206,10 +207,11 @@ export default function Dashboard() {
   
   // More strict interview completion check - require ALL three interviews AND aiProfileGenerated
   const hasCompletedPersonalInterview = true;
-  const hasCompletedProfessionalInterview = (profile as any)?.professionalInterviewCompleted;
+  const hasCompletedProfessionalInterview = true;
   const hasCompletedTechnicalInterview = true;
-  
-  const hasCompletedAllInterviews = hasCompletedPersonalInterview && hasCompletedProfessionalInterview && hasCompletedTechnicalInterview;
+  const staticQuestionsAnswers = (!!(profile as any)?.staticQuestionsAnswers) || false
+
+  const hasCompletedAllInterviews = hasCompletedPersonalInterview && hasCompletedProfessionalInterview && hasCompletedTechnicalInterview && staticQuestionsAnswers;
   const hasCompletedInterview = hasCompletedAllInterviews;
   
   // Show full dashboard only when BOTH steps are complete: complete profile (including CV) AND ALL interviews completed
@@ -756,10 +758,13 @@ export default function Dashboard() {
         isOpen={activeModal === 'profile'} 
         onClose={closeModal} 
       />
-      <InterviewModal
+      <StaticQuestionsModal
         isOpen={activeModal === 'interview'}
         onClose={closeModal}
-        onAllInterviewsCompleted={handleAllInterviewsCompleted}
+        onComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/comprehensive-profile"] });
+        }}
       />
 
       <MatchesModal 
