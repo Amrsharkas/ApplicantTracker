@@ -10,6 +10,7 @@ import { useCameraRecorder } from '@/hooks/useCameraRecorder';
 import { MessageCircle, MessageSquare, User, Mic, MicOff, PhoneOff, Video, Circle, CheckCircle } from "lucide-react";
 import { CameraPreview } from '@/components/CameraPreview';
 import { getInterviewLanguage, getLanguageDisplayName } from '@/lib/interviewUtils';
+import { InterviewTranscriptionDialog } from './InterviewTranscriptionDialog';
 
 interface JobSummary {
   recordId: string;
@@ -48,11 +49,13 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [conversationHistory, setConversationHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [conversationHistory, setConversationHistory] = useState<{ role: 'user' | 'assistant'; content: string; timestamp: number }[]>([]);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [showTranscription, setShowTranscription] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isInterviewComplete, setIsInterviewComplete] = useState(false);
+  const [showTranscriptionDialog, setShowTranscriptionDialog] = useState(false);
+  const [completedSessionId, setCompletedSessionId] = useState<number | null>(null);
   const { isRecording, startRecording, stopRecording, cleanup } = useCameraRecorder();
 
   // Debug: Log the environment variable value and its type
@@ -103,7 +106,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
             if (isDuplicate) {
               return prev;
             }
-            return [...prev, { role: 'assistant', content: aiText }];
+            return [...prev, { role: 'assistant', content: aiText, timestamp: Date.now() }];
           });
         }
       }
@@ -119,7 +122,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
             if (isDuplicate) {
               return prev;
             }
-            return [...prev, { role: 'user', content: userText }];
+            return [...prev, { role: 'user', content: userText, timestamp: Date.now() }];
           });
         }
       }
@@ -143,10 +146,12 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
 
         // Initialize conversation history from existing responses
         if (data?.sessionData?.responses) {
-          const history: { role: 'user' | 'assistant'; content: string }[] = [];
-          for (const response of data.sessionData.responses) {
-            history.push({ role: 'assistant', content: response.question });
-            history.push({ role: 'user', content: response.answer });
+          const history: { role: 'user' | 'assistant'; content: string; timestamp: number }[] = [];
+          const baseTimestamp = Date.now() - (data.sessionData.responses.length * 60000); // Estimate 1min per Q&A
+          for (let i = 0; i < data.sessionData.responses.length; i++) {
+            const response = data.sessionData.responses[i];
+            history.push({ role: 'assistant', content: response.question, timestamp: baseTimestamp + (i * 60000) });
+            history.push({ role: 'user', content: response.answer, timestamp: baseTimestamp + (i * 60000) + 30000 });
           }
           setConversationHistory(history);
         }
@@ -207,7 +212,14 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       if (data.isComplete) {
         toast({ title: 'Interview Complete', description: 'Your job-specific interview has been completed.' });
         onInterviewComplete?.();
-        onClose();
+
+        // Show transcription dialog
+        if (session?.id) {
+          setCompletedSessionId(session.id);
+          setShowTranscriptionDialog(true);
+        } else {
+          onClose();
+        }
         return;
       }
 
@@ -222,7 +234,12 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       } : prev);
 
       // Also update conversation history for voice mode consistency
-      setConversationHistory(prev => [...prev, { role: 'assistant', content: currentQuestion }, { role: 'user', content: currentAnswer }]);
+      const timestamp = Date.now();
+      setConversationHistory(prev => [
+        ...prev,
+        { role: 'assistant', content: currentQuestion, timestamp },
+        { role: 'user', content: currentAnswer, timestamp: timestamp + 1000 }
+      ]);
       setCurrentAnswer("");
     } catch (e: any) {
       toast({ title: 'Error', description: e?.message || 'Failed to submit answer', variant: 'destructive' });
@@ -342,9 +359,17 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message || 'Failed to complete');
+
       toast({ title: 'Interview Complete', description: 'Your job-specific voice interview has been completed.' });
+
+      // Store the session ID and show transcription dialog
+      if (session?.id) {
+        setCompletedSessionId(session.id);
+        setShowTranscriptionDialog(true);
+      }
+
       onInterviewComplete?.();
-      onClose();
+      // Don't close the main dialog yet - transcription dialog will handle that
     } catch (e: any) {
       toast({ title: 'Error', description: e?.message || 'Failed to complete interview', variant: 'destructive' });
     } finally {
@@ -356,6 +381,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   // Voice mode uses a different, full-screen interface
   if (mode === 'voice') {
     return (
+      <>
       <div className="w-full h-full bg-gray-950 flex flex-col">
         {/* Header with enhanced controls */}
         <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -583,11 +609,26 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           </div>
         </div>
       </div>
+
+      {/* Show transcription dialog after interview completion */}
+      {showTranscriptionDialog && completedSessionId && (
+        <InterviewTranscriptionDialog
+          isOpen={showTranscriptionDialog}
+          onClose={() => {
+            setShowTranscriptionDialog(false);
+            setCompletedSessionId(null);
+            onClose(); // Close the main interview modal as well
+          }}
+          sessionId={completedSessionId}
+        />
+      )}
+      </>
     );
   }
 
   // Regular dialog for text mode
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-screen h-screen max-w-none max-h-none p-0">
         <DialogHeader className="px-6 py-4 border-b">
@@ -787,5 +828,19 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Show transcription dialog after interview completion */}
+    {showTranscriptionDialog && completedSessionId && (
+      <InterviewTranscriptionDialog
+        isOpen={showTranscriptionDialog}
+        onClose={() => {
+          setShowTranscriptionDialog(false);
+          setCompletedSessionId(null);
+          onClose(); // Close the main interview modal as well
+        }}
+        sessionId={completedSessionId}
+      />
+    )}
+    </>
   );
 }

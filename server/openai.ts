@@ -2091,5 +2091,123 @@ Return ONLY JSON:
   generateProfile: (userData: any, resumeContent: string | null, interviewResponses: InterviewResponse[], resumeAnalysis?: any, jobDescription?: string) =>
     aiProfileAnalysisAgent.generateComprehensiveProfile(userData, resumeContent, interviewResponses, resumeAnalysis, jobDescription),
   parseResume: aiProfileAnalysisAgent.parseResume.bind(aiProfileAnalysisAgent),
-  parseResumeForProfile: aiProfileAnalysisAgent.parseResumeForProfile.bind(aiProfileAnalysisAgent)
+  parseResumeForProfile: aiProfileAnalysisAgent.parseResumeForProfile.bind(aiProfileAnalysisAgent),
+
+  // Parse interview transcription into Q&A pairs
+  parseInterviewTranscription: async (transcription: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number }>, userId?: string) => {
+    try {
+      // Build a formatted transcript for AI
+      const formattedTranscript = transcription
+        .map((item) => {
+          const timestamp = new Date(item.timestamp).toISOString();
+          const speaker = item.role === 'assistant' ? 'INTERVIEWER' : 'CANDIDATE';
+          return `[${timestamp}] ${speaker}: ${item.content}`;
+        })
+        .join('\n\n');
+        
+      const prompt = `You are analyzing an interview transcription. Parse the following conversation into clear question-answer pairs and provide constructive feedback for each answer.
+
+For each Q&A pair, extract:
+1. The question asked by the interviewer
+2. The answer given by the candidate
+3. The timestamps for both (convert from ISO format to milliseconds since epoch)
+4. Provide constructive feedback on the candidate's answer, including:
+   - What they did well
+   - Areas for improvement
+   - Suggestions for a stronger response
+   - Overall quality assessment (1-2 sentences)
+
+Return ONLY a JSON object with this structure (no markdown, no additional text):
+      {
+        data: [
+          {
+            "question": "the interviewer's question",
+            "answer": "the candidate's answer",
+            "feedback": "constructive feedback on the answer with specific suggestions for improvement",
+            "questionTimestamp": timestamp_in_milliseconds,
+            "answerTimestamp": timestamp_in_milliseconds
+          }
+        ]
+      }
+
+IMPORTANT:
+- Return ONLY the JSON object, no markdown code blocks or additional text
+- Feedback should be constructive, specific, and actionable
+- Keep feedback concise but valuable (2-4 sentences)
+- Focus on both strengths and areas for improvement
+
+Transcription:
+${formattedTranscript}`;
+
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: process.env.OPENAI_MODEL_PARSE_TRANSCRIPTION || "gpt-4o-mini",
+          messages: [
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          temperature: 0.3,
+          response_format: { type: "json_object" }
+        }),
+        {
+          requestType: "parseInterviewTranscription",
+          model: process.env.OPENAI_MODEL_PARSE_TRANSCRIPTION || "gpt-4o-mini",
+          userId: userId || null,
+        }
+      );
+
+      const responseText = response.choices[0].message.content || '';
+
+      try {
+        // Try to parse the response as JSON
+        const parsed = JSON.parse(responseText);
+        
+        return parsed.data || [];
+      } catch (parseError) {
+        console.error('Failed to parse AI response as JSON:', parseError);
+        // Fallback to simple parsing
+        return transcription
+          .filter((item, index) =>
+            item.role === 'assistant' &&
+            index < transcription.length - 1 &&
+            transcription[index + 1].role === 'user'
+          )
+          .map((item, index) => {
+            const nextItem = transcription.find((t, i) =>
+              i > transcription.indexOf(item) && t.role === 'user'
+            );
+            return {
+              question: item.content,
+              answer: nextItem?.content || '',
+              feedback: 'Feedback not available',
+              questionTimestamp: item.timestamp,
+              answerTimestamp: nextItem?.timestamp || item.timestamp
+            };
+          });
+      }
+    } catch (error) {
+      console.error('Error parsing transcription with AI:', error);
+      // Fallback to simple parsing
+      return transcription
+        .filter((item, index) =>
+          item.role === 'assistant' &&
+          index < transcription.length - 1 &&
+          transcription[index + 1].role === 'user'
+        )
+        .map((item, index) => {
+          const nextItem = transcription.find((t, i) =>
+            i > transcription.indexOf(item) && t.role === 'user'
+          );
+          return {
+            question: item.content,
+            answer: nextItem?.content || '',
+            feedback: 'Feedback not available',
+            questionTimestamp: item.timestamp,
+            answerTimestamp: nextItem?.timestamp || item.timestamp
+          };
+        });
+    }
+  }
 };

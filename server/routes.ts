@@ -15,7 +15,7 @@ import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUplo
 import { creditService } from './creditService';
 // Dynamic import for pdf-parse will be used when needed
 import { db } from "./db";
-import { applicantProfiles, interviewSessions, resumeUploads, jobMatches, applications, sessions, users } from "@shared/schema";
+import { applicantProfiles, interviewSessions, interviewRecordings, resumeUploads, jobMatches, applications, sessions, users } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
@@ -2512,12 +2512,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Save the interview session with completion (without generating profile yet)
+      // Extract questions (assistant messages) and full conversation with timestamps
+      const questions = conversationHistory
+        .filter(item => item.role === 'assistant')
+        .map(item => ({ question: item.content }));
+
       const session = await storage.createInterviewSession({
         userId,
         interviewType: interviewType || 'personal',
         sessionData: {
-          questions: conversationHistory.map(item => ({ question: item.question })),
-          responses: conversationHistory,
+          questions,
+          responses: conversationHistory, // Now includes timestamps
           currentQuestionIndex: conversationHistory.length
         },
         isCompleted: true,
@@ -2656,6 +2661,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching interview session:", error);
       res.status(500).json({ message: "Failed to fetch interview session" });
+    }
+  });
+
+  // Fetch specific interview session by ID
+  app.get('/api/interview/session/:sessionId', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const sessionId = 189; //parseInt(req.params.sessionId);
+
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ message: "Invalid session ID" });
+      }
+
+      // Fetch the session from database
+      const [session] = await db
+        .select()
+        .from(interviewSessions)
+        .where(eq(interviewSessions.id, sessionId))
+        .limit(1);
+
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+
+      // Verify the session belongs to the current user
+      if (session.userId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      res.json(session);
+    } catch (error) {
+      console.error("Error fetching interview session:", error);
+      res.status(500).json({ message: "Failed to fetch interview session" });
+    }
+  });
+
+  // Fetch recording by session ID
+  app.get('/api/interview/recording/:sessionId', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const sessionId = parseInt(req.params.sessionId);
+
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ message: "Invalid session ID" });
+      }
+
+      // First verify the session belongs to the user
+      const [session] = await db
+        .select()
+        .from(interviewSessions)
+        .where(eq(interviewSessions.id, sessionId))
+        .limit(1);
+
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+
+      if (session.userId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      // Fetch the recording
+      const [recording] = await db
+        .select()
+        .from(interviewRecordings)
+        .where(eq(interviewRecordings.sessionId, sessionId))
+        .limit(1);
+
+      if (!recording) {
+        return res.status(404).json({ message: "Recording not found" });
+      }
+
+      // Return recording with URL instead of path
+      const recordingData = {
+        id: recording.id,
+        sessionId: recording.sessionId,
+        recordingUrl: `/uploads/interviews/${recording.recordingPath}`,
+        createdAt: recording.createdAt
+      };
+
+      res.json(recordingData);
+    } catch (error) {
+      console.error("Error fetching interview recording:", error);
+      res.status(500).json({ message: "Failed to fetch interview recording" });
+    }
+  });
+
+  // Parse interview transcription using AI
+  app.post('/api/interview/parse-transcription', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { transcription } = req.body;
+
+      if (!transcription || !Array.isArray(transcription)) {
+        return res.status(400).json({ message: "Invalid transcription data" });
+      }
+
+      // Use OpenAI to parse the transcription into Q&A pairs
+      const parsedQA = await aiInterviewService.parseInterviewTranscription(transcription, userId);
+
+      res.json({ parsedQA });
+    } catch (error) {
+      console.error("Error parsing transcription:", error);
+      res.status(500).json({ message: "Failed to parse transcription" });
     }
   });
 
