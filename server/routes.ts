@@ -1669,7 +1669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Interview routes
   // Start a job-specific practice interview (voice)
-  app.post('/api/interview/start-job-practice-voice', 
+  app.post('/api/interview/start-job-practice-voice',
     requireAuth,
     async (req: any, res) => {
     try {
@@ -1682,6 +1682,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
+
+      // Deduct credits at the start of the interview
+      if (job.jobId) {
+        try {
+          const jobRecord = await db
+            .select()
+            .from(jobs)
+            .where(eq(jobs.id, job.jobId))
+            .limit(1);
+
+          if (jobRecord[0]?.organizationId) {
+            const organizationId = jobRecord[0].organizationId;
+            const interviewCost = await creditService.getActionCost('interview_scheduling');
+
+            // Check if organization has sufficient credits
+            const hasCredits = await creditService.checkCredits(organizationId, interviewCost);
+            if (!hasCredits) {
+              return res.status(402).json({
+                message: 'Insufficient credits to start interview',
+                requiresCredits: true
+              });
+            }
+
+            await creditService.deductCredits(
+              organizationId,
+              interviewCost,
+              'interview_scheduling',
+              `Job-specific interview started: ${job.jobTitle || job.title || 'Unknown'}`,
+              userId
+            );
+            console.log(`💳 Charged ${interviewCost} credits to org ${organizationId} for starting interview: ${job.jobTitle}`);
+          } else {
+            console.log('ℹ️ Job has no organization ID - skipping credit charging');
+          }
+        } catch (creditError) {
+          console.error('⚠️ Failed to deduct interview credits:', creditError);
+          return res.status(500).json({ message: 'Failed to process credits for interview' });
+        }
+      }
 
       // Generate job-specific practice set
       const practiceSet = await aiInterviewService.generateJobPracticeInterview({
@@ -1729,7 +1768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   // Start a job-specific practice interview (no persistence to Airtable schedules)
-  app.post('/api/interview/start-job-practice', 
+  app.post('/api/interview/start-job-practice',
     requireAuth,
     async (req: any, res) => {
     try {
@@ -1742,6 +1781,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
+
+      // Deduct credits at the start of the interview
+      if (job.jobId) {
+        try {
+          const jobRecord = await db
+            .select()
+            .from(jobs)
+            .where(eq(jobs.id, job.jobId))
+            .limit(1);
+
+          if (jobRecord[0]?.organizationId) {
+            const organizationId = jobRecord[0].organizationId;
+            const interviewCost = await creditService.getActionCost('interview_scheduling');
+
+            // Check if organization has sufficient credits
+            const hasCredits = await creditService.checkCredits(organizationId, interviewCost);
+            if (!hasCredits) {
+              return res.status(402).json({
+                message: 'Insufficient credits to start interview',
+                requiresCredits: true
+              });
+            }
+
+            await creditService.deductCredits(
+              organizationId,
+              interviewCost,
+              'interview_scheduling',
+              `Job-specific interview started: ${job.jobTitle || job.title || 'Unknown'}`,
+              userId
+            );
+            console.log(`💳 Charged ${interviewCost} credits to org ${organizationId} for starting interview: ${job.jobTitle}`);
+          } else {
+            console.log('ℹ️ Job has no organization ID - skipping credit charging');
+          }
+        } catch (creditError) {
+          console.error('⚠️ Failed to deduct interview credits:', creditError);
+          return res.status(500).json({ message: 'Failed to process credits for interview' });
+        }
+      }
 
       // Generate job-specific practice set
       const practiceSet = await aiInterviewService.generateJobPracticeInterview({
@@ -2179,33 +2257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // Create new record in airtable_job_applications after job practice interview completion
             try {
-              // Get job details to find organization and charge credits
-              const jobRecord = await db
-                .select()
-                .from(jobs)
-                .where(eq(jobs.id, relevantMatch?.jobId || 0))
-                .limit(1);
-
-              // Charge credits if organization exists
-              if (jobRecord[0]?.organizationId) {
-                const organizationId = jobRecord[0].organizationId;
-                try {
-                  const interviewCost = await creditService.getActionCost('interview_scheduling');
-                  await creditService.deductCredits(
-                    organizationId,
-                    interviewCost,
-                    'interview_scheduling',
-                    `Job-specific interview: ${job.jobTitle || job.title || 'Unknown'}`,
-                    session.id
-                  );
-                  console.log(`💳 Charged ${interviewCost} credits to org ${organizationId} for interview: ${job.jobTitle}`);
-                } catch (creditError) {
-                  console.error('⚠️ Failed to deduct interview credits:', creditError);
-                  // Continue with flow - log for manual review
-                }
-              } else {
-                console.log('ℹ️ Job has no organization ID - skipping credit charging');
-              }
+              // Note: Credits are now deducted when the interview starts, not when it completes
 
               const userProfile = await storage.getApplicantProfile(userId);
               const userName = userProfile?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Applicant';
