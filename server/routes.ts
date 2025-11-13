@@ -3232,6 +3232,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get count of invited jobs for the logged-in user
+  app.get('/api/invited-jobs/count', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+
+      // Get job matches from local database
+      const jobMatches = await localDatabaseService.getJobMatchesByUser(userId);
+
+      // Filter for invited jobs (jobs with status 'invited')
+      const invitedJobs = jobMatches.filter(match => match.status === 'invited');
+
+      console.log(`Found ${invitedJobs.length} invited jobs for user ${userId}`);
+
+      return res.json({ count: invitedJobs.length });
+    } catch (error) {
+      console.error('Error fetching invited jobs count:', error);
+      return res.status(500).json({ message: 'Failed to fetch invited jobs count' });
+    }
+  });
+
   // Cache for parsed employer questions (5-minute expiration)
   const employerQuestionsCache = new Map<string, {
     questions: any[];
