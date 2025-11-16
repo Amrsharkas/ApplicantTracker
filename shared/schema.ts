@@ -921,6 +921,8 @@ export const airtableJobMatches = pgTable("airtable_job_matches", {
   interviewTime: varchar("interview_time"),
   interviewLink: text("interview_link"),
   matchScore: integer("match_score"),
+  score: integer("score"), // Interview score 0-100
+  interviewComments: text("interview_comments"), // AI-generated feedback
   status: varchar("status").default("pending"),
   token: varchar("token").unique().notNull(),
   createdAt: timestamp("created_at").defaultNow(),

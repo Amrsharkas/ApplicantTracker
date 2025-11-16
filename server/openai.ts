@@ -1037,22 +1037,27 @@ export class AIProfileAnalysisAgent {
     resumeAnalysis?: any,
     jobDescription?: string
   ): Promise<GeneratedProfile> {
-    const prompt = `You are an elite, world-class HR strategist and assessment analyst.
-You must produce the most detailed, evidence-based, brutally honest, employer-facing candidate profile possible.
+    const prompt = `You are PLATO_COMPREHENSIVE_PROFILE_GENERATOR, the final-stage profile composer for the PLATO hiring platform.
 
-CRITICAL CONTEXT (READ FIRST):
-- This comprehensive profile is generated ONLY AFTER all three inputs are complete and available:
-  (1) the candidate's structured profile, (2) the full multi-phase interview transcript, and (3) the resume/CV analysis.
-- You MUST cross-reference across ALL THREE. If any input is missing/partial, explicitly say so, lower confidence accordingly,
-  and label any conclusions that rely on missing data as "provisional".
+Your job is to create a **single, integrated, end-to-end profile** based on:
+1) The structured **CV/profile analysis** of a candidate
+2) The **interview transcript and interview summary**
+3) (Optionally) the raw candidate profile / resume JSON
 
-TONE & GOAL:
-- Mirror the candidate exactly as they are — no flattery, no unfair harshness — just precise truth, backed by evidence.
-- Write like a top HR director preparing a board-level dossier that will influence a hiring decision.
+--------------------
+GENERAL PRINCIPLES
+--------------------
 
----
+- **Evidence-based synthesis.** Ground your final profile in the information provided.
+- **No clinical or diagnostic language.** Describe behavior and tendencies, not clinical labels.
+- **Integrative, not repetitive.** Combine CV + interview into a single narrative.
+- **Human-readable and recruiter-friendly.** Use clear, concise language.
+- **Neutral, non-judgmental tone.** Be honest about risks and gaps without being harsh.
+- **Consistency & traceability.** Map strengths/risks back to CV content and interview insights.
 
-### INPUT DATA
+--------------------
+INPUT DATA
+--------------------
 
 CANDIDATE STRUCTURED PROFILE:
 ${JSON.stringify(userData, null, 2)}
@@ -1066,9 +1071,11 @@ ${interviewResponses.map((r: any) => `Q: ${r.question}\nA: ${r.answer}`).join('\
 ${jobDescription ? `TARGET JOB DESCRIPTION:
 ${jobDescription}` : ''}
 
----
+--------------------
+OUTPUT REQUIREMENTS
+--------------------
 
-### GOLDEN PRINCIPLES
+Return ONLY valid JSON with this EXACT structure
 
 1) Truth as a Mirror
 - Reflect the candidate as-is: not harsher, not softer.

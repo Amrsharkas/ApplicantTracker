@@ -2549,6 +2549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/interview/complete-voice', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const user = req.user;
       const { conversationHistory, interviewType, job } = req.body;
 
       if (!conversationHistory || !Array.isArray(conversationHistory)) {
@@ -2556,7 +2557,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get user and profile data for AI Agent 2
-      const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
       // Get resume content if available
@@ -2591,6 +2591,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isCompleted: true,
         generatedProfile: null // Don't save individual profiles
       });
+
+      // Special handling for job-specific practice interviews - score and update status
+      let score = 70;
+      let rationale: string | null = null;
+
+      if (interviewType === 'job-practice' && job) {
+        const jobMatchingId = job.recordId ?? null;
+
+        try {
+          // Score the voice interview using the same logic as text mode
+          const jobTitle = job.jobTitle || job.title || 'Job Title';
+          const companyName = job.companyName || job.company || 'Company';
+          const jobDescription = job.jobDescription || job.description || '';
+          const qaPairs = conversationHistory
+            .filter(item => item.role === 'assistant' || item.role === 'user')
+            .map((item, idx) => `${item.role === 'assistant' ? 'Q' : 'A'}${Math.floor(idx/2) + 1}: ${item.content}`)
+            .join('\n\n');
+
+          const prompt = `You are an expert technical hiring panel and behavioral analyst. Evaluate this candidate's job-specific interview thoroughly and return a single JSON object. Use a granular 0–100 scale, allowing decimal values (e.g., 87.4) for more accurate scoring.\n\nWhen scoring, consider:\n- How well their answers match the job requirements.\n- Depth, correctness, and completeness of technical knowledge.\n- Communication style (clarity, structure, confidence, professionalism).\n- Problem-solving ability, reasoning, and creativity.\n- Soft skills that are relevant for this role (collaboration, adaptability, leadership if applicable).\n- Overall likelihood of success in the role.\n\nYour response must ONLY be a JSON object with the following keys:\n\n{\n  \"score\": 87.4, // decimal allowed between 0–100\n  \"rationale\": \"Provide a concise but insightful 2–3 sentence analysis summarizing their performance, including both technical and behavioral strengths/weaknesses.\"\n}\n\nJOB TITLE: ${jobTitle} at ${companyName}\nJOB DESCRIPTION:\n${jobDescription}\n\nINTERVIEW QA:\n${qaPairs}`;
+
+          const completion = await wrapOpenAIRequest(
+            () => aiInterviewAgent.openai.chat.completions.create({
+              model: process.env.OPENAI_MODEL_JOB_SPECIFIC_INTERVIEW_SCORING || 'gpt-4o',
+              messages: [{ role: 'user', content: prompt }],
+              temperature: 0.2,
+              max_completion_tokens: 250,
+              response_format: { type: 'json_object' } as any
+            }),
+            {
+              requestType: "scoreJobSpecificVoiceInterview",
+              model: process.env.OPENAI_MODEL_JOB_SPECIFIC_INTERVIEW_SCORING || "gpt-4o",
+              userId: userId,
+            }
+          );
+
+          const content = completion.choices?.[0]?.message?.content || '{}';
+          console.log('🔎 OpenAI voice interview scoring raw content:', content);
+          const tryParse = (text: string): { score?: number; rationale?: string } | null => {
+            try {
+              const parsed = JSON.parse(text);
+              console.log('🔎 Parsed JSON (direct):', parsed);
+              return parsed;
+            } catch {}
+            const stripped = text
+              .replace(/^```json\s*/i, '')
+              .replace(/^```\s*/i, '')
+              .replace(/```\s*$/i, '')
+              .trim();
+            try {
+              const parsed2 = JSON.parse(stripped);
+              console.log('🔎 Parsed JSON (stripped):', parsed2);
+              return parsed2;
+            } catch {}
+            try {
+              const start = stripped.indexOf('{');
+              const end = stripped.lastIndexOf('}');
+              if (start !== -1 && end !== -1 && end > start) {
+                const sub = stripped.slice(start, end + 1);
+                const parsed3 = JSON.parse(sub);
+                console.log('🔎 Parsed JSON (substring):', parsed3);
+                return parsed3;
+              }
+            } catch {}
+            const m = stripped.match(/\bscore\b\s*[:=]\s*(\d{1,3})/i) || stripped.match(/\b(\d{1,3})\b/);
+            const s = m && m[1] ? parseInt(m[1], 10) : NaN;
+            const r = (stripped.match(/"?rationale"?\s*[:=]\s*"([^"]+)"/i) || [null, null])[1];
+            return { score: isNaN(s) ? undefined : s, rationale: r || undefined };
+          };
+          const parsedAny = tryParse(content) || {} as any;
+          if (typeof parsedAny.score === 'number') {
+            score = Math.max(0, Math.min(100, Math.round(parsedAny.score)));
+          } else {
+            console.warn('⚠️ Could not parse voice interview score, using default 70');
+          }
+          if (typeof parsedAny.rationale === 'string') {
+            rationale = parsedAny.rationale;
+          }
+        } catch (scoringError) {
+          console.error('⚠️ Error scoring voice interview:', scoringError);
+          // Continue with default score
+        }
+
+        // Update job match record with score and status
+        try {
+          const [relevantMatch] = await db
+            .select()
+            .from(airtableJobMatches)
+            .where(eq(airtableJobMatches.id, jobMatchingId))
+            .limit(1);
+
+          if (relevantMatch) {
+            await localDatabaseService.updateJobMatch(relevantMatch.id, {
+              score,
+              status: 'completed',
+              interviewComments: rationale || ''
+            });
+            console.log('✅ Updated job match with voice interview score:', relevantMatch.id);
+          } else {
+            console.log('ℹ️ No matching job record found for voice interview score update');
+          }
+        } catch (e) {
+          console.warn('⚠️ Error updating local job match score/status:', e);
+        }
+      }
 
       // Create new record in airtable_job_applications after job practice voice interview completion
       if (interviewType === 'job-practice' && job) {
@@ -2660,7 +2764,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             jobId: null,
             company: job.companyName || job.company || '',
             userProfile: profileData,
-            notes: `Interview completed via voice`,
+            notes: `Interview completed via voice with score: ${score}${rationale ? `\n${rationale}` : ''}`,
             status: 'interview_completed',
             jobDescription: job.jobDescription || job.description || '',
           };
