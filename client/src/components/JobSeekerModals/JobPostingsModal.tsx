@@ -14,6 +14,32 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmployerQuestionsModal } from "./EmployerQuestionsModal";
 import { MapPin, Building, DollarSign, Clock, Users, Search, Briefcase, Filter, ChevronDown, ChevronUp, X, Star, ExternalLink, ArrowRight, CheckCircle, AlertTriangle, Zap, Eye, RefreshCw, ArrowLeft, Mic, AlertCircle } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+
+const FUNNY_MESSAGE_KEYS = [
+  "jobPostingsModal.noJobsMessages.msg1",
+  "jobPostingsModal.noJobsMessages.msg2",
+  "jobPostingsModal.noJobsMessages.msg3",
+  "jobPostingsModal.noJobsMessages.msg4",
+  "jobPostingsModal.noJobsMessages.msg5",
+  "jobPostingsModal.noJobsMessages.msg6",
+  "jobPostingsModal.noJobsMessages.msg7",
+  "jobPostingsModal.noJobsMessages.msg8",
+  "jobPostingsModal.noJobsMessages.msg9",
+  "jobPostingsModal.noJobsMessages.msg10",
+] as const;
+
+const AI_LOADING_MESSAGE_KEYS = [
+  "jobPostingsModal.aiAssistantMessages.msg1",
+  "jobPostingsModal.aiAssistantMessages.msg2",
+  "jobPostingsModal.aiAssistantMessages.msg3",
+  "jobPostingsModal.aiAssistantMessages.msg4",
+  "jobPostingsModal.aiAssistantMessages.msg5",
+  "jobPostingsModal.aiAssistantMessages.msg6",
+  "jobPostingsModal.aiAssistantMessages.msg7",
+  "jobPostingsModal.aiAssistantMessages.msg8",
+  "jobPostingsModal.aiAssistantMessages.msg9",
+] as const;
 
 // Country-City data structure
 const COUNTRIES_CITIES = {
@@ -76,18 +102,10 @@ interface JobPostingsModalProps {
   onStartJobPracticeVoice?: (job: JobPosting) => void;
 }
 
-const funnyNoJobsMessages = [
-  "🦗 *crickets chirping* Looks like employers are still deciding if they want to hire amazing talent like you!",
-  "🌵 It's quieter than a desert out here! But hey, good things come to those who wait... and refresh the page.",
-  "🎭 Plot twist: All the employers are probably still figuring out how to use Airtable. Give them a moment!",
-  "🚀 Houston, we have no job postings! But don't worry, mission control is working on it.",
-  "🎪 The job posting circus hasn't come to town yet, but when it does, you'll be front row center!",
-  "🔮 Our crystal ball says job postings are coming soon. Either that or we need to clean the crystal ball.",
-  "🏖️ Looks like all the employers are on vacation! Must be nice... but they'll be back with jobs soon!",
-  "🎯 Zero job postings found, but hey, you're 100% prepared when they arrive!",
-  "🎨 Think of this as a blank canvas - employers are about to paint it with amazing opportunities!",
-  "🍕 No jobs yet, but that just means more time to grab a snack before the opportunities flood in!"
-];
+type JobTag = {
+  label: string;
+  variant?: "default" | "destructive" | "secondary";
+};
 
 export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobId, onStartJobPractice, onStartJobPracticeVoice }: JobPostingsModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -131,6 +149,12 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
   const [pendingJobValidated, setPendingJobValidated] = useState(false);
   const { toast } = useToast();
+  const { t } = useLanguage();
+  const workplaceOptions = [
+    { value: "On-site", label: t("dashboard.onsite") },
+    { value: "Remote", label: t("dashboard.remote") },
+    { value: "Hybrid", label: t("dashboard.hybrid") },
+  ];
 
   // AI-powered filtering mutation
   const aiFilterMutation = useMutation({
@@ -161,8 +185,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: t("jobPostingsModal.toasts.unauthorizedTitle"),
+          description: t("jobPostingsModal.toasts.unauthorizedDescription"),
           variant: "destructive",
         });
         setTimeout(() => {
@@ -172,8 +196,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       }
       
       toast({
-        title: "Filtering Error",
-        description: "AI filtering failed. Showing all jobs.",
+        title: t("jobPostingsModal.toasts.filteringErrorTitle"),
+        description: t("jobPostingsModal.toasts.filteringErrorDescription"),
         variant: "destructive",
       });
     },
@@ -194,11 +218,11 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     onSuccess: (data) => {
       setAiLoadingResult({
         type: 'success',
-        message: `Application submitted successfully!`
+        message: t("jobPostingsModal.aiResultMessages.success")
       });
       toast({
-        title: "Application Submitted Successfully!",
-        description: `Your application has been analyzed and submitted.`,
+        title: t("jobPostingsModal.toasts.applicationSuccessTitle"),
+        description: t("jobPostingsModal.toasts.applicationSuccessDescription"),
       });
       queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
       setSelectedJob(null);
@@ -211,11 +235,11 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       if (error.message.includes('already applied')) {
         setAiLoadingResult({
           type: 'info',
-          message: `You've already applied to this position!\n\nWe know you're excited about this opportunity, but one application per job should do the trick! 😊`
+          message: t("jobPostingsModal.aiResultMessages.alreadyApplied")
         });
         toast({
-          title: "Already Applied!",
-          description: "You've already submitted an application for this position. We know you're enthusiastic!",
+          title: t("jobPostingsModal.toasts.alreadyAppliedTitle"),
+          description: t("jobPostingsModal.toasts.alreadyAppliedDescription"),
         });
         return;
       }
@@ -223,11 +247,11 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       if (isUnauthorizedError(error)) {
         setAiLoadingResult({
           type: 'error',
-          message: `Application failed: ${error.message}`
+          message: t("jobPostingsModal.aiResultMessages.error").replace("{{message}}", error.message)
         });
         toast({
-          title: "Unauthorized", 
-          description: "You are logged out. Logging in again...",
+          title: t("jobPostingsModal.toasts.unauthorizedTitle"), 
+          description: t("jobPostingsModal.toasts.unauthorizedDescription"),
           variant: "destructive",
         });
         setTimeout(() => {
@@ -238,11 +262,11 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       
       setAiLoadingResult({
         type: 'error',
-        message: `Application failed: ${error.message}`
+        message: t("jobPostingsModal.aiResultMessages.error").replace("{{message}}", error.message)
       });
       toast({
-        title: "Application Failed",
-        description: `Failed to submit application: ${error.message}`,
+        title: t("jobPostingsModal.toasts.applicationFailedTitle"),
+        description: t("jobPostingsModal.toasts.applicationFailedDescription").replace("{{message}}", error.message),
         variant: "destructive",
       });
     },
@@ -255,8 +279,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: t("jobPostingsModal.toasts.unauthorizedTitle"),
+          description: t("jobPostingsModal.toasts.unauthorizedDescription"),
           variant: "destructive",
         });
         setTimeout(() => {
@@ -265,8 +289,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
         return;
       }
       toast({
-        title: "Error",
-        description: "Failed to load job postings. Please try again.",
+        title: t("jobPostingsModal.toasts.loadErrorTitle"),
+        description: t("jobPostingsModal.toasts.loadErrorDescription"),
         variant: "destructive",
       });
     },
@@ -627,8 +651,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
       if (!notificationShown) {
         toast({
-          title: "Job No Longer Available",
-          description: "The job you wanted to apply for is no longer active or has been removed.",
+          title: t("jobPostingsModal.toasts.jobUnavailableTitle"),
+          description: t("jobPostingsModal.toasts.jobUnavailableDescription"),
           variant: "destructive",
         });
         sessionStorage.setItem('pendingJobNotificationShown', 'true');
@@ -686,13 +710,13 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
       // Force refresh the job postings data
       await refetch();
       toast({
-        title: "Refreshed",
-        description: "Job postings have been updated with the latest data.",
+        title: t("jobPostingsModal.toasts.refreshedTitle"),
+        description: t("jobPostingsModal.toasts.refreshedDescription"),
       });
     } catch (error) {
       toast({
-        title: "Refresh Failed",
-        description: "Failed to refresh job postings. Please try again.",
+        title: t("jobPostingsModal.toasts.refreshFailedTitle"),
+        description: t("jobPostingsModal.toasts.refreshFailedDescription"),
         variant: "destructive",
       });
     } finally {
@@ -704,22 +728,32 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     try {
       return new Date(dateString).toLocaleDateString();
     } catch {
-      return 'Recently';
+      return t("jobPostingsModal.labels.recentlyPosted");
     }
   };
 
   const getRandomFunnyMessage = () => {
-    return funnyNoJobsMessages[Math.floor(Math.random() * funnyNoJobsMessages.length)];
+    const messages = FUNNY_MESSAGE_KEYS.map((key) => t(key));
+    return messages[Math.floor(Math.random() * messages.length)];
   };
 
-  const getJobTags = (job: JobPosting) => {
-    const tags = [];
-    if (job.employmentType) tags.push(job.employmentType);
-    if (job.experienceLevel) tags.push(job.experienceLevel);
+  const getRandomAiAssistantMessage = () => {
+    const messages = AI_LOADING_MESSAGE_KEYS.map((key) => t(key));
+    return messages[Math.floor(Math.random() * messages.length)];
+  };
+
+  const getJobTags = (job: JobPosting): JobTag[] => {
+    const tags: JobTag[] = [];
+    if (job.employmentType) tags.push({ label: job.employmentType, variant: "secondary" });
+    if (job.experienceLevel) tags.push({ label: job.experienceLevel, variant: "secondary" });
     if (job.postedAt) {
       const daysSincePosted = Math.floor((Date.now() - new Date(job.postedAt).getTime()) / (1000 * 60 * 60 * 24));
-      if (daysSincePosted <= 3) tags.push("New");
-      if (daysSincePosted <= 1) tags.push("Urgent");
+      if (daysSincePosted <= 3) {
+        tags.push({ label: t("jobPostingsModal.badges.new"), variant: "default" });
+      }
+      if (daysSincePosted <= 1) {
+        tags.push({ label: t("jobPostingsModal.badges.urgent"), variant: "destructive" });
+      }
     }
     return tags;
   };
@@ -792,7 +826,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Briefcase className="h-5 w-5 text-blue-600" />
-              Intelligent Job Discovery ({displayedJobs.length} matches)
+              {t("jobPostingsModal.title")} ({displayedJobs.length} {t("jobPostingsModal.matchesLabel")})
             </div>
             <div className="flex items-center gap-2">
               {activeFiltersCount > 0 && (
@@ -803,7 +837,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                   className="flex items-center gap-1"
                 >
                   <X className="h-4 w-4" />
-                  Clear Filters ({activeFiltersCount})
+                  {t("jobPostingsModal.buttons.clearFilters")} ({activeFiltersCount})
                 </Button>
               )}
               <Button
@@ -812,17 +846,17 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                 onClick={handleManualRefresh}
                 disabled={isRefreshing}
                 className="flex items-center gap-1"
-                title="Refresh job postings"
+                title={t("jobPostingsModal.refreshTitle")}
               >
                 <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh
+                {t("jobPostingsModal.buttons.refresh")}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleClose}
                 className="hover:bg-gray-100"
-                title="Close"
+                title={t("close")}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -837,7 +871,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
           <div className="mx-6 mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
             <div className="flex items-center gap-2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-              <p className="text-sm text-gray-700">AI is analyzing jobs based on your filters...</p>
+              <p className="text-sm text-gray-700">{t("jobPostingsModal.aiFiltering")}</p>
             </div>
           </div>
         )}
@@ -848,10 +882,10 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
             <div className="space-y-1">
               <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center gap-2">
                 <Filter className="h-4 w-4" />
-                Smart Filters
+                {t("jobPostingsModal.smartFilters")}
               </h3>
               <p className="text-xs text-gray-600 mb-4">
-                {activeFiltersCount} active • Always available
+                {t("jobPostingsModal.filtersStatus").replace("{{count}}", String(activeFiltersCount))}
               </p>
 
               {/* Workplace Filter */}
@@ -860,7 +894,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                   onClick={() => toggleFilter('workplace')}
                   className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
                 >
-                  <span>Workplace</span>
+                  <span>{t("jobPostingsModal.filters.workplace")}</span>
                   <div className="flex items-center gap-2">
                     {filters.workplace.length > 0 && (
                       <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
@@ -872,18 +906,18 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                 </button>
                 {expandedFilters.workplace && (
                   <div className="mt-2 space-y-2 pl-2">
-                    {['On-site', 'Remote', 'Hybrid'].map((option) => (
-                      <div key={option} className="flex items-center space-x-2 rtl:space-x-reverse">
+                    {workplaceOptions.map(({ value, label }) => (
+                      <div key={value} className="flex items-center space-x-2 rtl:space-x-reverse">
                         <Checkbox
-                          id={`workplace-${option}`}
-                          checked={filters.workplace.includes(option)}
-                          onCheckedChange={() => toggleWorkplaceFilter(option)}
+                          id={`workplace-${value}`}
+                          checked={filters.workplace.includes(value)}
+                          onCheckedChange={() => toggleWorkplaceFilter(value)}
                         />
                         <label
-                          htmlFor={`workplace-${option}`}
+                          htmlFor={`workplace-${value}`}
                           className="text-sm text-gray-700 cursor-pointer"
                         >
-                          {option}
+                          {label}
                         </label>
                       </div>
                     ))}
@@ -897,7 +931,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                   onClick={() => toggleFilter('country')}
                   className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
                 >
-                  <span>Country</span>
+                  <span>{t("jobPostingsModal.filters.country")}</span>
                   {expandedFilters.country ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
                 {expandedFilters.country && (
@@ -908,7 +942,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                       updateFilter('city', '');
                     }}>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select country" />
+                        <SelectValue placeholder={t("jobPostingsModal.filters.selectCountry")} />
                       </SelectTrigger>
                       <SelectContent>
                         {Object.keys(COUNTRIES_CITIES).map((country) => (
@@ -928,7 +962,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                   onClick={() => toggleFilter('city')}
                   className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
                 >
-                  <span>City</span>
+                  <span>{t("jobPostingsModal.filters.city")}</span>
                   {expandedFilters.city ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
                 {expandedFilters.city && (
@@ -940,7 +974,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder={
-                          filters.country ? "Select city" : "Select country first"
+                          filters.country ? t("jobPostingsModal.filters.selectCity") : t("jobPostingsModal.filters.selectCountryFirst")
                         } />
                       </SelectTrigger>
                       <SelectContent>
@@ -961,23 +995,23 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                   onClick={() => toggleFilter('careerLevel')}
                   className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
                 >
-                  <span>Career Level</span>
+                  <span>{t("jobPostingsModal.filters.careerLevel")}</span>
                   {expandedFilters.careerLevel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
                 {expandedFilters.careerLevel && (
                   <div className="mt-2 pl-2">
                     <Select value={filters.careerLevel} onValueChange={(value) => updateFilter('careerLevel', value)}>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select level" />
+                        <SelectValue placeholder={t("jobPostingsModal.filters.selectLevel")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="entry">Entry Level</SelectItem>
-                        <SelectItem value="junior">Junior</SelectItem>
-                        <SelectItem value="mid">Mid Level</SelectItem>
-                        <SelectItem value="senior">Senior</SelectItem>
-                        <SelectItem value="lead">Lead</SelectItem>
-                        <SelectItem value="manager">Manager</SelectItem>
-                        <SelectItem value="director">Director</SelectItem>
+                        <SelectItem value="entry">{t("dashboard.entryLevel")}</SelectItem>
+                        <SelectItem value="junior">{t("dashboard.junior")}</SelectItem>
+                        <SelectItem value="mid">{t("dashboard.midLevel")}</SelectItem>
+                        <SelectItem value="senior">{t("dashboard.senior")}</SelectItem>
+                        <SelectItem value="lead">{t("dashboard.lead")}</SelectItem>
+                        <SelectItem value="manager">{t("dashboard.manager")}</SelectItem>
+                        <SelectItem value="director">{t("dashboard.director")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -990,24 +1024,24 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                   onClick={() => toggleFilter('jobCategory')}
                   className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
                 >
-                  <span>Job Category</span>
+                  <span>{t("jobPostingsModal.filters.jobCategory")}</span>
                   {expandedFilters.jobCategory ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
                 {expandedFilters.jobCategory && (
                   <div className="mt-2 pl-2">
                     <Select value={filters.jobCategory} onValueChange={(value) => updateFilter('jobCategory', value)}>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder={t("jobPostingsModal.filters.selectCategory")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="engineering">Engineering</SelectItem>
-                        <SelectItem value="marketing">Marketing</SelectItem>
-                        <SelectItem value="sales">Sales</SelectItem>
-                        <SelectItem value="finance">Finance</SelectItem>
-                        <SelectItem value="hr">Human Resources</SelectItem>
-                        <SelectItem value="design">Design</SelectItem>
-                        <SelectItem value="product">Product</SelectItem>
-                        <SelectItem value="operations">Operations</SelectItem>
+                        <SelectItem value="engineering">{t("jobPostingsModal.filters.jobCategoryOptions.engineering")}</SelectItem>
+                        <SelectItem value="marketing">{t("jobPostingsModal.filters.jobCategoryOptions.marketing")}</SelectItem>
+                        <SelectItem value="sales">{t("jobPostingsModal.filters.jobCategoryOptions.sales")}</SelectItem>
+                        <SelectItem value="finance">{t("jobPostingsModal.filters.jobCategoryOptions.finance")}</SelectItem>
+                        <SelectItem value="hr">{t("jobPostingsModal.filters.jobCategoryOptions.hr")}</SelectItem>
+                        <SelectItem value="design">{t("jobPostingsModal.filters.jobCategoryOptions.design")}</SelectItem>
+                        <SelectItem value="product">{t("jobPostingsModal.filters.jobCategoryOptions.product")}</SelectItem>
+                        <SelectItem value="operations">{t("jobPostingsModal.filters.jobCategoryOptions.operations")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1020,21 +1054,21 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                   onClick={() => toggleFilter('jobType')}
                   className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
                 >
-                  <span>Job Type</span>
+                  <span>{t("jobPostingsModal.filters.jobType")}</span>
                   {expandedFilters.jobType ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
                 {expandedFilters.jobType && (
                   <div className="mt-2 pl-2">
                     <Select value={filters.jobType} onValueChange={(value) => updateFilter('jobType', value)}>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select type" />
+                        <SelectValue placeholder={t("jobPostingsModal.filters.selectType")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="full-time">Full Time</SelectItem>
-                        <SelectItem value="part-time">Part Time</SelectItem>
-                        <SelectItem value="contract">Contract</SelectItem>
-                        <SelectItem value="freelance">Freelance</SelectItem>
-                        <SelectItem value="internship">Internship</SelectItem>
+                        <SelectItem value="full-time">{t("dashboard.fullTime")}</SelectItem>
+                        <SelectItem value="part-time">{t("dashboard.partTime")}</SelectItem>
+                        <SelectItem value="contract">{t("dashboard.contract")}</SelectItem>
+                        <SelectItem value="freelance">{t("dashboard.freelance")}</SelectItem>
+                        <SelectItem value="internship">{t("dashboard.internship")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1047,21 +1081,21 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                   onClick={() => toggleFilter('datePosted')}
                   className="flex items-center justify-between w-full py-2 text-left text-sm font-medium text-gray-900 hover:text-blue-600"
                 >
-                  <span>Date Posted</span>
+                  <span>{t("jobPostingsModal.filters.datePosted")}</span>
                   {expandedFilters.datePosted ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
                 {expandedFilters.datePosted && (
                   <div className="mt-2 pl-2">
                     <Select value={filters.datePosted} onValueChange={(value) => updateFilter('datePosted', value)}>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select timeframe" />
+                        <SelectValue placeholder={t("jobPostingsModal.filters.selectTimeframe")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="today">Today</SelectItem>
-                        <SelectItem value="yesterday">Yesterday</SelectItem>
-                        <SelectItem value="week">Past Week</SelectItem>
-                        <SelectItem value="month">Past Month</SelectItem>
-                        <SelectItem value="3months">Past 3 Months</SelectItem>
+                        <SelectItem value="today">{t("jobPostingsModal.filters.dateOptions.today")}</SelectItem>
+                        <SelectItem value="yesterday">{t("jobPostingsModal.filters.dateOptions.yesterday")}</SelectItem>
+                        <SelectItem value="week">{t("jobPostingsModal.filters.dateOptions.week")}</SelectItem>
+                        <SelectItem value="month">{t("jobPostingsModal.filters.dateOptions.month")}</SelectItem>
+                        <SelectItem value="3months">{t("jobPostingsModal.filters.dateOptions.threeMonths")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1077,7 +1111,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Search jobs by title, company, location, or skills..."
+                  placeholder={t("jobPostingsModal.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -1090,7 +1124,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
               <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 flex-shrink-0">
                 <p className="text-sm text-blue-800">
                   <Zap className="h-4 w-4 inline mr-1" />
-                  No exact matches found. Showing related roles based on your profile.
+                  {t("jobPostingsModal.relatedNotice")}
                 </p>
               </div>
             )}
@@ -1103,15 +1137,15 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                 </div>
               ) : error ? (
                 <div className="text-center py-12">
-                  <div className="text-red-500 mb-2">Failed to load job postings</div>
-                  <p className="text-gray-600">Please try again later</p>
+                  <div className="text-red-500 mb-2">{t("jobPostingsModal.errorTitle")}</div>
+                  <p className="text-gray-600">{t("jobPostingsModal.errorDescription")}</p>
                 </div>
               ) : displayedJobs.length === 0 ? (
                 <div className="text-center py-12">
                   {jobPostings.length === 0 ? (
                     <div className="max-w-md mx-auto">
                       <div className="text-6xl mb-4">🎭</div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No Job Postings Yet</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">{t("jobPostingsModal.emptyStates.noPostingsTitle")}</h3>
                       <p className="text-gray-600 text-sm leading-relaxed">
                         {getRandomFunnyMessage()}
                       </p>
@@ -1126,7 +1160,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         variant="outline"
                       >
                         <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-                        Refresh Jobs
+                        {t("jobPostingsModal.buttons.refreshJobs")}
                       </Button>
                     </div>
                   ) : (
@@ -1134,8 +1168,8 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                     hasActiveFilters ? null : (
                       <div className="text-center py-8">
                         <div className="text-4xl mb-4">🔍</div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No matches found</h3>
-                        <p className="text-gray-600">Try adjusting your filters or search terms</p>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t("jobPostingsModal.emptyStates.noMatchesTitle")}</h3>
+                        <p className="text-gray-600">{t("jobPostingsModal.emptyStates.noMatchesDescription")}</p>
                       </div>
                     )
                   )}
@@ -1171,7 +1205,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                                     <div className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-full animate-pulse">
                                       <AlertCircle className="h-4 w-4" />
                                       <span className="text-xs font-bold">
-                                        You Wanted to Apply
+                                        {t("jobPostingsModal.badges.pending")}
                                       </span>
                                     </div>
                                   )}
@@ -1182,14 +1216,14 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                                   }`}>
                                     <Star className="h-3 w-3" />
                                     <span className="text-xs font-medium">
-                                      {isNaN(matchScore) ? '50' : matchScore}% Match
+                                      {t("jobPostingsModal.labels.match").replace("{{percentage}}", (isNaN(matchScore) ? '50' : String(matchScore)))}
                                     </span>
                                   </div>
                                   {matchScore >= 80 && (
                                     <div className="flex items-center gap-1 bg-blue-100 px-2 py-1 rounded">
                                       <Zap className="h-3 w-3 text-blue-600" />
                                       <span className="text-xs font-medium text-blue-800">
-                                        Recommended
+                                        {t("jobPostingsModal.badges.recommended")}
                                       </span>
                                     </div>
                                   )}
@@ -1199,21 +1233,21 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                                   <span className="text-gray-500">•</span>
                                   <span className="text-gray-600 flex items-center gap-1">
                                     <MapPin className="h-3 w-3" />
-                                    {job.location || 'Location not specified'}
+                                    {job.location || t("jobPostingsModal.labels.locationNotSpecified")}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2 mb-3">
                                   {jobTags.map((tag, tagIndex) => (
                                     <Badge 
                                       key={tagIndex}
-                                      variant={tag === "New" ? "default" : tag === "Urgent" ? "destructive" : "secondary"}
+                                      variant={tag.variant || "secondary"}
                                       className="text-xs"
                                     >
-                                      {tag}
+                                      {tag.label}
                                     </Badge>
                                   ))}
                                   <span className="text-gray-500 text-sm">
-                                    {job.postedAt ? formatDate(job.postedAt) : 'Recently posted'}
+                                    {job.postedAt ? formatDate(job.postedAt) : t("jobPostingsModal.labels.recentlyPosted")}
                                   </span>
                                 </div>
                                 <div className="text-gray-700 text-sm leading-relaxed mb-4 line-clamp-3 prose prose-sm max-w-none">
@@ -1232,7 +1266,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                                     ))}
                                     {job.skills.length > 4 && (
                                       <Badge variant="outline" className="text-xs">
-                                        +{job.skills.length - 4} more
+                                        {t("jobPostingsModal.labels.moreSkills").replace("{{count}}", String(job.skills.length - 4))}
                                       </Badge>
                                     )}
                                   </div>
@@ -1249,7 +1283,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                                     className="flex items-center gap-1"
                                   >
                                     <ExternalLink className="h-3 w-3" />
-                                    View Details
+                                    {t("jobPostingsModal.buttons.viewDetails")}
                                   </Button>
                                   <Button
                                     size="sm"
@@ -1263,12 +1297,12 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                                     {newApplicationMutation.isPending ? (
                                       <>
                                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                                        AI Analyzing...
+                                        {t("jobPostingsModal.aiAnalyzing")}
                                       </>
                                     ) : (
                                       <>
                                         <ArrowRight className="h-3 w-3" />
-                                        Apply
+                                        {t("jobPostingsModal.buttons.apply")}
                                       </>
                                     )}
                                   </Button>
@@ -1328,10 +1362,13 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         <div className="flex items-center gap-1 bg-green-100 px-2 py-1 rounded">
                           <Star className="h-4 w-4 text-green-600" />
                           <span className="text-sm font-medium text-green-800">
-                            {(() => {
-                              const score = calculateAIMatchScore(selectedJob);
-                              return isNaN(score) ? '50' : score;
-                            })()}% Match
+                            {t("jobPostingsModal.labels.match").replace(
+                              "{{percentage}}",
+                              (() => {
+                                const score = calculateAIMatchScore(selectedJob);
+                                return isNaN(score) ? '50' : String(score);
+                              })()
+                            )}
                           </span>
                         </div>
                       </div>
@@ -1340,10 +1377,10 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         <span className="font-medium">{selectedJob.companyName}</span>
                         <span>•</span>
                         <MapPin className="h-4 w-4" />
-                        <span>{selectedJob.location || 'Remote'}</span>
+                        <span>{selectedJob.location || t("jobPostingsModal.labels.remoteFallback")}</span>
                         <span>•</span>
                         <Clock className="h-4 w-4" />
-                        <span>{selectedJob.postedAt ? formatDate(selectedJob.postedAt) : 'Recently posted'}</span>
+                        <span>{selectedJob.postedAt ? formatDate(selectedJob.postedAt) : t("jobPostingsModal.labels.recentlyPosted")}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
@@ -1356,7 +1393,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                           setSelectedJob(null);
                         }}
                         className="hover:bg-gray-100"
-                        title="Back to job list"
+                        title={t("jobPostingsModal.buttons.backToList")}
                       >
                         <ArrowLeft className="h-4 w-4" />
                       </Button>
@@ -1369,7 +1406,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                           handleClose();
                         }}
                         className="hover:bg-gray-100"
-                        title="Close"
+                        title={t("close")}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -1383,16 +1420,16 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                     {/* Job Overview */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-gray-900 mb-2">Employment Type</h4>
-                        <p className="text-gray-700">{selectedJob.employmentType || 'Full-time'}</p>
+                        <h4 className="font-semibold text-gray-900 mb-2">{t("jobPostingsModal.info.employmentType")}</h4>
+                        <p className="text-gray-700">{selectedJob.employmentType || t("jobPostingsModal.info.fullTimeFallback")}</p>
                       </div>
                       <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-gray-900 mb-2">Experience Level</h4>
-                        <p className="text-gray-700">{selectedJob.experienceLevel || 'Not specified'}</p>
+                        <h4 className="font-semibold text-gray-900 mb-2">{t("jobPostingsModal.info.experienceLevel")}</h4>
+                        <p className="text-gray-700">{selectedJob.experienceLevel || t("jobPostingsModal.info.notSpecified")}</p>
                       </div>
                       {selectedJob.salaryRange && (
                         <div className="bg-gray-50 p-4 rounded-lg col-span-2">
-                          <h4 className="font-semibold text-gray-900 mb-2">Salary Range</h4>
+                          <h4 className="font-semibold text-gray-900 mb-2">{t("jobPostingsModal.info.salaryRange")}</h4>
                           <p className="text-gray-700">{selectedJob.salaryRange}</p>
                         </div>
                       )}
@@ -1400,7 +1437,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
                     {/* Job Description */}
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Description</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">{t("jobPostingsModal.info.jobDescription")}</h3>
                       <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
                         <ReactMarkdown>{selectedJob.description}</ReactMarkdown>
                       </div>
@@ -1409,7 +1446,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                     {/* AI Prompt */}
                     {selectedJob.aiPrompt && (
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3">AI Prompt</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">{t("jobPostingsModal.info.aiPrompt")}</h3>
                         <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
                           <p className="text-purple-800 text-sm leading-relaxed whitespace-pre-wrap">
                             {selectedJob.aiPrompt}
@@ -1421,7 +1458,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                     {/* Skills & Requirements */}
                     {selectedJob.skills && selectedJob.skills.length > 0 && (
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Required Skills</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">{t("jobPostingsModal.info.requiredSkills")}</h3>
                         <div className="flex flex-wrap gap-2">
                           {selectedJob.skills.map((skill) => (
                             <Badge key={skill} variant="outline" className="text-sm">
@@ -1434,32 +1471,33 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
                     {/* Company Information */}
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">About {selectedJob.companyName}</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        {t("jobPostingsModal.info.aboutCompany").replace("{{company}}", selectedJob.companyName)}
+                      </h3>
                       <div className="bg-blue-50 p-4 rounded-lg">
                         <p className="text-gray-700">
-                          Join {selectedJob.companyName} and be part of a dynamic team that values innovation, 
-                          growth, and excellence. We're looking for talented individuals who are passionate 
-                          about making a difference in their field.
+                          {t("jobPostingsModal.info.aboutCompanyDescription")
+                            .replace("{{company}}", selectedJob.companyName)}
                         </p>
                       </div>
                     </div>
 
                     {/* Application Tips */}
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Application Tips</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">{t("jobPostingsModal.info.applicationTips")}</h3>
                       <div className="bg-yellow-50 p-4 rounded-lg">
                         <ul className="space-y-2 text-sm text-gray-700">
                           <li className="flex items-start gap-2">
                             <span className="text-yellow-600">•</span>
-                            <span>Review your profile completeness before applying</span>
+                            <span>{t("jobPostingsModal.info.applicationTip1")}</span>
                           </li>
                           <li className="flex items-start gap-2">
                             <span className="text-yellow-600">•</span>
-                            <span>Ensure your skills align with the job requirements</span>
+                            <span>{t("jobPostingsModal.info.applicationTip2")}</span>
                           </li>
                           <li className="flex items-start gap-2">
                             <span className="text-yellow-600">•</span>
-                            <span>Our AI will analyze your fit and provide personalized feedback</span>
+                            <span>{t("jobPostingsModal.info.applicationTip3")}</span>
                           </li>
                         </ul>
                       </div>
@@ -1476,14 +1514,19 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1 text-sm text-gray-600">
                         <Star className="h-4 w-4 text-green-600" />
-                        <span className="font-medium">{(() => {
-                          const score = calculateAIMatchScore(selectedJob);
-                          return isNaN(score) ? '50' : score;
-                        })()}% Match</span>
+                        <span className="font-medium">
+                          {t("jobPostingsModal.labels.match").replace(
+                            "{{percentage}}",
+                            (() => {
+                              const score = calculateAIMatchScore(selectedJob);
+                              return isNaN(score) ? '50' : String(score);
+                            })()
+                          )}
+                        </span>
                       </div>
                       <div className="h-4 w-px bg-gray-300"></div>
                       <div className="text-sm text-gray-600">
-                        {selectedJob.location || 'Remote'}
+                        {selectedJob.location || t("jobPostingsModal.labels.remoteFallback")}
                       </div>
                     </div>
                     <div className="flex items-center gap-3 rtl:space-x-reverse">
@@ -1491,7 +1534,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         variant="outline"
                         onClick={() => setSelectedJob(null)}
                       >
-                        Close
+                        {t("close")}
                       </Button>
                       <Button
                         variant="secondary"
@@ -1513,7 +1556,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         className="flex items-center gap-2 px-6"
                       >
                         <Zap className="h-4 w-4" />
-                        Practice Interview
+                        {t("jobPostingsModal.buttons.practiceInterview")}
                       </Button>
                       <Button
                         variant="secondary"
@@ -1534,7 +1577,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         className="flex items-center gap-2 px-6"
                       >
                         <Mic className="h-4 w-4" />
-                        Voice Practice
+                        {t("jobPostingsModal.buttons.voicePractice")}
                       </Button>
                       <Button
                         onClick={() => proceedWithApplication(selectedJob)}
@@ -1544,12 +1587,12 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         {newApplicationMutation.isPending ? (
                           <>
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            AI Analyzing...
+                            {t("jobPostingsModal.aiAnalyzing")}
                           </>
                         ) : (
                           <>
                             <ArrowRight className="h-4 w-4" />
-                            Apply Now
+                            {t("jobPostingsModal.buttons.applyNow")}
                           </>
                         )}
                       </Button>
@@ -1593,10 +1636,10 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                       )}
                       <div>
                         <h3 className="text-xl font-semibold text-gray-900">
-                          Application Analysis
+                          {t("jobPostingsModal.analysis.title")}
                         </h3>
                         <p className="text-sm text-gray-600">
-                          Based on your profile and interview responses
+                          {t("jobPostingsModal.analysis.subtitle")}
                         </p>
                       </div>
                     </div>
@@ -1626,17 +1669,17 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                     <div className="p-4 rounded-lg mb-6 bg-green-50 border border-green-200">
                       <div className="flex items-center gap-2 mb-2">
                         <CheckCircle className="h-5 w-5 text-green-600" />
-                        <h4 className="font-medium text-green-800">✅ You match this role</h4>
+                        <h4 className="font-medium text-green-800">{t("jobPostingsModal.analysis.matchTitle")}</h4>
                       </div>
                       <p className="text-sm text-green-700">
-                        Your profile and interview responses align with the job's requirements.
+                        {t("jobPostingsModal.analysis.matchDescription")}
                       </p>
                     </div>
                   ) : (
                     <div className="p-4 rounded-lg mb-6 bg-orange-50 border border-orange-200">
                       <div className="flex items-center gap-2 mb-3">
                         <AlertTriangle className="h-5 w-5 text-orange-600" />
-                        <h4 className="font-medium text-orange-800">⚠️ You're missing the following for this role:</h4>
+                        <h4 className="font-medium text-orange-800">{t("jobPostingsModal.analysis.missingTitle")}</h4>
                       </div>
                       {applicationAnalysis.missingRequirements && applicationAnalysis.missingRequirements.length > 0 && (
                         <div className="space-y-1">
@@ -1662,12 +1705,12 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         {actualApplicationMutation.isPending ? (
                           <>
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Submitting Application...
+                            {t("jobPostingsModal.analysis.submitting")}
                           </>
                         ) : (
                           <>
                             <CheckCircle className="h-4 w-4" />
-                            Submit Application
+                            {t("jobPostingsModal.analysis.submit")}
                           </>
                         )}
                       </Button>
@@ -1682,12 +1725,12 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                           {actualApplicationMutation.isPending ? (
                             <>
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                              Applying...
+                              {t("jobPostingsModal.analysis.applying")}
                             </>
                           ) : (
                             <>
                               <AlertTriangle className="h-4 w-4" />
-                              Apply Anyway
+                              {t("jobPostingsModal.analysis.applyAnyway")}
                             </>
                           )}
                         </Button>
@@ -1696,7 +1739,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                           className="flex items-center gap-2 flex-1"
                         >
                           <Search className="h-4 w-4" />
-                          Find Better Matches
+                          {t("jobPostingsModal.analysis.findBetterMatches")}
                         </Button>
                       </>
                     )}
@@ -1758,7 +1801,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                     {aiLoadingResult.type === null ? (
                       <>
                         <h3 className="text-xl font-bold text-gray-900">
-                          🤖 AI Assistant at Work!
+                          {t("jobPostingsModal.aiAssistant.title")}
                         </h3>
                         <motion.div
                           key={Math.random()}
@@ -1767,7 +1810,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                           className="space-y-2"
                         >
                           <p className="text-gray-600 font-medium">
-                            Analyzing your profile against job requirements...
+                            {t("jobPostingsModal.aiAssistant.analyzing")}
                           </p>
                           <motion.div
                             animate={{ rotate: 360 }}
@@ -1783,17 +1826,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                           animate={{ opacity: 1 }}
                           className="text-sm text-blue-600 italic"
                         >
-                          {[
-                            "🔍 Scanning your skills like a digital Sherlock Holmes...",
-                            "🎯 Calculating match percentages with rocket science precision...", 
-                            "🧪 Mixing your experience with job requirements in our AI lab...",
-                            "🎪 Performing algorithmic acrobatics to find your best fit...",
-                            "🚀 Launching deep analysis protocols into the data stratosphere...",
-                            "🎨 Painting a masterpiece of your professional compatibility...",
-                            "🔮 Consulting the ancient algorithms of employment wisdom...",
-                            "⚡ Charging up the skill-matching superpowers...",
-                            "🎵 Harmonizing your talents with opportunity frequencies..."
-                          ][Math.floor(Math.random() * 9)]}
+                          {getRandomAiAssistantMessage()}
                         </motion.p>
                       </>
                     ) : (
@@ -1806,8 +1839,11 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                           aiLoadingResult.type === 'success' ? 'text-green-600' : 
                           aiLoadingResult.type === 'info' ? 'text-blue-600' : 'text-red-600'
                         }`}>
-                          {aiLoadingResult.type === 'success' ? '✅ Success!' : 
-                           aiLoadingResult.type === 'info' ? '🎉 Already Applied!' : '❌ Error'}
+                          {aiLoadingResult.type === 'success'
+                            ? t("jobPostingsModal.aiAssistant.successTitle")
+                            : aiLoadingResult.type === 'info'
+                              ? t("jobPostingsModal.aiAssistant.alreadyAppliedTitle")
+                              : t("jobPostingsModal.aiAssistant.errorTitle")}
                         </h3>
                         <p className={`text-sm font-medium whitespace-pre-line ${
                           aiLoadingResult.type === 'success' ? 'text-green-700' : 
@@ -1822,7 +1858,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                           }}
                           className="mt-4"
                         >
-                          Close
+                          {t("close")}
                         </Button>
                       </motion.div>
                     )}

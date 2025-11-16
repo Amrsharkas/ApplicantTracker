@@ -91,6 +91,15 @@ export default function Dashboard() {
     enabled: !!user, // Only run query if user is authenticated
   });
 
+  const invitedJobsTotal = invitedJobsCount ? (invitedJobsCount as any).count : 0;
+  const invitedJobsLabel = invitedJobsTotal === 1
+    ? t('dashboard.invitedJobsAlert.singleLabel')
+    : t('dashboard.invitedJobsAlert.pluralLabel');
+  const invitedJobsBody = invitedJobsTotal === 1
+    ? t('dashboard.invitedJobsAlert.bodySingle')
+    : t('dashboard.invitedJobsAlert.bodyPlural').replace('{{count}}', String(invitedJobsTotal));
+  const invitedWaitingText = t('dashboard.invitedJobsAlert.waiting');
+
   // Check CV requirement (renamed from resume for clarity)
   useResumeRequirement();
 
@@ -513,7 +522,7 @@ export default function Dashboard() {
         )}
 
         {/* Invited Jobs Alert */}
-        {showFullDashboard && invitedJobsCount && (invitedJobsCount as any).count > 0 && (
+        {showFullDashboard && invitedJobsTotal > 0 && (
           <div className="mb-6 sm:mb-8 animate-in fade-in slide-in-from-top duration-500">
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 shadow-lg">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -523,10 +532,10 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
-                      {(invitedJobsCount as any).count} {(invitedJobsCount as any).count === 1 ? 'Job Invitation' : 'Job Invitations'} Waiting!
+                      {invitedJobsTotal} {invitedJobsLabel} {invitedWaitingText}
                     </h3>
                     <p className="text-gray-700 mb-3 sm:mb-4 text-sm sm:text-base">
-                      Great news! You have {(invitedJobsCount as any).count === 1 ? 'a new job invitation' : `${(invitedJobsCount as any).count} new job invitations`}. Companies are interested in your profile. Review and take the job-specific AI interviews to move forward.
+                      {invitedJobsBody}
                     </p>
                     <Button
                       onClick={() => {
@@ -534,7 +543,7 @@ export default function Dashboard() {
                       }}
                       className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto"
                     >
-                      View Invited Jobs
+                      {t('dashboard.invitedJobsAlert.button')}
                     </Button>
                   </div>
                 </div>
