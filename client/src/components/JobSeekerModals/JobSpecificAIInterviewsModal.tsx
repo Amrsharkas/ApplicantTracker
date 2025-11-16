@@ -116,12 +116,12 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
       <DialogContent className={`${
         interviewOpen
           ? 'w-screen h-screen max-w-none max-h-none p-0'
-          : 'max-w-6xl max-h-[95vh] overflow-hidden p-0'
+          : 'max-w-6xl max-h-[95vh] overflow-hidden p-0 flex flex-col'
       }`}>
         {/* Only show header when not in interview mode */}
         {!interviewOpen ? (
           <>
-            <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
               <DialogTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   Job specific AI interviews ({invitedJobs.length})
@@ -151,8 +151,8 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
               </DialogTitle>
             </DialogHeader>
 
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-          <div className="px-4 pt-4">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full flex flex-col flex-1 min-h-0">
+          <div className="px-4 pt-4 flex-shrink-0">
             <TabsList>
               <TabsTrigger value="invited">Pending interviews</TabsTrigger>
               <TabsTrigger value="completed">Finished interviews</TabsTrigger>
@@ -160,7 +160,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
           </div>
 
           {/* Search Bar (per tab) */}
-          <div className="p-4 border-b bg-white flex-shrink-0">
+          <div className="px-4 pb-4 border-b bg-white flex-shrink-0">
             <div className="relative">
               <Input
                 placeholder="Search by title, company, or description..."

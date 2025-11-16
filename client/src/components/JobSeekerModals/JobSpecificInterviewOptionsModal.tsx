@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { getInterviewLanguage } from "@/lib/interviewUtils";
 
 interface JobSummary {
   recordId: string;
@@ -10,6 +11,7 @@ interface JobSummary {
   jobDescription?: string;
   companyName: string;
   location?: string;
+  interviewLanguage?: string;
 }
 
 interface JobSpecificInterviewOptionsModalProps {
@@ -25,6 +27,17 @@ export function JobSpecificInterviewOptionsModal({ isOpen, onClose, job, onConfi
   const [mode, setMode] = useState<'text' | 'voice'>(enableTextInterviews === 'true' ? 'text' : 'voice');
   const [language, setLanguage] = useState<'english' | 'arabic'>('english');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Determine if job has a specific interview language
+  const hasJobLanguage = job?.interviewLanguage && job.interviewLanguage.trim() !== '';
+  const jobLanguage = hasJobLanguage ? getInterviewLanguage(job, 'english') : null;
+
+  // Auto-set language when job has interviewLanguage specified
+  useEffect(() => {
+    if (hasJobLanguage && jobLanguage) {
+      setLanguage(jobLanguage);
+    }
+  }, [hasJobLanguage, jobLanguage]);
 
   const handleStart = async () => {
     if (isSubmitting) return;
@@ -70,16 +83,27 @@ export function JobSpecificInterviewOptionsModal({ isOpen, onClose, job, onConfi
 
           <div className={isSubmitting ? 'opacity-60 pointer-events-none' : ''}>
             <div className="text-sm font-medium mb-2">Language</div>
-            <RadioGroup value={language} onValueChange={(v) => setLanguage(v as any)} className="grid grid-cols-2 gap-3">
-              <div className="flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3">
-                <RadioGroupItem value="english" id="lang-en" />
-                <Label htmlFor="lang-en">English</Label>
+            {hasJobLanguage ? (
+              <div className="rounded-md border p-3 bg-slate-50">
+                <div className="text-sm">
+                  <span className="font-medium">
+                    {jobLanguage === 'arabic' ? 'Arabic' : 'English'}
+                  </span>
+                  <span className="text-slate-500 text-xs ml-2">(Set by job)</span>
+                </div>
               </div>
-              <div className="flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3">
-                <RadioGroupItem value="arabic" id="lang-ar" />
-                <Label htmlFor="lang-ar">Arabic</Label>
-              </div>
-            </RadioGroup>
+            ) : (
+              <RadioGroup value={language} onValueChange={(v) => setLanguage(v as any)} className="grid grid-cols-2 gap-3">
+                <div className="flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3">
+                  <RadioGroupItem value="english" id="lang-en" />
+                  <Label htmlFor="lang-en">English</Label>
+                </div>
+                <div className="flex items-center space-x-2 rtl:space-x-reverse border rounded-md p-3">
+                  <RadioGroupItem value="arabic" id="lang-ar" />
+                  <Label htmlFor="lang-ar">Arabic</Label>
+                </div>
+              </RadioGroup>
+            )}
           </div>
 
           <div className="flex justify-end gap-2">

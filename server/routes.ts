@@ -13,7 +13,7 @@ import { ResumeService } from "./resumeService";
 import { ragService } from "./ragService";
 import multer from "multer";
 import { string, z } from "zod";
-import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, airtableJobApplications, jobs, organizations } from "@shared/schema";
+import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, airtableJobApplications, jobs, organizations, Job } from "@shared/schema";
 import { creditService } from './creditService';
 // Dynamic import for pdf-parse will be used when needed
 import { db } from "./db";
@@ -3263,7 +3263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const jobIds = jobMatches.map(match => match.jobId) ;
       const jobs = await storage.getJobsByIds(jobIds);
       const results = jobMatches.map((match) => {
-        const job = jobs.find(job => job.id == match.jobId) || {};
+        const job = (jobs.find(job => job.id == match.jobId) || {}) as Job;
 
         return {
           recordId: match.id,
@@ -3274,6 +3274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           score: match.matchScore,
           interviewComments: match.interviewComments || '',
           aiPrompt: job.aiPrompt || '',
+          interviewLanguage: job.interviewLanguage || 'English',
         }
       });
 
