@@ -19,33 +19,33 @@ export function ViolationRulesComponent({ onAccept, onDecline }: ViolationRulesC
           </svg>
         </div>
         <p className="text-sm text-red-600 font-medium">
-          This interview is fully monitored by advanced AI systems. Any violation ends your session immediately.
+          {t('interview.violationRules.monitoringNotice')}
         </p>
       </div>
 
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <p className="text-sm text-red-800 mb-4">
-          Sessions are recorded and reviewed by humans. By continuing you consent to video, audio, and activity recording for fraud prevention.
+          {t('interview.violationRules.consentNotice')}
         </p>
 
         <div className="space-y-3">
           {[
-            "Webcam ON — eye tracking is active. Looking away = flag.",
-            "No phones or extra devices — detection = instant disqualification.",
-            "Stay on this page — leaving the tab, opening apps, or refreshing ends the interview.",
-            "No shortcuts or screenshots — Ctrl/Cmd+Tab, Ctrl+C/Ctrl+V, or screenshots = automatic failure.",
-            "Mouse must stay in the window — leaving or prolonged idling triggers termination.",
-            "Microphone ON — outside voices or played audio = invalid session.",
-            "Face check active — masks, deepfakes, or identity mismatch = termination.",
-            "Random verification — follow live instructions immediately when prompted.",
-            "Exiting full screen = disqualification",
-            "One-strike policy — no warnings, no retries."
-          ].map((rule, index) => (
+            'interview.violationRules.rule1',
+            'interview.violationRules.rule2',
+            'interview.violationRules.rule3',
+            'interview.violationRules.rule4',
+            'interview.violationRules.rule5',
+            'interview.violationRules.rule6',
+            'interview.violationRules.rule7',
+            'interview.violationRules.rule8',
+            'interview.violationRules.rule9',
+            'interview.violationRules.rule10',
+          ].map((ruleKey, index) => (
             <div key={index} className="flex items-start space-x-3">
               <div className="flex-shrink-0 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
                 {index + 1}
               </div>
-              <p className="text-sm text-red-700">{rule}</p>
+              <p className="text-sm text-red-700">{t(ruleKey)}</p>
             </div>
           ))}
         </div>
@@ -57,13 +57,13 @@ export function ViolationRulesComponent({ onAccept, onDecline }: ViolationRulesC
           onClick={onDecline}
           className="border-red-300 text-red-600 hover:bg-red-50"
         >
-          Decline
+          {t('interview.violationRules.decline')}
         </Button>
         <Button
           onClick={onAccept}
           className="bg-red-600 hover:bg-red-700 text-white"
         >
-          I Agree & Continue
+          {t('interview.violationRules.accept')}
         </Button>
       </div>
     </div>

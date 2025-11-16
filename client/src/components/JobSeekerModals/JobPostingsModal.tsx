@@ -567,9 +567,10 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
     
     // Location preference (if available in profile)
     if (job.location && profile.workStyle) {
-      if (profile.workStyle.toLowerCase().includes('remote') && job.employmentType?.toLowerCase().includes('remote')) {
+      const workStyleStr = typeof profile.workStyle === 'string' ? profile.workStyle : String(profile.workStyle);
+      if (workStyleStr.toLowerCase().includes('remote') && job.employmentType?.toLowerCase().includes('remote')) {
         score += 20;
-      } else if (profile.workStyle.toLowerCase().includes('office') && job.employmentType?.toLowerCase().includes('office')) {
+      } else if (workStyleStr.toLowerCase().includes('office') && job.employmentType?.toLowerCase().includes('office')) {
         score += 20;
       }
     } else {

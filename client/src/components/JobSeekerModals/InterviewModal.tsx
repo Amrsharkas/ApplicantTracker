@@ -52,6 +52,18 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
   const queryClient = useQueryClient();
   const { t, isRTL } = useLanguage();
   const { isRecording, startRecording, stopRecording, cleanup } = useCameraRecorder();
+  const languageDisplayName = selectedInterviewLanguage === 'arabic' ? t('arabic') : t('english');
+  const remainingViolations = Math.max(maxBlurCount - windowBlurCount, 0);
+  const violationLabel = t('interview.violationCountLabel')
+    .replace('{{count}}', windowBlurCount.toString())
+    .replace('{{max}}', maxBlurCount.toString());
+  const sessionStatusLabel = sessionTerminated
+    ? t('interview.sessionTerminatedStatus')
+    : windowBlurCount > 0
+      ? violationLabel
+      : t('interview.liveInterviewStatus');
+  const tabSwitchBanner = t('interview.tabSwitchBanner').replace('{{remaining}}', remainingViolations.toString());
+  const tabSwitchWarning = t('interview.tabSwitchWarning').replace('{{remaining}}', remainingViolations.toString());
 
   // Debug: Log the environment variable value and its type
   const enableTextInterviews = import.meta.env.VITE_ENABLE_TEXT_INTERVIEWS;
@@ -107,11 +119,12 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
       setIsInterviewConcluded(true);
     },
     onLanguageWarning: (detectedLanguage) => {
+      const expectedLanguageName = selectedInterviewLanguage === 'arabic' ? t('arabic') : t('english');
       toast({
-        title: selectedInterviewLanguage === 'arabic' ? 'تنبيه لغوي' : 'Language Warning',
-        description: selectedInterviewLanguage === 'arabic'
-          ? `يرجى التحدث باللغة العربية فقط. تم اكتشاف لغة مختلفة: ${detectedLanguage}`
-          : `Please speak in English only. Detected different language: ${detectedLanguage}`,
+        title: t('interview.languageWarningTitle'),
+        description: t('interview.languageWarningDescription')
+          .replace('{{expectedLanguage}}', expectedLanguageName)
+          .replace('{{detectedLanguage}}', detectedLanguage ?? ''),
         variant: "destructive",
       });
     },
@@ -1432,11 +1445,11 @@ const startVoiceInterview = async () => {
               <div className="flex items-center space-x-2">
                 <div className={`h-3 w-3 rounded-full ${sessionTerminated ? 'bg-red-500' : windowBlurCount > 0 ? 'bg-yellow-500' : 'bg-green-500'} animate-pulse`} />
                 <span className="text-white font-medium">
-                  {sessionTerminated ? 'Session Terminated' : windowBlurCount > 0 ? `${windowBlurCount}/${maxBlurCount} violations` : 'Live Interview'}
+                  {sessionStatusLabel}
                 </span>
               </div>
               <div className="text-gray-400 text-sm">
-                {'professional' && `${'professional'.charAt(0).toUpperCase() + 'professional'.slice(1)} Interview`} • {selectedInterviewLanguage === 'arabic' ? 'Arabic' : 'English'}
+                {t('interview.liveInterviewTypeLabel').replace('{{interviewType}}', t('professionalInterview'))} • {languageDisplayName}
               </div>
 
               {/* Transcription toggle */}
@@ -1445,10 +1458,10 @@ const startVoiceInterview = async () => {
                 className={`flex items-center space-x-2 px-3 py-1 rounded-lg transition-colors ${
                   showTranscription ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
-                title={showTranscription ? 'Hide transcription' : 'Show transcription'}
+                title={showTranscription ? t('interview.transcriptHideTooltip') : t('interview.transcriptShowTooltip')}
               >
                 <MessageCircle className="h-4 w-4" />
-                <span className="text-sm">{showTranscription ? 'Transcript On' : 'Transcript Off'}</span>
+                <span className="text-sm">{showTranscription ? t('interview.transcriptOn') : t('interview.transcriptOff')}</span>
               </button>
             </div>
             <button
@@ -1465,7 +1478,7 @@ const startVoiceInterview = async () => {
           {/* Warning overlay */}
           {warningVisible && !sessionTerminated && (
             <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg">
-              <p className="text-sm font-medium">Tab Switch Detected - {maxBlurCount - windowBlurCount} violations remaining</p>
+              <p className="text-sm font-medium">{tabSwitchBanner}</p>
             </div>
           )}
 
@@ -1474,8 +1487,8 @@ const startVoiceInterview = async () => {
             <div className="absolute inset-0 z-40 bg-black bg-opacity-75 flex items-center justify-center">
               <div className="bg-gray-800 rounded-lg p-6 text-center">
                 <PhoneOff className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                <h3 className="text-white font-semibold text-lg mb-2">Interview Session Terminated</h3>
-                <p className="text-gray-300">Your session has been terminated due to multiple window switches.</p>
+                <h3 className="text-white font-semibold text-lg mb-2">{t('interview.sessionTerminatedTitle')}</h3>
+                <p className="text-gray-300">{t('interview.sessionTerminatedDescription')}</p>
               </div>
             </div>
           )}
@@ -1540,7 +1553,7 @@ const startVoiceInterview = async () => {
                 <div className="flex items-center space-x-2">
                   <div className={`h-2 w-2 rounded-full ${sessionTerminated ? 'bg-red-500' : windowBlurCount > 0 ? 'bg-yellow-500' : 'bg-green-500'}`} />
                   <span className="text-xs text-muted-foreground">
-                    {sessionTerminated ? 'Session Terminated' : windowBlurCount > 0 ? `${windowBlurCount}/${maxBlurCount} violations` : 'Active'}
+                    {sessionStatusLabel ?? t('interview.activeStatus')}
                   </span>
                 </div>
               )}
@@ -1553,9 +1566,9 @@ const startVoiceInterview = async () => {
               <div className="flex items-center space-x-2">
                 <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse" />
                 <div>
-                  <p className="text-sm font-medium text-red-800">Tab Switch Detected</p>
+                  <p className="text-sm font-medium text-red-800">{t('interview.tabSwitchDetected')}</p>
                   <p className="text-xs text-red-600">
-                    Switching tabs during interviews is not allowed. {maxBlurCount - windowBlurCount > 1 ? 's' : ''} before session termination.
+                    {tabSwitchWarning}
                   </p>
                 </div>
               </div>
@@ -1569,9 +1582,9 @@ const startVoiceInterview = async () => {
                 <div className="h-8 w-8 bg-red-500 rounded-full flex items-center justify-center mx-auto">
                   <PhoneOff className="h-4 w-4 text-white" />
                 </div>
-                <p className="font-medium text-red-800">Interview Session Terminated</p>
+                <p className="font-medium text-red-800">{t('interview.sessionTerminatedTitle')}</p>
                 <p className="text-sm text-red-600">
-                  Your session has been terminated due to multiple window switches.
+                  {t('interview.sessionTerminatedDescription')}
                 </p>
               </div>
             </div>

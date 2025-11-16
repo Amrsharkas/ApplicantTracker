@@ -42,7 +42,7 @@ const buildManualCVSchema = (t: (key: string) => string) => z.object({
     proficiency: z.enum(["basic", "intermediate", "advanced", "native"]),
   })).min(1, t("manualCvForm.validation.languagesRequired")),
   certifications: z.array(z.object({
-    name: z.string().min(1, t("manualCvForm.validation.certificationName"))),
+    name: z.string().min(1, t("manualCvForm.validation.certificationName")),
     issuer: z.string().optional(),
     issueDate: z.string().optional(),
     expiryDate: z.string().optional(),
@@ -73,7 +73,7 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
   const schema = useMemo(() => buildManualCVSchema(t), [t]);
   const jobTypeLabels: Record<string, string> = {
     fulltime: t("manualCvForm.jobTypes.fulltime"),
-    part_time: t("manualCvForm.jobTypes.part_time"),
+    "part_time": t("manualCvForm.jobTypes.part_time"),
     freelance: t("manualCvForm.jobTypes.freelance"),
     internship: t("manualCvForm.jobTypes.internship"),
   };

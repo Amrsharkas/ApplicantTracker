@@ -27,9 +27,9 @@ export function ModeSelectionComponent({
   return (
     <div className="space-y-6">
       <div className="text-center space-y-3">
-        <h3 className="text-lg font-semibold">Professional Interview</h3>
+        <h3 className="text-lg font-semibold">{t('interview.professionalInterviewTitle')}</h3>
         <p className="text-sm text-muted-foreground">
-          Choose how you'd like to complete your professional interview
+          {t('interview.professionalInterviewDescription')}
         </p>
       </div>
 
@@ -47,8 +47,8 @@ export function ModeSelectionComponent({
             <SelectValue placeholder={t('interview.selectLanguage')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="english">{t('languages.english')}</SelectItem>
-            <SelectItem value="arabic">{t('languages.arabic')}</SelectItem>
+            <SelectItem value="english">{t('english')}</SelectItem>
+            <SelectItem value="arabic">{t('arabic')}</SelectItem>
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground text-center">
@@ -72,11 +72,11 @@ export function ModeSelectionComponent({
               <Mic className="h-8 w-8 text-primary" />
             )}
             <div className="text-center">
-              <h4 className="font-medium">{t('voiceInterview') || 'Voice Interview'}</h4>
+              <h4 className="font-medium">{t('interview.voiceCardTitle')}</h4>
               <p className="text-sm text-muted-foreground">
                 {isStartingInterview && currentMode === 'voice'
-                  ? t('startingVoiceInterview') || 'Starting voice interview...'
-                  : t('speakNaturally') || 'Speak naturally with the AI interviewer'
+                  ? t('interview.voiceCardPreparing')
+                  : t('interview.voiceCardDescription')
                 }
               </p>
             </div>
@@ -99,11 +99,11 @@ export function ModeSelectionComponent({
                 <MessageCircle className="h-8 w-8 text-primary" />
               )}
               <div className="text-center">
-                <h4 className="font-medium">{t('textInterview') || 'Text Interview'}</h4>
+                <h4 className="font-medium">{t('interview.textCardTitle')}</h4>
                 <p className="text-sm text-muted-foreground">
                   {isStartingInterview && currentMode === 'text'
-                    ? 'Preparing interview questions...'
-                    : 'Type your responses at your own pace'
+                    ? t('interview.textCardPreparing')
+                    : t('interview.textCardDescription')
                   }
                 </p>
               </div>

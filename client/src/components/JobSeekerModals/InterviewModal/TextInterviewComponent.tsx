@@ -35,14 +35,23 @@ export function TextInterviewComponent({
   totalQuestions,
   sessionCompleted
 }: TextInterviewComponentProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const localeMap: Record<string, string> = {
+    en: 'en-US',
+    ar: 'ar-EG',
+    fr: 'fr-FR',
+  };
+  const locale = localeMap[language] || 'en-US';
+  const questionProgress = t('interview.questionProgress')
+    .replace('{{current}}', (currentQuestionIndex + 1).toString())
+    .replace('{{total}}', totalQuestions.toString());
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Text Interview</h3>
+        <h3 className="text-lg font-semibold">{t('interview.textCardTitle')}</h3>
         <Badge variant="outline">
-          Question {currentQuestionIndex + 1} of {totalQuestions}
+          {questionProgress}
         </Badge>
       </div>
 
@@ -66,11 +75,15 @@ export function TextInterviewComponent({
                 <p className="text-sm">
                   {typeof message.content === 'string'
                     ? message.content
-                    : 'Question content not available'
+                    : t('interview.questionContentNotAvailable')
                   }
                 </p>
                 <span className="text-xs text-muted-foreground">
-                  {message.timestamp.toLocaleTimeString()}
+                  {new Date(message.timestamp).toLocaleTimeString(locale, {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                  })}
                 </span>
               </div>
             </div>
@@ -100,10 +113,10 @@ export function TextInterviewComponent({
             <CardContent className="p-4">
               <div className="flex items-center space-x-2 rtl:space-x-reverse">
                 <div className="h-2 w-2 bg-green-500 rounded-full" />
-                <span className="text-sm font-medium text-green-700">Interview Complete!</span>
+                <span className="text-sm font-medium text-green-700">{t('interview.interviewComplete')}</span>
               </div>
               <p className="text-sm text-green-600 mt-1">
-                {t('interview.interviewSectionCompletedSuccessfully') || 'Interview section completed successfully! Continue with remaining interviews to complete your profile.'}
+                {t('interview.interviewSectionCompletedSuccessfully')}
               </p>
             </CardContent>
           </Card>
@@ -111,7 +124,7 @@ export function TextInterviewComponent({
       ) : (
         <div className="space-y-3">
           <Textarea
-            placeholder="Type your answer here..."
+            placeholder={t('interview.typeYourAnswerHere')}
             value={currentAnswer}
             onChange={(e) => onAnswerChange(e.target.value)}
             className="min-h-24"

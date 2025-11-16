@@ -1,8 +1,9 @@
 import { Button } from '@/components/ui/button';
-import { Mic, MessageCircle, Video, Circle, CheckCircle, PhoneOff, User } from 'lucide-react';
+import { Video, Circle, CheckCircle, PhoneOff } from 'lucide-react';
 import { CameraPreview } from '@/components/CameraPreview';
 import { VideoOverlay } from './VideoOverlay';
 import { TranscriptionPanel } from './TranscriptionPanel';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface VoiceInterviewComponentProps {
   cameraStream: MediaStream | null;
@@ -49,6 +50,20 @@ export function VoiceInterviewComponent({
   onSubmitOrEndInterview,
   cameraError
 }: VoiceInterviewComponentProps) {
+  const { t } = useLanguage();
+  const languageLabel = selectedInterviewLanguage === 'arabic' ? t('arabic') : t('english');
+  const violationLabel = t('interview.violationCountLabel')
+    .replace('{{count}}', windowBlurCount.toString())
+    .replace('{{max}}', maxBlurCount.toString());
+  const statusText = sessionTerminated
+    ? t('interview.sessionTerminatedStatus')
+    : windowBlurCount > 0
+      ? violationLabel
+      : isConnected
+        ? (isRecording ? t('interview.recordingStatusLive') : t('interview.liveStatus'))
+        : t('interview.connectingStatus');
+  const languageIndicator = t('interview.languageIndicator').replace('{{language}}', languageLabel);
+
   return (
     <div className="flex-1 flex flex-col h-full min-h-0">
       {/* Main content area */}
@@ -89,7 +104,7 @@ export function VoiceInterviewComponent({
             {isRecording && (
               <div className="flex items-center space-x-2 bg-red-600 text-white px-3 py-1 rounded-full animate-pulse">
                 <Video className="h-4 w-4" />
-                <span className="text-xs font-medium">Recording</span>
+                <span className="text-xs font-medium">{t('interview.recordingBadge')}</span>
                 <Circle className="h-2 w-2 bg-red-800 rounded-full animate-pulse" />
               </div>
             )}
@@ -97,21 +112,17 @@ export function VoiceInterviewComponent({
             <div className={`h-3 w-3 rounded-full ${
               sessionTerminated ? 'bg-red-500' : windowBlurCount > 0 ? 'bg-yellow-500' : 'bg-green-500'
             } animate-pulse`} />
-            <span className="text-gray-400 text-sm">
-              {sessionTerminated ? 'Session Terminated' :
-               windowBlurCount > 0 ? `${windowBlurCount}/${maxBlurCount} violations` :
-               isConnected ? (isRecording ? '🔴 Recording' : '🟢 Live') : '🟡 Connecting...'}
-            </span>
+            <span className="text-gray-400 text-sm">{statusText}</span>
 
             {showTranscription && (
               <span className="text-gray-500 text-xs">
-                • Transcription enabled
+                • {t('interview.transcriptionEnabled')}
               </span>
             )}
 
             {/* Language indicator */}
             <span className="text-gray-500 text-xs">
-              • Language: {selectedInterviewLanguage === 'arabic' ? 'العربية' : 'English'}
+              • {languageIndicator}
             </span>
           </div>
 
@@ -121,7 +132,7 @@ export function VoiceInterviewComponent({
                 className="text-gray-400 hover:text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
                 disabled={isAiSpeaking || isProcessingInterview || isUploading}
               >
-                ← Exit Interview
+                ← {t('interview.exitInterview')}
               </button>
 
             {isConnected && (
@@ -137,17 +148,17 @@ export function VoiceInterviewComponent({
                 {isProcessingInterview || processVoiceInterviewMutation.isPending ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                    <span>Processing...</span>
+                    <span>{t('interview.processing')}</span>
                   </>
                 ) : realtimeAPI.isInterviewComplete ? (
                   <>
                     <CheckCircle className="h-4 w-4" />
-                    <span>Submit Interview</span>
+                    <span>{t('interview.submitInterview')}</span>
                   </>
                 ) : (
                   <>
                     <PhoneOff className="h-4 w-4" />
-                    <span>End Interview</span>
+                    <span>{t('interview.endInterview')}</span>
                   </>
                 )}
               </button>

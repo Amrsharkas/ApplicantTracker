@@ -1,4 +1,5 @@
 import { User } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface VideoOverlayProps {
   isConnected: boolean;
@@ -13,6 +14,8 @@ export function VideoOverlay({
   isAiSpeaking,
   voiceTranscript
 }: VideoOverlayProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="absolute inset-0 flex flex-col">
       {/* Top overlay */}
@@ -20,12 +23,12 @@ export function VideoOverlay({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm">
-              You
+              {t('interview.conversationYouLabel')}
             </div>
             {isConnected && (
               <div className="flex items-center space-x-2 bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full">
                 <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-sm">Speaking</span>
+                <span className="text-sm">{t('interview.aiSpeakingLabel')}</span>
               </div>
             )}
           </div>
@@ -41,11 +44,11 @@ export function VideoOverlay({
                 <User className="h-4 w-4 text-white" />
               </div>
               <div>
-                <p className="text-sm font-medium">AI Interviewer</p>
+                <p className="text-sm font-medium">{t('interview.aiInterviewer')}</p>
                 <p className="text-xs opacity-75">
-                  {isStartingInterview ? 'Setting up...' :
-                   isAiSpeaking ? 'Speaking...' :
-                   isConnected ? 'Listening' : 'Connecting...'}
+                  {isStartingInterview ? t('interview.aiSettingUp') :
+                   isAiSpeaking ? t('interview.aiSpeakingStatus') :
+                   isConnected ? t('interview.aiListening') : t('interview.connecting')}
                 </p>
               </div>
             </div>
@@ -57,7 +60,7 @@ export function VideoOverlay({
       {isAiSpeaking && voiceTranscript && (
         <div className="mt-auto bg-gradient-to-t from-black/60 to-transparent p-4">
           <div className="bg-black/50 backdrop-blur-sm text-white p-3 rounded-lg max-w-2xl">
-            <p className="text-sm font-medium mb-1">AI Interviewer is saying:</p>
+            <p className="text-sm font-medium mb-1">{t('interview.aiTranscriptIntro')}</p>
             <p className="text-sm">{voiceTranscript}</p>
           </div>
         </div>
