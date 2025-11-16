@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
-import { Camera, CameraOff, AlertCircle, Video, Circle } from 'lucide-react';
+import { CameraOff, AlertCircle, Video, Circle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CameraPreviewProps {
   stream: MediaStream | null;
@@ -14,6 +15,7 @@ interface CameraPreviewProps {
 export function CameraPreview({ stream, isActive, isRecording = false, error, className = '', connecting = false }: CameraPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoReady, setIsVideoReady] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -45,7 +47,7 @@ export function CameraPreview({ stream, isActive, isRecording = false, error, cl
         <CardContent className="p-4">
           <div className="flex items-center space-x-2 text-red-600">
             <AlertCircle className="h-4 w-4" />
-            <span className="text-sm">Camera access failed</span>
+            <span className="text-sm">{t("cameraPreview.errorTitle")}</span>
           </div>
           <p className="text-xs text-red-500 mt-1">{error}</p>
         </CardContent>
@@ -73,17 +75,17 @@ export function CameraPreview({ stream, isActive, isRecording = false, error, cl
               {connecting ? (
                 <>
                   <div className="h-12 w-12 border-4 border-gray-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="text-sm text-gray-400">Connecting camera...</p>
+                  <p className="text-sm text-gray-400">{t("cameraPreview.connecting")}</p>
                 </>
               ) : stream ? (
                 <>
                   <div className="h-12 w-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="text-sm text-gray-400">Camera ready...</p>
+                  <p className="text-sm text-gray-400">{t("cameraPreview.ready")}</p>
                 </>
               ) : (
                 <>
                   <CameraOff className="h-12 w-12 text-gray-600 mx-auto" />
-                  <p className="text-sm text-gray-400">Camera inactive</p>
+                  <p className="text-sm text-gray-400">{t("cameraPreview.inactive")}</p>
                 </>
               )}
             </div>
@@ -96,13 +98,13 @@ export function CameraPreview({ stream, isActive, isRecording = false, error, cl
             {isRecording ? (
               <div className="absolute top-4 right-4 flex items-center space-x-2 bg-red-600 text-white px-3 py-1 rounded-full animate-pulse">
                 <Video className="h-4 w-4" />
-                <span className="text-xs font-medium">REC</span>
+                <span className="text-xs font-medium">{t("cameraPreview.rec")}</span>
                 <Circle className="h-2 w-2 bg-red-800 rounded-full animate-pulse" />
               </div>
             ) : (
               <div className="absolute top-4 right-4 flex items-center space-x-1 bg-green-600 text-white px-3 py-1 rounded-full">
                 <div className="h-2 w-2 bg-white rounded-full animate-pulse" />
-                <span className="text-xs font-medium">LIVE</span>
+                <span className="text-xs font-medium">{t("cameraPreview.live")}</span>
               </div>
             )}
           </>

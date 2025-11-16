@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,76 +8,56 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus, X } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-// Form validation schema
-const manualCVSchema = z.object({
-  // Personal Information
-  name: z.string().min(2, "Full name must be at least 2 characters"),
+const buildManualCVSchema = (t: (key: string) => string) => z.object({
+  name: z.string().min(2, t("manualCvForm.validation.nameMin")),
   birthdate: z.date().optional(),
   nationality: z.string().optional(),
-  phone: z.string().min(10, "Please enter a valid phone number"),
-  email: z.string().email("Please enter a valid email address"),
+  phone: z.string().min(10, t("manualCvForm.validation.phone")),
+  email: z.string().email(t("manualCvForm.validation.email")),
   country: z.string().optional(),
   city: z.string().optional(),
-  
-  // Education
   degrees: z.array(z.object({
-    institution: z.string().min(1, "Institution is required"),
-    degree: z.string().min(1, "Degree is required"),
+    institution: z.string().min(1, t("manualCvForm.validation.institution")),
+    degree: z.string().min(1, t("manualCvForm.validation.degree")),
     field: z.string().optional(),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
     gpa: z.string().optional(),
-  })).min(1, "At least one education entry is required"),
-  
-  // Work Experience
+  })).min(1, t("manualCvForm.validation.educationRequired")),
   workExperiences: z.array(z.object({
-    company: z.string().min(1, "Company name is required"),
-    position: z.string().min(1, "Position is required"),
+    company: z.string().min(1, t("manualCvForm.validation.company")),
+    position: z.string().min(1, t("manualCvForm.validation.position")),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
-    responsibilities: z.string().min(10, "Please provide detailed responsibilities"),
+    responsibilities: z.string().min(10, t("manualCvForm.validation.responsibilities")),
     current: z.boolean().optional(),
-  })).min(1, "At least one work experience is required"),
-  
-  // Languages
+  })).min(1, t("manualCvForm.validation.experienceRequired")),
   languages: z.array(z.object({
-    language: z.string().min(1, "Language is required"),
+    language: z.string().min(1, t("manualCvForm.validation.languageName")),
     proficiency: z.enum(["basic", "intermediate", "advanced", "native"]),
-  })).min(1, "At least one language is required"),
-  
-  // Certifications
+  })).min(1, t("manualCvForm.validation.languagesRequired")),
   certifications: z.array(z.object({
-    name: z.string().min(1, "Certification name is required"),
+    name: z.string().min(1, t("manualCvForm.validation.certificationName"))),
     issuer: z.string().optional(),
     issueDate: z.string().optional(),
     expiryDate: z.string().optional(),
   })),
-  
-  // Skills
-  technicalSkills: z.array(z.string()).min(1, "Please add at least one technical skill"),
-  softSkills: z.array(z.string()).min(1, "Please add at least one soft skill"),
-  
-  // Career Preferences
-  jobTypes: z.array(z.enum(["fulltime", "part_time", "freelance", "internship"])).min(1, "Select at least one job type"),
+  technicalSkills: z.array(z.string()).min(1, t("manualCvForm.validation.technicalSkills")),
+  softSkills: z.array(z.string()).min(1, t("manualCvForm.validation.softSkills")),
+  jobTypes: z.array(z.enum(["fulltime", "part_time", "freelance", "internship"])).min(1, t("manualCvForm.validation.jobTypes")),
   workplaceSettings: z.enum(["onsite", "remote", "hybrid"]).optional(),
   preferredWorkCountries: z.array(z.string()),
-  
-  // Achievements
   achievements: z.string().optional(),
-  
-  // Career Summary
-  summary: z.string().min(50, "Please provide a detailed career summary (minimum 50 characters)"),
+  summary: z.string().min(50, t("manualCvForm.validation.summary")),
 });
 
-type ManualCVFormData = z.infer<typeof manualCVSchema>;
+type ManualCVSchema = ReturnType<typeof buildManualCVSchema>;
+type ManualCVFormData = z.infer<ManualCVSchema>;
 
 interface ManualCVFormProps {
   onComplete: () => void;
@@ -89,9 +69,22 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
   const [currentSkill, setCurrentSkill] = useState("");
   const [currentTechSkill, setCurrentTechSkill] = useState("");
   const { toast } = useToast();
+  const { t } = useLanguage();
+  const schema = useMemo(() => buildManualCVSchema(t), [t]);
+  const jobTypeLabels: Record<string, string> = {
+    fulltime: t("manualCvForm.jobTypes.fulltime"),
+    part_time: t("manualCvForm.jobTypes.part_time"),
+    freelance: t("manualCvForm.jobTypes.freelance"),
+    internship: t("manualCvForm.jobTypes.internship"),
+  };
+  const workplaceLabels: Record<string, string> = {
+    onsite: t("manualCvForm.workplaceOptions.onsite"),
+    remote: t("manualCvForm.workplaceOptions.remote"),
+    hybrid: t("manualCvForm.workplaceOptions.hybrid"),
+  };
 
   const form = useForm<ManualCVFormData>({
-    resolver: zodResolver(manualCVSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       name: initialData?.name || "",
       email: initialData?.email || "",
@@ -169,16 +162,16 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
       });
 
       toast({
-        title: "CV Information Saved",
-        description: "Your CV information has been saved successfully. You can now proceed with interviews.",
+        title: t("manualCvForm.toasts.successTitle"),
+        description: t("manualCvForm.toasts.successDescription"),
       });
 
       onComplete();
     } catch (error) {
       console.error("Error saving CV information:", error);
       toast({
-        title: "Error",
-        description: "Failed to save CV information. Please try again.",
+        title: t("manualCvForm.toasts.errorTitle"),
+        description: t("manualCvForm.toasts.errorDescription"),
         variant: "destructive",
       });
     } finally {
@@ -189,68 +182,68 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Complete Your CV Information</h1>
-        <p className="text-gray-600">Enter your professional information manually to create your comprehensive profile</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">{t("manualCvForm.title")}</h1>
+        <p className="text-gray-600">{t("manualCvForm.subtitle")}</p>
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         {/* Personal Information */}
         <Card>
           <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
+            <CardTitle>{t("manualCvForm.sections.personal.title")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name">Full Name *</Label>
+                <Label htmlFor="name">{t("manualCvForm.sections.personal.fields.name.label")}</Label>
                 <Input
                   {...form.register("name")}
-                  placeholder="Enter your full name"
+                  placeholder={t("manualCvForm.sections.personal.fields.name.placeholder")}
                 />
                 {form.formState.errors.name && (
                   <p className="text-red-500 text-sm mt-1">{form.formState.errors.name.message}</p>
                 )}
               </div>
               <div>
-                <Label htmlFor="email">Email Address *</Label>
+                <Label htmlFor="email">{t("manualCvForm.sections.personal.fields.email.label")}</Label>
                 <Input
                   {...form.register("email")}
                   type="email"
-                  placeholder="your.email@example.com"
+                  placeholder={t("manualCvForm.sections.personal.fields.email.placeholder")}
                 />
                 {form.formState.errors.email && (
                   <p className="text-red-500 text-sm mt-1">{form.formState.errors.email.message}</p>
                 )}
               </div>
               <div>
-                <Label htmlFor="phone">Phone Number *</Label>
+                <Label htmlFor="phone">{t("manualCvForm.sections.personal.fields.phone.label")}</Label>
                 <Input
                   {...form.register("phone")}
-                  placeholder="+1 (555) 123-4567"
+                  placeholder={t("manualCvForm.sections.personal.fields.phone.placeholder")}
                 />
                 {form.formState.errors.phone && (
                   <p className="text-red-500 text-sm mt-1">{form.formState.errors.phone.message}</p>
                 )}
               </div>
               <div>
-                <Label htmlFor="nationality">Nationality</Label>
+                <Label htmlFor="nationality">{t("manualCvForm.sections.personal.fields.nationality.label")}</Label>
                 <Input
                   {...form.register("nationality")}
-                  placeholder="Your nationality"
+                  placeholder={t("manualCvForm.sections.personal.fields.nationality.placeholder")}
                 />
               </div>
               <div>
-                <Label htmlFor="country">Country</Label>
+                <Label htmlFor="country">{t("manualCvForm.sections.personal.fields.country.label")}</Label>
                 <Input
                   {...form.register("country")}
-                  placeholder="Country of residence"
+                  placeholder={t("manualCvForm.sections.personal.fields.country.placeholder")}
                 />
               </div>
               <div>
-                <Label htmlFor="city">City</Label>
+                <Label htmlFor="city">{t("manualCvForm.sections.personal.fields.city.label")}</Label>
                 <Input
                   {...form.register("city")}
-                  placeholder="City of residence"
+                  placeholder={t("manualCvForm.sections.personal.fields.city.placeholder")}
                 />
               </div>
             </div>
@@ -261,7 +254,7 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Education *
+              {t("manualCvForm.sections.education.title")}
               <Button
                 type="button"
                 variant="outline"
@@ -269,7 +262,7 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
                 onClick={() => appendDegree({ institution: "", degree: "", field: "", startDate: "", endDate: "", gpa: "" })}
               >
                 <Plus className="w-4 h-4 mr-1" />
-                Add Education
+                {t("manualCvForm.sections.education.addButton")}
               </Button>
             </CardTitle>
           </CardHeader>
@@ -289,45 +282,45 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>Institution *</Label>
+                    <Label>{t("manualCvForm.sections.education.fields.institution.label")}</Label>
                     <Input
                       {...form.register(`degrees.${index}.institution`)}
-                      placeholder="University/College name"
+                      placeholder={t("manualCvForm.sections.education.fields.institution.placeholder")}
                     />
                   </div>
                   <div>
-                    <Label>Degree *</Label>
+                    <Label>{t("manualCvForm.sections.education.fields.degree.label")}</Label>
                     <Input
                       {...form.register(`degrees.${index}.degree`)}
-                      placeholder="Bachelor's, Master's, etc."
+                      placeholder={t("manualCvForm.sections.education.fields.degree.placeholder")}
                     />
                   </div>
                   <div>
-                    <Label>Field of Study</Label>
+                    <Label>{t("manualCvForm.sections.education.fields.field.label")}</Label>
                     <Input
                       {...form.register(`degrees.${index}.field`)}
-                      placeholder="Computer Science, Business, etc."
+                      placeholder={t("manualCvForm.sections.education.fields.field.placeholder")}
                     />
                   </div>
                   <div>
-                    <Label>GPA (Optional)</Label>
+                    <Label>{t("manualCvForm.sections.education.fields.gpa.label")}</Label>
                     <Input
                       {...form.register(`degrees.${index}.gpa`)}
-                      placeholder="3.8/4.0"
+                      placeholder={t("manualCvForm.sections.education.fields.gpa.placeholder")}
                     />
                   </div>
                   <div>
-                    <Label>Start Date</Label>
+                    <Label>{t("manualCvForm.sections.education.fields.startDate.label")}</Label>
                     <Input
                       {...form.register(`degrees.${index}.startDate`)}
-                      placeholder="2018"
+                      placeholder={t("manualCvForm.sections.education.fields.startDate.placeholder")}
                     />
                   </div>
                   <div>
-                    <Label>End Date</Label>
+                    <Label>{t("manualCvForm.sections.education.fields.endDate.label")}</Label>
                     <Input
                       {...form.register(`degrees.${index}.endDate`)}
-                      placeholder="2022"
+                      placeholder={t("manualCvForm.sections.education.fields.endDate.placeholder")}
                     />
                   </div>
                 </div>
@@ -340,7 +333,7 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Work Experience *
+              {t("manualCvForm.sections.experience.title")}
               <Button
                 type="button"
                 variant="outline"
@@ -348,7 +341,7 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
                 onClick={() => appendExperience({ company: "", position: "", startDate: "", endDate: "", responsibilities: "", current: false })}
               >
                 <Plus className="w-4 h-4 mr-1" />
-                Add Experience
+                {t("manualCvForm.sections.experience.addButton")}
               </Button>
             </CardTitle>
           </CardHeader>
@@ -368,39 +361,39 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>Company *</Label>
+                    <Label>{t("manualCvForm.sections.experience.fields.company.label")}</Label>
                     <Input
                       {...form.register(`workExperiences.${index}.company`)}
-                      placeholder="Company name"
+                      placeholder={t("manualCvForm.sections.experience.fields.company.placeholder")}
                     />
                   </div>
                   <div>
-                    <Label>Position *</Label>
+                    <Label>{t("manualCvForm.sections.experience.fields.position.label")}</Label>
                     <Input
                       {...form.register(`workExperiences.${index}.position`)}
-                      placeholder="Job title"
+                      placeholder={t("manualCvForm.sections.experience.fields.position.placeholder")}
                     />
                   </div>
                   <div>
-                    <Label>Start Date</Label>
+                    <Label>{t("manualCvForm.sections.experience.fields.startDate.label")}</Label>
                     <Input
                       {...form.register(`workExperiences.${index}.startDate`)}
-                      placeholder="Jan 2020"
+                      placeholder={t("manualCvForm.sections.experience.fields.startDate.placeholder")}
                     />
                   </div>
                   <div>
-                    <Label>End Date</Label>
+                    <Label>{t("manualCvForm.sections.experience.fields.endDate.label")}</Label>
                     <Input
                       {...form.register(`workExperiences.${index}.endDate`)}
-                      placeholder="Dec 2022 or 'Present'"
+                      placeholder={t("manualCvForm.sections.experience.fields.endDate.placeholder")}
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <Label>Key Responsibilities & Achievements *</Label>
+                    <Label>{t("manualCvForm.sections.experience.fields.responsibilities.label")}</Label>
                     <Textarea
                       {...form.register(`workExperiences.${index}.responsibilities`)}
                       rows={4}
-                      placeholder="Describe your key responsibilities, achievements, and impact in this role..."
+                      placeholder={t("manualCvForm.sections.experience.fields.responsibilities.placeholder")}
                     />
                   </div>
                 </div>
@@ -413,7 +406,7 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Languages *
+              {t("manualCvForm.sections.languages.title")}
               <Button
                 type="button"
                 variant="outline"
@@ -421,7 +414,7 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
                 onClick={() => appendLanguage({ language: "", proficiency: "intermediate" })}
               >
                 <Plus className="w-4 h-4 mr-1" />
-                Add Language
+                {t("manualCvForm.sections.languages.addButton")}
               </Button>
             </CardTitle>
           </CardHeader>
@@ -429,26 +422,26 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
             {languageFields.map((field, index) => (
               <div key={field.id} className="flex items-end gap-4">
                 <div className="flex-1">
-                  <Label>Language</Label>
+                  <Label>{t("manualCvForm.sections.languages.languageLabel")}</Label>
                   <Input
                     {...form.register(`languages.${index}.language`)}
-                    placeholder="English, Spanish, etc."
+                    placeholder={t("manualCvForm.sections.languages.languagePlaceholder")}
                   />
                 </div>
                 <div className="flex-1">
-                  <Label>Proficiency</Label>
+                  <Label>{t("manualCvForm.sections.languages.proficiencyLabel")}</Label>
                   <Select
                     value={form.watch(`languages.${index}.proficiency`)}
                     onValueChange={(value) => form.setValue(`languages.${index}.proficiency`, value as any)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select proficiency" />
+                      <SelectValue placeholder={t("manualCvForm.sections.languages.proficiencyPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="basic">Basic</SelectItem>
-                      <SelectItem value="intermediate">Intermediate</SelectItem>
-                      <SelectItem value="advanced">Advanced</SelectItem>
-                      <SelectItem value="native">Native</SelectItem>
+                      <SelectItem value="basic">{t("manualCvForm.sections.languages.proficiencyOptions.basic")}</SelectItem>
+                      <SelectItem value="intermediate">{t("manualCvForm.sections.languages.proficiencyOptions.intermediate")}</SelectItem>
+                      <SelectItem value="advanced">{t("manualCvForm.sections.languages.proficiencyOptions.advanced")}</SelectItem>
+                      <SelectItem value="native">{t("manualCvForm.sections.languages.proficiencyOptions.native")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -470,20 +463,20 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
         {/* Skills */}
         <Card>
           <CardHeader>
-            <CardTitle>Skills *</CardTitle>
+            <CardTitle>{t("manualCvForm.sections.skills.title")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Technical Skills */}
             <div>
-              <Label className="text-base font-medium">Technical Skills *</Label>
+              <Label className="text-base font-medium">{t("manualCvForm.sections.skills.technicalLabel")}</Label>
               <div className="flex gap-2 mt-2 mb-3">
                 <Input
                   value={currentTechSkill}
                   onChange={(e) => setCurrentTechSkill(e.target.value)}
-                  placeholder="Add a technical skill"
+                  placeholder={t("manualCvForm.sections.skills.technicalPlaceholder")}
                   onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTechnicalSkill())}
                 />
-                <Button type="button" onClick={addTechnicalSkill}>Add</Button>
+                <Button type="button" onClick={addTechnicalSkill}>{t("manualCvForm.sections.skills.addButton")}</Button>
               </div>
               <div className="flex flex-wrap gap-2">
                 {form.watch("technicalSkills").map((skill, index) => (
@@ -497,15 +490,15 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
 
             {/* Soft Skills */}
             <div>
-              <Label className="text-base font-medium">Soft Skills *</Label>
+              <Label className="text-base font-medium">{t("manualCvForm.sections.skills.softLabel")}</Label>
               <div className="flex gap-2 mt-2 mb-3">
                 <Input
                   value={currentSkill}
                   onChange={(e) => setCurrentSkill(e.target.value)}
-                  placeholder="Add a soft skill"
+                  placeholder={t("manualCvForm.sections.skills.softPlaceholder")}
                   onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addSoftSkill())}
                 />
-                <Button type="button" onClick={addSoftSkill}>Add</Button>
+                <Button type="button" onClick={addSoftSkill}>{t("manualCvForm.sections.skills.addButton")}</Button>
               </div>
               <div className="flex flex-wrap gap-2">
                 {form.watch("softSkills").map((skill, index) => (
@@ -523,7 +516,7 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Certifications
+              {t("manualCvForm.sections.certifications.title")}
               <Button
                 type="button"
                 variant="outline"
@@ -531,7 +524,7 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
                 onClick={() => appendCertification({ name: "", issuer: "", issueDate: "", expiryDate: "" })}
               >
                 <Plus className="w-4 h-4 mr-1" />
-                Add Certification
+                {t("manualCvForm.sections.certifications.addButton")}
               </Button>
             </CardTitle>
           </CardHeader>
@@ -549,31 +542,31 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
                 </Button>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>Certification Name *</Label>
+                    <Label>{t("manualCvForm.sections.certifications.fields.name.label")}</Label>
                     <Input
                       {...form.register(`certifications.${index}.name`)}
-                      placeholder="AWS Certified Developer"
+                      placeholder={t("manualCvForm.sections.certifications.fields.name.placeholder")}
                     />
                   </div>
                   <div>
-                    <Label>Issuing Organization</Label>
+                    <Label>{t("manualCvForm.sections.certifications.fields.issuer.label")}</Label>
                     <Input
                       {...form.register(`certifications.${index}.issuer`)}
-                      placeholder="Amazon Web Services"
+                      placeholder={t("manualCvForm.sections.certifications.fields.issuer.placeholder")}
                     />
                   </div>
                   <div>
-                    <Label>Issue Date</Label>
+                    <Label>{t("manualCvForm.sections.certifications.fields.issueDate.label")}</Label>
                     <Input
                       {...form.register(`certifications.${index}.issueDate`)}
-                      placeholder="Jan 2023"
+                      placeholder={t("manualCvForm.sections.certifications.fields.issueDate.placeholder")}
                     />
                   </div>
                   <div>
-                    <Label>Expiry Date</Label>
+                    <Label>{t("manualCvForm.sections.certifications.fields.expiryDate.label")}</Label>
                     <Input
                       {...form.register(`certifications.${index}.expiryDate`)}
-                      placeholder="Jan 2026"
+                      placeholder={t("manualCvForm.sections.certifications.fields.expiryDate.placeholder")}
                     />
                   </div>
                 </div>
@@ -585,11 +578,11 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
         {/* Career Preferences */}
         <Card>
           <CardHeader>
-            <CardTitle>Career Preferences</CardTitle>
+            <CardTitle>{t("manualCvForm.sections.preferences.title")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Preferred Work Type *</Label>
+              <Label>{t("manualCvForm.sections.preferences.workTypeLabel")}</Label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
                 {["fulltime", "part_time", "freelance", "internship"].map((type) => (
                   <label key={type} className="flex items-center space-x-2 rtl:space-x-reverse cursor-pointer">
@@ -598,25 +591,25 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
                       value={type}
                       {...form.register("jobTypes")}
                     />
-                    <span className="capitalize">{type.replace("_", " ")}</span>
+                    <span>{jobTypeLabels[type]}</span>
                   </label>
                 ))}
               </div>
             </div>
 
             <div>
-              <Label>Workplace Setting</Label>
+              <Label>{t("manualCvForm.sections.preferences.workplaceLabel")}</Label>
               <Select
                 value={form.watch("workplaceSettings")}
                 onValueChange={(value) => form.setValue("workplaceSettings", value as any)}
               >
                 <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select workplace preference" />
+                  <SelectValue placeholder={t("manualCvForm.sections.preferences.workplacePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="onsite">On-site</SelectItem>
-                  <SelectItem value="remote">Remote</SelectItem>
-                  <SelectItem value="hybrid">Hybrid</SelectItem>
+                  {(["onsite", "remote", "hybrid"] as const).map((option) => (
+                    <SelectItem key={option} value={option}>{workplaceLabels[option]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -626,15 +619,15 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
         {/* Career Summary & Achievements */}
         <Card>
           <CardHeader>
-            <CardTitle>Professional Summary & Achievements</CardTitle>
+            <CardTitle>{t("manualCvForm.sections.summary.title")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Professional Summary *</Label>
+              <Label>{t("manualCvForm.sections.summary.summaryLabel")}</Label>
               <Textarea
                 {...form.register("summary")}
                 rows={4}
-                placeholder="Provide a comprehensive summary of your professional background, key strengths, and career objectives..."
+                placeholder={t("manualCvForm.sections.summary.summaryPlaceholder")}
               />
               {form.formState.errors.summary && (
                 <p className="text-red-500 text-sm mt-1">{form.formState.errors.summary.message}</p>
@@ -642,11 +635,11 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
             </div>
 
             <div>
-              <Label>Key Achievements</Label>
+              <Label>{t("manualCvForm.sections.summary.achievementsLabel")}</Label>
               <Textarea
                 {...form.register("achievements")}
                 rows={3}
-                placeholder="Highlight your most significant professional achievements, awards, recognitions..."
+                placeholder={t("manualCvForm.sections.summary.achievementsPlaceholder")}
               />
             </div>
           </CardContent>
@@ -659,7 +652,7 @@ export function ManualCVForm({ onComplete, initialData }: ManualCVFormProps) {
             disabled={isSubmitting}
             className="px-8 py-2"
           >
-            {isSubmitting ? "Saving..." : "Save CV Information"}
+            {isSubmitting ? t("manualCvForm.buttons.saving") : t("manualCvForm.buttons.save")}
           </Button>
         </div>
       </form>

@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface GoogleSignInButtonProps {
   onClick: () => void;
@@ -16,6 +17,8 @@ export default function GoogleSignInButton({
   fullWidth = true,
   className = ""
 }: GoogleSignInButtonProps) {
+  const { t } = useLanguage();
+
   return (
     <Button
       type="button"
@@ -69,7 +72,7 @@ export default function GoogleSignInButton({
           </svg>
         )}
         <span className="font-semibold">
-          {isLoading ? "Connecting..." : "Continue with Google"}
+          {isLoading ? t("auth.googleSignIn.connecting") : t("auth.googleSignIn.cta")}
         </span>
       </div>
     </Button>

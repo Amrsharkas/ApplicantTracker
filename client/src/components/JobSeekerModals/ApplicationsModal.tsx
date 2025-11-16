@@ -20,6 +20,7 @@ import {
   RefreshCw,
   AlertCircle
 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface AirtableApplication {
   recordId: string;
@@ -42,6 +43,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
   const [statusFilter, setStatusFilter] = useState("all");
   const [withdrawConfirm, setWithdrawConfirm] = useState<{isOpen: boolean, recordId: string, jobTitle: string} | null>(null);
   const { toast } = useToast();
+  const { t, language } = useLanguage();
 
   const { data: applications = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/applications"],
@@ -50,8 +52,8 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: t("applicationsModal.unauthorizedTitle"),
+          description: t("applicationsModal.unauthorizedDescription"),
           variant: "destructive",
         });
         setTimeout(() => {
@@ -68,8 +70,8 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
     },
     onSuccess: (data, recordId) => {
       toast({
-        title: "Application Withdrawn",
-        description: "Your application has been successfully withdrawn and removed.",
+        title: t("applicationsModal.withdrawSuccessTitle"),
+        description: t("applicationsModal.withdrawSuccessDescription"),
         variant: "default",
       });
       
@@ -79,8 +81,8 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: t("applicationsModal.unauthorizedTitle"),
+          description: t("applicationsModal.unauthorizedDescription"),
           variant: "destructive",
         });
         setTimeout(() => {
@@ -90,8 +92,8 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
       }
       
       toast({
-        title: "Error",
-        description: error.message || "Failed to withdraw application. Please try again.",
+        title: t("applicationsModal.withdrawErrorTitle"),
+        description: error.message || t("applicationsModal.withdrawErrorDescription"),
         variant: "destructive",
       });
     },
@@ -128,26 +130,40 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
     }
   };
 
+  const statusLabelKeyMap: Record<string, string> = {
+    accepted: "applicationsModal.stats.accepted",
+    pending: "applicationsModal.stats.pending",
+    closed: "applicationsModal.stats.closed",
+    denied: "applicationsModal.stats.denied",
+  };
+
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      accepted: { variant: "default" as const, color: "bg-green-100 text-green-800", label: "Accepted" },
-      pending: { variant: "secondary" as const, color: "bg-yellow-100 text-yellow-800", label: "Pending" },
-      closed: { variant: "outline" as const, color: "bg-gray-100 text-gray-800", label: "Closed" },
-      denied: { variant: "destructive" as const, color: "bg-red-100 text-red-800", label: "Denied" }
+      accepted: { variant: "default" as const, color: "bg-green-100 text-green-800" },
+      pending: { variant: "secondary" as const, color: "bg-yellow-100 text-yellow-800" },
+      closed: { variant: "outline" as const, color: "bg-gray-100 text-gray-800" },
+      denied: { variant: "destructive" as const, color: "bg-red-100 text-red-800" }
     };
     
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    const labelKey = statusLabelKeyMap[status] || "applicationsModal.stats.pending";
     return (
       <Badge variant={config.variant} className={`${config.color} flex items-center gap-1`}>
         {getStatusIcon(status)}
-        {config.label}
+        {t(labelKey)}
       </Badge>
     );
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    const localeMap: Record<string, string> = {
+      en: 'en-US',
+      ar: 'ar-EG',
+      fr: 'fr-FR',
+    };
+    const locale = localeMap[language] || 'en-US';
+    return date.toLocaleDateString(locale, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -176,13 +192,28 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
 
   const stats = getApplicationStats();
 
+  const getStatusLabel = (status: string) => {
+    if (status === "all") {
+      return t("applicationsModal.filterOptions.all");
+    }
+    return t(statusLabelKeyMap[status] || "applicationsModal.stats.pending");
+  };
+
   const handleManualRefresh = () => {
     refetch();
     toast({
-      title: "Refreshed",
-      description: "Applications have been updated",
+      title: t("applicationsModal.refreshToastTitle"),
+      description: t("applicationsModal.refreshToastDescription"),
     });
   };
+
+  const emptyStateTitle = statusFilter === "all"
+    ? t("applicationsModal.emptyAllTitle")
+    : t("applicationsModal.emptyFilteredTitle").replace("{{status}}", getStatusLabel(statusFilter));
+
+  const emptyStateDescription = statusFilter === "all"
+    ? t("applicationsModal.emptyAllDescription")
+    : t("applicationsModal.emptyFilteredDescription").replace("{{status}}", getStatusLabel(statusFilter));
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -190,7 +221,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-slate-200">
-              My Applications
+              {t("applicationsModal.title")}
             </DialogTitle>
             <Button 
               variant="outline" 
@@ -199,7 +230,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
               className="flex items-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
-              Refresh
+              {t("applicationsModal.refresh")}
             </Button>
           </div>
         </DialogHeader>
@@ -212,31 +243,31 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
                 <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">
                   {stats.total}
                 </div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Total</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">{t("applicationsModal.stats.total")}</div>
               </CardContent>
             </Card>
             <Card className="glass-card">
               <CardContent className="p-3 text-center">
                 <div className="text-2xl font-bold text-green-600">{stats.accepted}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Accepted</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">{t("applicationsModal.stats.accepted")}</div>
               </CardContent>
             </Card>
             <Card className="glass-card">
               <CardContent className="p-3 text-center">
                 <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Pending</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">{t("applicationsModal.stats.pending")}</div>
               </CardContent>
             </Card>
             <Card className="glass-card">
               <CardContent className="p-3 text-center">
                 <div className="text-2xl font-bold text-gray-600">{stats.closed}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Closed</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">{t("applicationsModal.stats.closed")}</div>
               </CardContent>
             </Card>
             <Card className="glass-card">
               <CardContent className="p-3 text-center">
                 <div className="text-2xl font-bold text-red-600">{stats.denied}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Denied</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">{t("applicationsModal.stats.denied")}</div>
               </CardContent>
             </Card>
           </div>
@@ -244,18 +275,18 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
           {/* Filter */}
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Filter by status:
+              {t("applicationsModal.filterLabel")}
             </span>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-48 glass-card">
-                <SelectValue />
+                <SelectValue placeholder={t("applicationsModal.filterOptions.all")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Applications</SelectItem>
-                <SelectItem value="accepted">Accepted</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-                <SelectItem value="denied">Denied</SelectItem>
+                <SelectItem value="all">{t("applicationsModal.filterOptions.all")}</SelectItem>
+                <SelectItem value="accepted">{t("applicationsModal.filterOptions.accepted")}</SelectItem>
+                <SelectItem value="pending">{t("applicationsModal.filterOptions.pending")}</SelectItem>
+                <SelectItem value="closed">{t("applicationsModal.filterOptions.closed")}</SelectItem>
+                <SelectItem value="denied">{t("applicationsModal.filterOptions.denied")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -270,23 +301,23 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
               <div className="text-center py-12">
                 <FileText className="mx-auto h-12 w-12 text-slate-400 mb-4" />
                 <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  {statusFilter === "all" ? "No Applications Yet" : `No ${statusFilter} Applications`}
+                  {emptyStateTitle}
                 </h3>
                 <p className="text-slate-500 dark:text-slate-400">
-                  {statusFilter === "all" 
-                    ? "Start applying to jobs to see your applications here"
-                    : `You don't have any ${statusFilter} applications`
-                  }
+                  {emptyStateDescription}
                 </p>
               </div>
             ) : (
-              filteredApplications.map((application: AirtableApplication) => (
-                <motion.div
-                  key={application.recordId}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="glass-card p-6 rounded-lg"
-                >
+              filteredApplications.map((application: AirtableApplication) => {
+                const appliedDateText = t("applicationsModal.appliedOn").replace("{{date}}", formatDate(application.appliedAt));
+
+                return (
+                  <motion.div
+                    key={application.recordId}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="glass-card p-6 rounded-lg"
+                  >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
@@ -302,7 +333,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
                         </div>
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
-                          Applied {formatDate(application.appliedAt)}
+                          {appliedDateText}
                         </div>
                       </div>
                     </div>
@@ -321,7 +352,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
                         disabled={withdrawMutation.isPending}
                       >
                         <XCircle className="w-4 h-4" />
-                        {withdrawMutation.isPending ? 'Withdrawing...' : 'Withdraw'}
+                        {withdrawMutation.isPending ? t("applicationsModal.withdrawing") : t("applicationsModal.withdraw")}
                       </Button>
                     )}
                     <Button 
@@ -334,11 +365,12 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
                       }}
                     >
                       <Eye className="w-4 h-4" />
-                      View Details
+                      {t("applicationsModal.viewDetails")}
                     </Button>
                   </div>
-                </motion.div>
-              ))
+                  </motion.div>
+                );
+              })
             )}
           </div>
         </div>
@@ -350,11 +382,10 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-red-500" />
-              Withdraw Application
+              {t("applicationsModal.withdrawModalTitle")}
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to withdraw your application for "{withdrawConfirm?.jobTitle}"? 
-              This will permanently remove it from your applications and cannot be undone.
+              {t("applicationsModal.withdrawModalDescription").replace("{{jobTitle}}", withdrawConfirm?.jobTitle ?? "")}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-3 rtl:space-x-reverse mt-6">
@@ -363,7 +394,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
               onClick={cancelWithdraw}
               disabled={withdrawMutation.isPending}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -372,7 +403,7 @@ export function ApplicationsModal({ isOpen, onClose, onOpenJobDetails }: Applica
               className="flex items-center gap-2"
             >
               <XCircle className="w-4 h-4" />
-              {withdrawMutation.isPending ? 'Withdrawing...' : 'Withdraw Application'}
+              {withdrawMutation.isPending ? t("applicationsModal.withdrawing") : t("applicationsModal.withdrawConfirm")}
             </Button>
           </div>
         </DialogContent>

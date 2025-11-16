@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import ReactMarkdown from "react-markdown";
 
 import { MapPin, Target, Building, RefreshCw, Briefcase, ChevronDown, ChevronUp } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface JobMatch {
   id: number;
@@ -37,6 +38,7 @@ interface MatchesModalProps {
 
 export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
   const queryClient = useQueryClient();
+  const { t } = useLanguage();
 
   const { data: matches = [], isLoading } = useQuery<JobMatch[]>({
     queryKey: ["/api/job-matches/rag"],
@@ -65,7 +67,8 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl font-bold text-slate-800">AI Job Matches</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-slate-800">{t("matchesModal.title")}</DialogTitle>
+            
             <Button
               onClick={handleRefresh}
               disabled={isRefreshing}
@@ -73,7 +76,7 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
               size="sm"
               className="flex items-center gap-2"
             >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {t("matchesModal.refresh")}
               Refresh
             </Button>
           </div>
@@ -87,16 +90,16 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
           ) : matches.length === 0 ? (
             <div className="text-center py-12">
               <Target className="w-20 h-20 text-slate-400 mx-auto mb-6" />
-              <h3 className="text-2xl font-bold text-slate-700 mb-3">🔍 Still Hunting for Your Perfect Match!</h3>
+              <h3 className="text-2xl font-bold text-slate-700 mb-3">{t("matchesModal.emptyTitle")}</h3>
               <div className="space-y-2 mb-6">
                 <p className="text-lg text-slate-600">
-                  Our AI matchmaker is working overtime, but your dream job is playing hard to get! 
+                  {t("matchesModal.emptyDescription1")}
                 </p>
                 <p className="text-slate-500">
-                  Don't worry - we're like a persistent dating app but for careers. We never give up! 💪
+                  {t("matchesModal.emptyDescription2")}
                 </p>
                 <p className="text-sm text-slate-400 italic">
-                  (Pro tip: The more interviews you complete, the better we get at finding your professional soulmate)
+                  {t("matchesModal.emptyDescription3")}
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -106,14 +109,14 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white disabled:opacity-70"
                 >
                   <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  Check Again (Pretty Please!)
+                  {t("matchesModal.emptyPrimaryCta")}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={onClose}
                   className="border-slate-300 hover:bg-slate-50"
                 >
-                  I'll Wait Patiently 😌
+                  {t("matchesModal.emptySecondaryCta")}
                 </Button>
               </div>
             </div>
@@ -145,7 +148,7 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
                             </div>
                             <div className="flex flex-col items-end gap-2">
                               <Badge className="bg-green-500 text-white">
-                                {Math.round(match.matchScore * 100)}% Match
+                                {t("matchesModal.matchBadge").replace("{{percentage}}", Math.round(match.matchScore * 100).toString())}
                               </Badge>
                             </div>
                           </div>
@@ -153,7 +156,7 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
                           {/* Match Reasons */}
                           {match.matchReasons && match.matchReasons.length > 0 && (
                             <div className="bg-green-50 rounded-lg p-3 border border-green-200 mb-3">
-                              <p className="text-sm font-medium text-green-700 mb-1">✨ Why this matches you:</p>
+                              <p className="text-sm font-medium text-green-700 mb-1">{t("matchesModal.reasonsTitle")}</p>
                               <ul className="text-sm text-green-600 list-disc list-inside">
                                 {match.matchReasons.slice(0, 3).map((reason, idx) => (
                                   <li key={idx}>{reason}</li>
@@ -193,7 +196,7 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
                           {/* Skills Section */}
                           {match.job.skills && match.job.skills.length > 0 && (
                             <div className="mb-3">
-                              <p className="text-sm font-medium text-slate-700 mb-2">Required Skills:</p>
+                              <p className="text-sm font-medium text-slate-700 mb-2">{t("matchesModal.skillsTitle")}</p>
                               <div className="flex flex-wrap gap-2">
                                 {match.job.skills.slice(0, 6).map((skill) => (
                                   <Badge
@@ -206,7 +209,7 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
                                 ))}
                                 {match.job.skills.length > 6 && (
                                   <Badge variant="outline">
-                                    +{match.job.skills.length - 6} more
+                                    {t("matchesModal.moreSkills").replace("{{count}}", (match.job.skills.length - 6).toString())}
                                   </Badge>
                                 )}
                               </div>
@@ -215,7 +218,7 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
 
                           {/* Description Preview */}
                           <div className="mb-3">
-                            <p className="text-sm font-medium text-slate-700 mb-2">Description:</p>
+                            <p className="text-sm font-medium text-slate-700 mb-2">{t("matchesModal.descriptionTitle")}</p>
                             {!isExpanded ? (
                               <div className="text-slate-600 text-sm line-clamp-3">
                                 {match.job.description}
@@ -230,7 +233,7 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
                           {/* Requirements Section (only shown when expanded) */}
                           {isExpanded && match.job.requirements && (
                             <div className="mb-3 border-t pt-3">
-                              <p className="text-sm font-medium text-slate-700 mb-2">Requirements:</p>
+                              <p className="text-sm font-medium text-slate-700 mb-2">{t("matchesModal.requirementsTitle")}</p>
                               <div className="prose prose-sm max-w-none text-slate-600">
                                 <ReactMarkdown>{match.job.requirements}</ReactMarkdown>
                               </div>
@@ -247,12 +250,12 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
                             {isExpanded ? (
                               <>
                                 <ChevronUp className="w-4 h-4 mr-2" />
-                                Show Less
+                                {t("matchesModal.showLess")}
                               </>
                             ) : (
                               <>
                                 <ChevronDown className="w-4 h-4 mr-2" />
-                                Show More Details
+                                {t("matchesModal.showMore")}
                               </>
                             )}
                           </Button>

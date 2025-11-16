@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { 
   Calendar, 
   Clock,
@@ -34,6 +35,14 @@ interface UpcomingInterviewModalProps {
 export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewModalProps) {
   const { toast } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { t, language } = useLanguage();
+  const localeMap: Record<string, string> = {
+    en: 'en-US',
+    ar: 'ar-EG',
+    fr: 'fr-FR',
+  };
+  const locale = localeMap[language] || 'en-US';
+  const relativeTimeFormatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
 
   const { data: interviews = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/upcoming-interviews"],
@@ -42,8 +51,8 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: t("applicationsModal.unauthorizedTitle"),
+          description: t("applicationsModal.unauthorizedDescription"),
           variant: "destructive",
         });
         setTimeout(() => {
@@ -54,116 +63,77 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
   });
 
   const formatInterviewDateTime = (dateTimeString: string) => {
-    if (!dateTimeString) return 'Invalid Date';
+    if (!dateTimeString) return t("upcomingInterviewsModal.invalidDate");
     
     try {
-      console.log('🔍 Frontend received dateTimeString:', dateTimeString);
-      
-      // Handle the case where backend sends us a properly formatted ISO string
       let date = new Date(dateTimeString);
       
-      // If the date is invalid, try alternative parsing
-      if (isNaN(date.getTime())) {
-        // Try parsing the original Airtable format directly
-        if (dateTimeString.includes(' at ')) {
-          const cleanedDate = dateTimeString.replace(' at ', 'T') + ':00';
-          date = new Date(cleanedDate);
-        }
+      if (isNaN(date.getTime()) && dateTimeString.includes(' at ')) {
+        const cleanedDate = dateTimeString.replace(' at ', 'T') + ':00';
+        date = new Date(cleanedDate);
       }
       
-      console.log('🔍 Created Date object:', date);
-      console.log('🔍 Date getHours():', date.getHours());
-      console.log('🔍 Date getMinutes():', date.getMinutes());
-      console.log('🔍 Date toISOString():', date.toISOString());
-      
-      // Check if date is valid
       if (isNaN(date.getTime())) {
-        return 'Invalid Date';
+        return t("upcomingInterviewsModal.invalidDate");
       }
       
-      // Format date like "July 21st, 2025"
-      const dateOptions: Intl.DateTimeFormatOptions = {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      };
-      
-      // Format time like "3:00 PM EST"
-      const timeOptions: Intl.DateTimeFormatOptions = {
+      const formattedDate = date.toLocaleDateString(locale, {
+        dateStyle: 'full',
+      });
+      const formattedTime = date.toLocaleTimeString(locale, {
         hour: 'numeric',
         minute: '2-digit',
-        timeZoneName: 'short'
-      };
+        timeZoneName: 'short',
+      });
       
-      const formattedDate = date.toLocaleDateString('en-US', dateOptions);
-      const formattedTime = date.toLocaleTimeString('en-US', timeOptions);
-      
-      console.log('🔍 Formatted time result:', formattedTime);
-      
-      // Add ordinal suffix to day
-      const day = date.getDate();
-      const ordinalSuffix = getOrdinalSuffix(day);
-      const finalDate = formattedDate.replace(day.toString(), `${day}${ordinalSuffix}`);
-      
-      return { date: finalDate, time: formattedTime };
+      return { date: formattedDate, time: formattedTime };
     } catch (error) {
       console.error('Date formatting error:', error);
-      return 'Invalid Date';
-    }
-  };
-
-  const getOrdinalSuffix = (day: number) => {
-    if (day > 3 && day < 21) return 'th';
-    switch (day % 10) {
-      case 1: return 'st';
-      case 2: return 'nd';
-      case 3: return 'rd';
-      default: return 'th';
+      return t("upcomingInterviewsModal.invalidDate");
     }
   };
 
   const getTimeUntilInterview = (dateTimeString: string) => {
-    if (!dateTimeString) return "Time unknown";
+    if (!dateTimeString) return t("upcomingInterviewsModal.timeUnknown");
     
     try {
       const interviewDate = new Date(dateTimeString);
       
       if (isNaN(interviewDate.getTime())) {
-        return "Time unknown";
+        return t("upcomingInterviewsModal.timeUnknown");
       }
       
       const now = new Date();
       const diffMs = interviewDate.getTime() - now.getTime();
       
       if (diffMs < 0) {
-        return "Interview has passed";
+        return t("upcomingInterviewsModal.interviewPassed");
       }
       
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-      const diffDays = Math.floor(diffHours / 24);
-      
-      if (diffDays > 0) {
-        return `In ${diffDays} day${diffDays > 1 ? 's' : ''}`;
-      } else if (diffHours > 0) {
-        return `In ${diffHours} hour${diffHours > 1 ? 's' : ''} ${diffMinutes > 0 ? ` ${diffMinutes} min` : ''}`;
-      } else {
-        return `In ${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''}`;
+      const diffMinutes = Math.round(diffMs / (1000 * 60));
+      if (diffMinutes >= 60 * 24) {
+        const days = Math.max(1, Math.round(diffMinutes / (60 * 24)));
+        return relativeTimeFormatter.format(days, 'day');
       }
+      if (diffMinutes >= 60) {
+        const hours = Math.max(1, Math.round(diffMinutes / 60));
+        return relativeTimeFormatter.format(hours, 'hour');
+      }
+      return relativeTimeFormatter.format(Math.max(1, diffMinutes), 'minute');
     } catch (error) {
       console.error('Time calculation error:', error);
-      return "Time unknown";
+      return t("upcomingInterviewsModal.timeUnknown");
     }
   };
 
   const getStatusBadge = (dateTimeString: string) => {
-    if (!dateTimeString) return <Badge variant="secondary">Unknown</Badge>;
+    if (!dateTimeString) return <Badge variant="secondary">{t("upcomingInterviewsModal.badges.unknown")}</Badge>;
     
     try {
       const interviewDate = new Date(dateTimeString);
       
       if (isNaN(interviewDate.getTime())) {
-        return <Badge variant="secondary">Unknown</Badge>;
+        return <Badge variant="secondary">{t("upcomingInterviewsModal.badges.unknown")}</Badge>;
       }
       
       const now = new Date();
@@ -171,17 +141,17 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
       const diffHours = diffMs / (1000 * 60 * 60);
       
       if (diffMs < 0) {
-        return <Badge variant="secondary">Completed</Badge>;
+        return <Badge variant="secondary">{t("upcomingInterviewsModal.badges.completed")}</Badge>;
       } else if (diffHours <= 1) {
-        return <Badge className="bg-red-100 text-red-800 border-red-200">Starting Soon</Badge>;
+        return <Badge className="bg-red-100 text-red-800 border-red-200">{t("upcomingInterviewsModal.badges.startingSoon")}</Badge>;
       } else if (diffHours <= 24) {
-        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">Today</Badge>;
+        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">{t("upcomingInterviewsModal.badges.today")}</Badge>;
       } else {
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">{t("upcomingInterviewsModal.badges.upcoming")}</Badge>;
       }
     } catch (error) {
       console.error('Status badge error:', error);
-      return <Badge variant="secondary">Unknown</Badge>;
+      return <Badge variant="secondary">{t("upcomingInterviewsModal.badges.unknown")}</Badge>;
     }
   };
 
@@ -190,8 +160,8 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
       window.open(interviewLink, '_blank', 'noopener,noreferrer');
     } else {
       toast({
-        title: "No Link Available",
-        description: "Interview link is not available yet. Please check back later.",
+        title: t("upcomingInterviewsModal.noLinkTitle"),
+        description: t("upcomingInterviewsModal.noLinkDescription"),
         variant: "destructive",
       });
     }
@@ -219,7 +189,7 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
           <div className="flex items-center justify-between">
             <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
               <Video className="h-6 w-6 text-blue-600" />
-              Upcoming Interviews
+              {t("upcomingInterviewsModal.title")}
             </DialogTitle>
             <Button 
               variant="outline" 
@@ -229,7 +199,7 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
               className="flex items-center gap-2"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+              {isRefreshing ? t("upcomingInterviewsModal.refreshing") : t("upcomingInterviewsModal.refresh")}
             </Button>
           </div>
         </DialogHeader>
@@ -243,15 +213,14 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
             <div className="text-center py-12">
               <Users className="mx-auto h-12 w-12 text-slate-400 mb-4" />
               <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">
-                It's Awfully Quiet in Here... 🦗
+                {t("upcomingInterviewsModal.emptyTitle")}
               </h3>
               <p className="text-slate-500 dark:text-slate-400 mb-4">
-                No interviews scheduled yet, but don't worry! We're confident someone amazing will reach out soon.
+                {t("upcomingInterviewsModal.emptyDescription")}
               </p>
               <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 max-w-md mx-auto">
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  💡 <strong>Pro tip:</strong> Keep applying to jobs and updating your profile. 
-                  Great opportunities are just around the corner!
+                  <strong>{t("upcomingInterviewsModal.proTipLabel")}</strong> {t("upcomingInterviewsModal.proTipMessage")}
                 </p>
               </div>
             </div>
@@ -327,13 +296,13 @@ export function UpcomingInterviewModal({ isOpen, onClose }: UpcomingInterviewMod
                         disabled={!interview.interviewLink}
                       >
                         <Video className="w-4 h-4" />
-                        Join Interview
+                        {t("upcomingInterviewsModal.joinButton")}
                         <ExternalLink className="w-3 h-3" />
                       </Button>
                       
                       {!interview.interviewLink && (
                         <span className="text-sm text-slate-500 dark:text-slate-400">
-                          Link will be provided closer to interview time
+                          {t("upcomingInterviewsModal.linkPlaceholder")}
                         </span>
                       )}
                     </div>

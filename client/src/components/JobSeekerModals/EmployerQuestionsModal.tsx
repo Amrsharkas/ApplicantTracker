@@ -5,7 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { HelpCircle, Send, ArrowRight, Clock } from "lucide-react";
+import { HelpCircle, ArrowRight, Clock } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ParsedEmployerQuestion {
   question: string;
@@ -36,6 +37,14 @@ export function EmployerQuestionsModal({
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [rawQuestions, setRawQuestions] = useState<string>('');
   const { toast } = useToast();
+  const { t, language } = useLanguage();
+
+  const localeMap: Record<string, string> = {
+    en: 'en-US',
+    ar: 'ar-EG',
+    fr: 'fr-FR',
+  };
+  const locale = localeMap[language] || 'en-US';
 
   // Fetch real-time questions when modal opens
   useEffect(() => {
@@ -75,16 +84,16 @@ export function EmployerQuestionsModal({
       
       if (data.questions?.length === 0 && data.rawText) {
         toast({
-          title: "Questions Updated",
-          description: "No valid questions found in the employer text. The employer may need to format their questions properly.",
+          title: t("employerQuestionsModal.toasts.updatedTitle"),
+          description: t("employerQuestionsModal.toasts.updatedDescription"),
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error('Error fetching real-time questions:', error);
       toast({
-        title: "Error",
-        description: "Failed to load employer questions. Please try again.",
+        title: t("employerQuestionsModal.toasts.errorTitle"),
+        description: t("employerQuestionsModal.toasts.errorDescription"),
         variant: "destructive",
       });
       onClose();
@@ -105,8 +114,8 @@ export function EmployerQuestionsModal({
     
     if (unansweredQuestions) {
       toast({
-        title: "Incomplete Answers",
-        description: "Please answer all questions before submitting.",
+        title: t("employerQuestionsModal.toasts.incompleteTitle"),
+        description: t("employerQuestionsModal.toasts.incompleteDescription"),
         variant: "destructive",
       });
       return;
@@ -119,8 +128,8 @@ export function EmployerQuestionsModal({
     } catch (error) {
       console.error('Error submitting answers:', error);
       toast({
-        title: "Error",
-        description: "Failed to submit answers. Please try again.",
+        title: t("employerQuestionsModal.toasts.errorTitle"),
+        description: t("employerQuestionsModal.toasts.submitErrorDescription"),
         variant: "destructive",
       });
     } finally {
@@ -128,7 +137,19 @@ export function EmployerQuestionsModal({
     }
   };
 
+  const answeredCount = answers.filter(a => a.trim() !== '').length;
   const allAnswered = answers.every(answer => answer.trim() !== '');
+
+  const jobLine = t("employerQuestionsModal.instructionsLine")
+    .replace("{{jobTitle}}", jobTitle)
+    .replace("{{companyName}}", companyName);
+
+  const updatedTimestamp = lastUpdated
+    ? t("employerQuestionsModal.updatedLabel").replace(
+        "{{timestamp}}",
+        new Date(lastUpdated).toLocaleString(locale)
+      )
+    : "";
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -136,15 +157,15 @@ export function EmployerQuestionsModal({
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
             <HelpCircle className="h-6 w-6 text-blue-600" />
-            Employer Questions
+            {t("employerQuestionsModal.title")}
           </DialogTitle>
           <div className="text-sm text-slate-600 dark:text-slate-400 mt-2">
-            <p><strong>{jobTitle}</strong> at <strong>{companyName}</strong></p>
-            <p>Please answer the following questions from the employer:</p>
+            <p>{jobLine}</p>
+            <p>{t("employerQuestionsModal.instructions")}</p>
             {lastUpdated && (
               <div className="flex items-center gap-1 mt-2 text-xs text-slate-500">
                 <Clock className="h-3 w-3" />
-                Questions updated: {new Date(lastUpdated).toLocaleString()}
+                {updatedTimestamp}
               </div>
             )}
           </div>
@@ -155,21 +176,21 @@ export function EmployerQuestionsModal({
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-slate-600 dark:text-slate-400">Parsing employer questions...</p>
+                <p className="text-slate-600 dark:text-slate-400">{t("employerQuestionsModal.parsing")}</p>
               </div>
             </div>
           ) : questions.length === 0 ? (
             <div className="text-center py-12">
               <HelpCircle className="mx-auto h-12 w-12 text-slate-400 mb-4" />
               <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">
-                No Questions Available
+                {t("employerQuestionsModal.noQuestionsTitle")}
               </h3>
               <p className="text-slate-500 dark:text-slate-400 mb-4">
-                The employer has not added any questions for this posting.
+                {t("employerQuestionsModal.noQuestionsDescription")}
               </p>
               {rawQuestions && (
                 <div className="text-xs text-slate-400 mt-2 p-3 bg-slate-50 dark:bg-slate-800 rounded border">
-                  <p className="font-medium mb-1">Raw employer text found:</p>
+                  <p className="font-medium mb-1">{t("employerQuestionsModal.rawTextLabel")}</p>
                   <p className="text-left">{rawQuestions}</p>
                 </div>
               )}
@@ -179,7 +200,7 @@ export function EmployerQuestionsModal({
                 disabled={isParsing}
                 className="mt-4"
               >
-                {isParsing ? 'Refreshing...' : 'Refresh Questions'}
+                {isParsing ? t("employerQuestionsModal.refreshing") : t("employerQuestionsModal.refreshButton")}
               </Button>
             </div>
           ) : (
@@ -189,21 +210,21 @@ export function EmployerQuestionsModal({
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg font-semibold text-slate-800 dark:text-slate-200 flex items-start gap-3">
                       <Badge variant="outline" className="shrink-0 mt-1">
-                        Q{index + 1}
+                        {t("employerQuestionsModal.questionLabel").replace("{{number}}", String(index + 1))}
                       </Badge>
                       <span className="leading-relaxed">{question.question}</span>
                     </CardTitle>
                     {question.expectedAnswer && (
                       <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                         <p className="text-sm text-blue-700 dark:text-blue-300">
-                          <strong>Tip:</strong> {question.expectedAnswer}
+                          <strong>{t("employerQuestionsModal.tipLabel")}</strong> {question.expectedAnswer}
                         </p>
                       </div>
                     )}
                   </CardHeader>
                   <CardContent>
                     <Textarea
-                      placeholder="Type your answer here..."
+                      placeholder={t("typeYourAnswer")}
                       value={answers[index] || ''}
                       onChange={(e) => handleAnswerChange(index, e.target.value)}
                       className="min-h-[100px] resize-none"
@@ -211,11 +232,11 @@ export function EmployerQuestionsModal({
                     />
                     <div className="flex justify-between items-center mt-2">
                       <span className="text-sm text-slate-500 dark:text-slate-400">
-                        {answers[index]?.length || 0} characters
+                        {t("employerQuestionsModal.characterCount").replace("{{count}}", String(answers[index]?.length || 0))}
                       </span>
                       {answers[index]?.trim() && (
                         <Badge variant="outline" className="text-green-700 border-green-300">
-                          Answered
+                          {t("employerQuestionsModal.answeredBadge")}
                         </Badge>
                       )}
                     </div>
@@ -232,7 +253,9 @@ export function EmployerQuestionsModal({
               <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                 <Clock className="w-4 h-4" />
                 <span>
-                  {answers.filter(a => a.trim() !== '').length} of {questions.length} questions answered
+                  {t("employerQuestionsModal.progress")
+                    .replace("{{answered}}", String(answeredCount))
+                    .replace("{{total}}", String(questions.length))}
                 </span>
               </div>
               
@@ -242,7 +265,7 @@ export function EmployerQuestionsModal({
                   onClick={onClose}
                   disabled={isLoading}
                 >
-                  Cancel
+                  {t("cancel")}
                 </Button>
                 <Button
                   onClick={handleSubmit}
@@ -252,11 +275,11 @@ export function EmployerQuestionsModal({
                   {isLoading ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                      Submitting...
+                      {t("submitting")}
                     </>
                   ) : (
                     <>
-                      Submit Answers
+                      {t("submitAnswers")}
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </>
                   )}

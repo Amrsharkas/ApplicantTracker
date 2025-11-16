@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { MessageCircle, User, Clock, Download, Loader2, Lightbulb } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface TranscriptionItem {
   role: 'user' | 'assistant';
@@ -53,6 +54,13 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
   const [recording, setRecording] = useState<InterviewRecording | null>(null);
   const [parsedQA, setParsedQA] = useState<ParsedQA[]>([]);
   const [showRawTranscript, setShowRawTranscript] = useState(false);
+  const { t, language } = useLanguage();
+  const localeMap: Record<string, string> = {
+    en: 'en-US',
+    ar: 'ar-EG',
+    fr: 'fr-FR',
+  };
+  const locale = localeMap[language] || 'en-US';
 
   useEffect(() => {
     if (!isOpen || !sessionId) return;
@@ -65,7 +73,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
         const sessionRes = await fetch(`/api/interview/session/${sessionId}`, {
           credentials: 'include'
         });
-        if (!sessionRes.ok) throw new Error('Failed to fetch session');
+        if (!sessionRes.ok) throw new Error(t("interviewTranscriptionDialog.toastErrorDescription"));
         const sessionData = await sessionRes.json();
         setSession(sessionData);
 
@@ -88,8 +96,8 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
         }
       } catch (error: any) {
         toast({
-          title: 'Error',
-          description: error.message || 'Failed to load interview data',
+          title: t("interviewTranscriptionDialog.toastErrorTitle"),
+          description: error.message || t("interviewTranscriptionDialog.toastErrorDescription"),
           variant: 'destructive'
         });
       } finally {
@@ -98,7 +106,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
     };
 
     fetchData();
-  }, [isOpen, sessionId]);
+  }, [isOpen, sessionId, t]);
 
   const parseTranscription = async (transcription: TranscriptionItem[]) => {
     try {
@@ -112,14 +120,14 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
         body: JSON.stringify({ transcription })
       });
 
-      if (!response.ok) throw new Error('Failed to parse transcription');
+      if (!response.ok) throw new Error(t("interviewTranscriptionDialog.parsingFailedDescription"));
 
       const data = await response.json();
       setParsedQA(data.parsedQA || []);
     } catch (error: any) {
       toast({
-        title: 'Parsing Failed',
-        description: error.message || 'Could not parse transcription',
+        title: t("interviewTranscriptionDialog.parsingFailedTitle"),
+        description: error.message || t("interviewTranscriptionDialog.parsingFailedDescription"),
         variant: 'destructive'
       });
       // Fall back to simple parsing
@@ -142,7 +150,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
         qa.push({
           question: current.content,
           answer: next.content,
-          feedback: 'Feedback not available',
+          feedback: t("interviewTranscriptionDialog.feedbackUnavailable"),
           questionTimestamp: current.timestamp,
           answerTimestamp: next.timestamp
         });
@@ -152,9 +160,19 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
     return qa;
   };
 
+  const hasMeaningfulFeedback = (feedback?: string) => {
+    if (!feedback) return false;
+    const normalized = feedback.trim().toLowerCase();
+    const fallbackValues = [
+      'feedback not available',
+      t("interviewTranscriptionDialog.feedbackUnavailable").trim().toLowerCase(),
+    ];
+    return !fallbackValues.includes(normalized);
+  };
+
   const formatTimestamp = (timestamp: number) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', {
+    return date.toLocaleTimeString(locale, {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'
@@ -165,14 +183,16 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
     const seconds = Math.floor((end - start) / 1000);
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
+    return t("interviewTranscriptionDialog.durationFormat")
+      .replace("{{minutes}}", mins.toString())
+      .replace("{{seconds}}", secs.toString());
   };
 
   const downloadTranscript = () => {
     if (!session?.sessionData?.responses) return;
 
     const content = session.sessionData.responses
-      .map(item => `[${formatTimestamp(item.timestamp)}] ${item.role === 'assistant' ? 'AI' : 'You'}: ${item.content}`)
+      .map(item => `[${formatTimestamp(item.timestamp)}] ${item.role === 'assistant' ? t("interviewTranscriptionDialog.roles.aiShort") : t("interviewTranscriptionDialog.roles.userShort")}: ${item.content}`)
       .join('\n\n');
 
     const blob = new Blob([content], { type: 'text/plain' });
@@ -202,7 +222,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
         <DialogHeader className="border-b pb-4">
           <div className="flex items-center justify-between">
             <div>
-              <DialogTitle>Interview Transcription</DialogTitle>
+              <DialogTitle>{t("interviewTranscriptionDialog.title")}</DialogTitle>
               <div className="flex items-center gap-2 mt-2">
                 <Badge variant="outline">{session?.interviewType}</Badge>
                 {session?.createdAt && (
@@ -218,7 +238,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
                 size="sm"
                 onClick={() => setShowRawTranscript(!showRawTranscript)}
               >
-                {showRawTranscript ? 'Show Q&A' : 'Show Raw Transcript'}
+                {showRawTranscript ? t("interviewTranscriptionDialog.toggleShowQA") : t("interviewTranscriptionDialog.toggleShowRaw")}
               </Button>
               <Button
                 variant="outline"
@@ -226,7 +246,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
                 onClick={downloadTranscript}
               >
                 <Download className="h-4 w-4 mr-2" />
-                Download
+                {t("interviewTranscriptionDialog.download")}
               </Button>
             </div>
           </div>
@@ -238,14 +258,14 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
             <div className="border rounded-lg p-4 bg-gray-50">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">Interview Recording</span>
+                <span className="text-sm font-medium text-gray-700">{t("interviewTranscriptionDialog.recordingTitle")}</span>
               </div>
               <video
                 controls
                 className="w-full rounded-lg"
                 src={recording.recordingUrl}
               >
-                Your browser does not support the video tag.
+                {t("interviewTranscriptionDialog.videoFallback")}
               </video>
             </div>
           )}
@@ -255,7 +275,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
             {parsing ? (
               <div className="flex items-center justify-center h-32">
                 <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
-                <span className="text-sm text-gray-600">Parsing transcription...</span>
+                <span className="text-sm text-gray-600">{t("interviewTranscriptionDialog.parsing")}</span>
               </div>
             ) : showRawTranscript ? (
               <div className="space-y-3">
@@ -278,7 +298,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
                         <span className={`text-sm font-medium ${
                           item.role === 'assistant' ? 'text-blue-800' : 'text-green-800'
                         }`}>
-                          {item.role === 'assistant' ? 'AI Interviewer' : 'You'}
+                          {item.role === 'assistant' ? t("interviewTranscriptionDialog.roles.ai") : t("interviewTranscriptionDialog.roles.user")}
                         </span>
                       </div>
                       <span className="text-xs text-gray-500">
@@ -302,7 +322,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-blue-600" />
                           <span className="text-sm font-semibold text-blue-800">
-                            Question {index + 1}
+                            {t("interviewTranscriptionDialog.questionLabel").replace("{{index}}", (index + 1).toString())}
                           </span>
                         </div>
                         <span className="text-xs text-gray-500">
@@ -317,7 +337,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
                         <div className="flex items-center gap-2">
                           <MessageCircle className="h-4 w-4 text-green-600" />
                           <span className="text-sm font-semibold text-green-800">
-                            Your Answer
+                            {t("interviewTranscriptionDialog.answerLabel")}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -332,13 +352,13 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
                       <p className="text-sm text-green-700">{qa.answer}</p>
 
                       {/* Feedback Section */}
-                      {qa.feedback && qa.feedback !== 'Feedback not available' && (
+                      {hasMeaningfulFeedback(qa.feedback) && (
                         <div className="mt-4 pt-4 border-t border-green-100">
                           <div className="flex items-start gap-2">
                             <Lightbulb className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
                             <div className="flex-1">
                               <span className="text-sm font-semibold text-amber-800 block mb-1">
-                                AI Feedback
+                                {t("interviewTranscriptionDialog.aiFeedback")}
                               </span>
                               <p className="text-sm text-amber-700 leading-relaxed">
                                 {qa.feedback}
@@ -356,7 +376,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
         </div>
 
         <div className="border-t pt-4 flex justify-end">
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={onClose}>{t("interviewTranscriptionDialog.close")}</Button>
         </div>
       </DialogContent>
     </Dialog>
