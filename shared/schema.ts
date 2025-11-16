@@ -60,6 +60,10 @@ export const organizations = pgTable("organizations", {
   companySize: varchar("company_size"),
   description: text("description"),
   ownerId: varchar("owner_id"),
+  // Separate credit balances for different action types
+  cvProcessingCredits: integer("cv_processing_credits").notNull().default(0),
+  interviewCredits: integer("interview_credits").notNull().default(0),
+  // Legacy fields - kept for backward compatibility
   creditLimit: integer("credit_limit").notNull().default(0),
   currentCredits: integer("current_credits").notNull().default(0),
   // Subscription fields
@@ -75,7 +79,8 @@ export const creditTransactions = pgTable("credit_transactions", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   organizationId: varchar("organization_id").notNull(),
   amount: integer("amount").notNull(),
-  type: varchar("type").notNull(), // 'resume_processing', 'manual_adjustment'
+  type: varchar("type").notNull(), // 'cv_processing', 'interview', 'manual_adjustment', 'subscription', 'purchase'
+  actionType: varchar("action_type"), // 'resume_processing', 'interview_scheduling', etc. - specific action within type
   description: text("description"),
   relatedId: varchar("related_id"), // Can reference resume profile ID or other entities
   createdAt: timestamp("created_at").defaultNow(),
@@ -95,11 +100,12 @@ export const creditPricing = pgTable("credit_pricing", {
 // Credit packages table - predefined credit bundles for purchase
 export const creditPackages = pgTable("credit_packages", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  name: varchar("name").notNull(), // e.g., "Starter Pack", "Professional Pack"
+  name: varchar("name").notNull(), // e.g., "CV Processing Pack", "Interview Pack"
   description: text("description"),
+  creditType: varchar("credit_type").notNull(), // 'cv_processing' or 'interview'
   creditAmount: integer("credit_amount").notNull(), // Number of credits in this package
   price: integer("price").notNull(), // Price in cents (e.g., 1000 = $10.00)
-  currency: varchar("currency").notNull().default("USD"),
+  currency: varchar("currency").notNull().default("EGP"),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0), // For display ordering
   stripePriceId: varchar("stripe_price_id"), // Stripe price ID for this package
@@ -114,7 +120,11 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   description: text("description"),
   monthlyPrice: integer("monthly_price").notNull(), // in cents (EGP)
   yearlyPrice: integer("yearly_price").notNull(), // with 18% discount
-  monthlyCredits: integer("monthly_credits").notNull(), // Credits allocated per month
+  // Separate monthly credits for different action types
+  monthlyCvCredits: integer("monthly_cv_credits").notNull(), // CV processing credits per month
+  monthlyInterviewCredits: integer("monthly_interview_credits").notNull(), // Interview credits per month
+  // Legacy field - kept for backward compatibility
+  monthlyCredits: integer("monthly_credits").notNull().default(0),
   jobPostsLimit: integer("job_posts_limit"), // null = unlimited
   supportLevel: varchar("support_level").notNull(), // standard, priority, dedicated
   features: jsonb("features"), // Additional feature flags
@@ -154,6 +164,10 @@ export const subscriptionInvoices = pgTable("subscription_invoices", {
   amount: integer("amount").notNull(), // in cents
   currency: varchar("currency").notNull().default("EGP"),
   status: varchar("status").notNull(), // paid, open, void, uncollectible
+  // Separate credit allocations for different action types
+  cvCreditsAllocated: integer("cv_credits_allocated").notNull().default(0),
+  interviewCreditsAllocated: integer("interview_credits_allocated").notNull().default(0),
+  // Legacy field - kept for backward compatibility
   creditsAllocated: integer("credits_allocated").notNull().default(0),
   invoiceDate: timestamp("invoice_date"),
   dueDate: timestamp("due_date"),
@@ -167,6 +181,7 @@ export const subscriptionInvoices = pgTable("subscription_invoices", {
 export const creditExpirations = pgTable("credit_expirations", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   organizationId: varchar("organization_id").notNull(),
+  creditType: varchar("credit_type").notNull(), // 'cv_processing' or 'interview'
   creditAmount: integer("credit_amount").notNull(),
   source: varchar("source").notNull(), // subscription, purchase
   sourceId: varchar("source_id"), // subscription_invoice_id or payment_transaction_id

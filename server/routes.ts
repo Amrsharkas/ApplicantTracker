@@ -1697,7 +1697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const interviewCost = await creditService.getActionCost('interview_scheduling');
 
             // Check if organization has sufficient credits
-            const hasCredits = await creditService.checkCredits(organizationId, interviewCost);
+            const hasCredits = await creditService.checkCredits(organizationId, interviewCost, 'interview');
             if (!hasCredits) {
               return res.status(402).json({
                 message: 'Insufficient credits to start interview',
@@ -1708,9 +1708,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await creditService.deductCredits(
               organizationId,
               interviewCost,
-              'interview_scheduling',
+              'interview',
+              'interview',
               `Job-specific interview started: ${job.jobTitle || job.title || 'Unknown'}`,
-              userId
+              userId,
+              'interview_scheduling'
             );
             console.log(`💳 Charged ${interviewCost} credits to org ${organizationId} for starting interview: ${job.jobTitle}`);
           } else {
@@ -1796,7 +1798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const interviewCost = await creditService.getActionCost('interview_scheduling');
 
             // Check if organization has sufficient credits
-            const hasCredits = await creditService.checkCredits(organizationId, interviewCost);
+            const hasCredits = await creditService.checkCredits(organizationId, interviewCost, 'interview');
             if (!hasCredits) {
               return res.status(402).json({
                 message: 'Insufficient credits to start interview',
@@ -1807,9 +1809,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await creditService.deductCredits(
               organizationId,
               interviewCost,
-              'interview_scheduling',
+              'interview',
+              'interview',
               `Job-specific interview started: ${job.jobTitle || job.title || 'Unknown'}`,
-              userId
+              userId,
+              'interview_scheduling'
             );
             console.log(`💳 Charged ${interviewCost} credits to org ${organizationId} for starting interview: ${job.jobTitle}`);
           } else {
@@ -2617,9 +2621,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await creditService.deductCredits(
                 organizationId,
                 interviewCost,
-                'interview_scheduling',
+                'interview',
+                'interview',
                 `Job-specific interview: ${job.jobTitle || job.title || 'Unknown'}`,
-                session.id
+                session.id,
+                'interview_scheduling'
               );
               console.log(`💳 Charged ${interviewCost} credits to org ${organizationId} for interview: ${job.jobTitle}`);
             } catch (creditError) {

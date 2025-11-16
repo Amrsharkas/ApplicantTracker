@@ -1,12 +1,17 @@
+import { storage } from './storage';
 import { creditTransactions, organizations, creditPricing } from '@shared/schema';
 import { db } from './db';
-import { eq, desc } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import type { InsertCreditTransaction, InsertCreditPricing } from '@shared/schema';
 
-export type CreditTransactionType = 'resume_processing' | 'interview_scheduling' | 'manual_adjustment';
+export type CreditTransactionType = 'cv_processing' | 'interview' | 'manual_adjustment' | 'subscription' | 'purchase';
 export type CreditActionType = 'resume_processing' | 'ai_matching' | 'job_posting' | 'interview_scheduling';
+export type CreditType = 'cv_processing' | 'interview';
 
 export interface CreditBalance {
+  cvProcessingCredits: number;
+  interviewCredits: number;
+  // Legacy fields for backward compatibility
   currentCredits: number;
   creditLimit: number;
   remainingCredits: number;
@@ -29,8 +34,11 @@ export class CreditService {
       }
 
       return {
+        cvProcessingCredits: org.cvProcessingCredits || 0,
+        interviewCredits: org.interviewCredits || 0,
+        // Legacy fields for backward compatibility
         currentCredits: org.currentCredits || 0,
-        creditLimit: org.creditLimit || 100,
+        creditLimit: org.creditLimit || 0,
         remainingCredits: (org.currentCredits || 0)
       };
     } catch (error) {
@@ -40,15 +48,20 @@ export class CreditService {
   }
 
   /**
-   * Check if organization has sufficient credits
+   * Check if organization has sufficient credits for a specific credit type
    */
-  async checkCredits(organizationId: string, requiredAmount: number): Promise<boolean> {
+  async checkCredits(organizationId: string, requiredAmount: number, creditType: CreditType): Promise<boolean> {
     try {
       const balance = await this.getCreditBalance(organizationId);
       if (!balance) {
         return false;
       }
-      return balance.remainingCredits >= requiredAmount;
+
+      const availableCredits = creditType === 'cv_processing'
+        ? balance.cvProcessingCredits
+        : balance.interviewCredits;
+
+      return availableCredits >= requiredAmount;
     } catch (error) {
       console.error('Error checking credits:', error);
       return false;
@@ -56,14 +69,16 @@ export class CreditService {
   }
 
   /**
-   * Deduct credits from organization balance
+   * Deduct credits from organization balance for a specific credit type
    */
   async deductCredits(
     organizationId: string,
     amount: number,
+    creditType: CreditType,
     type: CreditTransactionType,
     description: string,
-    relatedId?: string
+    relatedId?: string,
+    actionType?: string
   ): Promise<boolean> {
     try {
       const result = await db.transaction(async (tx) => {
@@ -77,18 +92,23 @@ export class CreditService {
           throw new Error('Organization not found');
         }
 
-        if ((org.currentCredits || 0) < amount) {
-          throw new Error('Insufficient credits');
+        // Check the appropriate credit balance
+        const currentBalance = creditType === 'cv_processing'
+          ? (org.cvProcessingCredits || 0)
+          : (org.interviewCredits || 0);
+
+        if (currentBalance < amount) {
+          throw new Error(`Insufficient ${creditType} credits`);
         }
 
-        // Update organization credits
-        const newCreditBalance = (org.currentCredits || 0) - amount;
+        // Update organization credits for the specific type
+        const updateData = creditType === 'cv_processing'
+          ? { cvProcessingCredits: currentBalance - amount, updatedAt: new Date() }
+          : { interviewCredits: currentBalance - amount, updatedAt: new Date() };
+
         await tx
           .update(organizations)
-          .set({
-            currentCredits: newCreditBalance,
-            updatedAt: new Date()
-          })
+          .set(updateData)
           .where(eq(organizations.id, organizationId));
 
         // Create credit transaction record
@@ -97,29 +117,33 @@ export class CreditService {
           organizationId,
           amount: -amount, // Negative for deduction
           type,
+          actionType,
           description,
           relatedId,
           createdAt: new Date()
         });
 
-        return newCreditBalance;
+        return currentBalance - amount;
       });
 
-      console.log(`💳 Successfully deducted ${amount} credits from organization ${organizationId}. New balance: ${result}`);
+      console.log(`Successfully deducted ${amount} ${creditType} credits from organization ${organizationId}. New balance: ${result}`);
       return true;
     } catch (error) {
-      console.error('❌ Error deducting credits:', error);
+      console.error('Error deducting credits:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to deduct credits');
     }
   }
 
   /**
-   * Add credits to organization balance (admin function)
+   * Add credits to organization balance for a specific credit type
    */
   async addCredits(
     organizationId: string,
     amount: number,
-    description: string = 'Manual credit addition'
+    creditType: CreditType,
+    description: string = 'Manual credit addition',
+    type: CreditTransactionType = 'manual_adjustment',
+    actionType?: string
   ): Promise<boolean> {
     try {
       const result = await db.transaction(async (tx) => {
@@ -133,14 +157,19 @@ export class CreditService {
           throw new Error('Organization not found');
         }
 
-        // Update organization credits
-        const newCreditBalance = (org.currentCredits || 0) + amount;
+        // Update organization credits for the specific type
+        const currentBalance = creditType === 'cv_processing'
+          ? (org.cvProcessingCredits || 0)
+          : (org.interviewCredits || 0);
+
+        const newCreditBalance = currentBalance + amount;
+        const updateData = creditType === 'cv_processing'
+          ? { cvProcessingCredits: newCreditBalance, updatedAt: new Date() }
+          : { interviewCredits: newCreditBalance, updatedAt: new Date() };
+
         await tx
           .update(organizations)
-          .set({
-            currentCredits: newCreditBalance,
-            updatedAt: new Date()
-          })
+          .set(updateData)
           .where(eq(organizations.id, organizationId));
 
         // Create credit transaction record
@@ -148,7 +177,8 @@ export class CreditService {
           id: crypto.randomUUID(),
           organizationId,
           amount: amount, // Positive for addition
-          type: 'manual_adjustment',
+          type,
+          actionType,
           description,
           createdAt: new Date()
         });
@@ -156,7 +186,7 @@ export class CreditService {
         return newCreditBalance;
       });
 
-      console.log(`✅ Successfully added ${amount} credits to organization ${organizationId}. New balance: ${result}`);
+      console.log(`Successfully added ${amount} ${creditType} credits to organization ${organizationId}. New balance: ${result}`);
       return true;
     } catch (error) {
       console.error('Error adding credits:', error);
@@ -189,9 +219,11 @@ export class CreditService {
   async getCreditUsage(organizationId: string): Promise<{
     totalDeducted: number;
     totalAdded: number;
-    resumeProcessingCount: number;
-    interviewSchedulingCount: number;
+    cvProcessingCount: number;
+    interviewCount: number;
     manualAdjustments: number;
+    cvProcessingDeducted: number;
+    interviewDeducted: number;
   }> {
     try {
       const transactions = await db
@@ -203,20 +235,21 @@ export class CreditService {
         (acc, transaction) => {
           if (transaction.amount < 0) {
             acc.totalDeducted += Math.abs(transaction.amount);
+
+            // Track deductions by type
+            if (transaction.type === 'cv_processing') {
+              acc.cvProcessingDeducted += Math.abs(transaction.amount);
+              acc.cvProcessingCount += 1;
+            } else if (transaction.type === 'interview') {
+              acc.interviewDeducted += Math.abs(transaction.amount);
+              acc.interviewCount += 1;
+            }
           } else {
             acc.totalAdded += transaction.amount;
           }
 
-          switch (transaction.type) {
-            case 'resume_processing':
-              acc.resumeProcessingCount += 1;
-              break;
-            case 'interview_scheduling':
-              acc.interviewSchedulingCount += 1;
-              break;
-            case 'manual_adjustment':
-              acc.manualAdjustments += 1;
-              break;
+          if (transaction.type === 'manual_adjustment') {
+            acc.manualAdjustments += 1;
           }
 
           return acc;
@@ -224,9 +257,11 @@ export class CreditService {
         {
           totalDeducted: 0,
           totalAdded: 0,
-          resumeProcessingCount: 0,
-          interviewSchedulingCount: 0,
-          manualAdjustments: 0
+          cvProcessingCount: 0,
+          interviewCount: 0,
+          manualAdjustments: 0,
+          cvProcessingDeducted: 0,
+          interviewDeducted: 0
         }
       );
 
