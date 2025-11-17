@@ -2761,7 +2761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             applicantUserId: userId,
             applicantEmail: user?.email || '',
             jobTitle: job.jobTitle || job.title || '',
-            jobId: null,
+            jobId: jobRecord.id || job.id,
             company: job.companyName || job.company || '',
             userProfile: profileData,
             notes: `Interview completed via voice with score: ${score}${rationale ? `\n${rationale}` : ''}`,
@@ -2779,43 +2779,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if all 3 interviews are completed
       const updatedProfile = await storage.getApplicantProfile(userId);
-      const allInterviewsCompleted = updatedProfile?.personalInterviewCompleted &&
-                                   updatedProfile?.professionalInterviewCompleted &&
-                                   updatedProfile?.technicalInterviewCompleted;
 
-      if (allInterviewsCompleted) {
-        // Generate final comprehensive profile only after ALL 3 interviews are complete
-        console.log(`🎯 All 3 voice interviews completed for user ${userId}. Generating final profile...`);
-        const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job);
+      // Generate final comprehensive profile only after ALL 3 interviews are complete
+      console.log(`🎯 All 3 voice interviews completed for user ${userId}. Generating final profile...`);
+      const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job);
 
-        // Update profile completion percentage
-        await storage.updateProfileCompletion(userId);
+      // Update profile completion percentage
+      await storage.updateProfileCompletion(userId);
 
-        res.json({ 
-          isComplete: true,
-          allInterviewsCompleted: true,
-          profile: generatedProfile,
-          message: "All interviews completed! Your comprehensive AI profile has been generated successfully."
-        });
-      } else {
-        // Individual voice interview complete - STORE TEMPORARILY, don't send to Airtable yet
-        console.log(`📝 ${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} voice interview completed for user ${userId}. Storing responses temporarily...`);
-        
-        // Determine next interview type
-        let nextInterviewType = null;
-        if (interviewType === 'personal' && !updatedProfile?.professionalInterviewCompleted) {
-          nextInterviewType = 'professional';
-        } else if ((interviewType === 'personal' || interviewType === 'professional') && !updatedProfile?.technicalInterviewCompleted) {
-          nextInterviewType = 'technical';
-        }
-        
-        res.json({ 
-          isComplete: true,
-          allInterviewsCompleted: false,
-          nextInterviewType,
-          message: "Interview section completed successfully!"
-        });
-      }
+      res.json({ 
+        isComplete: true,
+        allInterviewsCompleted: true,
+        profile: generatedProfile,
+        message: "All interviews completed! Your comprehensive AI profile has been generated successfully."
+      });
     } catch (error) {
       console.error("Error completing voice interview:", error);
       res.status(500).json({ message: "Failed to complete voice interview" });
@@ -2837,7 +2814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/interview/session/:sessionId', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const sessionId = 189; //parseInt(req.params.sessionId);
+      const sessionId = parseInt(req.params.sessionId);
 
       if (isNaN(sessionId)) {
         return res.status(400).json({ message: "Invalid session ID" });
