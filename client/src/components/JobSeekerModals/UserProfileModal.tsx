@@ -12,7 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { User, Mail, Phone, Calendar } from "lucide-react";
+import { User, Mail, Phone, Calendar, Lock } from "lucide-react";
+import { ChangePasswordModal } from "@/components/ChangePasswordModal";
 
 const userProfileFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -31,9 +32,10 @@ interface UserProfileModalProps {
 export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const { data: user, isLoading } = useQuery({
-    queryKey: ["/api/auth/user"],
+    queryKey: ["/api/user"],
     enabled: isOpen,
   });
 
@@ -64,7 +66,7 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
       return await apiRequest("PUT", "/api/auth/user", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Profile updated successfully",
         description: "Your user profile has been updated.",
@@ -198,6 +200,21 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
                   )}
                 />
 
+                {/* Change Password Button - Only show for local auth users or Google users who have set a password */}
+                {(user?.authProvider === 'local' || !user?.authProvider || user?.passwordNeedsSetup === false) && (
+                  <div className="pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setIsChangePasswordOpen(true)}
+                    >
+                      <Lock className="h-4 w-4 mr-2" />
+                      Change Password
+                    </Button>
+                  </div>
+                )}
+
                 <div className="border-t pt-4 mt-6">
                   <div className="text-sm text-gray-600 mb-4">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse mb-1">
@@ -223,6 +240,12 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
           </CardContent>
         </Card>
       </DialogContent>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
     </Dialog>
   );
 }

@@ -11,7 +11,8 @@ import {
   Upload,
   AlertCircle,
   X,
-  Brain
+  Brain,
+  Settings
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useResumeRequirement } from "@/hooks/useResumeRequirement";
@@ -318,6 +319,14 @@ export default function Dashboard() {
 
             <div className="flex items-center space-x-2 sm:space-x-4 rtl:space-x-reverse">
               <LanguageSwitcher />
+
+              <button
+                onClick={() => openModal('profile')}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Settings"
+              >
+                <Settings className="h-5 w-5 text-gray-700" />
+              </button>
 
               <button
                 onClick={() => openModal('userProfile')}

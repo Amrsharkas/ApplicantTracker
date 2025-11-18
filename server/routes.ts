@@ -780,6 +780,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/auth/change-password', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const changePasswordSchema = z.object({
+        currentPassword: z.string().min(1, 'Current password is required'),
+        newPassword: z.string()
+          .min(8, 'Password must be at least 8 characters long')
+          .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+          .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+          .regex(/[0-9]/, 'Password must contain at least one number')
+          .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+      });
+
+      const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+
+      // Get user from database
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Verify current password
+      const { scrypt, randomBytes } = await import('crypto');
+      const { promisify } = await import('util');
+      const scryptAsync = promisify(scrypt);
+
+      const verifyPassword = async (password: string, hash: string): Promise<boolean> => {
+        const [hashedPassword, salt] = hash.split(".");
+        const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+        return buf.toString("hex") === hashedPassword;
+      };
+
+      const isValidPassword = await verifyPassword(currentPassword, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: 'Current password is incorrect' });
+      }
+
+      // Hash new password
+      const hashPassword = async (password: string): Promise<string> => {
+        const salt = randomBytes(16).toString("hex");
+        const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+        return `${buf.toString("hex")}.${salt}`;
+      };
+
+      const hashedNewPassword = await hashPassword(newPassword);
+
+      // Update password
+      await storage.updateUser(userId, { password: hashedNewPassword });
+
+      res.json({ message: 'Password changed successfully' });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
   // Profile routes
   app.get('/api/candidate/profile', requireAuth, async (req: any, res) => {
     try {

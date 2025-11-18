@@ -277,28 +277,6 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                               <ReactMarkdown>{job.jobDescription || ''}</ReactMarkdown>
                             </div>
 
-                            {/* Interview Results Section */}
-                            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                              <h4 className="font-medium text-gray-900 mb-2">Interview Results</h4>
-                              {typeof job.score === 'number' && (
-                                <div className="mb-2 text-sm">
-                                  <span className="font-medium">Score:</span>
-                                  <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
-                                    job.score >= 80 ? 'bg-green-100 text-green-800' :
-                                    job.score >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                                    'bg-red-100 text-red-800'
-                                  }`}>
-                                    {job.score}/100
-                                  </span>
-                                </div>
-                              )}
-                              {job.interviewComments && (
-                                <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                                  <span className="font-medium">Feedback:</span> {job.interviewComments}
-                                </div>
-                              )}
-                            </div>
-
                             <div className="flex items-center gap-2">
                               <Button
                                 variant="outline"

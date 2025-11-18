@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from 'react-markdown';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -176,18 +176,59 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         setLoading(false);
       }
     })();
-    // Disconnect on close
+    // Disconnect on close - cleanup function
     return () => {
-      if (realtimeAPI.isConnected) realtimeAPI.disconnect();
-      // Stop camera stream and recording
-      cleanup();
-      if (cameraStream) {
-        cameraStream.getTracks().forEach(track => track.stop());
+      console.log('🧹 Cleanup: Disconnecting OpenAI and stopping camera...');
+
+      // Disconnect OpenAI realtime session
+      if (realtimeAPI.isConnected) {
+        console.log('🔌 Disconnecting OpenAI session...');
+        realtimeAPI.disconnect();
       }
-      setCameraStream(null);
+
+      // Stop recording
+      cleanup();
+
+      // Stop camera stream
+      if (cameraStream) {
+        console.log('📹 Stopping camera tracks...');
+        cameraStream.getTracks().forEach(track => {
+          track.stop();
+          console.log(`Stopped track: ${track.kind}`);
+        });
+        setCameraStream(null);
+      }
+
+      console.log('✅ Cleanup complete');
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  // Centralized cleanup function
+  const performCleanup = useCallback(() => {
+    console.log('🧹 Performing cleanup...');
+
+    // Disconnect OpenAI realtime session
+    if (realtimeAPI.isConnected) {
+      console.log('🔌 Disconnecting OpenAI session...');
+      realtimeAPI.disconnect();
+    }
+
+    // Stop recording
+    cleanup();
+
+    // Stop camera stream
+    if (cameraStream) {
+      console.log('📹 Stopping camera tracks...');
+      cameraStream.getTracks().forEach(track => {
+        track.stop();
+        console.log(`Stopped track: ${track.kind}`);
+      });
+      setCameraStream(null);
+    }
+
+    console.log('✅ Cleanup complete');
+  }, [realtimeAPI, cleanup, cameraStream]);
 
   const currentQuestion = useMemo(() => {
     if (!session) return '';
@@ -340,8 +381,25 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   const submitVoiceInterview = async () => {
     setProcessing(true);
     try {
+      // Disconnect OpenAI realtime connection first to stop listening
+      if (realtimeAPI.isConnected) {
+        console.log('Disconnecting OpenAI realtime session...');
+        realtimeAPI.disconnect();
+      }
+
       // Stop recording and get blob before submitting
+      console.log('Stopping recording...');
       const recordedBlob = await stopRecording();
+
+      // Stop camera stream
+      if (cameraStream) {
+        console.log('Stopping camera stream...');
+        cameraStream.getTracks().forEach(track => track.stop());
+        setCameraStream(null);
+      }
+
+      // Cleanup recorder
+      cleanup();
 
       // Upload recording if we have data
       if (recordedBlob && recordedBlob.size > 0) {
@@ -373,7 +431,6 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
     } catch (e: any) {
       toast({ title: 'Error', description: e?.message || 'Failed to complete interview', variant: 'destructive' });
     } finally {
-      if (realtimeAPI.isConnected) realtimeAPI.disconnect();
       setProcessing(false);
     }
   };
@@ -382,17 +439,17 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   if (mode === 'voice') {
     return (
       <>
-      <div className="w-full h-full bg-gray-950 flex flex-col">
+      <div className="w-full h-full bg-white dark:bg-gray-950 flex flex-col">
         {/* Header with enhanced controls */}
-        <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-border px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
               <div className={`h-3 w-3 rounded-full ${realtimeAPI.isConnected ? 'bg-green-500' : 'bg-yellow-500'} animate-pulse`} />
-              <span className="text-white font-medium">
+              <span className="text-foreground font-medium">
                 {realtimeAPI.isConnected ? 'Live Interview' : 'Connecting...'}
               </span>
             </div>
-            <div className="text-gray-400 text-sm">
+            <div className="text-muted-foreground text-sm">
               Job Interview • {job?.jobTitle} • {getLanguageDisplayName(getInterviewLanguage(job, language))}
             </div>
           </div>
@@ -400,18 +457,22 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowTranscription(!showTranscription)}
-              className="flex items-center gap-2 px-3 py-2 border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors"
+              className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
               title={showTranscription ? "Hide transcription" : "Show transcription"}
             >
-              <MessageSquare className="h-4 w-4 text-gray-300" />
-              <span className="text-sm font-medium text-gray-300">
+              <MessageSquare className="h-4 w-4 text-foreground" />
+              <span className="text-sm font-medium text-foreground">
                 {showTranscription ? "Hide" : "Show"} Transcription
               </span>
             </button>
 
             <button
-              onClick={() => { if (realtimeAPI.isConnected) realtimeAPI.disconnect(); onClose(); }}
-              className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors"
+              onClick={() => {
+                console.log('❌ Close button clicked');
+                performCleanup();
+                onClose();
+              }}
+              className="text-muted-foreground hover:text-foreground p-2 rounded-lg hover:bg-accent transition-colors"
               disabled={processing}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -430,7 +491,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               : 'grid-cols-1'
           }`}>
             {/* User camera - takes full width when transcription is hidden */}
-            <div className={`relative bg-gray-900 rounded-lg overflow-hidden ${
+            <div className={`relative bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden ${
               showTranscription ? '' : 'lg:col-span-1'
             }`}>
               <CameraPreview
@@ -441,32 +502,32 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                 connecting={loading}
                 className="h-full"
               />
-              <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+              <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-medium">
                 You
               </div>
               {realtimeAPI.isConnected && (
-                <div className="absolute bottom-4 left-4 flex items-center space-x-2">
+                <div className="absolute bottom-4 left-4 flex items-center space-x-2 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-full">
                   <div className="h-3 w-3 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-white text-sm">Speaking</span>
+                  <span className="text-white text-sm font-medium">Connected</span>
                 </div>
               )}
             </div>
 
             {/* Transcription panel - only shown when enabled */}
             {showTranscription && (
-              <div className="bg-gray-900 rounded-lg overflow-hidden flex flex-col">
+              <div className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden flex flex-col border border-gray-200 dark:border-border">
                 {/* Transcription header */}
-                <div className="bg-gray-800 px-4 py-3 border-b border-gray-700">
+                <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-border">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-white font-medium flex items-center gap-2">
+                    <h3 className="text-foreground font-medium flex items-center gap-2">
                       <MessageSquare className="h-4 w-4" />
                       Live Transcription
                     </h3>
                     <div className="flex items-center gap-2">
                       <div className={`h-2 w-2 rounded-full ${
-                        realtimeAPI.isListening ? 'bg-green-500 animate-pulse' : 'bg-gray-500'
+                        realtimeAPI.isListening ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'
                       }`} />
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-muted-foreground">
                         {realtimeAPI.isListening ? 'Listening' : 'Idle'}
                       </span>
                     </div>
@@ -482,12 +543,12 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                       }`}>
                         <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${
                           item.role === 'assistant'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-green-600 text-white'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground'
                         }`}>
                           <div className="flex items-center gap-1 mb-1">
                             <span className="text-xs font-medium opacity-75">
-                              {item.role === 'assistant' ? 'AI' : 'You'}
+                              {item.role === 'assistant' ? 'PLATO Interviewer' : 'You'}
                             </span>
                           </div>
                           <p className="text-sm leading-relaxed">{item.content}</p>
@@ -495,7 +556,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                       </div>
                     ))
                   ) : (
-                    <div className="text-center text-gray-500 py-8">
+                    <div className="text-center text-muted-foreground py-8">
                       <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p className="text-sm">Conversation will appear here...</p>
                     </div>
@@ -506,28 +567,28 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           </div>
 
           {/* Meeting controls bar */}
-          <div className="bg-gray-900 border-t border-gray-800 px-6 py-4">
+          <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-border px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 {/* Recording status indicator */}
                 {isRecording && (
-                  <div className="flex items-center space-x-2 bg-red-600 text-white px-3 py-1 rounded-full animate-pulse">
+                  <div className="flex items-center space-x-2 bg-destructive text-destructive-foreground px-3 py-1.5 rounded-full shadow-lg">
                     <Video className="h-4 w-4" />
                     <span className="text-xs font-medium">Recording</span>
-                    <Circle className="h-2 w-2 bg-red-800 rounded-full animate-pulse" />
+                    <Circle className="h-2 w-2 bg-destructive-foreground/50 rounded-full animate-pulse" />
                   </div>
                 )}
 
                 <div className="flex items-center space-x-2">
                   <div className={`h-3 w-3 rounded-full ${
                     realtimeAPI.isConnected ? 'bg-green-500' : 'bg-yellow-500'
-                  } animate-pulse`} />
-                  <span className="text-gray-400 text-sm">
-                    {realtimeAPI.isConnected ? (isRecording ? '🔴 Recording' : '🟢 Live') : '🟡 Connecting...'}
+                  } animate-pulse shadow-lg`} />
+                  <span className="text-muted-foreground text-sm font-medium">
+                    {realtimeAPI.isConnected ? (isRecording ? 'Recording' : 'Live') : 'Connecting...'}
                   </span>
                 </div>
 
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-muted-foreground">
                   {job?.jobTitle} • {getLanguageDisplayName(getInterviewLanguage(job, language))}
                 </div>
               </div>
@@ -539,14 +600,9 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                       return;
                     }
 
-                    console.log('Exiting interview...');
+                    console.log('🚪 Exiting interview...');
 
                     try {
-                      // Disconnect OpenAI realtime connection first
-                      if (realtimeAPI.isConnected) {
-                        realtimeAPI.disconnect();
-                      }
-
                       // Stop recording and get the blob
                       const recordedBlob = await stopRecording();
 
@@ -561,18 +617,11 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                       console.error('Error saving recording on exit:', error);
                     } finally {
                       // Always cleanup and exit
-                      console.log('Cleaning up and closing dialog...');
-                      cleanup();
-                      // Stop camera stream and recording
-                      if (cameraStream) {
-                        cameraStream.getTracks().forEach(track => track.stop());
-                      }
-                      setCameraStream(null);
-                      console.log('Calling onClose...');
+                      performCleanup();
                       onClose();
                     }
                   }}
-                  className="text-gray-400 hover:text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium"
+                  className="text-muted-foreground hover:text-foreground px-4 py-2 rounded-lg hover:bg-accent transition-colors text-sm font-medium border border-border"
                   disabled={processing || isUploading}
                 >
                   ← Exit Interview
@@ -584,8 +633,8 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                   className={`${
                     realtimeAPI.isInterviewComplete || isInterviewComplete
                       ? 'bg-green-600 hover:bg-green-700'
-                      : 'bg-red-600 hover:bg-red-700'
-                  } disabled:bg-gray-700 disabled:text-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2`}
+                      : 'bg-destructive hover:bg-destructive/90'
+                  } disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg font-medium transition-all flex items-center space-x-2 shadow-lg`}
                 >
                   {processing || isUploading ? (
                     <>
@@ -629,27 +678,34 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   // Regular dialog for text mode
   return (
     <>
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        // Dialog is closing - perform cleanup
+        console.log('📋 Dialog closing via onOpenChange');
+        performCleanup();
+        onClose();
+      }
+    }}>
       <DialogContent className="w-screen h-screen max-w-none max-h-none p-0">
-        <DialogHeader className="px-6 py-4 border-b">
+        <DialogHeader className="px-6 py-4 border-b border-border">
           <DialogTitle>Job-specific Interview</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-auto px-6 py-4">
           {loading ? (
             <div className="flex items-center justify-center h-full">
-              <div className="h-10 w-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <div className="h-10 w-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           ) : !session ? (
-            <div className="text-center text-slate-600 h-full flex items-center justify-center">No active job-specific interview session.</div>
+            <div className="text-center text-muted-foreground h-full flex items-center justify-center">No active job-specific interview session.</div>
           ) : (enableTextInterviews === 'true' && mode === 'text') ? (
             <div className="max-w-4xl mx-auto space-y-6 h-full flex flex-col">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-slate-600">Text mode • {getLanguageDisplayName(getInterviewLanguage(job, language))}</div>
-                <h3 className="text-lg font-semibold">{job?.jobTitle}</h3>
+                <div className="text-sm text-muted-foreground">Text mode • {getLanguageDisplayName(getInterviewLanguage(job, language))}</div>
+                <h3 className="text-lg font-semibold text-foreground">{job?.jobTitle}</h3>
                 {job?.jobDescription && (
-                  <div className="mt-2 text-sm text-slate-600 prose prose-sm max-w-none">
+                  <div className="mt-2 text-sm text-muted-foreground prose prose-sm max-w-none">
                     <ReactMarkdown>{job.jobDescription}</ReactMarkdown>
                   </div>
                 )}
@@ -662,21 +718,21 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               {/* Display previous Q&A pairs */}
               {session.sessionData.responses?.map((response, index) => (
                 <div key={index} className="space-y-3">
-                  <div className="p-3 rounded-lg bg-blue-50 border-l-4 border-blue-400">
+                  <div className="p-4 rounded-lg bg-primary/10 border-l-4 border-primary">
                     <div className="flex items-start space-x-2 rtl:space-x-reverse">
-                      <User className="h-4 w-4 mt-1 text-blue-600" />
+                      <User className="h-4 w-4 mt-1 text-primary" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-blue-800">Question {index + 1}</p>
-                        <p className="text-sm text-blue-700">{response.question}</p>
+                        <p className="text-sm font-medium text-foreground">Question {index + 1}</p>
+                        <p className="text-sm text-foreground/80">{response.question}</p>
                       </div>
                     </div>
                   </div>
-                  <div className="p-3 rounded-lg bg-green-50 border-l-4 border-green-400 ml-8">
+                  <div className="p-4 rounded-lg bg-secondary border-l-4 border-secondary-foreground/20 ml-8">
                     <div className="flex items-start space-x-2 rtl:space-x-reverse">
-                      <MessageCircle className="h-4 w-4 mt-1 text-green-600" />
+                      <MessageCircle className="h-4 w-4 mt-1 text-secondary-foreground" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-green-800">Your Answer</p>
-                        <p className="text-sm text-green-700">{response.answer}</p>
+                        <p className="text-sm font-medium text-secondary-foreground">Your Answer</p>
+                        <p className="text-sm text-secondary-foreground/80">{response.answer}</p>
                       </div>
                     </div>
                   </div>
@@ -684,18 +740,18 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               ))}
 
               {/* Current question */}
-              <div className="p-3 rounded-lg bg-blue-50 border-l-4 border-blue-400">
+              <div className="p-4 rounded-lg bg-primary/10 border-l-4 border-primary">
                 <div className="flex items-start space-x-2 rtl:space-x-reverse">
-                  <User className="h-4 w-4 mt-1 text-blue-600" />
+                  <User className="h-4 w-4 mt-1 text-primary" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-blue-800">Question {(session.sessionData.responses?.length || 0) + 1}</p>
-                    <p className="text-sm text-blue-700">{currentQuestion}</p>
+                    <p className="text-sm font-medium text-foreground">Question {(session.sessionData.responses?.length || 0) + 1}</p>
+                    <p className="text-sm text-foreground/80">{currentQuestion}</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="border-t pt-4 space-y-4">
+            <div className="border-t border-border pt-4 space-y-4">
               <Textarea value={currentAnswer} onChange={(e) => setCurrentAnswer(e.target.value)} placeholder="Type your answer here" rows={4} />
 
               <div className="flex justify-end gap-2">
@@ -710,10 +766,10 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-slate-600">Voice mode • {getLanguageDisplayName(getInterviewLanguage(job, language))}</div>
-                <h3 className="text-lg font-semibold">{job?.jobTitle}</h3>
+                <div className="text-sm text-muted-foreground">Voice mode • {getLanguageDisplayName(getInterviewLanguage(job, language))}</div>
+                <h3 className="text-lg font-semibold text-foreground">{job?.jobTitle}</h3>
                 {job?.jobDescription && (
-                  <div className="mt-2 text-sm text-slate-600 prose prose-sm max-w-none">
+                  <div className="mt-2 text-sm text-muted-foreground prose prose-sm max-w-none">
                     <ReactMarkdown>{job.jobDescription}</ReactMarkdown>
                   </div>
                 )}
@@ -731,33 +787,33 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               className="h-48 w-full max-w-md mx-auto"
             />
 
-            <div className="p-3 rounded-md border bg-slate-50 text-sm text-slate-600">
+            <div className="p-3 rounded-md border border-border bg-muted text-sm text-muted-foreground">
               {realtimeAPI.isConnected ? 'You are connected. Speak naturally to answer questions.' : 'Connecting to voice interview...'}
             </div>
 
             {/* Conversation history for voice mode */}
-            <div className="h-48 overflow-y-auto space-y-2 p-2 border rounded-lg bg-gray-50">
+            <div className="h-48 overflow-y-auto space-y-2 p-2 border border-border rounded-lg bg-muted/50">
               {conversationHistory.length > 0 ? (
                 conversationHistory.map((item, index) => (
                   <div key={`${item.role}-${index}`} className={`p-3 rounded-lg ${
                     item.role === 'assistant'
-                      ? 'border-blue-200 bg-blue-50'
-                      : 'border-green-200 bg-green-50 ml-8'
+                      ? 'bg-primary/10 border border-primary/20'
+                      : 'bg-secondary border border-secondary-foreground/20 ml-8'
                   }`}>
                     <div className="flex items-start space-x-2 rtl:space-x-reverse">
                       {item.role === 'assistant' ? (
-                        <User className="h-4 w-4 mt-1 text-blue-600" />
+                        <User className="h-4 w-4 mt-1 text-primary" />
                       ) : (
-                        <MessageCircle className="h-4 w-4 mt-1 text-green-600" />
+                        <MessageCircle className="h-4 w-4 mt-1 text-secondary-foreground" />
                       )}
                       <div className="flex-1">
                         <p className={`text-sm font-medium ${
-                          item.role === 'assistant' ? 'text-blue-800' : 'text-green-800'
+                          item.role === 'assistant' ? 'text-primary' : 'text-secondary-foreground'
                         }`}>
-                          {item.role === 'assistant' ? 'AI Interviewer' : 'You'}
+                          {item.role === 'assistant' ? 'PLATO Interviewer' : 'You'}
                         </p>
                         <p className={`text-sm ${
-                          item.role === 'assistant' ? 'text-blue-700' : 'text-green-700'
+                          item.role === 'assistant' ? 'text-foreground/80' : 'text-secondary-foreground/80'
                         }`}>
                           {item.content}
                         </p>
@@ -766,7 +822,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                   </div>
                 ))
               ) : (
-                <div className="text-center text-slate-500 py-8">
+                <div className="text-center text-muted-foreground py-8">
                   <p className="text-sm">No conversation yet. Start speaking when connected...</p>
                 </div>
               )}
@@ -778,14 +834,9 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                   return;
                 }
 
-                console.log('Exiting interview from dialog mode...');
+                console.log('🚪 Exiting interview from dialog mode...');
 
                 try {
-                  // Disconnect OpenAI realtime connection first
-                  if (realtimeAPI.isConnected) {
-                    realtimeAPI.disconnect();
-                  }
-
                   // Stop recording and get the blob
                   const recordedBlob = await stopRecording();
 
@@ -800,14 +851,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                   console.error('Error saving recording on exit:', error);
                 } finally {
                   // Always cleanup and exit
-                  console.log('Cleaning up and closing dialog...');
-                  cleanup();
-                  // Stop camera stream and recording
-                  if (cameraStream) {
-                    cameraStream.getTracks().forEach(track => track.stop());
-                  }
-                  setCameraStream(null);
-                  console.log('Calling onClose...');
+                  performCleanup();
                   onClose();
                 }
               }} disabled={processing || isUploading}>

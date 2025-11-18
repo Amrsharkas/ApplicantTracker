@@ -1537,49 +1537,6 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         {t("close")}
                       </Button>
                       <Button
-                        variant="secondary"
-                        onClick={() => {
-                          if (selectedJob) {
-                            if (onStartJobPractice) {
-                              onStartJobPractice(selectedJob);
-                            } else {
-                              // Fallback: fire API directly
-                              fetch('/api/interview/start-job-practice', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                credentials: 'include',
-                                body: JSON.stringify({ job: selectedJob })
-                              }).then(() => {}).catch(() => {});
-                            }
-                          }
-                        }}
-                        className="flex items-center gap-2 px-6"
-                      >
-                        <Zap className="h-4 w-4" />
-                        {t("jobPostingsModal.buttons.practiceInterview")}
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          if (selectedJob) {
-                            if (onStartJobPracticeVoice) {
-                              onStartJobPracticeVoice(selectedJob);
-                            } else {
-                              fetch('/api/interview/start-job-practice-voice', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                credentials: 'include',
-                                body: JSON.stringify({ job: selectedJob })
-                              }).then(() => {}).catch(() => {});
-                            }
-                          }
-                        }}
-                        className="flex items-center gap-2 px-6"
-                      >
-                        <Mic className="h-4 w-4" />
-                        {t("jobPostingsModal.buttons.voicePractice")}
-                      </Button>
-                      <Button
                         onClick={() => proceedWithApplication(selectedJob)}
                         disabled={newApplicationMutation.isPending}
                         className="flex items-center gap-2 px-6"
