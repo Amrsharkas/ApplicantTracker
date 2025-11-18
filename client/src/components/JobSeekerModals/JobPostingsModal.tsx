@@ -1209,16 +1209,6 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                                       </span>
                                     </div>
                                   )}
-                                  <div className={`flex items-center gap-1 px-2 py-1 rounded ${
-                                    matchScore >= 80 ? 'bg-green-100 text-green-800' :
-                                    matchScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                                    'bg-gray-100 text-gray-800'
-                                  }`}>
-                                    <Star className="h-3 w-3" />
-                                    <span className="text-xs font-medium">
-                                      {t("jobPostingsModal.labels.match").replace("{{percentage}}", (isNaN(matchScore) ? '50' : String(matchScore)))}
-                                    </span>
-                                  </div>
                                   {matchScore >= 80 && (
                                     <div className="flex items-center gap-1 bg-blue-100 px-2 py-1 rounded">
                                       <Zap className="h-3 w-3 text-blue-600" />
@@ -1359,18 +1349,6 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         <h2 className="text-2xl font-bold text-gray-900">
                           {selectedJob.title}
                         </h2>
-                        <div className="flex items-center gap-1 bg-green-100 px-2 py-1 rounded">
-                          <Star className="h-4 w-4 text-green-600" />
-                          <span className="text-sm font-medium text-green-800">
-                            {t("jobPostingsModal.labels.match").replace(
-                              "{{percentage}}",
-                              (() => {
-                                const score = calculateAIMatchScore(selectedJob);
-                                return isNaN(score) ? '50' : String(score);
-                              })()
-                            )}
-                          </span>
-                        </div>
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
                         <Building className="h-4 w-4" />
@@ -1512,18 +1490,6 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                 <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 shadow-lg">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
-                        <Star className="h-4 w-4 text-green-600" />
-                        <span className="font-medium">
-                          {t("jobPostingsModal.labels.match").replace(
-                            "{{percentage}}",
-                            (() => {
-                              const score = calculateAIMatchScore(selectedJob);
-                              return isNaN(score) ? '50' : String(score);
-                            })()
-                          )}
-                        </span>
-                      </div>
                       <div className="h-4 w-px bg-gray-300"></div>
                       <div className="text-sm text-gray-600">
                         {selectedJob.location || t("jobPostingsModal.labels.remoteFallback")}
