@@ -1,6 +1,6 @@
 import { db } from './db';
 import * as schema from '../shared/schema';
-import { eq, and, or, ilike, desc, asc, gte, lte, sql } from 'drizzle-orm';
+import { eq, and, or, ilike, desc, asc, gte, lte, sql, isNotNull } from 'drizzle-orm';
 import {
   AirtableUserProfile,
   InsertAirtableUserProfile,
@@ -586,22 +586,65 @@ export class LocalDatabaseService {
     }
   }
 
-  async getUpcomingInterviews(): Promise<AirtableJobMatch[]> {
+  async getUpcomingInterviews(): Promise<any[]> {
     try {
       const now = new Date();
-      return await db
-        .select()
-        .from(schema.airtableJobMatches)
+
+      // Fetch interviews from the interviews table
+      const interviews = await db
+        .select({
+          id: schema.interviews.id,
+          applicationId: schema.interviews.applicationId,
+          jobId: schema.interviews.jobId,
+          candidateId: schema.interviews.candidateId,
+          candidateName: schema.interviews.candidateName,
+          scheduledDate: schema.interviews.scheduledDate,
+          scheduledTime: schema.interviews.scheduledTime,
+          meetingLink: schema.interviews.meetingLink,
+          status: schema.interviews.status,
+          jobTitle: schema.jobs.title,
+          companyName: schema.jobs.company,
+          userId: schema.applications.userId,
+        })
+        .from(schema.interviews)
+        .leftJoin(schema.jobs, eq(schema.interviews.jobId, schema.jobs.id))
+        .leftJoin(schema.applications, eq(schema.interviews.applicationId, schema.applications.id))
         .where(
           and(
-            eq(schema.airtableJobMatches.status, 'scheduled'),
-            gte(schema.airtableJobMatches.interviewDate, now)
+            eq(schema.interviews.status, 'scheduled'),
+            gte(schema.interviews.scheduledDate, now)
           )
         )
-        .orderBy(asc(schema.airtableJobMatches.interviewDate));
+        .orderBy(asc(schema.interviews.scheduledDate));
+
+      // Format the response to match the expected interface
+      return interviews.map((interview: any) => ({
+        recordId: interview.id?.toString() || '',
+        jobTitle: interview.jobTitle || 'Unknown Position',
+        companyName: interview.companyName || 'Unknown Company',
+        interviewDateTime: this.combineDateTime(interview.scheduledDate, interview.scheduledTime),
+        interviewLink: interview.meetingLink || '',
+        userId: interview.userId || interview.candidateId || '',
+      }));
     } catch (error) {
       console.error('Error getting upcoming interviews:', error);
       throw error;
+    }
+  }
+
+  private combineDateTime(scheduledDate: Date | null, scheduledTime: string | null): string {
+    if (!scheduledDate) return '';
+
+    try {
+      const date = new Date(scheduledDate);
+      if (scheduledTime) {
+        // If we have a time, combine it with the date
+        return `${date.toISOString().split('T')[0]} at ${scheduledTime}`;
+      }
+      return date.toISOString();
+    } catch (error) {
+      console.error('Error combining date and time:', error);
+      return '';
     }
   }
 
@@ -648,7 +691,7 @@ export class LocalDatabaseService {
           count: sql`count(*)`
         })
         .from(schema.airtableUserProfiles)
-        .where(schema.airtableUserProfiles.location.isNotNull())
+        .where(isNotNull(schema.airtableUserProfiles.location))
         .groupBy(schema.airtableUserProfiles.location)
         .orderBy(desc(sql`count(*)`))
         .limit(10);
@@ -686,7 +729,7 @@ export class LocalDatabaseService {
           count: sql`count(*)`
         })
         .from(schema.airtableJobPostings)
-        .where(schema.airtableJobPostings.location.isNotNull())
+        .where(isNotNull(schema.airtableJobPostings.location))
         .groupBy(schema.airtableJobPostings.location)
         .orderBy(desc(sql`count(*)`))
         .limit(10);
