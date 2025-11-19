@@ -1853,11 +1853,11 @@ Write DIRECTLY TO THE USER using "you" and giving them clear instructions. For e
 Return ONLY JSON in this exact format:
 {
   "paragraphs": [
-    "Paragraph 1: Direct advice about your current career situation...",
-    "Paragraph 2: Direct advice about your strengths and skills to develop...",
-    "Paragraph 3: Direct advice about specific opportunities you should pursue...",
-    "Paragraph 4: Direct advice about realistic salary and negotiation...",
-    "Paragraph 5: Direct advice about immediate next steps to take..."
+    "Direct advice about your current career situation...",
+    "Direct advice about your strengths and skills to develop...",
+    "Direct advice about specific opportunities you should pursue...",
+    "Direct advice about realistic salary and negotiation...",
+    "Direct advice about immediate next steps to take..."
   ]
 }`;
 
