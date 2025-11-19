@@ -636,10 +636,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.userId = user.id;
       console.log(`✅ User authenticated via token: ${user.email} (${user.id})`);
 
+      let profileFound = false
+
       // Create or update applicant profile if needed
       try {
         let profile = await storage.getApplicantProfile(user.id);
-        if (!profile) {
+        
+        if (profile) {
+          profileFound = true;
+        } else {
           profile = await storage.upsertApplicantProfile({
             userId: user.id,
             name: resumeProfile?.name || jobMatch.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
@@ -652,7 +657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create applicant profile from the file if fileId is available
-      if (resumeProfile?.fileId) {
+      if (resumeProfile?.fileId && !profileFound) {
         try {
           console.log(`📄 Found OpenAI file_id on resume profile: ${resumeProfile.fileId}`);
 
@@ -673,7 +678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               completionPercentage: calculateProfileCompletion(profileData)
             };
 
-            const updatedProfile = await storage.upsertApplicantProfile(mergedProfile);
+            await storage.upsertApplicantProfile(mergedProfile);
             await storage.updateProfileCompletion(user.id);
 
             // Store a resume record for tracking
