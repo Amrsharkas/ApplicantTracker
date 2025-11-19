@@ -529,6 +529,7 @@ export const interviewRecordings = pgTable("interview_recordings", {
   userId: varchar("user_id"),
   jobMatchId: varchar("job_match_id"),
   recordingPath: varchar("recording_path").notNull(),
+  hlsPlaylistPath: varchar("hls_playlist_path"), // Path to HLS playlist (.m3u8) for chunked streaming
   createdAt: timestamp("created_at").defaultNow(),
 });
 

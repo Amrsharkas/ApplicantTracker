@@ -11,6 +11,7 @@ import { employerQuestionService } from "./employerQuestions";
 import { ObjectStorageService } from "./objectStorage";
 import { ResumeService } from "./resumeService";
 import { ragService } from "./ragService";
+import { hlsProcessor } from "./hlsProcessor";
 import multer from "multer";
 import { string, z } from "zod";
 import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, airtableJobApplications, jobs, organizations, Job } from "@shared/schema";
@@ -43,6 +44,13 @@ const recordingStorage = multer.diskStorage({
 });
 
 const uploadRecording = multer({ storage: recordingStorage });
+
+// Multer configuration for HLS chunk uploads (store in memory for processing)
+const uploadChunk = multer({
+  storage: multer.memoryStorage(), // Store in memory for processing with ffmpeg
+  limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit per chunk (should be ~5-6 seconds of video)
+});
+
 import { wrapOpenAIRequest } from "./openaiTracker";
 
 const upload = multer({
@@ -1515,6 +1523,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(500).json({
         message: "Failed to upload recording. Please try again."
+      });
+    }
+  });
+
+  // Upload video chunk for HLS streaming during interview
+  app.post('/api/interview/upload-chunk', requireAuth, uploadChunk.single('chunk'), async (req: any, res) => {
+    try {
+      const { sessionId, chunkIndex, jobMatchId } = req.body;
+
+      // Validate required fields
+      if (!sessionId) {
+        return res.status(400).json({ message: "Session ID is required" });
+      }
+
+      if (chunkIndex === undefined || chunkIndex === null) {
+        return res.status(400).json({ message: "Chunk index is required" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "Chunk file is required" });
+      }
+
+      // Validate session ID format
+      const parsedSessionId = parseInt(sessionId);
+      if (isNaN(parsedSessionId) || parsedSessionId <= 0) {
+        return res.status(400).json({ message: "Invalid session ID" });
+      }
+
+      // Validate chunk index format
+      const parsedChunkIndex = parseInt(chunkIndex);
+      if (isNaN(parsedChunkIndex) || parsedChunkIndex < 0) {
+        return res.status(400).json({ message: "Invalid chunk index" });
+      }
+
+      console.log(`[Chunk Upload] Received chunk ${parsedChunkIndex} for session ${parsedSessionId}, size: ${req.file.size} bytes`);
+
+      // Process chunk through HLS processor
+      const result = await hlsProcessor.processChunk({
+        sessionId: parsedSessionId.toString(),
+        chunkIndex: parsedChunkIndex,
+        videoBuffer: req.file.buffer,
+      });
+
+      if (!result.success) {
+        console.error(`[Chunk Upload] Failed to process chunk ${parsedChunkIndex}:`, result.error);
+        return res.status(500).json({
+          message: "Failed to process video chunk",
+          error: result.error
+        });
+      }
+
+      console.log(`[Chunk Upload] Successfully processed chunk ${parsedChunkIndex}, playlist: ${result.playlistPath}`);
+
+      // For the first chunk, create or update the interview recording entry in database
+      if (parsedChunkIndex === 0) {
+        try {
+          const userId = req.user?.id;
+          const hlsPlaylistPath = hlsProcessor.getRelativePlaylistPath(parsedSessionId.toString());
+
+          // Check if recording entry already exists
+          const existingRecording = await db.select()
+            .from(interviewRecordings)
+            .where(eq(interviewRecordings.sessionId, parsedSessionId))
+            .limit(1);
+
+          if (existingRecording.length === 0) {
+            // Create new recording entry
+            await storage.createInterviewRecording({
+              sessionId: parsedSessionId,
+              userId: userId,
+              jobMatchId: jobMatchId || null,
+              recordingPath: `hls/${parsedSessionId}/playlist.m3u8`, // Placeholder for legacy field
+              hlsPlaylistPath: hlsPlaylistPath,
+            });
+            console.log(`[Chunk Upload] Created recording entry for session ${parsedSessionId}`);
+          } else {
+            // Update existing entry with HLS path
+            await db.update(interviewRecordings)
+              .set({ hlsPlaylistPath: hlsPlaylistPath })
+              .where(eq(interviewRecordings.sessionId, parsedSessionId));
+            console.log(`[Chunk Upload] Updated recording entry for session ${parsedSessionId}`);
+          }
+        } catch (dbError) {
+          console.error(`[Chunk Upload] Database error for chunk ${parsedChunkIndex}:`, dbError);
+          // Don't fail the request - HLS files are saved, just log the error
+        }
+      }
+
+      res.json({
+        message: "Chunk processed successfully",
+        chunkIndex: parsedChunkIndex,
+        playlistPath: result.playlistPath,
+        segmentPath: result.segmentPath,
+      });
+    } catch (error) {
+      console.error("[Chunk Upload] Error processing chunk:", error);
+      res.status(500).json({
+        message: "Failed to process video chunk. Please try again.",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Finalize HLS recording when interview completes
+  app.post('/api/interview/finalize-recording', requireAuth, async (req: any, res) => {
+    try {
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        return res.status(400).json({ message: "Session ID is required" });
+      }
+
+      const parsedSessionId = parseInt(sessionId);
+      if (isNaN(parsedSessionId) || parsedSessionId <= 0) {
+        return res.status(400).json({ message: "Invalid session ID" });
+      }
+
+      console.log(`[Finalize] Finalizing recording for session ${parsedSessionId}`);
+
+      // Finalize the HLS playlist (adds #EXT-X-ENDLIST tag)
+      await hlsProcessor.finalizePlaylist(parsedSessionId.toString());
+
+      console.log(`[Finalize] Successfully finalized recording for session ${parsedSessionId}`);
+
+      res.json({
+        message: "Recording finalized successfully",
+        sessionId: parsedSessionId,
+      });
+    } catch (error) {
+      console.error("[Finalize] Error finalizing recording:", error);
+      res.status(500).json({
+        message: "Failed to finalize recording",
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });

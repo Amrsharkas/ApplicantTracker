@@ -58,8 +58,121 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   const [completedSessionId, setCompletedSessionId] = useState<number | null>(null);
   const { isRecording, startRecording, stopRecording, cleanup } = useCameraRecorder();
 
+  // HLS chunk upload tracking
+  const [uploadedChunks, setUploadedChunks] = useState<number>(0);
+  const [totalChunks, setTotalChunks] = useState<number>(0);
+  const [uploadQueue, setUploadQueue] = useState<Array<{chunk: Blob, index: number}>>([]);
+  const isUploadingRef = useRef<boolean>(false);
+  const [failedChunks, setFailedChunks] = useState<number[]>([]);
+
   // Debug: Log the environment variable value and its type
   const enableTextInterviews = import.meta.env.VITE_ENABLE_TEXT_INTERVIEWS;
+
+  // Upload a single chunk to the server
+  const uploadChunk = async (chunk: Blob, chunkIndex: number, retryCount = 0): Promise<boolean> => {
+    if (!session) {
+      console.warn('No session available for chunk upload');
+      return false;
+    }
+
+    const formData = new FormData();
+    formData.append('chunk', chunk, `chunk-${chunkIndex}.webm`);
+    formData.append('sessionId', session.id.toString());
+    formData.append('chunkIndex', chunkIndex.toString());
+
+    if (job?.recordId) {
+      formData.append('jobMatchId', job.recordId);
+    }
+
+    try {
+      console.log(`[Chunk Upload] Uploading chunk ${chunkIndex}, size: ${chunk.size} bytes, attempt: ${retryCount + 1}`);
+
+      const response = await fetch('/api/interview/upload-chunk', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      const responseData = await response.json().catch(() => ({ message: 'Invalid response' }));
+
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Chunk upload failed');
+      }
+
+      console.log(`[Chunk Upload] Successfully uploaded chunk ${chunkIndex}`);
+      setUploadedChunks(prev => prev + 1);
+      return true;
+    } catch (error) {
+      console.error(`[Chunk Upload] Failed to upload chunk ${chunkIndex}:`, error);
+
+      // Retry logic: try up to 3 times
+      if (retryCount < 2) {
+        console.log(`[Chunk Upload] Retrying chunk ${chunkIndex}...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+        return uploadChunk(chunk, chunkIndex, retryCount + 1);
+      }
+
+      // Mark chunk as failed after all retries
+      setFailedChunks(prev => [...prev, chunkIndex]);
+      return false;
+    }
+  };
+
+  // Callback when a chunk is ready from the recorder
+  const handleChunkReady = useCallback((chunk: Blob, chunkIndex: number) => {
+    console.log(`[HLS] Chunk ${chunkIndex} ready for upload, size: ${chunk.size} bytes`);
+    setTotalChunks(prev => Math.max(prev, chunkIndex + 1));
+
+    // Upload chunk immediately
+    uploadChunk(chunk, chunkIndex);
+  }, [session, job]);
+
+  // Finalize recording when interview completes
+  const finalizeRecording = async () => {
+    if (!session) {
+      console.warn('No session available for finalization');
+      return;
+    }
+
+    try {
+      console.log(`[Finalize] Finalizing recording for session ${session.id}`);
+
+      const response = await fetch('/api/interview/finalize-recording', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ sessionId: session.id }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Finalization failed' }));
+        throw new Error(errorData.message);
+      }
+
+      console.log(`[Finalize] Recording finalized successfully`);
+
+      // Show upload status
+      if (failedChunks.length > 0) {
+        toast({
+          title: 'Recording Upload Incomplete',
+          description: `${uploadedChunks} of ${totalChunks} chunks uploaded successfully. Some chunks failed.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Recording Saved',
+          description: `All ${uploadedChunks} video chunks uploaded successfully.`,
+        });
+      }
+    } catch (error) {
+      console.error('[Finalize] Error finalizing recording:', error);
+      toast({
+        title: 'Finalization Error',
+        description: 'Failed to finalize recording, but chunks may have been saved.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const startCameraAccess = async () => {
     try {
@@ -72,7 +185,8 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         audio: true,
       });
       setCameraStream(videoStream);
-      startRecording(videoStream);
+      // Start recording with chunk callback for HLS streaming
+      startRecording(videoStream, handleChunkReady);
       return videoStream;
     } catch (error) {
       console.error('Camera access error:', error);
@@ -387,9 +501,9 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         realtimeAPI.disconnect();
       }
 
-      // Stop recording and get blob before submitting
+      // Stop recording (chunks were already uploaded during recording)
       console.log('Stopping recording...');
-      const recordedBlob = await stopRecording();
+      await stopRecording();
 
       // Stop camera stream
       if (cameraStream) {
@@ -401,13 +515,9 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       // Cleanup recorder
       cleanup();
 
-      // Upload recording if we have data
-      if (recordedBlob && recordedBlob.size > 0) {
-        console.log('Uploading recorded blob...');
-        await uploadRecording(recordedBlob);
-      } else {
-        console.log('No recording data to upload');
-      }
+      // Finalize HLS recording (adds end marker to playlist)
+      console.log('Finalizing HLS recording...');
+      await finalizeRecording();
 
       const response = await fetch('/api/interview/complete-voice', {
         method: 'POST',
@@ -511,6 +621,19 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                   <span className="text-white text-sm font-medium">Connected</span>
                 </div>
               )}
+              {isRecording && totalChunks > 0 && (
+                <div className="absolute bottom-4 right-4 flex items-center space-x-2 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                  <Circle className="h-3 w-3 text-blue-400 animate-pulse" />
+                  <span className="text-white text-sm font-medium">
+                    Uploading {uploadedChunks}/{totalChunks} chunks
+                  </span>
+                  {failedChunks.length > 0 && (
+                    <span className="text-red-400 text-xs ml-1">
+                      ({failedChunks.length} failed)
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Transcription panel - only shown when enabled */}
@@ -603,16 +726,12 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                     console.log('🚪 Exiting interview...');
 
                     try {
-                      // Stop recording and get the blob
-                      const recordedBlob = await stopRecording();
+                      // Stop recording (chunks were already uploaded during recording)
+                      await stopRecording();
 
-                      // Upload the recording if we have data
-                      if (recordedBlob && recordedBlob.size > 0) {
-                        console.log('Uploading recorded blob...');
-                        await uploadRecording(recordedBlob);
-                      } else {
-                        console.log('No recording data to upload');
-                      }
+                      // Finalize HLS recording
+                      console.log('Finalizing HLS recording on exit...');
+                      await finalizeRecording();
                     } catch (error) {
                       console.error('Error saving recording on exit:', error);
                     } finally {
@@ -778,14 +897,29 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
             </div>
 
             {/* Camera Preview */}
-            <CameraPreview
-              stream={cameraStream}
-              isActive={realtimeAPI.isConnected}
-              isRecording={isRecording}
-              error={realtimeAPI.cameraError}
-              connecting={loading}
-              className="h-48 w-full max-w-md mx-auto"
-            />
+            <div className="relative">
+              <CameraPreview
+                stream={cameraStream}
+                isActive={realtimeAPI.isConnected}
+                isRecording={isRecording}
+                error={realtimeAPI.cameraError}
+                connecting={loading}
+                className="h-48 w-full max-w-md mx-auto"
+              />
+              {isRecording && totalChunks > 0 && (
+                <div className="absolute bottom-2 right-2 flex items-center space-x-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-full">
+                  <Circle className="h-2 w-2 text-blue-400 animate-pulse" />
+                  <span className="text-white text-xs font-medium">
+                    {uploadedChunks}/{totalChunks} chunks
+                  </span>
+                  {failedChunks.length > 0 && (
+                    <span className="text-red-400 text-xs">
+                      ({failedChunks.length} ✗)
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="p-3 rounded-md border border-border bg-muted text-sm text-muted-foreground">
               {realtimeAPI.isConnected ? 'You are connected. Speak naturally to answer questions.' : 'Connecting to voice interview...'}
@@ -837,16 +971,12 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                 console.log('🚪 Exiting interview from dialog mode...');
 
                 try {
-                  // Stop recording and get the blob
-                  const recordedBlob = await stopRecording();
+                  // Stop recording (chunks were already uploaded during recording)
+                  await stopRecording();
 
-                  // Upload the recording if we have data
-                  if (recordedBlob && recordedBlob.size > 0) {
-                    console.log('Uploading recorded blob...');
-                    await uploadRecording(recordedBlob);
-                  } else {
-                    console.log('No recording data to upload');
-                  }
+                  // Finalize HLS recording
+                  console.log('Finalizing HLS recording on exit...');
+                  await finalizeRecording();
                 } catch (error) {
                   console.error('Error saving recording on exit:', error);
                 } finally {
