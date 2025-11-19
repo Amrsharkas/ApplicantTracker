@@ -1421,18 +1421,6 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                       </div>
                     </div>
 
-                    {/* AI Prompt */}
-                    {selectedJob.aiPrompt && (
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3">{t("jobPostingsModal.info.aiPrompt")}</h3>
-                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                          <p className="text-purple-800 text-sm leading-relaxed whitespace-pre-wrap">
-                            {selectedJob.aiPrompt}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Skills & Requirements */}
                     {selectedJob.skills && selectedJob.skills.length > 0 && (
                       <div>
@@ -1447,18 +1435,6 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                       </div>
                     )}
 
-                    {/* Company Information */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                        {t("jobPostingsModal.info.aboutCompany").replace("{{company}}", selectedJob.companyName)}
-                      </h3>
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <p className="text-gray-700">
-                          {t("jobPostingsModal.info.aboutCompanyDescription")
-                            .replace("{{company}}", selectedJob.companyName)}
-                        </p>
-                      </div>
-                    </div>
 
                     {/* Application Tips */}
                     <div>
