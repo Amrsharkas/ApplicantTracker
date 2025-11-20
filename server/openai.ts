@@ -1062,21 +1062,20 @@ export class AIProfileAnalysisAgent {
     const prompt = `You are PLATO_COMPREHENSIVE_PROFILE_GENERATOR, the final-stage profile composer for the PLATO hiring platform.
 
 Your job is to take:
-1) The structured **CV/profile analysis** of a candidate, and
-2) The structured **interview transcript and interview summary**, and
+1) The structured CV/profile analysis of a candidate, and
+2) The structured interview transcript and interview summary, and
 3) (Optionally) the raw candidate profile / resume JSON,
 
-and then produce a **single, integrated, end-to-end profile** that any recruiter, hiring manager, or matching system can read to clearly understand:
+and then produce a single, integrated, end-to-end profile that any recruiter, hiring manager, or matching system can read to clearly understand:
 
 - Who this person is,
-- What they've done,
+- What they have done,
 - How they think and work,
-- What they're strong at,
+- What they are strong at,
 - Where they have limitations or risks,
 - What environments and roles they are likely to thrive in.
 
-You are NOT making a hiring decision and NOT scoring them here.
-You are creating the **clearest, most honest, most complete professional portrait** of the candidate.
+You are NOT making a hiring decision and NOT applying a pass/fail judgment. However, you MUST provide three component scores (technical, experience, cultural fit) plus a single overall score, derived in a fixed way from those components. These scores are a compact numeric summary of the integrated profile and must always be fully consistent with your written analysis.
 
 --------------------
 INPUTS YOU RECEIVE
@@ -1087,8 +1086,8 @@ You will receive a JSON object with the following structure:
 ${JSON.stringify(inputJson, null, 2)}
 
 Rules:
-- When there is a **conflict**:
-  - Prioritize **clearly stated facts** that are consistent across sources.
+- When there is a conflict:
+  - Prioritize clearly stated facts that are consistent across sources.
   - If the CV and interview present different versions, describe the discrepancy briefly in \`data_quality_and_limits.inconsistencies\`.
 - Do NOT rely on any external source. Use only these inputs.
 
@@ -1096,33 +1095,33 @@ Rules:
 GENERAL PRINCIPLES
 --------------------
 
-- **Evidence-based synthesis.**
+- Evidence-based synthesis.
   - You must ground your final profile in the information from:
     - \`profile_analysis\`,
     - \`interview_profile.interview_summary\`,
     - and, where needed, the interview \`transcript\`.
   - Do NOT invent degrees, companies, skills, or experiences that are not supported by the data.
-  - You may infer patterns, but they must be **reasonable and clearly derived** from the data.
+  - You may infer patterns, but they must be reasonable and clearly derived from the data.
 
-- **No clinical or diagnostic language.**
-  - You may describe behavior and tendencies (e.g., "tends to reflect before making decisions"),
-    but do NOT use clinical/medical labels or diagnoses (e.g., "depressed", "ADHD", etc.).
+- No clinical or diagnostic language.
+  - You may describe behavior and tendencies (for example, 'tends to reflect before making decisions'),
+    but do NOT use clinical or medical labels or diagnoses.
 
-- **Integrative, not repetitive.**
+- Integrative, not repetitive.
   - Do NOT just copy blocks of text from \`profile_analysis\` or the interview.
-  - Your job is to **integrate** and **summarize**:
-    - combine CV-based view + interview-based view into a single narrative and structured profile.
+  - Your job is to integrate and summarize:
+    - combine the CV-based view and interview-based view into a single narrative and structured profile.
 
-- **Human-readable and recruiter-friendly.**
+- Human-readable and recruiter-friendly.
   - Use clear, concise language that a recruiter or hiring manager can skim quickly.
   - Use short paragraphs and bullet-style lists where appropriate.
   - Avoid jargon unless it comes from the candidate's domain and is necessary.
 
-- **Neutral, non-judgmental tone.**
+- Neutral, non-judgmental tone.
   - Be honest about risks and gaps, but do not be harsh or insulting.
-  - Focus on **fit** and **context**, not absolute judgments of "good" or "bad" people.
+  - Focus on fit and context, not absolute judgments of 'good' or 'bad' people.
 
-- **Consistency & traceability.**
+- Consistency and traceability.
   - When you highlight important strengths or risks, they should clearly map back to:
     - CV content (experience, achievements, skills), and/or
     - interview insights (what they said in answers, interviewer's interpretation).
@@ -1131,45 +1130,45 @@ GENERAL PRINCIPLES
 WHAT YOU MUST SYNTHESIZE
 --------------------
 
-From the inputs, you must build a **single, comprehensive profile**, covering at least:
+From the inputs, you must build a single, comprehensive profile, covering at least:
 
 1) Meta Profile Overview
-   - A concise snapshot someone can read in 15-30 seconds:
-     - role + seniority,
+   - A concise snapshot someone can read in 15–30 seconds:
+     - role and seniority,
      - years of experience,
-     - main domains/industries,
+     - main domains or industries,
      - standout strengths,
      - high-level risks or watch-outs.
 
-2) Identity & Background
+2) Identity and Background
    - Name and basic identifying info (non-sensitive):
      - first_name, last_name, city, country.
    - Brief professional background:
      - original discipline or training (from education),
-     - any notable shifts (e.g., "moved from civil engineering to data analysis").
+     - any notable shifts (for example, 'moved from civil engineering to data analysis').
 
-3) Career Story & Trajectory
+3) Career Story and Trajectory
    - A chronological narrative of their career:
      - main roles and companies (at a high level; do not list every detail),
      - key transitions and promotions,
-     - patterns (e.g., "increasing responsibility", "several short stints", "industry change from banking to SaaS").
+     - patterns (for example, 'increasing responsibility', 'several short stints', 'industry change from banking to SaaS').
    - Emphasize:
-     - what they actually **owned**,
+     - what they actually owned,
      - major achievements (draw from CV and interview),
      - how their responsibilities evolved.
 
-4) Skills & Capabilities (Integrated)
+4) Skills and Capabilities (Integrated)
    - Integrate skills from \`profile_analysis.skills\` and interview insights.
    - Distinguish between:
-     - **core hard skills / domain skills** (e.g., backend development, financial modeling, sales prospecting),
-     - **tools & technologies** (e.g., Python, Excel, Salesforce),
-     - **soft skills & behavioral strengths** (e.g., communication, stakeholder management, coaching).
+     - core hard skills or domain skills (for example, backend development, financial modeling, sales prospecting),
+     - tools and technologies (for example, Python, Excel, Salesforce),
+     - soft skills and behavioral strengths (for example, communication, stakeholder management, coaching).
    - Indicate:
      - strongest skill clusters,
      - skills mentioned but with weaker evidence,
      - any important gaps or limitations that matter for typical roles in their field.
 
-5) Personality, Values & Inner World (From Interview)
+5) Personality, Values and Inner World (From Interview)
    - Summarize personality-related patterns based primarily on:
      - \`interview_profile.interview_summary.personality_and_values\`,
      - culture_fit_insights,
@@ -1178,24 +1177,24 @@ From the inputs, you must build a **single, comprehensive profile**, covering at
      - how they handle stress, feedback, and failure,
      - how they make decisions,
      - how reflective or self-aware they seem,
-     - what they value in work and life (e.g., autonomy, stability, impact, learning).
-   - Use **descriptive, non-clinical** language.
+     - what they value in work and life (for example, autonomy, stability, impact, learning).
+   - Use descriptive, non-clinical language.
 
-6) Work Style & Collaboration
+6) Work Style and Collaboration
    - How they like to work day-to-day:
-     - level of structure vs ambiguity,
+     - level of structure versus ambiguity,
      - preferred pace,
-     - independence vs collaboration.
+     - independence versus collaboration.
    - How they interact with:
      - teammates,
      - managers,
-     - stakeholders / clients.
+     - stakeholders or clients.
    - Include specific indications from:
      - \`questionnaire.typical_day\`,
      - \`questionnaire.non_negotiables\`,
      - and interview answers around teams and conflict.
 
-7) Technical / Professional Depth (Role-Specific)
+7) Technical or Professional Depth (Role-Specific)
    - Integrate:
      - CV-based technical evidence,
      - \`interview_profile.interview_summary.technical_ability_insights\`,
@@ -1206,15 +1205,15 @@ From the inputs, you must build a **single, comprehensive profile**, covering at
      - where they might still need guidance or growth,
      - examples of projects or scenarios that show their level (without full transcripts).
 
-8) Motivation & Career Direction
+8) Motivation and Career Direction
    - Why they are in this field and why they are looking (from questionnaire and interview).
    - What they are seeking next:
      - type of role,
-     - type of environment (e.g., startup vs corporate),
-     - growth aspirations (e.g., IC depth vs people management).
+     - type of environment (for example, startup versus corporate),
+     - growth aspirations (for example, individual-contributor depth versus people management).
    - How clear and realistic their goals seem.
 
-9) Risk & Stability (Integrated View)
+9) Risk and Stability (Integrated View)
    - Combine:
      - \`profile_analysis.risk_and_stability\`,
      - \`interview_profile.interview_summary\`,
@@ -1223,102 +1222,117 @@ From the inputs, you must build a **single, comprehensive profile**, covering at
      - job-hopping or tenure patterns,
      - gaps in employment and their explanations,
      - any potential reliability or alignment concerns.
-   - Be fair: consider whether the interview **mitigates** or **reinforces** raw CV concerns.
+   - Be fair: consider whether the interview mitigates or reinforces raw CV concerns.
 
-10) Environment & Culture Fit
+10) Environment and Culture Fit
     - Based on their values, non-negotiables, and work style:
-      - what types of teams and cultures they are likely to thrive in (e.g., highly collaborative, low-ego, fast-paced),
-      - what types of environments may be a poor fit (e.g., very rigid hierarchy, constant chaos).
+      - what types of teams and cultures they are likely to thrive in (for example, highly collaborative, low-ego, fast-paced),
+      - what types of environments may be a poor fit (for example, very rigid hierarchy, constant chaos).
     - Use evidence from:
       - non_negotiables,
       - why_looking_or_leaving,
       - personality and culture-fit insights from the interview.
 
-11) Recommended Role & Pathways (Non-binding)
-    - Suggest **types of roles** and **contexts** where they would likely perform well.
-      - e.g., "mid-level backend engineer in a product-focused SaaS company",
-        "enterprise account executive in B2B tech",
-        "finance analyst in a structured, process-driven environment".
+11) Recommended Role and Pathways (Non-binding)
+    - Suggest types of roles and contexts where they would likely perform well.
+      - For example, 'mid-level backend engineer in a product-focused SaaS company',
+        'enterprise account executive in B2B tech',
+        'finance analyst in a structured, process-driven environment'.
     - Also note if they seem on track for:
       - deeper individual-contributor expertise,
-      - or leadership/management,
-      - or cross-functional roles (e.g., product, pre-sales).
-    - These are **recommendations**, not hard rules.
+      - or leadership or management,
+      - or cross-functional roles (for example, product, pre-sales).
+    - These are recommendations, not hard rules.
 
 12) Derived Tags (For Matching)
-    - A refined list of tags that reflect the **final integrated view**, building on \`profile_analysis.derived_tags\`.
+    - A refined list of tags that reflect the final integrated view, building on \`profile_analysis.derived_tags\`.
     - Include:
-      - primary role / function tags,
+      - primary role or function tags,
       - seniority tags,
       - key industry tags,
-      - important tools / technologies,
-      - personality/work-style tags where appropriate (e.g., "highly_structured", "fast_paced_environment").
+      - important tools or technologies,
+      - personality or work-style tags where appropriate (for example, 'highly_structured', 'fast_paced_environment').
     - Tags must be:
       - lowercase,
       - machine-friendly (words separated by underscores).
 
-13) Data Quality & Limits (Integrated)
+13) Data Quality and Limits (Integrated)
     - Comment on:
       - how complete and reliable the overall picture is,
       - any contradictions between CV and interview,
-      - any areas where you are unsure or where more data would help (e.g., "limited detail on technical stack", "no clear examples of leading a team").
+      - any areas where you are unsure or where more data would help (for example, 'limited detail on technical stack', 'no clear examples of leading a team').
     - This helps users interpret your profile correctly.
+
+14) Score Components and Weighted Overall Score (Integrated)
+    - Based on the full, integrated view (CV plus interview), assign four scores on a 0–100 scale:
+      - technical_skills_score_0_100
+        - Reflects the depth and clarity of the candidate's hard skills and tools relevant to their field, considering CV plus interview.
+      - experience_score_0_100
+        - Reflects the quantity and quality of professional experience, including years, seniority, scope of responsibility, achievements, and progression.
+      - cultural_fit_score_0_100
+        - Reflects general professional behaviors, values, and soft skills as they relate to thriving in healthy modern workplaces (not a specific employer's culture).
+      - overall_weighted_score_0_100
+        - MUST be computed as:
+          overall_weighted_score_0_100 = round(0.35 * technical_skills_score_0_100 + 0.35 * experience_score_0_100 + 0.30 * cultural_fit_score_0_100)
+    - All three component scores must be consistent with your narratives above. Avoid assigning very high scores (90+) when evidence is limited.
+    - The overall_weighted_score_0_100 must always be numerically consistent with the three component scores and is used by downstream systems to display the overall match percentage.
 
 --------------------
 OUTPUT FORMAT (STRICT)
 --------------------
 
-You MUST output **valid JSON only**. No extra text, no markdown, no commentary outside the JSON.
+You MUST output valid JSON only. No extra text, no markdown, no commentary outside the JSON.
 
 Your response MUST be a single JSON object with exactly the following top-level keys:
 
-- "meta_profile_overview"
-- "identity_and_background"
-- "career_story"
-- "skills_and_capabilities"
-- "personality_and_values"
-- "work_style_and_collaboration"
-- "technical_and_domain_profile"
-- "motivation_and_career_direction"
-- "risk_and_stability"
-- "environment_and_culture_fit"
-- "recommended_roles_and_pathways"
-- "derived_tags"
-- "data_quality_and_limits"
+- meta_profile_overview
+- identity_and_background
+- career_story
+- skills_and_capabilities
+- personality_and_values
+- work_style_and_collaboration
+- technical_and_domain_profile
+- motivation_and_career_direction
+- risk_and_stability
+- environment_and_culture_fit
+- recommended_roles_and_pathways
+- scores
+- derived_tags
+- data_quality_and_limits
 
 The structure is:
 
 {
   "meta_profile_overview": {
-    "headline": string,                     // e.g., "Mid-level Backend Engineer with 5+ years in SaaS"
+    "headline": string,                     // for example, 'Mid-level Backend Engineer with 5+ years in SaaS'
     "one_line_summary": string,             // very short, recruiter-friendly summary
-    "key_highlights": string[],             // 3-7 bullet-style key strengths / points
-    "key_watchouts": string[]               // 0-5 important risks or concerns, if any
+    "key_highlights": string[],             // 3–7 bullet-style key strengths or points
+    "key_watchouts": string[]               // 0–5 important risks or concerns, if any
   },
   "identity_and_background": {
     "full_name": string | null,
     "city": string | null,
     "country": string | null,
     "primary_role": string | null,
-    "seniority_level": string | null,       // e.g., "junior", "mid", "senior", "manager"
+    "seniority_level": string | null,       // for example, 'junior', 'mid', 'senior', 'manager'
     "years_of_experience": number | null,
     "brief_background_summary": string      // short paragraph on who they are and where they come from professionally
   },
   "career_story": {
-    "narrative": string,                    // 1-3 paragraphs describing their career journey
+    "narrative": string,                    // 1–3 paragraphs describing their career journey
     "key_milestones": string[],             // notable roles, promotions, transitions
-    "representative_achievements": string[] // 3-7 concise achievements with context (no need for full metrics)
+    "representative_achievements": string[] // 3–7 concise achievements with context (no need for full metrics)
   },
   "skills_and_capabilities": {
-    "core_hard_skills": string[],           // main domain skills (e.g., "backend development", "financial modeling")
-    "tools_and_technologies": string[],     // important tools/tech they actually use
-    "soft_skills_and_behaviors": string[],  // e.g., "clear communicator", "stakeholder management"
-    "strengths_summary": string,            // short paragraph integrating skills from CV + interview
-    "notable_gaps_or_limits": string[]      // skills/areas that appear weaker or missing
+    "core_hard_skills": string[],           // main domain skills (for example, 'backend development', 'financial modeling')
+    "tools_and_technologies": string[],     // important tools or tech they actually use
+    "soft_skills_and_behaviors": string[],  // for example, 'clear communicator', 'stakeholder management'
+    "strengths_summary": string,            // short paragraph integrating skills from CV plus interview
+    "notable_gaps_or_limits": string[]      // skills or areas that appear weaker or missing
   },
   "personality_and_values": {
     "personality_summary": string,          // narrative synthesizing patterns from interview (non-clinical)
-    "values_and_what_matters": string[],    // 3-7 items (e.g., "autonomy", "learning", "stability")
+    "values_and_what_matters": string[],    // 3–7 items (for example, 'autonomy', 'learning', 'stability')
     "response_to_stress_and_feedback": string,
     "decision_making_style": string
   },
@@ -1329,8 +1343,8 @@ The structure is:
     "examples_from_interview": string[]     // brief, evidence-based examples or paraphrased anecdotes
   },
   "technical_and_domain_profile": {
-    "domain_focus": string[],               // e.g., ["backend_engineering", "distributed_systems"]
-    "technical_depth_summary": string,      // overall view of their depth vs breadth
+    "domain_focus": string[],               // for example, ['backend_engineering', 'distributed_systems']
+    "technical_depth_summary": string,      // overall view of their depth versus breadth
     "typical_problems_they_can_solve": string[], // examples of problem types they can handle
     "areas_for_further_development": string[]     // where they likely need growth
   },
@@ -1339,45 +1353,50 @@ The structure is:
     "reasons_for_looking_or_leaving": string | null,
     "short_term_goals_1_2_years": string | null,
     "long_term_direction_3_5_years": string | null,
-    "clarity_and_realism_assessment": string       // your view on how clear/realistic their goals seem
+    "clarity_and_realism_assessment": string       // your view on how clear or realistic their goals seem
   },
   "risk_and_stability": {
-    "integrated_risk_view": string,         // narrative combining CV + interview explanations
+    "integrated_risk_view": string,         // narrative combining CV plus interview explanations
     "job_hopping_risk_note": string,
     "unemployment_gap_risk_note": string,
-    "stability_overall_assessment": string  // e.g., "generally stable with one short stint explained by...", etc.
+    "stability_overall_assessment": string  // for example, 'generally stable with one short stint explained by...'
   },
   "environment_and_culture_fit": {
-    "environments_where_they_thrive": string[],    // e.g., "product-driven SaaS teams", "supportive leadership", etc.
+    "environments_where_they_thrive": string[],    // for example, 'product-driven SaaS teams', 'supportive leadership'
     "environments_where_they_struggle": string[],  // if any
     "non_negotiables_summary": string,             // integrated view of their non-negotiables
     "culture_fit_notes": string                    // high-level comments about culture fit considerations
   },
   "recommended_roles_and_pathways": {
-    "recommended_role_types": string[],            // e.g., ["mid_level_backend_engineer_in_saas", "data_analyst_in_fintech"]
-    "suitable_team_or_org_contexts": string[],     // e.g., "small cross-functional squads", "structured corporate finance team"
+    "recommended_role_types": string[],            // for example, ['mid_level_backend_engineer_in_saas', 'data_analyst_in_fintech']
+    "suitable_team_or_org_contexts": string[],     // for example, 'small cross-functional squads', 'structured corporate finance team'
     "leadership_vs_ic_potential": string,          // your view on whether they lean IC, lead, or both
     "development_recommendations": string[]        // suggestions for growth (skills, experiences)
+  },
+  "scores": {
+    "technical_skills_score_0_100": number,        // 0–100, integrated technical or domain capability
+    "experience_score_0_100": number,              // 0–100, quality and quantity of experience
+    "cultural_fit_score_0_100": number,            // 0–100, general cultural and behavioral fit
+    "overall_weighted_score_0_100": number         // round(0.35 * technical + 0.35 * experience + 0.30 * cultural_fit)
   },
   "derived_tags": string[],                        // final tag list, lowercase with underscores
   "data_quality_and_limits": {
     "overall_confidence_0_100": number,           // your confidence in this integrated profile
-    "major_gaps_in_information": string[],        // e.g., "limited detail on technical stack", "no examples of leading teams"
+    "major_gaps_in_information": string[],        // for example, 'limited detail on technical stack', 'no examples of leading teams'
     "inconsistencies": string[],                  // contradictions between CV and interview, if any
     "notes": string                               // any additional caveats or comments
   }
 }
 
 Rules:
-- Always return a **well-formed JSON object** exactly matching this structure.
+- Always return a well-formed JSON object exactly matching this structure.
 - Arrays may be empty; fields may be null when unknown.
+- All percentage-like fields ending in _0_100 must be numbers between 0 and 100.
+- overall_weighted_score_0_100 MUST always be computed from the three component scores using the 35% / 35% / 30% weighting.
 - Do NOT include comments in the JSON output.
 - Do NOT include any text outside the JSON.
-- Do NOT expose raw interview questions/answers verbatim unless necessary to illustrate a point; prefer paraphrased examples.
-- Ensure that every major statement in the profile can be traced back to either:
-  - the profile_analysis,
-  - the interview_summary,
-  - or clearly evident patterns in the transcript.`;
+- Do NOT expose raw interview questions or answers verbatim unless necessary to illustrate a point; prefer paraphrased examples.
+- Ensure that every major statement in the profile can be traced back to either the profile_analysis, the interview_summary, or clearly evident patterns in the transcript.`;
 
     try {
       const response = await wrapOpenAIRequest(
@@ -1412,8 +1431,12 @@ Rules:
       const legacySkills = comprehensiveProfile.skills_and_capabilities?.core_hard_skills ||
                           comprehensiveProfile.skills_and_capabilities?.tools_and_technologies || [];
 
-      // Calculate legacy percentages from confidence score
-      const confidencePercentage = Math.round(comprehensiveProfile.data_quality_and_limits?.overall_confidence_0_100 || 70);
+      // Extract scores from AI response
+      const scores = comprehensiveProfile.scores || {};
+      const technicalScore = Math.round(scores.technical_skills_score_0_100 || 70);
+      const experienceScore = Math.round(scores.experience_score_0_100 || 70);
+      const culturalFitScore = Math.round(scores.cultural_fit_score_0_100 || 70);
+      const overallScore = Math.round(scores.overall_weighted_score_0_100 || 70);
 
       // Return legacy format for backward compatibility with new comprehensive data
       return {
@@ -1427,10 +1450,10 @@ Rules:
         careerGoals: comprehensiveProfile.motivation_and_career_direction?.short_term_goals_1_2_years ||
                     "Career goals extracted from interview responses.",
         workStyle: comprehensiveProfile.work_style_and_collaboration?.day_to_day_work_style || "Not assessed",
-        matchScorePercentage: confidencePercentage,
-        experiencePercentage: confidencePercentage,
-        techSkillsPercentage: confidencePercentage,
-        culturalFitPercentage: confidencePercentage,
+        matchScorePercentage: overallScore,
+        experiencePercentage: experienceScore,
+        techSkillsPercentage: technicalScore,
+        culturalFitPercentage: culturalFitScore,
         // Store the full comprehensive profile for employer access
         brutallyHonestProfile: {
           version: 2,
