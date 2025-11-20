@@ -1,20 +1,77 @@
-
 import { useState, useRef, useCallback } from 'react';
+
+export interface ChunkUploadProgress {
+  chunkIndex: number;
+  uploaded: number;
+  total: number;
+}
 
 export function useCameraRecorder() {
   const [isRecording, setIsRecording] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<ChunkUploadProgress | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
-  const stopResolveRef = useRef<((blob: Blob) => void) | null>(null);
+  const chunkIndexRef = useRef<number>(0);
+  const sessionIdRef = useRef<string | null>(null);
+  const uploadQueueRef = useRef<Promise<void>>(Promise.resolve());
 
-  const startRecording = useCallback((stream: MediaStream) => {
+  /**
+   * Upload a single chunk to the server
+   */
+  const uploadChunk = useCallback(async (blob: Blob, chunkIndex: number, sessionId: string) => {
+    try {
+      console.log(`📤 Uploading chunk ${chunkIndex}, size: ${blob.size} bytes`);
+
+      const formData = new FormData();
+      formData.append('chunk', blob, `chunk-${chunkIndex}.webm`);
+      formData.append('sessionId', sessionId);
+      formData.append('chunkIndex', chunkIndex.toString());
+
+      setUploadProgress({
+        chunkIndex,
+        uploaded: 0,
+        total: blob.size
+      });
+
+      const response = await fetch('/api/interview/upload-chunk', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Chunk upload failed');
+      }
+
+      const result = await response.json();
+      console.log(`✅ Chunk ${chunkIndex} uploaded successfully:`, result);
+
+      setUploadProgress({
+        chunkIndex,
+        uploaded: blob.size,
+        total: blob.size
+      });
+
+      return result;
+    } catch (error) {
+      console.error(`❌ Error uploading chunk ${chunkIndex}:`, error);
+      throw error;
+    }
+  }, []);
+
+  /**
+   * Start recording with automatic chunk upload
+   */
+  const startRecording = useCallback((stream: MediaStream, sessionId: string) => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       console.warn('Recording is already active');
       return;
     }
 
     try {
-      recordedChunksRef.current = [];
+      // Reset chunk index
+      chunkIndexRef.current = 0;
+      sessionIdRef.current = sessionId;
 
       // Try to get supported MIME type
       let mimeType = 'video/webm';
@@ -36,84 +93,142 @@ export function useCameraRecorder() {
 
       mediaRecorderRef.current = mediaRecorder;
 
-      mediaRecorder.addEventListener('dataavailable', (event) => {
+      // Handle data available event - upload chunk immediately
+      mediaRecorder.addEventListener('dataavailable', async (event) => {
         if (event.data.size > 0) {
-          recordedChunksRef.current.push(event.data);
-          console.log('Received recording chunk:', event.data.size, 'bytes, total chunks:', recordedChunksRef.current.length);
+          const currentChunkIndex = chunkIndexRef.current;
+          const currentSessionId = sessionIdRef.current;
+
+          console.log(`📥 Received chunk ${currentChunkIndex}:`, event.data.size, 'bytes');
+
+          // Queue the upload (chain promises to maintain order)
+          uploadQueueRef.current = uploadQueueRef.current
+            .then(async () => {
+              if (currentSessionId) {
+                try {
+                  await uploadChunk(event.data, currentChunkIndex, currentSessionId);
+                } catch (error) {
+                  console.error(`Failed to upload chunk ${currentChunkIndex}, continuing...`, error);
+                  // Continue recording even if chunk upload fails
+                }
+              }
+            })
+            .catch(error => {
+              console.error('Upload queue error:', error);
+            });
+
+          chunkIndexRef.current++;
         } else {
           console.log('Received empty chunk');
         }
       });
 
-      mediaRecorder.addEventListener('stop', () => {
-        console.log('MediaRecorder stopped, chunks collected:', recordedChunksRef.current.length);
+      mediaRecorder.addEventListener('stop', async () => {
+        console.log('MediaRecorder stopped, waiting for pending uploads...');
 
-        const recordedBlob = new Blob(recordedChunksRef.current, {
-          type: mimeType,
-        });
+        // Wait for all pending uploads to complete
+        await uploadQueueRef.current;
 
-        console.log('Created blob with MIME type:', mimeType, 'size:', recordedBlob.size, 'bytes');
+        console.log('All chunks uploaded, total chunks:', chunkIndexRef.current);
 
-        recordedChunksRef.current = [];
         mediaRecorderRef.current = null;
         setIsRecording(false);
-
-        if (stopResolveRef.current) {
-          stopResolveRef.current(recordedBlob);
-          stopResolveRef.current = null;
-        }
+        setUploadProgress(null);
       });
 
       mediaRecorder.addEventListener('error', (event) => {
         console.error('MediaRecorder error:', event);
         setIsRecording(false);
         mediaRecorderRef.current = null;
-
-        if (stopResolveRef.current) {
-          stopResolveRef.current(new Blob([], { type: 'video/webm' }));
-          stopResolveRef.current = null;
-        }
+        setUploadProgress(null);
       });
 
-      mediaRecorder.start(1000); // Collect data every 1 second
+      // Collect data every 5 seconds (sends chunks during interview)
+      mediaRecorder.start(5000);
       setIsRecording(true);
       console.log('Recording started with mimeType:', mediaRecorder.mimeType);
+      console.log('Chunks will be uploaded every 5 seconds during the interview');
     } catch (error) {
       console.error('Failed to start recording:', error);
       setIsRecording(false);
     }
-  }, []);
+  }, [uploadChunk]);
 
-  const stopRecording = useCallback(() => {
-    return new Promise<Blob>((resolve) => {
+  /**
+   * Stop recording and finalize (generate HLS playlist)
+   */
+  const stopRecording = useCallback(async () => {
+    return new Promise<{ success: boolean; playlistUrl?: string; error?: string }>(async (resolve) => {
       if (!mediaRecorderRef.current) {
         console.warn('No active recorder to stop');
-        resolve(new Blob([], { type: 'video/webm' }));
+        resolve({ success: false, error: 'No active recorder' });
         return;
       }
 
       if (mediaRecorderRef.current.state === 'inactive') {
         console.warn('Recorder is already stopped');
-        resolve(new Blob([], { type: 'video/webm' }));
+        resolve({ success: false, error: 'Recorder already stopped' });
         return;
       }
 
-      stopResolveRef.current = resolve;
+      const currentSessionId = sessionIdRef.current;
 
       try {
+        // Stop the recorder
         mediaRecorderRef.current.stop();
         console.log('Recording stop requested');
-      } catch (error) {
-        console.error('Error stopping recorder:', error);
+
+        // Wait for all chunks to upload
+        await uploadQueueRef.current;
+        console.log('All chunks uploaded successfully');
+
+        // Finalize the recording (generate HLS playlist)
+        if (currentSessionId) {
+          console.log('🎬 Finalizing recording...');
+          const finalizeResponse = await fetch('/api/interview/finalize-recording', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              sessionId: currentSessionId
+            }),
+            credentials: 'include',
+          });
+
+          if (!finalizeResponse.ok) {
+            const errorData = await finalizeResponse.json();
+            throw new Error(errorData.message || 'Failed to finalize recording');
+          }
+
+          const finalizeResult = await finalizeResponse.json();
+          console.log('✅ Recording finalized:', finalizeResult);
+
+          resolve({
+            success: true,
+            playlistUrl: finalizeResult.playlistUrl
+          });
+        } else {
+          resolve({
+            success: false,
+            error: 'No session ID available'
+          });
+        }
+      } catch (error: any) {
+        console.error('Error stopping/finalizing recorder:', error);
         setIsRecording(false);
         mediaRecorderRef.current = null;
-        const emptyBlob = new Blob([], { type: 'video/webm' });
-        resolve(emptyBlob);
-        stopResolveRef.current = null;
+        resolve({
+          success: false,
+          error: error.message || 'Failed to stop recording'
+        });
       }
     });
   }, []);
 
+  /**
+   * Cleanup function
+   */
   const cleanup = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       try {
@@ -124,14 +239,17 @@ export function useCameraRecorder() {
     }
 
     mediaRecorderRef.current = null;
-    recordedChunksRef.current = [];
-    stopResolveRef.current = null;
+    chunkIndexRef.current = 0;
+    sessionIdRef.current = null;
+    uploadQueueRef.current = Promise.resolve();
     setIsRecording(false);
+    setUploadProgress(null);
     console.log('Recorder cleanup completed');
   }, []);
 
   return {
     isRecording,
+    uploadProgress,
     startRecording,
     stopRecording,
     cleanup,

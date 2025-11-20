@@ -11,6 +11,7 @@ import { employerQuestionService } from "./employerQuestions";
 import { ObjectStorageService } from "./objectStorage";
 import { ResumeService } from "./resumeService";
 import { ragService } from "./ragService";
+import { hlsService } from "./services/hlsService";
 import multer from "multer";
 import { string, z } from "zod";
 import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, airtableJobApplications, jobs, organizations, Job } from "@shared/schema";
@@ -43,6 +44,26 @@ const recordingStorage = multer.diskStorage({
 });
 
 const uploadRecording = multer({ storage: recordingStorage });
+
+// Multer storage for HLS chunks
+const chunksDir = path.join(__dirname, '..', 'uploads/chunks');
+fs.mkdirSync(chunksDir, { recursive: true });
+
+const chunkStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, chunksDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `chunk-${uniqueSuffix}.webm`);
+  },
+});
+
+const uploadChunk = multer({
+  storage: chunkStorage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB per chunk
+});
+
 import { wrapOpenAIRequest } from "./openaiTracker";
 
 const upload = multer({
@@ -1519,6 +1540,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upload video chunk during interview (HLS streaming)
+  app.post('/api/interview/upload-chunk', requireAuth, uploadChunk.single('chunk'), async (req: any, res) => {
+    try {
+      const { sessionId, chunkIndex } = req.body;
+
+      if (!sessionId) {
+        return res.status(400).json({
+          message: "Session ID is required"
+        });
+      }
+
+      if (chunkIndex === undefined || chunkIndex === null) {
+        return res.status(400).json({
+          message: "Chunk index is required"
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          message: "Chunk file is required"
+        });
+      }
+
+      const parsedSessionId = parseInt(sessionId);
+      const parsedChunkIndex = parseInt(chunkIndex);
+
+      if (isNaN(parsedSessionId) || parsedSessionId <= 0) {
+        return res.status(400).json({
+          message: "Invalid session ID"
+        });
+      }
+
+      if (isNaN(parsedChunkIndex) || parsedChunkIndex < 0) {
+        return res.status(400).json({
+          message: "Invalid chunk index"
+        });
+      }
+
+      console.log(`📥 Received chunk ${parsedChunkIndex} for session ${parsedSessionId}, size: ${req.file.size} bytes`);
+
+      // Process the chunk using HLS service
+      const result = await hlsService.processHLSChunk(
+        parsedSessionId.toString(),
+        parsedChunkIndex,
+        req.file
+      );
+
+      if (!result.success) {
+        return res.status(500).json({
+          message: result.error || "Failed to process chunk"
+        });
+      }
+
+      res.json({
+        message: "Chunk uploaded successfully",
+        chunkIndex: parsedChunkIndex,
+        segmentPath: result.segmentPath
+      });
+    } catch (error) {
+      console.error("Error uploading chunk:", error);
+
+      // Clean up uploaded file if processing failed
+      if (req.file && req.file.path) {
+        try {
+          if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+            console.log(`Cleaned up failed chunk upload: ${req.file.path}`);
+          }
+        } catch (cleanupError) {
+          console.error("Failed to clean up chunk file:", cleanupError);
+        }
+      }
+
+      res.status(500).json({
+        message: "Failed to upload chunk. Please try again."
+      });
+    }
+  });
+
+  // Finalize interview recording and generate HLS playlist
+  app.post('/api/interview/finalize-recording', requireAuth, async (req: any, res) => {
+    try {
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        return res.status(400).json({
+          message: "Session ID is required"
+        });
+      }
+
+      const parsedSessionId = parseInt(sessionId);
+      if (isNaN(parsedSessionId) || parsedSessionId <= 0) {
+        return res.status(400).json({
+          message: "Invalid session ID"
+        });
+      }
+
+      console.log(`🎬 Finalizing recording for session ${parsedSessionId}...`);
+
+      // Generate HLS playlist from all chunks
+      const result = await hlsService.generateM3U8Playlist(parsedSessionId.toString());
+
+      if (!result.success) {
+        return res.status(500).json({
+          message: result.error || "Failed to finalize recording"
+        });
+      }
+
+      res.json({
+        message: "Recording finalized successfully",
+        playlistUrl: result.playlistUrl,
+        totalSegments: result.totalSegments
+      });
+    } catch (error) {
+      console.error("Error finalizing recording:", error);
+      res.status(500).json({
+        message: "Failed to finalize recording. Please try again."
+      });
+    }
+  });
+
   // AI Coaching endpoint - Pro plan exclusive feature
   app.post("/api/coaching/career-guidance", 
     requireAuth, 
@@ -2807,6 +2949,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const userProfile = await storage.getApplicantProfile(userId);
           const userName = userProfile?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Applicant';
 
+          // Fetch the updated session to get the video URL (it might have been set by HLS finalization)
+          const [updatedSession] = await db
+            .select()
+            .from(interviewSessions)
+            .where(eq(interviewSessions.id, session.id))
+            .limit(1);
+
           // Prepare user profile data for the application
           const profileData = {
             name: userName,
@@ -2831,6 +2980,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             notes: `Interview completed via voice with score: ${score}${rationale ? `\n${rationale}` : ''}`,
             status: 'interview_completed',
             jobDescription: job.jobDescription || job.description || '',
+            interviewVideoUrl: updatedSession?.interviewVideoUrl || null, // HLS playlist URL from session
           };
 
           await localDatabaseService.createJobApplication(jobApplicationData);

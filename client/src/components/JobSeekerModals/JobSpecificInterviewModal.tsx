@@ -56,13 +56,26 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   const [isInterviewComplete, setIsInterviewComplete] = useState(false);
   const [showTranscriptionDialog, setShowTranscriptionDialog] = useState(false);
   const [completedSessionId, setCompletedSessionId] = useState<number | null>(null);
-  const { isRecording, startRecording, stopRecording, cleanup } = useCameraRecorder();
+  const { isRecording, uploadProgress, startRecording, stopRecording, cleanup } = useCameraRecorder();
 
   // Debug: Log the environment variable value and its type
   const enableTextInterviews = import.meta.env.VITE_ENABLE_TEXT_INTERVIEWS;
 
-  const startCameraAccess = async () => {
+  const startCameraAccess = async (sessionData?: SessionData) => {
     try {
+      // Use provided sessionData or fall back to state
+      const currentSession = sessionData || session;
+
+      if (!currentSession?.id) {
+        console.error('Cannot start recording: No session ID available');
+        toast({
+          title: 'Recording Error',
+          description: 'Session not initialized. Please try again.',
+          variant: 'destructive'
+        });
+        return null;
+      }
+
       const videoStream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 1280, max: 1920 },
@@ -72,7 +85,11 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         audio: true,
       });
       setCameraStream(videoStream);
-      startRecording(videoStream);
+
+      // Start recording with session ID for chunked upload
+      startRecording(videoStream, currentSession.id.toString());
+      console.log('🎥 Started recording with chunked upload for session:', currentSession.id);
+
       return videoStream;
     } catch (error) {
       console.error('Camera access error:', error);
@@ -157,8 +174,8 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         }
 
         if (mode === 'voice' && data?.sessionData?.questions) {
-          // Start camera access first
-          await startCameraAccess();
+          // Start camera access first (pass data directly since state hasn't updated yet)
+          await startCameraAccess(data);
           // Use job-specific interview language, fallback to provided language
           const interviewLanguage = getInterviewLanguage(job, language);
           console.log('🎤 Using interview language:', interviewLanguage, 'from job:', job?.interviewLanguage);
@@ -289,97 +306,11 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
     }
   };
 
-  const uploadRecording = async (blob: Blob) => {
-    if (!session) {
-      console.warn('No current session available for upload');
-      return;
-    }
-
-    // Validate blob before upload
-    if (!blob || blob.size === 0) {
-      console.warn('Recording blob is empty or null:', { blob: blob, size: blob?.size });
-      toast({
-        title: 'Upload Skipped',
-        description: 'No recording data available to upload.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    console.log('About to upload recording:', {
-      sessionId: session.id,
-      blobSize: blob.size,
-      blobType: blob.type
-    });
-
-    setIsUploading(true);
-    const formData = new FormData();
-
-    // Determine file extension based on blob type
-    let fileExtension = 'webm'; // default
-    if (blob.type) {
-      if (blob.type.includes('mp4') || blob.type.includes('m4v')) {
-        fileExtension = 'mp4';
-      } else if (blob.type.includes('quicktime') || blob.type.includes('mov')) {
-        fileExtension = 'mov';
-      } else if (blob.type.includes('webm')) {
-        fileExtension = 'webm';
-      }
-      // Add any other detected types
-      console.log('Upload blob type:', blob.type, 'using extension:', fileExtension);
-    }
-
-    formData.append('recording', blob, `interview-${session.id}.${fileExtension}`);
-    formData.append('sessionId', session.id.toString());
-
-    // Add jobMatchId if available from job record
-    if (job?.recordId) {
-      formData.append('jobMatchId', job.recordId);
-    }
-
-    // Note: userId will be added by the server from the authenticated user
-
-    try {
-      console.log(`Uploading recording for session ${session.id}, size: ${blob.size} bytes`);
-
-      const response = await fetch('/api/interview/upload-recording', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include', // Include authentication
-      });
-
-      const responseData = await response.json().catch(() => ({ message: 'Invalid response' }));
-
-      if (!response.ok) {
-        // Handle specific error messages from server
-        const errorMessage = responseData.message || 'Upload failed';
-        throw new Error(errorMessage);
-      }
-
-      console.log('Recording uploaded successfully:', responseData);
-
-      toast({
-        title: 'Upload Complete',
-        description: 'Your interview recording has been uploaded successfully.',
-      });
-    } catch (error) {
-      console.error('Upload error:', error);
-
-      // Show specific error message from server if available
-      const errorMessage = error instanceof Error ? error.message : 'Unknown upload error';
-
-      toast({
-        title: 'Upload Failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  };
+  // Old uploadRecording function removed - now handled by chunked upload in useCameraRecorder
 
   const submitVoiceInterview = async () => {
     setProcessing(true);
+    setIsUploading(true);
     try {
       // Disconnect OpenAI realtime connection first to stop listening
       if (realtimeAPI.isConnected) {
@@ -387,9 +318,9 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         realtimeAPI.disconnect();
       }
 
-      // Stop recording and get blob before submitting
-      console.log('Stopping recording...');
-      const recordedBlob = await stopRecording();
+      // Stop recording and finalize (uploads remaining chunks + generates HLS playlist)
+      console.log('Stopping recording and finalizing...');
+      const result = await stopRecording();
 
       // Stop camera stream
       if (cameraStream) {
@@ -401,12 +332,16 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       // Cleanup recorder
       cleanup();
 
-      // Upload recording if we have data
-      if (recordedBlob && recordedBlob.size > 0) {
-        console.log('Uploading recorded blob...');
-        await uploadRecording(recordedBlob);
+      // Check if recording was finalized successfully
+      if (result.success) {
+        console.log('✅ Recording finalized with HLS playlist:', result.playlistUrl);
+        toast({
+          title: 'Recording Complete',
+          description: 'Your interview recording has been processed successfully.',
+        });
       } else {
-        console.log('No recording data to upload');
+        console.warn('⚠️ Recording finalization had issues:', result.error);
+        // Continue anyway - interview can still be completed without recording
       }
 
       const response = await fetch('/api/interview/complete-voice', {
@@ -432,6 +367,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       toast({ title: 'Error', description: e?.message || 'Failed to complete interview', variant: 'destructive' });
     } finally {
       setProcessing(false);
+      setIsUploading(false);
     }
   };
 
@@ -601,22 +537,23 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                     }
 
                     console.log('🚪 Exiting interview...');
+                    setIsUploading(true);
 
                     try {
-                      // Stop recording and get the blob
-                      const recordedBlob = await stopRecording();
+                      // Stop recording and finalize (uploads chunks + generates HLS)
+                      console.log('Stopping recording and finalizing on exit...');
+                      const result = await stopRecording();
 
-                      // Upload the recording if we have data
-                      if (recordedBlob && recordedBlob.size > 0) {
-                        console.log('Uploading recorded blob...');
-                        await uploadRecording(recordedBlob);
+                      if (result.success) {
+                        console.log('✅ Recording saved on exit:', result.playlistUrl);
                       } else {
-                        console.log('No recording data to upload');
+                        console.warn('⚠️ Recording finalization had issues on exit:', result.error);
                       }
                     } catch (error) {
                       console.error('Error saving recording on exit:', error);
                     } finally {
                       // Always cleanup and exit
+                      setIsUploading(false);
                       performCleanup();
                       onClose();
                     }
@@ -624,7 +561,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                   className="text-muted-foreground hover:text-foreground px-4 py-2 rounded-lg hover:bg-accent transition-colors text-sm font-medium border border-border"
                   disabled={processing || isUploading}
                 >
-                  ← Exit Interview
+                  {isUploading ? '⏳ Saving...' : '← Exit Interview'}
                 </button>
 
                 <button
