@@ -1265,17 +1265,48 @@ From the inputs, you must build a single, comprehensive profile, covering at lea
 
 14) Score Components and Weighted Overall Score (Integrated)
     - Based on the full, integrated view (CV plus interview), assign four scores on a 0–100 scale:
-      - technical_skills_score_0_100
+
+      a) technical_skills_score_0_100 (0–100)
         - Reflects the depth and clarity of the candidate's hard skills and tools relevant to their field, considering CV plus interview.
-      - experience_score_0_100
-        - Reflects the quantity and quality of professional experience, including years, seniority, scope of responsibility, achievements, and progression.
-      - cultural_fit_score_0_100
+        - Base this on:
+          - Hard skills from CV and interview
+          - Tools and technologies demonstrated
+          - Technical depth shown in answers
+          - Domain expertise evidenced
+        - Ignore generic soft skills when scoring this dimension.
+
+      b) experience_score_0_100 (0–100)
+        - Reflects the quantity and quality of professional experience:
+          - Total years
+          - Complexity and scope of roles
+          - Progression in responsibility or seniority
+          - Concreteness of achievements
+          - Career trajectory
+        - Base this on work history, achievements, and leadership experience.
+        - Do NOT let this score be influenced by soft-skills wording.
+
+      c) cultural_fit_score_0_100 (0–100)
         - Reflects general professional behaviors, values, and soft skills as they relate to thriving in healthy modern workplaces (not a specific employer's culture).
-      - overall_weighted_score_0_100
+        - Base this on:
+          - Communication and teamwork from interview
+          - Personality and values assessment
+          - Work style and collaboration patterns
+          - Adaptability and self-awareness
+          - Alignment with modern workplace values
+        - This is NOT about a specific company's culture; it is about fit for modern, collaborative workplaces in general.
+
+      d) overall_weighted_score_0_100 (0–100)
         - MUST be computed as:
-          overall_weighted_score_0_100 = round(0.35 * technical_skills_score_0_100 + 0.35 * experience_score_0_100 + 0.30 * cultural_fit_score_0_100)
-    - All three component scores must be consistent with your narratives above. Avoid assigning very high scores (90+) when evidence is limited.
-    - The overall_weighted_score_0_100 must always be numerically consistent with the three component scores and is used by downstream systems to display the overall match percentage.
+          overall_weighted_score_0_100 = round(0.40 * technical_skills_score_0_100 + 0.40 * experience_score_0_100 + 0.20 * cultural_fit_score_0_100)
+        - This uses a 40/40/20 weighting: Technical (40%), Experience (40%), Cultural Fit (20%).
+
+    - IMPORTANT: These three component scores MUST be assessed independently.
+      - Do NOT simply copy the same number into multiple fields.
+      - It is RARE that all three dimensions are identical. If you ever set two scores within 3 points of each other, your narratives must clearly justify why.
+      - Avoid always using round numbers. Use any integer from 0–100 that best reflects the evidence (e.g., 57, 63, 72).
+      - Avoid assigning very high scores (90+) when evidence is limited.
+
+    - If any dimension has weak or limited evidence, choose a cautious, moderate score and explain this explicitly in data_quality_and_limits.notes.
 
 --------------------
 OUTPUT FORMAT (STRICT)
@@ -1377,7 +1408,7 @@ The structure is:
     "technical_skills_score_0_100": number,        // 0–100, integrated technical or domain capability
     "experience_score_0_100": number,              // 0–100, quality and quantity of experience
     "cultural_fit_score_0_100": number,            // 0–100, general cultural and behavioral fit
-    "overall_weighted_score_0_100": number         // round(0.35 * technical + 0.35 * experience + 0.30 * cultural_fit)
+    "overall_weighted_score_0_100": number         // round(0.40 * technical + 0.40 * experience + 0.20 * cultural_fit)
   },
   "derived_tags": string[],                        // final tag list, lowercase with underscores
   "data_quality_and_limits": {
@@ -1392,7 +1423,7 @@ Rules:
 - Always return a well-formed JSON object exactly matching this structure.
 - Arrays may be empty; fields may be null when unknown.
 - All percentage-like fields ending in _0_100 must be numbers between 0 and 100.
-- overall_weighted_score_0_100 MUST always be computed from the three component scores using the 35% / 35% / 30% weighting.
+- overall_weighted_score_0_100 MUST always be computed from the three component scores using the 40% / 40% / 20% weighting (Technical: 40%, Experience: 40%, Cultural Fit: 20%).
 - Do NOT include comments in the JSON output.
 - Do NOT include any text outside the JSON.
 - Do NOT expose raw interview questions or answers verbatim unless necessary to illustrate a point; prefer paraphrased examples.
@@ -1424,6 +1455,10 @@ Rules:
 
       const profile = JSON.parse(response.choices[0].message.content || '{}');
 
+      console.log({
+        profile
+      });
+      
       // Store the comprehensive profile for employers
       const comprehensiveProfile = profile;
 

@@ -206,7 +206,7 @@ The structure is:
     "technical_skills_score_0_100": number,        // 0–100, integrated technical or domain capability
     "experience_score_0_100": number,              // 0–100, quality and quantity of experience
     "cultural_fit_score_0_100": number,            // 0–100, general cultural and behavioral fit
-    "overall_weighted_score_0_100": number         // round(0.35 * technical + 0.35 * experience + 0.30 * cultural_fit)
+    "overall_weighted_score_0_100": number         // round(0.40 * technical + 0.40 * experience + 0.20 * cultural_fit)
   },
   "derived_tags": string[],                        // final tag list, lowercase with underscores
   "data_quality_and_limits": {
@@ -221,7 +221,7 @@ Rules:
 - Always return a well-formed JSON object exactly matching this structure.
 - Arrays may be empty; fields may be null when unknown.
 - All percentage-like fields ending in _0_100 must be numbers between 0 and 100.
-- overall_weighted_score_0_100 MUST always be computed from the three component scores using the 35% / 35% / 30% weighting.
+- overall_weighted_score_0_100 MUST always be computed from the three component scores using the 40% / 40% / 20% weighting (Technical: 40%, Experience: 40%, Cultural Fit: 20%).
 - Do NOT include comments in the JSON output.
 - Do NOT include any text outside the JSON.
 - Do NOT expose raw interview questions or answers verbatim unless necessary to illustrate a point; prefer paraphrased examples.
