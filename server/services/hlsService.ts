@@ -196,25 +196,29 @@ export const hlsService = {
     return new Promise((resolve, reject) => {
       ffmpeg(inputPath)
         .inputOptions([
-          '-analyzeduration 10000000',
-          '-probesize 10000000'
+          '-analyzeduration 2000000',        // Reduced from 10M to 2M
+          '-probesize 2000000'               // Reduced from 10M to 2M
         ])
         .outputOptions([
           '-c:v libx264',                    // Video codec
-          '-preset veryfast',                // Encoding speed
-          '-crf 23',                         // Quality
+          '-preset ultrafast',               // FASTEST preset
+          '-crf 30',                         // More aggressive compression (was 28)
+          '-tune zerolatency',               // Optimize for fast encoding
           '-c:a aac',                        // Audio codec
-          '-b:a 128k',                       // Audio bitrate
-          '-vf scale=1280:720',              // Scale to 720p
-          '-b:v 2500k',                      // Video bitrate
-          '-maxrate 2500k',                  // Max bitrate
-          '-bufsize 5000k',                  // Buffer size
+          '-b:a 64k',                        // More aggressive audio bitrate (was 96k)
+          '-vf scale=854:480',               // Scale to 480p
+          '-b:v 500k',                       // More aggressive video bitrate (was 1000k)
+          '-maxrate 750k',                   // Lower max bitrate (was 1500k)
+          '-bufsize 1000k',                  // Smaller buffer (was 2000k)
+          '-g 48',                           // GOP size for faster seeking
+          '-sc_threshold 0',                 // Disable scene change detection
           '-f hls',                          // HLS format
           '-hls_time ' + segmentDuration,    // Segment duration
           '-hls_playlist_type vod',          // VOD playlist
           '-hls_segment_filename ' + segmentPattern, // Segment naming pattern
           '-hls_list_size 0',                // Include all segments in playlist
-          '-hls_flags independent_segments'  // Make segments independent
+          '-hls_flags independent_segments', // Make segments independent
+          '-threads 0'                       // Use all available CPU cores
         ])
         .output(playlistPath)
         .on('start', (cmd) => {
@@ -450,11 +454,16 @@ export const hlsService = {
 
       // Step 3: Generate the public URL for the playlist
       // The playlist will be served from /uploads/hls/{interviewId}/playlist.m3u8
-      const playlistUrl = `/uploads/hls/${interviewId}/playlist.m3u8`;
+      const relativeUrl = `/uploads/hls/${interviewId}/playlist.m3u8`;
 
-      console.log('   ✅ Playlist URL:', playlistUrl);
+      // Construct full URL using APP_URL from environment
+      const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+      const fullUrl = `${baseUrl}${relativeUrl}`;
 
-      // Update interview session record with playlist URL
+      console.log('   ✅ Playlist relative URL:', relativeUrl);
+      console.log('   ✅ Playlist full URL:', fullUrl);
+
+      // Update interview session record with FULL playlist URL
       // Convert sessionId to number if it's not already
       const sessionIdNum = parseInt(interviewId);
 
@@ -462,24 +471,37 @@ export const hlsService = {
         await db
           .update(interviewSessions)
           .set({
-            interviewVideoUrl: playlistUrl
+            interviewVideoUrl: fullUrl  // Save full URL instead of relative URL
           })
           .where(eq(interviewSessions.id, sessionIdNum));
 
-        console.log(`✅ Updated interview session ${sessionIdNum} with video URL`);
+        console.log(`✅ Updated interview session ${sessionIdNum} with full video URL: ${fullUrl}`);
       } else {
         console.warn(`⚠️ Could not update interview session: invalid ID ${interviewId}`);
       }
 
-      console.log(`✅ HLS playlist generated: ${playlistUrl}`);
+      console.log(`✅ HLS playlist generated: ${fullUrl}`);
       console.log(`📊 Total segments: ${segmentFiles.length}`);
+
+      // Save playlist metadata with full URL
+      const metadataPath = path.join(hlsDir, 'playlist-metadata.json');
+      const metadata = {
+        interviewId,
+        playlistUrl: fullUrl,
+        relativeUrl,
+        totalSegments: segmentFiles.length,
+        generatedAt: new Date().toISOString(),
+        baseUrl
+      };
+      await writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+      console.log(`✅ Saved playlist metadata: ${metadataPath}`);
 
       // Clean up local temp files
       await this.cleanupTempFiles(interviewId);
 
       return {
         success: true,
-        playlistUrl: playlistUrl,
+        playlistUrl: fullUrl,  // Return full URL
         totalSegments: segmentFiles.length
       };
     } catch (error: any) {

@@ -447,12 +447,14 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
 
       console.log('Sending voice interview data:', {
         conversationHistory: responses,
-        interviewType: 'professional'
+        interviewType: 'professional',
+        sessionId: currentSession?.id
       });
 
       const response = await apiRequest("POST", "/api/interview/complete-voice", {
         conversationHistory: responses,
-        interviewType: 'professional'
+        interviewType: 'professional',
+        sessionId: currentSession?.id
       });
       return response;
     },

@@ -907,7 +907,7 @@ export const airtableJobApplications = pgTable("airtable_job_applications", {
   status: varchar("status").default("applied"),
   applicationDate: timestamp("application_date").defaultNow(),
   jobDescription: text("job_description"),
-  interviewVideoUrl: text("interview_video_url"), // HLS playlist URL for job-specific interview
+  sessionId: integer("session_id"), // Reference to interview session for video URL
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

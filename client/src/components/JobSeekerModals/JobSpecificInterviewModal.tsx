@@ -348,7 +348,12 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ conversationHistory, interviewType: 'job-practice', job })
+        body: JSON.stringify({
+          conversationHistory,
+          interviewType: 'job-practice',
+          job,
+          sessionId: session?.id
+        })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message || 'Failed to complete');

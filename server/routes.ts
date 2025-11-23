@@ -12,6 +12,7 @@ import { ObjectStorageService } from "./objectStorage";
 import { ResumeService } from "./resumeService";
 import { ragService } from "./ragService";
 import { hlsService } from "./services/hlsService";
+import { videoQueue } from "./queues/videoQueue";
 import multer from "multer";
 import { string, z } from "zod";
 import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, airtableJobApplications, jobs, organizations, Job } from "@shared/schema";
@@ -573,6 +574,11 @@ function getExtractedFieldsSummary(parsedData: any): any {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+
+  // Bull Board Dashboard - Admin only
+  const { serverAdapter } = await import('./bullBoard.js');
+  app.use('/admin/queues', serverAdapter.getRouter());
+  console.log('📊 Bull Board dashboard available at /admin/queues');
 
   // Serve uploaded files statically
   const uploadsDir = path.join(__dirname, '..', 'uploads');
@@ -1623,6 +1629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/interview/finalize-recording', requireAuth, async (req: any, res) => {
     try {
       const { sessionId } = req.body;
+      const userId = req.user.id;
 
       if (!sessionId) {
         return res.status(400).json({
@@ -1637,26 +1644,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log(`🎬 Finalizing recording for session ${parsedSessionId}...`);
+      console.log(`🎬 Queueing video processing for session ${parsedSessionId}...`);
 
-      // Generate HLS playlist from all chunks
-      const result = await hlsService.generateM3U8Playlist(parsedSessionId.toString());
+      // Add job to queue for background processing
+      const job = await videoQueue.add('process-video', {
+        sessionId: parsedSessionId.toString(),
+        userId: userId,
+      }, {
+        jobId: `video-${parsedSessionId}`, // Unique job ID to prevent duplicates
+      });
 
-      if (!result.success) {
-        return res.status(500).json({
-          message: result.error || "Failed to finalize recording"
+      console.log(`✅ Video processing job queued: ${job.id}`);
+
+      // Return immediately with job ID
+      res.json({
+        message: "Video processing started",
+        jobId: job.id,
+        status: "processing",
+        sessionId: parsedSessionId
+      });
+    } catch (error) {
+      console.error("Error queueing video processing:", error);
+      res.status(500).json({
+        message: "Failed to start video processing. Please try again."
+      });
+    }
+  });
+
+  // Check video processing status
+  app.get('/api/interview/video-status/:sessionId', requireAuth, async (req: any, res) => {
+    try {
+      const { sessionId } = req.params;
+      const jobId = `video-${sessionId}`;
+
+      // Get job from queue
+      const job = await videoQueue.getJob(jobId);
+
+      if (!job) {
+        // Check if video is already in database
+        const parsedSessionId = parseInt(sessionId);
+        if (!isNaN(parsedSessionId)) {
+          const session = await db.query.interviewSessions.findFirst({
+            where: eq(interviewSessions.id, parsedSessionId)
+          });
+
+          if (session?.interviewVideoUrl &&
+              session.interviewVideoUrl !== 'processing' &&
+              session.interviewVideoUrl !== 'failed') {
+            return res.json({
+              status: 'completed',
+              playlistUrl: session.interviewVideoUrl,
+              sessionId: parsedSessionId
+            });
+          }
+
+          if (session?.interviewVideoUrl === 'failed') {
+            return res.json({
+              status: 'failed',
+              error: 'Video processing failed',
+              sessionId: parsedSessionId
+            });
+          }
+        }
+
+        return res.status(404).json({
+          message: "Job not found"
+        });
+      }
+
+      const state = await job.getState();
+      const progress = job.progress;
+
+      if (state === 'completed') {
+        const result = job.returnvalue;
+        return res.json({
+          status: 'completed',
+          playlistUrl: result.playlistUrl,
+          totalSegments: result.totalSegments,
+          sessionId: result.sessionId
+        });
+      }
+
+      if (state === 'failed') {
+        return res.json({
+          status: 'failed',
+          error: job.failedReason,
+          sessionId: sessionId
         });
       }
 
       res.json({
-        message: "Recording finalized successfully",
-        playlistUrl: result.playlistUrl,
-        totalSegments: result.totalSegments
+        status: state,
+        progress: progress,
+        jobId: job.id,
+        sessionId: sessionId
       });
     } catch (error) {
-      console.error("Error finalizing recording:", error);
+      console.error("Error checking video status:", error);
       res.status(500).json({
-        message: "Failed to finalize recording. Please try again."
+        message: "Failed to check video status"
       });
     }
   });
@@ -2756,7 +2842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const user = req.user;
-      const { conversationHistory, interviewType, job } = req.body;
+      const { conversationHistory, interviewType, job, sessionId } = req.body;
 
       if (!conversationHistory || !Array.isArray(conversationHistory)) {
         return res.status(400).json({ message: "Invalid conversation history" });
@@ -2780,23 +2866,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateInterviewCompletion(userId, interviewType);
       }
 
-      // Save the interview session with completion (without generating profile yet)
       // Extract questions (assistant messages) and full conversation with timestamps
       const questions = conversationHistory
         .filter(item => item.role === 'assistant')
         .map(item => ({ question: item.content }));
 
-      const session = await storage.createInterviewSession({
-        userId,
-        interviewType: interviewType || 'personal',
-        sessionData: {
-          questions,
-          responses: conversationHistory, // Now includes timestamps
-          currentQuestionIndex: conversationHistory.length
-        },
-        isCompleted: true,
-        generatedProfile: null // Don't save individual profiles
-      });
+      // Update existing session or create new one if sessionId not provided
+      let session;
+      if (sessionId) {
+        // Update the existing session with completion data
+        await storage.updateInterviewSession(sessionId, {
+          sessionData: {
+            questions,
+            responses: conversationHistory, // Now includes timestamps
+            currentQuestionIndex: conversationHistory.length
+          },
+          isCompleted: true,
+          generatedProfile: null // Don't save individual profiles
+        });
+
+        // Fetch the updated session
+        const [updatedSession] = await db
+          .select()
+          .from(interviewSessions)
+          .where(eq(interviewSessions.id, sessionId))
+          .limit(1);
+        session = updatedSession;
+      } else {
+        // Fallback: create a new session if sessionId is not provided
+        session = await storage.createInterviewSession({
+          userId,
+          interviewType: interviewType || 'personal',
+          sessionData: {
+            questions,
+            responses: conversationHistory,
+            currentQuestionIndex: conversationHistory.length
+          },
+          isCompleted: true,
+          generatedProfile: null
+        });
+      }
 
       // Special handling for job-specific practice interviews - score and update status
       let score = 70;
@@ -2949,13 +3058,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const userProfile = await storage.getApplicantProfile(userId);
           const userName = userProfile?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Applicant';
 
-          // Fetch the updated session to get the video URL (it might have been set by HLS finalization)
-          const [updatedSession] = await db
-            .select()
-            .from(interviewSessions)
-            .where(eq(interviewSessions.id, session.id))
-            .limit(1);
-
           // Prepare user profile data for the application
           const profileData = {
             name: userName,
@@ -2980,7 +3082,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             notes: `Interview completed via voice with score: ${score}${rationale ? `\n${rationale}` : ''}`,
             status: 'interview_completed',
             jobDescription: job.jobDescription || job.description || '',
-            interviewVideoUrl: updatedSession?.interviewVideoUrl || null, // HLS playlist URL from session
+            sessionId: session.id, // Reference to session for video URL
           };
 
           await localDatabaseService.createJobApplication(jobApplicationData);
@@ -3575,7 +3677,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           score: match.matchScore,
           interviewComments: match.interviewComments || '',
           aiPrompt: job.aiPrompt || '',
-          interviewLanguage: job.interviewLanguage || 'English',
+          interviewLanguage: job.interviewLanguage,
         }
       });
 
