@@ -32,7 +32,22 @@ export function JobSpecificInterviewOptionsModal({ isOpen, onClose, job, onConfi
 
   // Determine if job has a specific interview language
   const hasJobLanguage = job?.interviewLanguage && job.interviewLanguage.trim() !== '';
-  const jobLanguage = hasJobLanguage ? getInterviewLanguage(job, 'english') : null;
+
+  console.log({
+    job,
+  });
+  
+  // Extract language directly without fallback to avoid defaulting to english
+  const jobLanguage = hasJobLanguage ? (() => {
+    const jobLang = job.interviewLanguage!.toLowerCase().trim();
+    if (jobLang === 'arabic' || jobLang === 'ar' || jobLang === 'العربية') {
+      return 'arabic';
+    }
+    if (jobLang === 'english' || jobLang === 'en' || jobLang === 'eng') {
+      return 'english';
+    }
+    return 'english'; // fallback only if job specifies an unknown language
+  })() : null;
 
   // Auto-set language when job has interviewLanguage specified, but don't default to anything if null
   useEffect(() => {
