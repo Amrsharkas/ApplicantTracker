@@ -201,15 +201,17 @@ export const hlsService = {
         ])
         .outputOptions([
           '-c:v libx264',                    // Video codec
-          '-preset ultrafast',               // FASTEST preset
-          '-crf 30',                         // More aggressive compression (was 28)
+          '-preset ultrafast',               // FASTEST preset (optimized for speed)
+          '-crf 28',                         // Balanced compression (slightly better quality for low bitrate input)
           '-tune zerolatency',               // Optimize for fast encoding
           '-c:a aac',                        // Audio codec
-          '-b:a 64k',                        // More aggressive audio bitrate (was 96k)
-          '-vf scale=854:480',               // Scale to 480p
-          '-b:v 500k',                       // More aggressive video bitrate (was 1000k)
-          '-maxrate 750k',                   // Lower max bitrate (was 1500k)
-          '-bufsize 1000k',                  // Smaller buffer (was 2000k)
+          '-b:a 32k',                        // Match input audio bitrate (32 kbps mono)
+          '-ar 16000',                       // Match input sample rate (16 kHz)
+          '-ac 1',                           // Mono audio (matches input)
+          '-vf scale=854:480',               // Scale to 480p (maintains aspect ratio)
+          '-b:v 250k',                       // Reduced video bitrate to match low-quality input (200 kbps input)
+          '-maxrate 375k',                   // Lower max bitrate (1.5x target)
+          '-bufsize 500k',                   // Smaller buffer (2x target)
           '-g 48',                           // GOP size for faster seeking
           '-sc_threshold 0',                 // Disable scene change detection
           '-f hls',                          // HLS format

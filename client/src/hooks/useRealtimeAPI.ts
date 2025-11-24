@@ -30,6 +30,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const videoStreamRef = useRef<MediaStream | null>(null);
+  const aiAudioStreamRef = useRef<MediaStream | null>(null);
   
   const { toast } = useToast();
 
@@ -75,6 +76,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       
       pc.ontrack = (e) => {
         audioEl.srcObject = e.streams[0];
+        aiAudioStreamRef.current = e.streams[0]; // Store AI audio stream for mixing
         setIsSpeaking(true);
         options.onAudioStart?.();
       };
@@ -762,6 +764,10 @@ ${customPrompt}`;
       audioElementRef.current = null;
     }
 
+    if (aiAudioStreamRef.current) {
+      aiAudioStreamRef.current = null;
+    }
+
     setIsConnected(false);
     setIsConnecting(false);
     setIsSpeaking(false);
@@ -803,6 +809,7 @@ ${customPrompt}`;
     isSpeaking,
     isListening,
     isInterviewComplete,
-    cameraError
+    cameraError,
+    aiAudioStream: aiAudioStreamRef.current // Expose AI audio stream for recording both sides
   };
 }

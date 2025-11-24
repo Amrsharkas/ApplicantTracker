@@ -78,17 +78,23 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
 
       const videoStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 1280, max: 1920 },
-          height: { ideal: 720, max: 1080 },
+          width: { ideal: 640, max: 854 },     // Reduced to 480p (was 720p)
+          height: { ideal: 480, max: 480 },    // 480p resolution
+          frameRate: { ideal: 15, max: 20 },   // Reduced frame rate (was 30fps)
           facingMode: 'user'
         },
-        audio: true,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 16000,                   // Lower sample rate (was 48kHz)
+          channelCount: 1                      // Mono audio (was stereo)
+        },
       });
       setCameraStream(videoStream);
 
-      // Start recording with session ID for chunked upload
-      startRecording(videoStream, currentSession.id.toString());
-      console.log('🎥 Started recording with chunked upload for session:', currentSession.id);
+      // Note: We'll start recording with AI audio stream after connection
+      // This is handled in the useEffect that connects the realtime API
+      console.log('📹 Camera stream ready for session:', currentSession.id);
 
       return videoStream;
     } catch (error) {
@@ -145,6 +151,14 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       }
     }
   });
+
+  // Start recording when both camera and AI audio are ready
+  useEffect(() => {
+    if (mode === 'voice' && cameraStream && realtimeAPI.aiAudioStream && session?.id && !isRecording) {
+      console.log('🎬 Both camera and AI audio ready - starting recording with mixed audio');
+      startRecording(cameraStream, session.id.toString(), realtimeAPI.aiAudioStream);
+    }
+  }, [cameraStream, realtimeAPI.aiAudioStream, session?.id, mode, isRecording, startRecording]);
 
   useEffect(() => {
     if (!isOpen) return;
