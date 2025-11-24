@@ -57,13 +57,13 @@ export function CameraPreview({ stream, isActive, isRecording = false, error, cl
 
   return (
     <div className={`relative ${className}`}>
-      <div className={`w-full h-full relative overflow-hidden rounded-lg ${(isActive || stream) ? 'ring-2 ring-green-500 ring-opacity-50' : ''}`}>
+      <div className={`w-full h-full relative overflow-hidden rounded-lg bg-gray-900 ${(isActive || stream) ? 'ring-2 ring-green-500 ring-opacity-50' : ''}`}>
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className={`w-full h-full object-cover ${
+          className={`w-full h-full object-contain ${
             isVideoReady ? 'block' : 'hidden'
           }`}
           style={{ transform: 'scaleX(-1)' }} // Mirror effect for natural feel
