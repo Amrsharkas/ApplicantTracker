@@ -313,7 +313,7 @@ export default function Dashboard() {
               <img
                 src={logo}
                 alt="Plato"
-                className="h-8 sm:h-10 w-auto p-1 sm:p-2"
+                className="h-8 sm:h-10 w-auto"
               />
             </div>
 

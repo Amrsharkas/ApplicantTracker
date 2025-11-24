@@ -465,7 +465,7 @@ export default function Landing() {
               <img
                 src={logo}
                 alt="Plato"
-                className="h-10 w-auto p-2"
+                className="h-10 w-auto"
               />
             </motion.div>
             
