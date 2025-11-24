@@ -17,7 +17,7 @@ export function TranscriptionPanel({
   const messageCountLabel = t('interview.liveTranscriptionMessages').replace('{{count}}', conversationHistory.length.toString());
 
   return (
-    <div className="bg-gray-900 border-l border-gray-800 flex flex-col h-full">
+    <div className="bg-gray-900 border-l border-gray-800 flex flex-col h-full min-h-0">
       {/* Transcription header */}
       <div className="bg-gray-800 px-4 py-3 border-b border-gray-700 flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -32,7 +32,7 @@ export function TranscriptionPanel({
       </div>
 
       {/* Transcription content */}
-      <div className="overflow-y-auto overflow-x-hidden p-4 space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800" style={{ height: 'calc(100vh - 250px)', minHeight: '200px' }}>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 min-h-0">
         {conversationHistory.length > 0 ? (
           conversationHistory.map((item, index) => (
             <div key={`${item.role}-${index}`} className={`flex ${

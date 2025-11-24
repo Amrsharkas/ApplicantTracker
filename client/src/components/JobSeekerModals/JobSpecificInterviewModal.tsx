@@ -380,9 +380,9 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   if (mode === 'voice') {
     return (
       <>
-      <div className="w-full h-full bg-white dark:bg-gray-950 flex flex-col">
+      <div className="fixed inset-0 w-full h-screen bg-white dark:bg-gray-950 flex flex-col z-50">
         {/* Header with enhanced controls */}
-        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-border px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-border px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0">
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
               <div className={`h-3 w-3 rounded-full ${realtimeAPI.isConnected ? 'bg-green-500' : 'bg-yellow-500'} animate-pulse`} />
@@ -424,15 +424,15 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         </div>
 
         {/* Main video meeting area */}
-        <div className="flex-1 flex flex-col h-full">
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
           {/* Video grid with responsive layout */}
-          <div className={`flex-1 grid gap-4 p-4 ${
+          <div className={`flex-1 grid gap-4 p-4 min-h-0 ${
             showTranscription
               ? 'grid-cols-1 lg:grid-cols-2'
               : 'grid-cols-1'
           }`}>
             {/* User camera - takes full width when transcription is hidden */}
-            <div className={`relative bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden ${
+            <div className={`relative bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden min-h-0 ${
               showTranscription ? '' : 'lg:col-span-1'
             }`}>
               <CameraPreview
@@ -456,7 +456,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
 
             {/* Transcription panel - only shown when enabled */}
             {showTranscription && (
-              <div className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden flex flex-col border border-gray-200 dark:border-border">
+              <div className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden flex flex-col border border-gray-200 dark:border-border min-h-0 h-full">
                 {/* Transcription header */}
                 <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-border">
                   <div className="flex items-center justify-between">
@@ -476,7 +476,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                 </div>
 
                 {/* Transcription content */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-96">
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
                   {conversationHistory.length > 0 ? (
                     conversationHistory.map((item, index) => (
                       <div key={`${item.role}-${index}`} className={`flex ${
@@ -508,7 +508,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           </div>
 
           {/* Meeting controls bar */}
-          <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-border px-6 py-4">
+          <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-border px-6 py-4 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 {/* Recording status indicator */}
