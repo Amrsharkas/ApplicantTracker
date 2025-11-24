@@ -196,23 +196,22 @@ export const hlsService = {
     return new Promise((resolve, reject) => {
       ffmpeg(inputPath)
         .inputOptions([
-          '-analyzeduration 2000000',        // Reduced from 10M to 2M
-          '-probesize 2000000'               // Reduced from 10M to 2M
+          '-analyzeduration 5000000',        // Analyze up to 5M for better detection
+          '-probesize 5000000'               // Probe up to 5M
         ])
         .outputOptions([
           '-c:v libx264',                    // Video codec
-          '-preset ultrafast',               // FASTEST preset (optimized for speed)
-          '-crf 28',                         // Balanced compression (slightly better quality for low bitrate input)
-          '-tune zerolatency',               // Optimize for fast encoding
+          '-preset medium',                  // Medium preset for balanced speed/quality
+          '-crf 23',                         // Good quality (23 is recommended for medium quality)
           '-c:a aac',                        // Audio codec
-          '-b:a 32k',                        // Match input audio bitrate (32 kbps mono)
-          '-ar 16000',                       // Match input sample rate (16 kHz)
-          '-ac 1',                           // Mono audio (matches input)
-          '-vf scale=854:480',               // Scale to 480p (maintains aspect ratio)
-          '-b:v 250k',                       // Reduced video bitrate to match low-quality input (200 kbps input)
-          '-maxrate 375k',                   // Lower max bitrate (1.5x target)
-          '-bufsize 500k',                   // Smaller buffer (2x target)
-          '-g 48',                           // GOP size for faster seeking
+          '-b:a 96k',                        // Enhanced audio bitrate (96 kbps stereo)
+          '-ar 48000',                       // High quality sample rate (48 kHz)
+          '-ac 2',                           // Stereo audio
+          '-vf scale=1280:720',              // Scale to 720p
+          '-b:v 1500k',                      // Enhanced video bitrate (1.5 Mbps)
+          '-maxrate 2000k',                  // Max bitrate (1.33x target)
+          '-bufsize 3000k',                  // Buffer size (2x target)
+          '-g 60',                           // GOP size for good seeking (2 seconds at 30fps)
           '-sc_threshold 0',                 // Disable scene change detection
           '-f hls',                          // HLS format
           '-hls_time ' + segmentDuration,    // Segment duration

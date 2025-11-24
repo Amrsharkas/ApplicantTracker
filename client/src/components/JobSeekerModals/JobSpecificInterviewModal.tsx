@@ -78,16 +78,16 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
 
       const videoStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 640, max: 854 },     // Reduced to 480p (was 720p)
-          height: { ideal: 480, max: 480 },    // 480p resolution
-          frameRate: { ideal: 15, max: 20 },   // Reduced frame rate (was 30fps)
+          width: { ideal: 1280, max: 1280 },   // 720p width
+          height: { ideal: 720, max: 720 },    // 720p height
+          frameRate: { ideal: 30, max: 30 },   // 30fps for smooth video
           facingMode: 'user'
         },
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          sampleRate: 16000,                   // Lower sample rate (was 48kHz)
-          channelCount: 1                      // Mono audio (was stereo)
+          sampleRate: 48000,                   // High quality sample rate (48 kHz)
+          channelCount: 2                      // Stereo audio
         },
       });
       setCameraStream(videoStream);

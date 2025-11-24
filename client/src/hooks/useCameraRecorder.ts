@@ -187,15 +187,15 @@ export function useCameraRecorder() {
         console.warn('No supported WebM MIME types found, trying default');
       }
 
-      // Configure MediaRecorder with optimized quality settings for low bandwidth
+      // Configure MediaRecorder with medium quality settings (720p)
       const mediaRecorder = new MediaRecorder(recordingStream, {
         mimeType: mimeType,
-        videoBitsPerSecond: 200000, // 200 kbps (reduced from default ~2.5 Mbps)
-        audioBitsPerSecond: 32000,  // 32 kbps (reduced from default 128 kbps)
+        videoBitsPerSecond: 1500000, // 1.5 Mbps (enhanced quality)
+        audioBitsPerSecond: 96000,   // 96 kbps (enhanced audio quality, stereo)
       });
 
       console.log('Using MediaRecorder with MIME type:', mimeType);
-      console.log('Video bitrate: 200 kbps, Audio bitrate: 32 kbps (optimized for low bandwidth)');
+      console.log('Video bitrate: 1.5 Mbps, Audio bitrate: 96 kbps (medium quality - 720p)');
 
       mediaRecorderRef.current = mediaRecorder;
 
@@ -261,11 +261,11 @@ export function useCameraRecorder() {
         setUploadProgress(null);
       });
 
-      // Collect data every 10 seconds (reduced HTTP overhead for low bandwidth)
+      // Collect data every 10 seconds
       mediaRecorder.start(CHUNK_INTERVAL_MS);
       setIsRecording(true);
       console.log('Recording started with mimeType:', mediaRecorder.mimeType);
-      console.log(`Chunks will be uploaded every ${CHUNK_INTERVAL_MS / 1000} seconds during the interview (optimized for low bandwidth)`);
+      console.log(`Chunks will be uploaded every ${CHUNK_INTERVAL_MS / 1000} seconds during the interview (medium quality - 720p)`);
     } catch (error) {
       console.error('Failed to start recording:', error);
       setIsRecording(false);
