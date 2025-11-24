@@ -344,7 +344,10 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         // Continue anyway - interview can still be completed without recording
       }
 
-      const response = await fetch('/api/interview/complete-voice', {
+      // Make the complete-voice call in the background (don't await)
+      // This prevents blocking the UI while scoring happens
+      console.log('🚀 Starting interview completion in background...');
+      fetch('/api/interview/complete-voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -354,11 +357,22 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           job,
           sessionId: session?.id
         })
+      }).then(async response => {
+        const data = await response.json();
+        if (!response.ok) {
+          console.error('❌ Background interview completion failed:', data?.message);
+        } else {
+          console.log('✅ Background interview completion succeeded');
+        }
+      }).catch(error => {
+        console.error('❌ Error in background interview completion:', error);
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.message || 'Failed to complete');
 
-      toast({ title: 'Interview Complete', description: 'Your job-specific voice interview has been completed.' });
+      // Immediately show success and continue
+      toast({
+        title: 'Interview Submitted',
+        description: 'Your interview is being processed in the background. You can continue using the app.'
+      });
 
       // Store the session ID and show transcription dialog
       if (session?.id) {
