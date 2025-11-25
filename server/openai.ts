@@ -1127,6 +1127,129 @@ GENERAL PRINCIPLES
     - interview insights (what they said in answers, interviewer's interpretation).
 
 --------------------
+SPECIAL CASE: NO SHOW OR ABORTED INTERVIEW
+--------------------
+
+**When This Special Case Applies:**
+
+This special case applies when:
+- The transcript is empty, OR
+- The transcript contains only greetings/system boilerplate plus 1-2 short messages where the candidate cancels or exits (e.g., "end the interview", "stop", "I don't want to continue", "exit", etc.) AND there are no substantive answers to real interview questions, OR
+- \`interview_profile.interview_summary\` clearly states that the interview did not proceed / was aborted / contains no usable content.
+
+**Global Evidence-Based Rules (CRITICAL):**
+
+1. **Every statement in the final JSON profile MUST be evidence-based.**
+2. **You may ONLY use three evidence sources:**
+   - \`profile_analysis\`
+   - \`interview_profile.interview_summary\`
+   - \`transcript\`
+3. **Do NOT invent** companies, roles, dates, responsibilities, tools, achievements, soft skills, or personality traits that do not appear in the inputs.
+4. **Soft skills, behaviors, work style, personality traits, and culture fit claims MUST be grounded in explicit evidence:**
+   - Soft skills listed in \`profile_analysis\`, OR
+   - Specific interview behaviors described in \`interview_profile.interview_summary\`, OR
+   - Visible patterns in the \`transcript\`.
+5. **If there is no clear evidence for a skill/trait/behavior, you MUST either:**
+   - Omit it, OR
+   - Explicitly state that it cannot be reliably assessed.
+6. **When you infer patterns** (e.g., "seems to be growth-oriented"):
+   - They must be weak and obvious inferences from multiple pieces of data.
+   - Use cautious language such as "appears to", "likely", or "may be" – NOT strong claims.
+7. **Do NOT describe concrete interview examples, scenarios, or behaviors if the candidate never actually answered any substantive interview questions.**
+8. **For every section, if the only evidence comes from CV/profile data:**
+   - You MUST clearly reflect that.
+   - Avoid claiming interview-based validation.
+
+**Behavior in No-Show/Aborted Case:**
+
+**Overall Behavior:**
+- Treat the interview as **"NO VALID INTERVIEW DATA"**.
+- Do NOT behave as if the interview took place normally.
+- Use ONLY \`profile_analysis\` (CV/profile-based data) for substantive content.
+- All interview-derived sections must clearly state that there is no interview data and therefore no behavioral or soft-skill assessment can be made.
+- The whole profile must read as a **low-confidence, incomplete, CV-only snapshot** – NOT as a full, rich, interview-backed profile.
+
+**Field-Specific Requirements:**
+
+**meta_profile_overview:**
+- \`headline\`: Use only CV/profile facts (e.g., primary role, seniority, years of experience if available).
+- \`one_line_summary\`: Provide a short summary based purely on CV/profile data (no interview-based behavior or personality claims).
+- \`key_highlights\`: Include at most 1-3 simple, factual items directly from \`profile_analysis\` (e.g., "Completed X diploma", "Has Y years in Z domain"). Do NOT claim soft skill excellence (e.g., "strong communicator") unless supported explicitly by profile data (not inferred).
+- \`key_watchouts\`: MUST include a clear item such as: "Interview did not proceed; candidate ended the interview immediately, so no interview-based assessment is possible." May include factual CV-based risk notes (e.g., short tenure, gaps) if those are clearly present in \`profile_analysis\`.
+
+**identity_and_background:**
+- Use only data from \`profile_analysis\` and/or candidate profile JSON (name, city, country, primary role, seniority, years of experience).
+- The \`brief_background_summary\` must be a short, factual paragraph describing their professional background from the CV only.
+- Do NOT add any narrative that implies knowledge from the interview (e.g., "as seen in the interview, they...").
+
+**career_story:**
+- Build the \`narrative\`, \`key_milestones\`, and \`representative_achievements\` only from roles, dates, and achievements mentioned in \`profile_analysis\` or the raw profile JSON.
+- Do NOT fabricate additional responsibilities, promotions, or projects.
+- If the CV data is thin, keep this section short and explicitly note that it is based only on limited CV/profile information.
+
+**skills_and_capabilities:**
+- Populate \`core_hard_skills\` and \`tools_and_technologies\` strictly from the skills listed in \`profile_analysis\` / candidate profile JSON.
+- Soft skills should only reflect what is explicitly mentioned in the profile (e.g., "communication" listed as a skill) – do NOT claim strong communication, leadership, or collaboration based on an interview that did not happen.
+- The \`strengths_summary\` must explicitly state that it is based on profile/CV evidence only.
+- In \`notable_gaps_or_limits\`, explicitly mention that no interview was conducted to validate skills or behaviors.
+
+**personality_and_values:**
+- If there is no substantive interview, you MUST NOT describe personality details, values, or inner world beyond what is extremely obvious from the profile (and even then, be cautious).
+- Use neutral placeholder-style text such as: "No interview data available; personality, values, and inner world cannot be reliably assessed from CV/profile alone."
+- In \`values_and_what_matters\`, you may leave the array empty or include at most 1-2 very generic items ONLY if they are explicitly stated (e.g., from a questionnaire).
+- For \`response_to_stress_and_feedback\` and \`decision_making_style\`, clearly say that there is insufficient data to assess these due to the interview not proceeding.
+
+**work_style_and_collaboration:**
+- Do NOT create fake examples or descriptions (e.g., "shared concrete examples...", "acknowledged mistakes...") when the candidate never actually answered interview questions.
+- Use text like: "No interview data; work style and collaboration preferences cannot be reliably inferred from CV/profile alone."
+- Set \`examples_from_interview\` to an empty array OR a single string like: "No concrete interview examples; interview did not proceed."
+
+**technical_and_domain_profile:**
+- Describe \`domain_focus\` and \`technical_depth_summary\` ONLY from CV/profile-based data (e.g., listed roles, technologies, certifications).
+- If there is no explicit evidence of solving certain problem types, do NOT assume them; keep \`typical_problems_they_can_solve\` conservative and CV-based.
+- In \`areas_for_further_development\`, you may mention general gaps clearly visible in the CV (e.g., "limited years of experience") but must not rely on non-existent interview content.
+
+**motivation_and_career_direction:**
+- If motivation, reasons for leaving, or career goals are not clearly stated in the profile/questionnaire, set these fields to null or use a short sentence like: "Not enough data; motivation and career direction were not assessed because the interview did not proceed."
+- The \`clarity_and_realism_assessment\` must explicitly mention that there is insufficient interview evidence to judge their clarity or realism of goals.
+
+**risk_and_stability:**
+- Use only CV/profile data (e.g., number of roles, durations, gaps) to make simple, factual comments.
+- Do NOT infer reliability or behavior from an interview that did not happen.
+- Explicitly mention in \`integrated_risk_view\` that the interview did not proceed, so risk assessment is based solely on CV/profile data.
+- \`job_hopping_risk_note\` and \`unemployment_gap_risk_note\` should be conservative and factual, not speculative.
+- \`stability_overall_assessment\` must mention that stability assessment is low-confidence due to no interview data.
+
+**environment_and_culture_fit:**
+- If there is no questionnaire or explicit statements about preferred environments, keep \`environments_where_they_thrive\` and \`environments_where_they_struggle\` very minimal or empty.
+- Use text like: "Culture fit cannot be reliably assessed; interview did not proceed and there is limited data on preferences."
+- \`non_negotiables_summary\` should either summarize only explicit non-negotiables found in the profile/questionnaire or clearly state that none are available.
+- \`culture_fit_notes\` must highlight that there is no interview-based culture-fit evidence.
+
+**recommended_roles_and_pathways:**
+- Recommendations must be conservative and based only on clearly supported CV/profile data (e.g., current role, listed skills).
+- Do NOT over-praise or strongly endorse; frame recommendations as tentative (e.g., "Based on limited CV evidence, they may be suited for...").
+- Explicitly mention that these recommendations are weak and should be treated with caution because the interview did not proceed.
+- \`development_recommendations\` may include safe, generic suggestions (e.g., "gain more hands-on experience", "seek projects that validate listed skills") but must not pretend to know their behavior or mindset from an interview.
+
+**derived_tags:**
+- Always include at least the following tags when this special case applies: \`no_interview_data\`, \`interview_not_completed\`.
+- Other tags (role, seniority, domain, tools) must strictly reflect the CV/profile data (e.g., "system_administrator", "junior", "cloud_engineering") without adding unsubstantiated behavioral tags (e.g., "strong_communicator").
+
+**data_quality_and_limits:**
+- \`overall_confidence_0_100\` MUST be set to a very low value **(between 0 and 15)** in the no-show / aborted-interview case.
+- In \`major_gaps_in_information\`, you MUST add an item like: "Interview did not proceed; candidate provided no substantive answers; no behavioral or soft-skill assessment possible."
+- In \`inconsistencies\`, include any conflicts found in profile data, but also note if the system expected an interview but none occurred.
+- \`notes\` MUST clearly state that: "This profile is based almost entirely on CV/profile data; there was no usable interview content. Any downstream scoring, matching, or hiring decisions should treat this as low-confidence, incomplete information and MUST NOT treat it as a full, normal interview-backed assessment."
+
+**Downstream Scoring and Usage:**
+
+- This generator itself does NOT output scores, but it MUST clearly flag the no-interview situation so that any separate scoring system does not assign a high or normal match score.
+- Downstream systems that consume this JSON should treat profiles with \`no_interview_data\` / \`interview_not_completed\` tags and \`overall_confidence_0_100 <= 15\` as **low-reliability, incomplete assessments**.
+- Such profiles should either receive very low scores, "insufficient data" scores, or be flagged for re-interview rather than being treated as strong matches.
+- **Under no circumstances should a candidate who only said "end the interview" and provided no answers be treated as having fully validated technical, behavioral, or culture-fit strengths.**
+
+--------------------
 WHAT YOU MUST SYNTHESIZE
 --------------------
 
