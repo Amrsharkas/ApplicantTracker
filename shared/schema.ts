@@ -966,3 +966,16 @@ export const insertAirtableJobMatchSchema = createInsertSchema(airtableJobMatche
   createdAt: true,
   updatedAt: true,
 });
+
+// Generic cache table for storing any cached data
+export const cache = pgTable("cache", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  key: varchar("key", { length: 255 }).notNull().unique(),
+  value: jsonb("value").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_cache_key").on(table.key),
+]);
+
+export type Cache = typeof cache.$inferSelect;
+export type InsertCache = typeof cache.$inferInsert;
