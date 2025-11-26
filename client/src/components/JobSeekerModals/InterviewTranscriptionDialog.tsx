@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
-import ReactMarkdown from 'react-markdown';
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { MessageCircle, User, Clock, Download, Loader2, Lightbulb } from "lucide-react";
+import { MessageCircle, User, Download, Loader2, Lightbulb, Video, Play, Clock, Timer } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface TranscriptionItem {
@@ -16,6 +15,7 @@ interface TranscriptionItem {
 interface ParsedQA {
   question: string;
   answer: string;
+  feedbackTitle?: string;
   feedback: string;
   questionTimestamp: number;
   answerTimestamp: number;
@@ -44,23 +44,57 @@ interface InterviewTranscriptionDialogProps {
   isOpen: boolean;
   onClose: () => void;
   sessionId: number;
+  initialTranscription?: TranscriptionItem[];
 }
 
-export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: InterviewTranscriptionDialogProps) {
+export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initialTranscription }: InterviewTranscriptionDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [parsing, setParsing] = useState(false);
   const [session, setSession] = useState<InterviewSession | null>(null);
   const [recording, setRecording] = useState<InterviewRecording | null>(null);
   const [parsedQA, setParsedQA] = useState<ParsedQA[]>([]);
-  const [showRawTranscript, setShowRawTranscript] = useState(false);
-  const { t, language } = useLanguage();
-  const localeMap: Record<string, string> = {
-    en: 'en-US',
-    ar: 'ar-EG',
-    fr: 'fr-FR',
+  const [transcriptionData, setTranscriptionData] = useState<TranscriptionItem[]>([]);
+  const { t } = useLanguage();
+
+  // Calculate interview start time from parsed Q&A data
+  const interviewStartTime = useMemo(() => {
+    if (parsedQA.length > 0) {
+      // Use the first question timestamp as the start
+      return parsedQA[0].questionTimestamp;
+    }
+    if (transcriptionData.length > 0) {
+      return Math.min(...transcriptionData.map(item => item.timestamp));
+    }
+    return 0;
+  }, [parsedQA, transcriptionData]);
+
+  // Format timestamp as relative time from interview start (e.g., "0:45", "2:30")
+  const formatRelativeTime = (timestamp: number) => {
+    // Handle case where timestamp might already be in seconds (small number) vs milliseconds
+    const normalizedTimestamp = timestamp > 1e10 ? timestamp : timestamp * 1000;
+    const normalizedStart = interviewStartTime > 1e10 ? interviewStartTime : interviewStartTime * 1000;
+
+    const elapsed = Math.max(0, Math.floor((normalizedTimestamp - normalizedStart) / 1000));
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
-  const locale = localeMap[language] || 'en-US';
+
+  // Format duration between two timestamps (e.g., "45s", "1m 30s")
+  const formatDuration = (start: number, end: number) => {
+    // Handle case where timestamps might be in seconds vs milliseconds
+    const normalizedStart = start > 1e10 ? start : start * 1000;
+    const normalizedEnd = end > 1e10 ? end : end * 1000;
+
+    const seconds = Math.max(0, Math.floor((normalizedEnd - normalizedStart) / 1000));
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  };
 
   useEffect(() => {
     if (!isOpen || !sessionId) return;
@@ -90,9 +124,26 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
           console.log('No recording found for this session');
         }
 
-        // Auto-parse the transcription
-        if (sessionData?.sessionData?.responses) {
-          await parseTranscription(sessionData.sessionData.responses);
+        // Use initialTranscription if provided (for immediate display before server save completes)
+        // Otherwise fall back to session data
+        const transcriptionToUse = initialTranscription && initialTranscription.length > 0
+          ? initialTranscription
+          : sessionData?.sessionData?.responses;
+
+        console.log('InterviewTranscriptionDialog - Using transcription:', {
+          hasInitial: !!initialTranscription,
+          initialLength: initialTranscription?.length,
+          hasSessionResponses: !!sessionData?.sessionData?.responses,
+          sessionResponsesLength: sessionData?.sessionData?.responses?.length,
+          usingLength: transcriptionToUse?.length
+        });
+
+        // Store transcription data for timestamp calculations
+        if (transcriptionToUse && transcriptionToUse.length > 0) {
+          setTranscriptionData(transcriptionToUse);
+          await parseTranscription(transcriptionToUse);
+        } else {
+          console.log('InterviewTranscriptionDialog - No transcription data available');
         }
       } catch (error: any) {
         toast({
@@ -106,7 +157,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
     };
 
     fetchData();
-  }, [isOpen, sessionId, t]);
+  }, [isOpen, sessionId, t, initialTranscription]);
 
   const parseTranscription = async (transcription: TranscriptionItem[]) => {
     try {
@@ -123,6 +174,14 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
       if (!response.ok) throw new Error(t("interviewTranscriptionDialog.parsingFailedDescription"));
 
       const data = await response.json();
+      console.log('Parsed QA data:', data.parsedQA);
+      if (data.parsedQA?.length > 0) {
+        console.log('First QA timestamps:', {
+          questionTimestamp: data.parsedQA[0].questionTimestamp,
+          answerTimestamp: data.parsedQA[0].answerTimestamp,
+          type: typeof data.parsedQA[0].questionTimestamp
+        });
+      }
       setParsedQA(data.parsedQA || []);
     } catch (error: any) {
       toast({
@@ -170,29 +229,11 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
     return !fallbackValues.includes(normalized);
   };
 
-  const formatTimestamp = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString(locale, {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
-
-  const formatDuration = (start: number, end: number) => {
-    const seconds = Math.floor((end - start) / 1000);
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return t("interviewTranscriptionDialog.durationFormat")
-      .replace("{{minutes}}", mins.toString())
-      .replace("{{seconds}}", secs.toString());
-  };
-
   const downloadTranscript = () => {
-    if (!session?.sessionData?.responses) return;
+    if (transcriptionData.length === 0) return;
 
-    const content = session.sessionData.responses
-      .map(item => `[${formatTimestamp(item.timestamp)}] ${item.role === 'assistant' ? t("interviewTranscriptionDialog.roles.aiShort") : t("interviewTranscriptionDialog.roles.userShort")}: ${item.content}`)
+    const content = transcriptionData
+      .map(item => `[${formatRelativeTime(item.timestamp)}] ${item.role === 'assistant' ? 'Interviewer' : 'You'}: ${item.content}`)
       .join('\n\n');
 
     const blob = new Blob([content], { type: 'text/plain' });
@@ -207,7 +248,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
   if (loading) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-w-6xl max-h-[90vh]">
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           </div>
@@ -218,156 +259,159 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="border-b pb-4">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        {/* Header */}
+        <DialogHeader className="border-b px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <DialogTitle>{t("interviewTranscriptionDialog.title")}</DialogTitle>
+              <DialogTitle className="text-xl">{t("interviewTranscriptionDialog.title")}</DialogTitle>
               <div className="flex items-center gap-2 mt-2">
                 <Badge variant="outline">{session?.interviewType}</Badge>
                 {session?.createdAt && (
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-muted-foreground">
                     {new Date(session.createdAt).toLocaleDateString()}
                   </span>
                 )}
+                {parsedQA.length > 0 && (
+                  <Badge variant="secondary">{parsedQA.length} Questions</Badge>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowRawTranscript(!showRawTranscript)}
-              >
-                {showRawTranscript ? t("interviewTranscriptionDialog.toggleShowQA") : t("interviewTranscriptionDialog.toggleShowRaw")}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={downloadTranscript}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {t("interviewTranscriptionDialog.download")}
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadTranscript}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {t("interviewTranscriptionDialog.download")}
+            </Button>
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col gap-4 py-4">
-          {/* Recording Player */}
-          {recording?.recordingUrl && (
-            <div className="border rounded-lg p-4 bg-gray-50">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">{t("interviewTranscriptionDialog.recordingTitle")}</span>
-              </div>
-              <video
-                controls
-                className="w-full rounded-lg"
-                src={recording.recordingUrl}
-              >
-                {t("interviewTranscriptionDialog.videoFallback")}
-              </video>
+        {/* Main Content - Two Column Layout */}
+        <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+          {/* Left Column - Video Player (sticky on desktop) */}
+          <div className="lg:w-2/5 flex-shrink-0 border-b lg:border-b-0 lg:border-r bg-muted/30">
+            <div className="p-4 h-full flex flex-col">
+              {recording?.recordingUrl ? (
+                <div className="flex-1 flex flex-col">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Video className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">{t("interviewTranscriptionDialog.recordingTitle")}</span>
+                  </div>
+                  <div className="flex-1 bg-black rounded-lg overflow-hidden">
+                    <video
+                      controls
+                      className="w-full h-full object-contain"
+                      src={recording.recordingUrl}
+                    >
+                      {t("interviewTranscriptionDialog.videoFallback")}
+                    </video>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-muted/50 rounded-lg">
+                  <Play className="h-12 w-12 mb-2 opacity-30" />
+                  <span className="text-sm">No recording available</span>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
-          {/* Transcription Content */}
-          <div className="flex-1 overflow-y-auto">
+          {/* Right Column - Q&A Cards */}
+          <div className="flex-1 overflow-y-auto p-4">
             {parsing ? (
               <div className="flex items-center justify-center h-32">
                 <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
-                <span className="text-sm text-gray-600">{t("interviewTranscriptionDialog.parsing")}</span>
+                <span className="text-sm text-muted-foreground">{t("interviewTranscriptionDialog.parsing")}</span>
               </div>
-            ) : showRawTranscript ? (
-              <div className="space-y-3">
-                {session?.sessionData?.responses?.map((item, index) => (
-                  <div
-                    key={index}
-                    className={`p-4 rounded-lg border-l-4 ${
-                      item.role === 'assistant'
-                        ? 'bg-blue-50 border-blue-400'
-                        : 'bg-green-50 border-green-400 ml-8'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        {item.role === 'assistant' ? (
-                          <User className="h-4 w-4 text-blue-600" />
-                        ) : (
-                          <MessageCircle className="h-4 w-4 text-green-600" />
-                        )}
-                        <span className={`text-sm font-medium ${
-                          item.role === 'assistant' ? 'text-blue-800' : 'text-green-800'
-                        }`}>
-                          {item.role === 'assistant' ? t("interviewTranscriptionDialog.roles.ai") : t("interviewTranscriptionDialog.roles.user")}
-                        </span>
-                      </div>
-                      <span className="text-xs text-gray-500">
-                        {formatTimestamp(item.timestamp)}
-                      </span>
-                    </div>
-                    <p className={`text-sm ${
-                      item.role === 'assistant' ? 'text-blue-700' : 'text-green-700'
-                    }`}>
-                      {item.content}
-                    </p>
-                  </div>
-                ))}
+            ) : parsedQA.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+                <MessageCircle className="h-8 w-8 mb-2 opacity-30" />
+                <span className="text-sm">No Q&A data available</span>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {parsedQA.map((qa, index) => (
-                  <div key={index} className="border rounded-lg p-4 bg-white shadow-sm">
-                    <div className="mb-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm font-semibold text-blue-800">
-                            {t("interviewTranscriptionDialog.questionLabel").replace("{{index}}", (index + 1).toString())}
-                          </span>
-                        </div>
-                        <span className="text-xs text-gray-500">
-                          {formatTimestamp(qa.questionTimestamp)}
+                  <div key={index} className="space-y-3">
+                    {/* Q&A Card */}
+                    <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
+                      {/* Header with Question Number and Timestamps */}
+                      <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b">
+                        <span className="text-sm font-semibold text-foreground">
+                          {t("interviewTranscriptionDialog.questionLabel").replace("{{index}}", (index + 1).toString())}
                         </span>
+                        <div className="flex items-center gap-2 text-xs">
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span className="font-mono">{formatRelativeTime(qa.questionTimestamp)}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 bg-primary/10 text-primary px-2 py-0.5 rounded">
+                            <Timer className="h-3 w-3" />
+                            <span className="font-medium">{formatDuration(qa.questionTimestamp, qa.answerTimestamp)}</span>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-sm text-blue-700 pl-6">{qa.question}</p>
+
+                      {/* Question Section */}
+                      <div className="px-4 py-3 border-b bg-blue-50/50 dark:bg-blue-950/20">
+                        <div className="flex items-start gap-3">
+                          <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <User className="h-3.5 w-3.5 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Interviewer</span>
+                              <span className="text-xs text-muted-foreground font-mono">@ {formatRelativeTime(qa.questionTimestamp)}</span>
+                            </div>
+                            <p className="text-sm text-foreground leading-relaxed">
+                              {qa.question}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Answer Section */}
+                      <div className="px-4 py-3 bg-green-50/50 dark:bg-green-950/20">
+                        <div className="flex items-start gap-3">
+                          <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <MessageCircle className="h-3.5 w-3.5 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-medium text-green-700 dark:text-green-400">{t("interviewTranscriptionDialog.answerLabel")}</span>
+                              <span className="text-xs text-muted-foreground font-mono">@ {formatRelativeTime(qa.answerTimestamp)}</span>
+                            </div>
+                            <p className="text-sm text-foreground leading-relaxed">
+                              {qa.answer}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="ml-6 pl-4 border-l-2 border-green-200">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <MessageCircle className="h-4 w-4 text-green-600" />
-                          <span className="text-sm font-semibold text-green-800">
-                            {t("interviewTranscriptionDialog.answerLabel")}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {formatDuration(qa.questionTimestamp, qa.answerTimestamp)}
-                          </Badge>
-                          <span className="text-xs text-gray-500">
-                            {formatTimestamp(qa.answerTimestamp)}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-sm text-green-700">{qa.answer}</p>
-
-                      {/* Feedback Section */}
-                      {hasMeaningfulFeedback(qa.feedback) && (
-                        <div className="mt-4 pt-4 border-t border-green-100">
-                          <div className="flex items-start gap-2">
-                            <Lightbulb className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1">
-                              <span className="text-sm font-semibold text-amber-800 block mb-1">
-                                {t("interviewTranscriptionDialog.aiFeedback")}
-                              </span>
-                              <p className="text-sm text-amber-700 leading-relaxed">
+                    {/* Separate Feedback Card */}
+                    {hasMeaningfulFeedback(qa.feedback) && (
+                      <div className="border rounded-lg overflow-hidden bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 shadow-sm">
+                        <div className="px-4 py-3">
+                          <div className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <Lightbulb className="h-3.5 w-3.5 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                                  {qa.feedbackTitle || t("interviewTranscriptionDialog.aiFeedback")}
+                                </span>
+                              </div>
+                              <p className="text-sm text-amber-900 dark:text-amber-100 leading-relaxed">
                                 {qa.feedback}
                               </p>
                             </div>
                           </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -375,7 +419,8 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId }: Int
           </div>
         </div>
 
-        <div className="border-t pt-4 flex justify-end">
+        {/* Footer */}
+        <div className="border-t px-6 py-4 flex justify-end flex-shrink-0">
           <Button onClick={onClose}>{t("interviewTranscriptionDialog.close")}</Button>
         </div>
       </DialogContent>

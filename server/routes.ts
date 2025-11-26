@@ -3216,12 +3216,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const { transcription } = req.body;
 
+      console.log('📝 parse-transcription - Received transcription:', {
+        hasData: !!transcription,
+        isArray: Array.isArray(transcription),
+        length: transcription?.length,
+        sample: JSON.stringify(transcription?.slice(0, 2))
+      });
+
       if (!transcription || !Array.isArray(transcription)) {
+        console.log('⚠️ parse-transcription - Invalid transcription data');
         return res.status(400).json({ message: "Invalid transcription data" });
+      }
+
+      if (transcription.length === 0) {
+        console.log('⚠️ parse-transcription - Empty transcription array');
+        return res.json({ parsedQA: [] });
       }
 
       // Use OpenAI to parse the transcription into Q&A pairs
       const parsedQA = await aiInterviewService.parseInterviewTranscription(transcription, userId);
+
+      console.log('✅ parse-transcription - Parsed QA count:', parsedQA?.length);
 
       res.json({ parsedQA });
     } catch (error) {

@@ -639,6 +639,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
             onClose(); // Close the main interview modal as well
           }}
           sessionId={completedSessionId}
+          initialTranscription={conversationHistory}
         />
       )}
       </>
@@ -853,6 +854,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           onClose(); // Close the main interview modal as well
         }}
         sessionId={completedSessionId}
+        initialTranscription={conversationHistory}
       />
     )}
     </>

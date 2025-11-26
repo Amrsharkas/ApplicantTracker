@@ -1072,42 +1072,83 @@ Analyze the interview transcript to assess this candidate. ${jobDescription ? "E
 
 ### SCORING RULES (CRITICAL)
 
-**All scores are based PRIMARILY on interview responses (80%+ weight).**
+**Scores are based EXCLUSIVELY on what the candidate demonstrated in this interview.**
 
-The interview is the truth. What candidates SAY and HOW they say it matters more than any claims:
-- Did they give specific, detailed examples or vague generalities?
-- Did they demonstrate real understanding or just use buzzwords?
-- Were they honest about limitations or did they oversell?
-- Did they communicate clearly and professionally?
+You are scoring ONLY what you can verify from the transcript. Do not assume competence - require evidence.
 
-**Score Guidelines:**
+---
 
-\`technical_skills_score_0_100\`:
-- How well did they explain technical concepts?
-- Could they walk through HOW they solved problems?
-- Did they show depth or just surface knowledge?
-- ${jobDescription ? "Do their demonstrated skills match what THIS job needs?" : "How strong are their technical abilities in their field?"}
+**\`technical_skills_score_0_100\`** - Can they actually do the work?
 
-\`experience_score_0_100\`:
-- Could they provide specific, detailed examples from their work?
-- Did their stories show ownership, impact, and learning?
-- Were descriptions believable and consistent?
-- ${jobDescription ? "Is their experience relevant to THIS role?" : "How substantial is their professional experience?"}
+Score based on these observable behaviors:
+- **Specificity**: Did they name actual tools, frameworks, methods, or just speak in generalities?
+- **Depth**: Could they explain WHY they chose an approach, not just WHAT they did?
+- **Problem-solving**: Did they describe their thought process, trade-offs considered, alternatives rejected?
+- **Accuracy**: Were their technical statements correct and precise?
+${jobDescription ? "- **Job relevance**: Do demonstrated skills align with THIS role's requirements?" : ""}
 
-\`cultural_fit_score_0_100\`:
-- How did they communicate? (clarity, professionalism, self-awareness)
-- What values and preferences emerged?
-- How do they handle challenges, feedback, failure?
-- Do they show growth mindset and self-awareness?
+| Score | Evidence Required |
+|-------|-------------------|
+| 85-100 | Explained complex concepts clearly; described specific architectures/implementations; demonstrated expertise through detailed problem-solving walkthroughs; showed depth AND breadth |
+| 70-84 | Gave specific technical examples with some depth; correctly used technical terminology; explained reasoning behind decisions; minor gaps in explanation |
+| 55-69 | Mentioned relevant technologies but lacked depth; some correct technical content mixed with vague statements; could describe WHAT but struggled with WHY |
+| 40-54 | Mostly surface-level responses; heavy reliance on buzzwords; couldn't elaborate when pressed; inconsistent technical accuracy |
+| 25-39 | Vague or generic answers; incorrect or confused technical statements; couldn't provide concrete examples |
+| 0-24 | No technical content; completely off-topic; refused or unable to engage with technical questions |
 
-**Score Calibration:**
-- 80-100: Exceptional - clear, specific, impressive responses
-- 60-79: Good - solid responses with some depth
-- 40-59: Average - adequate but lacking specificity or depth
-- 20-39: Weak - vague, superficial, or concerning responses
-- 0-19: Poor - unable to demonstrate competence
+---
 
-\`overall_weighted_score_0_100\` = round(0.40 × technical + 0.40 × experience + 0.20 × cultural_fit)
+**\`experience_score_0_100\`** - Have they done meaningful work?
+
+Score based on these observable behaviors:
+- **STAR completeness**: Did examples include Situation, Task, Action, AND Result?
+- **Ownership signals**: "I did" vs "we did" vs "the team did" - who actually did the work?
+- **Impact quantification**: Numbers, metrics, outcomes - or just activities?
+- **Consistency**: Do their stories hold together? Do details match across answers?
+- **Learning evidence**: Did they reflect on what worked/didn't? Show growth?
+${jobDescription ? "- **Relevance**: Is their experience applicable to THIS role's challenges?" : ""}
+
+| Score | Evidence Required |
+|-------|-------------------|
+| 85-100 | Multiple detailed examples with clear personal ownership; quantified impact (%, $, time saved); coherent career narrative; demonstrated learning from failures; examples directly relevant${jobDescription ? " to this role" : ""} |
+| 70-84 | Good examples with clear ownership; some quantified results; consistent story; shows progression; mostly relevant experience |
+| 55-69 | Examples provided but lacking detail or ownership clarity; results mentioned but not quantified; some relevant experience but gaps |
+| 40-54 | Vague examples; unclear personal contribution; no measurable outcomes; stories don't fully connect; questionable relevance |
+| 25-39 | Struggled to provide examples; contradictory statements; couldn't articulate impact; experience seems unrelated |
+| 0-24 | No examples given; refused to discuss experience; obvious fabrication or major inconsistencies |
+
+---
+
+**\`cultural_fit_score_0_100\`** - How will they work with others?
+
+Score based on these observable behaviors:
+- **Communication quality**: Clear, structured responses? Rambling or evasive? Appropriate length?
+- **Self-awareness**: Acknowledged weaknesses authentically? Reflected on failures honestly?
+- **Collaboration signals**: How did they talk about teammates, managers, stakeholders?
+- **Professionalism**: Tone, language, respect for the interview process
+- **Adaptability indicators**: How do they handle unexpected questions? Ambiguity?
+${jobDescription ? "- **Values alignment**: Do expressed preferences match this role/team/company?" : ""}
+
+| Score | Evidence Required |
+|-------|-------------------|
+| 85-100 | Articulate and structured responses; genuine self-reflection; spoke positively about collaborators while owning mistakes; asked thoughtful questions; demonstrated emotional intelligence |
+| 70-84 | Clear communication; some self-awareness; balanced perspective on past teams; professional throughout; engaged appropriately |
+| 55-69 | Adequate communication with some clarity issues; limited self-reflection; neutral about past experiences; acceptable professionalism |
+| 40-54 | Disorganized responses; deflected blame; negative about past employers/colleagues; limited engagement; some concerning statements |
+| 25-39 | Poor communication; no self-awareness; blamed others consistently; unprofessional moments; red flags in attitude |
+| 0-24 | Couldn't communicate effectively; hostile or dismissive; major professionalism issues; clear culture concerns |
+
+---
+
+**\`overall_weighted_score_0_100\`** = round(0.40 × technical + 0.40 × experience + 0.20 × cultural_fit)
+
+**IMPORTANT SCORING ADJUSTMENTS:**
+
+Apply these modifiers to your initial scores:
+- **Brevity penalty**: If interview was very short (< 5 substantive exchanges), cap all scores at 60 and note low confidence
+- **Consistency bonus/penalty**: Adjust ±5 points if examples across answers were notably consistent or contradictory
+- **Red flag override**: If you observed dishonesty, hostility, or major professionalism issues, cap overall at 40 regardless of other scores
+- **Default to middle**: When evidence is ambiguous or missing, score 50 (not higher) and flag as low confidence
 
 ${jobDescription ? `
 ### JOB-SPECIFIC EVALUATION
@@ -1240,7 +1281,7 @@ Return ONLY the JSON. No markdown, no explanation, no text outside the JSON.`;
           messages: [
             {
               role: "system",
-              content: "You analyze interview transcripts and assess candidates. Be direct, evidence-based, and score primarily based on what candidates demonstrated in their interview responses."
+              content: "You are a rigorous interview assessor. Score ONLY what candidates demonstrably proved in the transcript - never assume competence without evidence. Default to lower scores when evidence is weak or missing. Be skeptical of vague claims; reward specific, verifiable examples with clear ownership and measurable outcomes."
             },
             {
               role: "user",
@@ -1967,45 +2008,56 @@ Return ONLY JSON:
   // Parse interview transcription into Q&A pairs
   parseInterviewTranscription: async (transcription: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number }>, userId?: string) => {
     try {
+      console.log('📝 parseInterviewTranscription - Input transcription length:', transcription?.length);
+      console.log('📝 parseInterviewTranscription - Input sample:', JSON.stringify(transcription?.slice(0, 2)));
+
+      if (!transcription || transcription.length === 0) {
+        console.log('⚠️ parseInterviewTranscription - Empty transcription received');
+        return [];
+      }
+
       // Build a formatted transcript for AI
       const formattedTranscript = transcription
         .map((item) => {
-          const timestamp = new Date(item.timestamp).toISOString();
           const speaker = item.role === 'assistant' ? 'INTERVIEWER' : 'CANDIDATE';
-          return `[${timestamp}] ${speaker}: ${item.content}`;
+          return `[${item.timestamp}] ${speaker}: ${item.content}`;
         })
         .join('\n\n');
-        
-      const prompt = `You are analyzing an interview transcription. Parse the following conversation into clear question-answer pairs and provide constructive feedback for each answer.
+
+      const prompt = `You are a professional interview coach analyzing an interview transcription. Parse the conversation into question-answer pairs and provide brief, actionable feedback.
 
 For each Q&A pair, extract:
-1. The question asked by the interviewer
-2. The answer given by the candidate
-3. The timestamps for both (convert from ISO format to milliseconds since epoch)
-4. Provide constructive feedback on the candidate's answer, including:
-   - What they did well
-   - Areas for improvement
-   - Suggestions for a stronger response
-   - Overall quality assessment (1-2 sentences)
+1. The question asked by the interviewer (INTERVIEWER messages)
+2. The answer given by the candidate (CANDIDATE messages that follow)
+3. Use the exact timestamps from the transcript (the numbers in brackets are milliseconds)
+4. Provide a short feedback title and 1-2 sentence feedback
 
-Return ONLY a JSON object with this structure (no markdown, no additional text):
-      {
-        data: [
-          {
-            "question": "the interviewer's question",
-            "answer": "the candidate's answer",
-            "feedback": "constructive feedback on the answer with specific suggestions for improvement",
-            "questionTimestamp": timestamp_in_milliseconds,
-            "answerTimestamp": timestamp_in_milliseconds
-          }
-        ]
-      }
+Return ONLY a JSON object with this structure:
+{
+  "data": [
+    {
+      "question": "the interviewer's question",
+      "answer": "the candidate's answer",
+      "feedbackTitle": "Short title like: Strong Opening, Needs More Detail, Good Example, etc.",
+      "feedback": "1-2 sentences of specific, actionable feedback.",
+      "questionTimestamp": exact_number_from_brackets,
+      "answerTimestamp": exact_number_from_brackets
+    }
+  ]
+}
+
+FEEDBACK GUIDELINES:
+- feedbackTitle: 2-4 words summarizing the feedback (e.g., "Clear & Confident", "Add Specific Examples", "Strong Technical Answer", "Too Brief")
+- feedback: Keep it to 1-2 sentences. Be direct and specific. Focus on ONE key strength or ONE improvement area.
+- Examples of good feedback:
+  - "Great use of the STAR method. Consider quantifying your results next time."
+  - "Your answer was clear but lacked specific examples. Try mentioning a concrete project."
+  - "Excellent technical depth. The explanation was easy to follow."
 
 IMPORTANT:
-- Return ONLY the JSON object, no markdown code blocks or additional text
-- Feedback should be constructive, specific, and actionable
-- Keep feedback concise but valuable (2-4 sentences)
-- Focus on both strengths and areas for improvement
+- Return ONLY valid JSON, no markdown
+- questionTimestamp and answerTimestamp must be exact numbers from the [brackets]
+- Keep feedback concise and professional
 
 Transcription:
 ${formattedTranscript}`;
@@ -2031,11 +2083,55 @@ ${formattedTranscript}`;
 
       const responseText = response.choices[0].message.content || '';
 
+      console.log('📝 parseInterviewTranscription - AI response:', responseText.substring(0, 500));
+
       try {
         // Try to parse the response as JSON
         const parsed = JSON.parse(responseText);
-        
-        return parsed.data || [];
+
+        console.log('📝 parseInterviewTranscription - Parsed structure:', Object.keys(parsed));
+
+        // Handle various response structures the AI might return
+        const qaData = parsed.data || parsed.parsedQA || parsed.qaItems || parsed.qaPairs || parsed.questions || parsed.qa;
+
+        // If none of those fields exist but parsed is an array, use it directly
+        if (!qaData && Array.isArray(parsed)) {
+          console.log('📝 parseInterviewTranscription - Response is array directly, length:', parsed.length);
+          return parsed;
+        }
+
+        if (!qaData || !Array.isArray(qaData) || qaData.length === 0) {
+          console.log('⚠️ parseInterviewTranscription - No valid QA data found in response, parsed keys:', Object.keys(parsed));
+          // Fallback to simple parsing
+          return transcription
+            .filter((item, index) =>
+              item.role === 'assistant' &&
+              index < transcription.length - 1 &&
+              transcription[index + 1].role === 'user'
+            )
+            .map((item) => {
+              const nextItem = transcription.find((t, i) =>
+                i > transcription.indexOf(item) && t.role === 'user'
+              );
+              return {
+                question: item.content,
+                answer: nextItem?.content || '',
+                feedbackTitle: '',
+                feedback: 'Feedback not available',
+                questionTimestamp: item.timestamp,
+                answerTimestamp: nextItem?.timestamp || item.timestamp
+              };
+            });
+        }
+
+        console.log('✅ parseInterviewTranscription - Found QA data, count:', qaData.length);
+        if (qaData.length > 0) {
+          console.log('✅ parseInterviewTranscription - First QA timestamps:', {
+            questionTimestamp: qaData[0].questionTimestamp,
+            answerTimestamp: qaData[0].answerTimestamp
+          });
+        }
+        return qaData;
       } catch (parseError) {
         console.error('Failed to parse AI response as JSON:', parseError);
         // Fallback to simple parsing
@@ -2045,13 +2141,14 @@ ${formattedTranscript}`;
             index < transcription.length - 1 &&
             transcription[index + 1].role === 'user'
           )
-          .map((item, index) => {
+          .map((item) => {
             const nextItem = transcription.find((t, i) =>
               i > transcription.indexOf(item) && t.role === 'user'
             );
             return {
               question: item.content,
               answer: nextItem?.content || '',
+              feedbackTitle: '',
               feedback: 'Feedback not available',
               questionTimestamp: item.timestamp,
               answerTimestamp: nextItem?.timestamp || item.timestamp
@@ -2067,13 +2164,14 @@ ${formattedTranscript}`;
           index < transcription.length - 1 &&
           transcription[index + 1].role === 'user'
         )
-        .map((item, index) => {
+        .map((item) => {
           const nextItem = transcription.find((t, i) =>
             i > transcription.indexOf(item) && t.role === 'user'
           );
           return {
             question: item.content,
             answer: nextItem?.content || '',
+            feedbackTitle: '',
             feedback: 'Feedback not available',
             questionTimestamp: item.timestamp,
             answerTimestamp: nextItem?.timestamp || item.timestamp
