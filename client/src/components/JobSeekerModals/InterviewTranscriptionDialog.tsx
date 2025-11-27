@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import Hls from "hls.js";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,9 +54,13 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
   const [parsing, setParsing] = useState(false);
   const [session, setSession] = useState<InterviewSession | null>(null);
   const [recording, setRecording] = useState<InterviewRecording | null>(null);
+  const [videoProcessing, setVideoProcessing] = useState(false);
   const [parsedQA, setParsedQA] = useState<ParsedQA[]>([]);
   const [transcriptionData, setTranscriptionData] = useState<TranscriptionItem[]>([]);
   const { t } = useLanguage();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate interview start time from parsed Q&A data
   const interviewStartTime = useMemo(() => {
@@ -96,6 +101,56 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
     return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
   };
 
+  // Fetch recording with polling for processing state
+  const fetchRecording = async () => {
+    try {
+      const recordingRes = await fetch(`/api/interview/recording/${sessionId}`, {
+        credentials: 'include'
+      });
+      if (recordingRes.ok) {
+        const recordingData = await recordingRes.json();
+
+        // Check if video is still processing
+        if (recordingData.recordingUrl === 'processing') {
+          setVideoProcessing(true);
+          setRecording(null);
+
+          // Start polling if not already polling
+          if (!pollingIntervalRef.current) {
+            pollingIntervalRef.current = setInterval(async () => {
+              try {
+                const pollRes = await fetch(`/api/interview/recording/${sessionId}`, {
+                  credentials: 'include'
+                });
+                if (pollRes.ok) {
+                  const pollData = await pollRes.json();
+                  if (pollData.recordingUrl && pollData.recordingUrl !== 'processing') {
+                    // Video is ready
+                    setRecording(pollData);
+                    setVideoProcessing(false);
+                    // Stop polling
+                    if (pollingIntervalRef.current) {
+                      clearInterval(pollingIntervalRef.current);
+                      pollingIntervalRef.current = null;
+                    }
+                  }
+                }
+              } catch (err) {
+                console.log('Error polling for recording:', err);
+              }
+            }, 5000); // Poll every 5 seconds
+          }
+        } else {
+          // Video is ready
+          setRecording(recordingData);
+          setVideoProcessing(false);
+        }
+      }
+    } catch (err) {
+      console.log('No recording found for this session');
+    }
+  };
+
   useEffect(() => {
     if (!isOpen || !sessionId) return;
 
@@ -111,18 +166,8 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
         const sessionData = await sessionRes.json();
         setSession(sessionData);
 
-        // Fetch recording if available
-        try {
-          const recordingRes = await fetch(`/api/interview/recording/${sessionId}`, {
-            credentials: 'include'
-          });
-          if (recordingRes.ok) {
-            const recordingData = await recordingRes.json();
-            setRecording(recordingData);
-          }
-        } catch (err) {
-          console.log('No recording found for this session');
-        }
+        // Fetch recording - start polling if still processing
+        await fetchRecording();
 
         // Use initialTranscription if provided (for immediate display before server save completes)
         // Otherwise fall back to session data
@@ -157,7 +202,65 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
     };
 
     fetchData();
+
+    // Cleanup polling when dialog closes
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
   }, [isOpen, sessionId, t, initialTranscription]);
+
+  // Set up HLS playback when recording URL is available
+  useEffect(() => {
+    const video = videoRef.current;
+    const videoUrl = recording?.recordingUrl;
+
+    if (!video || !videoUrl) return;
+
+    // Check if this is an HLS stream (m3u8 file)
+    const isHLS = videoUrl.includes('.m3u8');
+
+    if (isHLS) {
+      if (Hls.isSupported()) {
+        // Clean up previous HLS instance
+        if (hlsRef.current) {
+          hlsRef.current.destroy();
+        }
+
+        const hls = new Hls();
+        hlsRef.current = hls;
+        hls.loadSource(videoUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          console.error('HLS error:', data);
+          if (data.fatal) {
+            toast({
+              title: 'Video playback error',
+              description: 'Failed to load video stream',
+              variant: 'destructive'
+            });
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS support (Safari)
+        video.src = videoUrl;
+      }
+    } else {
+      // Regular video file
+      video.src = videoUrl;
+    }
+
+    // Cleanup on unmount or when recording URL changes
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [recording?.recordingUrl, toast]);
 
   const parseTranscription = async (transcription: TranscriptionItem[]) => {
     try {
@@ -301,13 +404,19 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
                   </div>
                   <div className="flex-1 bg-black rounded-lg overflow-hidden">
                     <video
+                      ref={videoRef}
                       controls
                       className="w-full h-full object-contain"
-                      src={recording.recordingUrl}
                     >
                       {t("interviewTranscriptionDialog.videoFallback")}
                     </video>
                   </div>
+                </div>
+              ) : videoProcessing ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-muted/50 rounded-lg">
+                  <Loader2 className="h-12 w-12 mb-3 animate-spin text-primary" />
+                  <span className="text-sm font-medium">Processing video...</span>
+                  <span className="text-xs mt-1">This may take a few minutes</span>
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-muted/50 rounded-lg">

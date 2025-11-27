@@ -3184,23 +3184,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized" });
       }
 
-      // Fetch the recording
-      const [recording] = await db
-        .select()
-        .from(interviewRecordings)
-        .where(eq(interviewRecordings.sessionId, sessionId))
-        .limit(1);
 
-      if (!recording) {
-        return res.status(404).json({ message: "Recording not found" });
-      }
-
-      // Return recording with URL instead of path
+      // Return recording with URL - prefer HLS URL from session if available
       const recordingData = {
-        id: recording.id,
-        sessionId: recording.sessionId,
-        recordingUrl: `/uploads/recordings/${recording.recordingPath}`,
-        createdAt: recording.createdAt
+        id: sessionId,
+        sessionId: sessionId,
+        recordingUrl: session.interviewVideoUrl,
+        createdAt: session.createdAt
       };
 
       res.json(recordingData);
