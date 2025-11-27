@@ -351,8 +351,8 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
   if (loading) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-6xl max-h-[90vh]">
-          <div className="flex items-center justify-center h-64">
+        <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none">
+          <div className="flex items-center justify-center h-full">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           </div>
         </DialogContent>
@@ -362,7 +362,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none overflow-hidden flex flex-col p-0">
         {/* Header */}
         <DialogHeader className="border-b px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
