@@ -232,6 +232,36 @@ export const paymentAttempts = pgTable("payment_attempts", {
   completedAt: timestamp("completed_at"),
 });
 
+// Supported countries for regional pricing
+export const supportedCountries = pgTable("supported_countries", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  countryCode: varchar("country_code", { length: 2 }).notNull().unique(), // ISO 3166-1 alpha-2 (EG, US)
+  countryName: varchar("country_name").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(), // ISO 4217 (EGP, USD)
+  currencySymbol: varchar("currency_symbol").notNull(), // E£, $
+  isDefault: boolean("is_default").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Country-specific subscription plan pricing
+export const subscriptionPlanPricing = pgTable("subscription_plan_pricing", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  subscriptionPlanId: varchar("subscription_plan_id").notNull(), // FK to subscriptionPlans
+  countryCode: varchar("country_code", { length: 2 }).notNull(), // ISO 3166-1 alpha-2
+  currency: varchar("currency", { length: 3 }).notNull(), // ISO 4217
+  monthlyPrice: integer("monthly_price").notNull(), // in smallest unit (cents/piasters)
+  yearlyPrice: integer("yearly_price").notNull(),
+  stripePriceIdMonthly: varchar("stripe_price_id_monthly"),
+  stripePriceIdYearly: varchar("stripe_price_id_yearly"),
+  isActive: boolean("is_active").notNull().default(true),
+  isDefault: boolean("is_default").notNull().default(false), // One country should be default
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_plan_pricing_plan_country").on(table.subscriptionPlanId, table.countryCode),
+]);
+
 // Organization members table
 export const organizationMembers = pgTable("organization_members", {
   id: serial("id").primaryKey(),
@@ -598,7 +628,10 @@ export const resumeProfiles = pgTable("resume_profiles", {
   createdBy: varchar("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_resume_profiles_organization_id").on(table.organizationId),
+  index("idx_resume_profiles_created_at").on(table.createdAt),
+]);
 
 export const resumeJobScores = pgTable("resume_job_scores", {
   id: serial("id").primaryKey(),
@@ -617,7 +650,12 @@ export const resumeJobScores = pgTable("resume_job_scores", {
   fullResponse: jsonb("full_response"),
   scoredAt: timestamp("scored_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_resume_job_scores_profile_id").on(table.profileId),
+  index("idx_resume_job_scores_job_id").on(table.jobId),
+  index("idx_resume_job_scores_overall_score").on(table.overallScore),
+  index("idx_resume_job_scores_profile_job").on(table.profileId, table.jobId),
+]);
 
 export const shortlistedApplicants = pgTable("shortlisted_applicants", {
   id: text("id").primaryKey().notNull(),
@@ -707,6 +745,10 @@ export type OrganizationSubscription = typeof organizationSubscriptions.$inferSe
 export type InsertOrganizationSubscription = typeof organizationSubscriptions.$inferInsert;
 export type SubscriptionInvoice = typeof subscriptionInvoices.$inferSelect;
 export type InsertSubscriptionInvoice = typeof subscriptionInvoices.$inferInsert;
+export type SupportedCountry = typeof supportedCountries.$inferSelect;
+export type InsertSupportedCountry = typeof supportedCountries.$inferInsert;
+export type SubscriptionPlanPricing = typeof subscriptionPlanPricing.$inferSelect;
+export type InsertSubscriptionPlanPricing = typeof subscriptionPlanPricing.$inferInsert;
 export type CreditExpiration = typeof creditExpirations.$inferSelect;
 export type InsertCreditExpiration = typeof creditExpirations.$inferInsert;
 export type Job = typeof jobs.$inferSelect;
@@ -930,7 +972,11 @@ export const airtableJobMatches = pgTable("airtable_job_matches", {
   token: varchar("token").unique().notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_airtable_job_matches_job_id").on(table.jobId),
+  index("idx_airtable_job_matches_user_id").on(table.userId),
+  index("idx_airtable_job_matches_job_user").on(table.jobId, table.userId),
+]);
 
 // Type definitions for Airtable replacement tables
 export type AirtableUserProfile = typeof airtableUserProfiles.$inferSelect;
