@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { toFile } from "openai/uploads";
 import { wrapOpenAIRequest } from "./openaiTracker";
 import fs from 'fs';
+import { INTERVIEW_PROFILE_GENERATOR_V4 } from "./prompts/interview-profile-generator-v4";
 
 // OpenAI client - models are configured via environment variables
 const openai = new OpenAI({
@@ -1051,473 +1052,31 @@ export class AIProfileAnalysisAgent {
     resumeAnalysis?: any,
     jobDescription?: string
   ): Promise<GeneratedProfile> {
-    // Build comprehensive input with interview, resume, and job data
-    const inputData = {
-      candidate_name: userData?.firstName && userData?.lastName
-        ? `${userData.firstName} ${userData.lastName}`
-        : userData?.name || "Unknown",
-      interview_transcript: interviewResponses,
-      job_description: jobDescription || null,
-      // Include resume data for cross-referencing
-      resume_available: !!resumeContent || !!resumeAnalysis,
-      resume_content: resumeContent || null,
-      resume_analysis: resumeAnalysis ? {
-        skills: resumeAnalysis.skills || [],
-        experience: resumeAnalysis.experience || [],
-        education: resumeAnalysis.education || [],
-        summary: resumeAnalysis.summary || null,
-        strengths: resumeAnalysis.strengths || [],
-        areas_for_improvement: resumeAnalysis.areas_for_improvement || [],
-        career_level: resumeAnalysis.career_level || null,
-        total_experience_years: resumeAnalysis.total_experience_years || null,
-        red_flags: resumeAnalysis.interview_notes?.red_flags || [],
-        impressive_achievements: resumeAnalysis.interview_notes?.impressive_achievements || [],
-        verification_points: resumeAnalysis.interview_notes?.verification_points || [],
-        experience_inconsistencies: resumeAnalysis.interview_notes?.experience_inconsistencies || [],
-        credibility_assessment: resumeAnalysis.raw_analysis?.credibility_assessment || null
-      } : null
-    };
+    // Prepare resume analysis data for V4 prompt
+    const resumeAnalysisForPrompt = resumeAnalysis ? {
+      skills: resumeAnalysis.skills || [],
+      experience: resumeAnalysis.experience || [],
+      education: resumeAnalysis.education || [],
+      summary: resumeAnalysis.summary || null,
+      strengths: resumeAnalysis.strengths || [],
+      areas_for_improvement: resumeAnalysis.areas_for_improvement || [],
+      career_level: resumeAnalysis.career_level || null,
+      total_experience_years: resumeAnalysis.total_experience_years || null,
+      red_flags: resumeAnalysis.interview_notes?.red_flags || [],
+      impressive_achievements: resumeAnalysis.interview_notes?.impressive_achievements || [],
+      verification_points: resumeAnalysis.interview_notes?.verification_points || [],
+      experience_inconsistencies: resumeAnalysis.interview_notes?.experience_inconsistencies || [],
+      credibility_assessment: resumeAnalysis.raw_analysis?.credibility_assessment || null
+    } : null;
 
-    const prompt = `You are a candidate assessment system. Analyze all available data to evaluate the candidate.
-
-## INPUTS
-
-${JSON.stringify(inputData, null, 2)}
-
-## DATA SOURCES AVAILABLE
-
-You have access to the following information:
-1. **Interview Transcript**: ${interviewResponses.length} exchanges from the AI-conducted interview
-2. **Resume Content**: ${resumeContent ? 'AVAILABLE' : 'NOT AVAILABLE'}
-3. **Resume Analysis**: ${resumeAnalysis ? 'AVAILABLE (AI-analyzed resume with red flags, achievements, verification points)' : 'NOT AVAILABLE'}
-4. **Job Description**: ${jobDescription ? 'AVAILABLE - evaluate for THIS specific role' : 'NOT AVAILABLE - provide general assessment'}
-
-### CROSS-REFERENCING REQUIREMENT (CRITICAL)
-
-${resumeAnalysis ? `When both resume and interview data exist, you MUST:
-- Cross-reference claims made in interview with resume data
-- Flag discrepancies between stated and documented experience
-- Use resume red flags to probe interview responses: ${JSON.stringify(resumeAnalysis.interview_notes?.red_flags || [])}
-- Verify these points from resume: ${JSON.stringify(resumeAnalysis.interview_notes?.verification_points || [])}
-- Note when interview claims CONFIRM or CONTRADICT resume data
-- Highlight any experience inconsistencies: ${JSON.stringify(resumeAnalysis.interview_notes?.experience_inconsistencies || [])}` : 'No resume data available - base assessment solely on interview responses.'}
-
-## INTERVIEW TRANSCRIPT ANALYSIS (CRITICAL)
-
-The interview transcript is your PRIMARY source of truth. Analyze it deeply:
-
-### Response Quality Analysis
-For each interview response, evaluate:
-- **Depth**: Did they provide surface-level or in-depth answers?
-- **Specificity**: Did they use concrete examples with names, numbers, timelines?
-- **Structure**: Were responses organized (STAR format) or rambling?
-- **Relevance**: Did they answer what was asked or go off-topic?
-- **Authenticity**: Do responses feel genuine or rehearsed/evasive?
-
-### Communication Patterns to Detect
-- **Confidence indicators**: Speaking definitively vs hedging ("I think", "maybe", "sort of")
-- **Ownership language**: "I built" vs "We did" vs "The team handled"
-- **Technical fluency**: Natural use of terminology vs forced/incorrect usage
-- **Self-awareness**: Acknowledging limitations vs overselling capabilities
-- **Storytelling ability**: Engaging narratives vs dry recitation
-
-### Red Flags in Transcript
-Watch for these warning signs:
-- Vague answers when specifics are requested
-- Blaming others for failures/problems
-- Inconsistent timelines or details across responses
-- Deflecting difficult questions
-- Overconfidence without supporting evidence
-- Speaking negatively about past employers/colleagues
-- Unable to explain decisions or reasoning
-
-### Green Flags in Transcript
-Identify these positive signals:
-- Specific metrics and quantified results
-- Clear ownership of successes AND failures
-- Thoughtful reflection on lessons learned
-- Asking clarifying questions before answering
-- Acknowledging what they don't know
-- Speaking respectfully about past experiences
-- Explaining the "why" behind decisions
-
-${jobDescription ? `### JOB FIT ANALYSIS FROM INTERVIEW
-
-Compare interview content against the job description:
-- Which job requirements did they directly address?
-- Which requirements were NOT discussed?
-- Did they express genuine interest in THIS type of role?
-- Do their stated preferences align with job conditions?
-- Are their experience examples relevant to job duties?
-- Did they mention skills/tools listed in the job description?` : ''}
-
-## YOUR TASK
-
-Analyze all available data to assess this candidate. ${jobDescription ? "Evaluate them specifically against the provided job description." : "Provide a general assessment of their capabilities."}
-
-### SCORING RULES (CRITICAL)
-
-**Scores are based EXCLUSIVELY on what the candidate demonstrated in this interview.**
-
-You are scoring ONLY what you can verify from the transcript. Do not assume competence - require evidence.
-
----
-
-**\`technical_skills_score_0_100\`** - Can they actually do the work?
-
-Score based on these observable behaviors:
-- **Specificity**: Did they name actual tools, frameworks, methods, or just speak in generalities?
-- **Depth**: Could they explain WHY they chose an approach, not just WHAT they did?
-- **Problem-solving**: Did they describe their thought process, trade-offs considered, alternatives rejected?
-- **Accuracy**: Were their technical statements correct and precise?
-${jobDescription ? "- **Job relevance**: Do demonstrated skills align with THIS role's requirements?" : ""}
-
-| Score | Evidence Required |
-|-------|-------------------|
-| 85-100 | Explained complex concepts clearly; described specific architectures/implementations; demonstrated expertise through detailed problem-solving walkthroughs; showed depth AND breadth |
-| 70-84 | Gave specific technical examples with some depth; correctly used technical terminology; explained reasoning behind decisions; minor gaps in explanation |
-| 55-69 | Mentioned relevant technologies but lacked depth; some correct technical content mixed with vague statements; could describe WHAT but struggled with WHY |
-| 40-54 | Mostly surface-level responses; heavy reliance on buzzwords; couldn't elaborate when pressed; inconsistent technical accuracy |
-| 25-39 | Vague or generic answers; incorrect or confused technical statements; couldn't provide concrete examples |
-| 0-24 | No technical content; completely off-topic; refused or unable to engage with technical questions |
-
----
-
-**\`experience_score_0_100\`** - Have they done meaningful work?
-
-Score based on these observable behaviors:
-- **STAR completeness**: Did examples include Situation, Task, Action, AND Result?
-- **Ownership signals**: "I did" vs "we did" vs "the team did" - who actually did the work?
-- **Impact quantification**: Numbers, metrics, outcomes - or just activities?
-- **Consistency**: Do their stories hold together? Do details match across answers?
-- **Learning evidence**: Did they reflect on what worked/didn't? Show growth?
-${jobDescription ? "- **Relevance**: Is their experience applicable to THIS role's challenges?" : ""}
-
-| Score | Evidence Required |
-|-------|-------------------|
-| 85-100 | Multiple detailed examples with clear personal ownership; quantified impact (%, $, time saved); coherent career narrative; demonstrated learning from failures; examples directly relevant${jobDescription ? " to this role" : ""} |
-| 70-84 | Good examples with clear ownership; some quantified results; consistent story; shows progression; mostly relevant experience |
-| 55-69 | Examples provided but lacking detail or ownership clarity; results mentioned but not quantified; some relevant experience but gaps |
-| 40-54 | Vague examples; unclear personal contribution; no measurable outcomes; stories don't fully connect; questionable relevance |
-| 25-39 | Struggled to provide examples; contradictory statements; couldn't articulate impact; experience seems unrelated |
-| 0-24 | No examples given; refused to discuss experience; obvious fabrication or major inconsistencies |
-
----
-
-**\`cultural_fit_score_0_100\`** - How will they work with others?
-
-Score based on these observable behaviors:
-- **Communication quality**: Clear, structured responses? Rambling or evasive? Appropriate length?
-- **Self-awareness**: Acknowledged weaknesses authentically? Reflected on failures honestly?
-- **Collaboration signals**: How did they talk about teammates, managers, stakeholders?
-- **Professionalism**: Tone, language, respect for the interview process
-- **Adaptability indicators**: How do they handle unexpected questions? Ambiguity?
-${jobDescription ? "- **Values alignment**: Do expressed preferences match this role/team/company?" : ""}
-
-| Score | Evidence Required |
-|-------|-------------------|
-| 85-100 | Articulate and structured responses; genuine self-reflection; spoke positively about collaborators while owning mistakes; asked thoughtful questions; demonstrated emotional intelligence |
-| 70-84 | Clear communication; some self-awareness; balanced perspective on past teams; professional throughout; engaged appropriately |
-| 55-69 | Adequate communication with some clarity issues; limited self-reflection; neutral about past experiences; acceptable professionalism |
-| 40-54 | Disorganized responses; deflected blame; negative about past employers/colleagues; limited engagement; some concerning statements |
-| 25-39 | Poor communication; no self-awareness; blamed others consistently; unprofessional moments; red flags in attitude |
-| 0-24 | Couldn't communicate effectively; hostile or dismissive; major professionalism issues; clear culture concerns |
-
----
-
-**\`overall_weighted_score_0_100\`** = round(0.40 × technical + 0.40 × experience + 0.20 × cultural_fit)
-
-**IMPORTANT SCORING ADJUSTMENTS:**
-
-Apply these modifiers to your initial scores:
-- **Brevity penalty**: If interview was very short (< 5 substantive exchanges), cap all scores at 60 and note low confidence
-- **Consistency bonus/penalty**: Adjust ±5 points if examples across answers were notably consistent or contradictory
-- **Red flag override**: If you observed dishonesty, hostility, or major professionalism issues, cap overall at 40 regardless of other scores
-- **Default to middle**: When evidence is ambiguous or missing, score 50 (not higher) and flag as low confidence
-
-${jobDescription ? `
-### JOB-SPECIFIC EVALUATION
-
-Since a job description is provided, your ENTIRE assessment must be job-relevant:
-- Scores reflect fit for THIS specific role, not general ability
-- Highlights focus on job-relevant strengths
-- Gaps focus on what matters for THIS role
-- The job_match section MUST be populated
-` : `
-### GENERAL EVALUATION
-
-No job description provided. Assess general professional capabilities and suggest what roles might suit them.
-`}
-
-### SPECIAL CASE: NO REAL INTERVIEW
-
-If the transcript is empty, only contains greetings, or the candidate aborted (e.g., "end interview", "stop"):
-- Set ALL scores to 10 or below
-- Set overall_confidence to 5
-- Note in every section that no interview data exists
-- Add tags: "no_interview_data", "interview_not_completed"
-
-## DETAIL REQUIREMENTS (CRITICAL)
-
-Your analysis must be SPECIFIC and EVIDENCE-BASED. For every claim you make:
-- Include DIRECT QUOTES from the interview (use quotation marks)
-- Reference specific moments: "When asked about X, the candidate said..."
-- Provide concrete examples, not generalizations
-- Quantify when possible (years, percentages, team sizes, etc.)
-
-**BAD EXAMPLE:** "The candidate has strong technical skills."
-**GOOD EXAMPLE:** "The candidate demonstrated strong React expertise, stating: 'I built the entire dashboard from scratch using React hooks and TypeScript, reducing load time by 40%.' When probed about state management, they explained their Redux architecture in detail."
-
-## OUTPUT FORMAT
-
-Return ONLY valid JSON with this exact structure:
-
-{
-  "executive_summary": {
-    "one_liner": "string - 1 sentence capturing this candidate's essence with a specific detail",
-    "fit_score": "EXCELLENT|GOOD|FAIR|POOR|NOT_FIT",
-    "hiring_urgency": "EXPEDITE|STANDARD|LOW_PRIORITY|PASS",
-    "competitive_position": "string - how this candidate compares to market${jobDescription ? " for this role" : ""}"
-  },
-  "verdict": {
-    "decision": "INTERVIEW|CONSIDER|REVIEW|PASS",
-    "confidence": "HIGH|MEDIUM|LOW",
-    "risk_level": "LOW|MEDIUM|HIGH|CRITICAL",
-    "summary": "string - 2-3 sentence assessment summary with specific evidence",
-    "top_strength": "string - single most impressive quality with supporting quote/example",
-    "top_concern": "string - single biggest concern with evidence, or 'None significant'",
-    "dealbreakers": ["string array - any absolute disqualifiers with evidence, empty if none"]
-  },
-  "detailed_breakdown": {
-    "technical_skills": {
-      "score": "number 0-100",
-      "sub_scores": {
-        "depth": "number 0-100 - deep knowledge in core areas",
-        "breadth": "number 0-100 - range of technologies/domains",
-        "problem_solving": "number 0-100 - analytical thinking demonstrated",
-        "communication": "number 0-100 - ability to explain technical concepts",
-        "resume_alignment": "number 0-100 - match between resume claims and interview demonstration"
-      },
-      "confidence": "number 0-100",
-      "matched_skills": ["string array - skills verified in interview"],
-      "missing_skills": ["string array - expected skills not demonstrated${jobDescription ? " for this role" : ""}"],
-      "evidence": "string - key evidence supporting score"
-    },
-    "experience": {
-      "score": "number 0-100",
-      "sub_scores": {
-        "relevance": "number 0-100 - how relevant to ${jobDescription ? "this role" : "their target area"}",
-        "impact": "number 0-100 - quantifiable achievements",
-        "ownership": "number 0-100 - clear personal contribution",
-        "progression": "number 0-100 - career growth trajectory",
-        "verification": "number 0-100 - consistency between resume and interview"
-      },
-      "confidence": "number 0-100",
-      "matched_experience": ["string array - relevant experience confirmed"],
-      "gaps": ["string array - experience gaps identified"],
-      "evidence": "string - key evidence supporting score"
-    },
-    "cultural_fit": {
-      "score": "number 0-100",
-      "sub_scores": {
-        "communication_quality": "number 0-100 - clarity and structure",
-        "self_awareness": "number 0-100 - honest reflection on strengths/weaknesses",
-        "collaboration": "number 0-100 - teamwork indicators",
-        "adaptability": "number 0-100 - handling ambiguity and change"
-      },
-      "confidence": "number 0-100",
-      "evidence": "string - key evidence supporting score"
-    }
-  },
-  "cross_reference_analysis": {
-    "resume_interview_matches": ["string array - claims that align between resume and interview"],
-    "resume_interview_discrepancies": ["string array - inconsistencies found between resume and interview"],
-    "verified_claims": ["string array - claims confirmed by evidence"],
-    "unverified_claims": ["string array - claims that could not be verified"],
-    "red_flags_confirmed": ["string array - resume red flags confirmed in interview"],
-    "red_flags_addressed": ["string array - resume red flags adequately explained in interview"]
-  },
-  "red_flags": [
-    {
-      "issue": "string - the concern",
-      "severity": "HIGH|MEDIUM|LOW",
-      "evidence": "string - what triggered this flag"
-    }
-  ],
-  ${jobDescription ? `"competitive_intel": {
-    "market_position": "string - how candidate ranks in talent market",
-    "salary_expectation": "string - likely compensation expectations based on experience",
-    "growth_potential": "HIGH|MEDIUM|LOW",
-    "flight_risk": "LOW|MEDIUM|HIGH",
-    "urgency_to_hire": "HIGH|MEDIUM|LOW - how quickly should we move on this candidate"
-  },` : ""}
-  "meta_profile_overview": {
-    "headline": "string - role/seniority summary",
-    "one_line_summary": "string - recruiter-friendly summary${jobDescription ? " indicating fit for this role" : ""}",
-    "key_highlights": ["string array - 3-5 strengths${jobDescription ? " relevant to this job" : ""}"],
-    "key_watchouts": ["string array - 0-3 concerns${jobDescription ? " for this role" : ""}"]
-  },
-  "identity_and_background": {
-    "full_name": "string or null",
-    "city": "string or null",
-    "country": "string or null",
-    "primary_role": "string or null",
-    "seniority_level": "junior|mid|senior|manager or null",
-    "years_of_experience": "number or null",
-    "brief_background_summary": "string - 2-3 sentence professional background with specific details"
-  },
-  "career_story": {
-    "narrative": "string - 3-4 paragraphs with detailed career journey, including direct quotes from interview. Include specific companies, roles, timelines, and transitions. Explain WHY they made career moves based on what they said.",
-    "key_milestones": ["string array - notable achievements with specific metrics/outcomes mentioned"],
-    "representative_achievements": ["string array - specific accomplishments with direct quotes like 'As they stated: \"...\"'"],
-    "career_trajectory_analysis": "string - analysis of their career progression pattern, growth rate, and trajectory direction"
-  },
-  "interview_analysis": {
-    "transcript_summary": "string - 3-4 paragraph summary of the entire interview flow, what was discussed, and how the candidate performed overall",
-    "response_quality": {
-      "overall_depth_rating": "DEEP|ADEQUATE|SHALLOW",
-      "specificity_rating": "HIGHLY_SPECIFIC|MODERATELY_SPECIFIC|VAGUE",
-      "structure_rating": "WELL_STRUCTURED|ADEQUATE|DISORGANIZED",
-      "relevance_rating": "ON_POINT|MOSTLY_RELEVANT|OFF_TOPIC"
-    },
-    "communication_patterns": {
-      "confidence_level": "HIGH|MEDIUM|LOW",
-      "ownership_language": "string - analysis of how they claimed credit/responsibility with examples",
-      "technical_fluency": "string - how naturally they used technical terminology",
-      "self_awareness_level": "HIGH|MEDIUM|LOW",
-      "storytelling_ability": "ENGAGING|ADEQUATE|WEAK"
-    },
-    "strongest_moments": [
-      {
-        "moment": "string - description of the strong moment",
-        "quote": "string - direct quote from candidate",
-        "why_impressive": "string - why this stood out positively"
-      }
-    ],
-    "concerning_moments": [
-      {
-        "moment": "string - description of the concerning moment",
-        "quote": "string - direct quote if applicable",
-        "concern_level": "HIGH|MEDIUM|LOW",
-        "why_concerning": "string - why this raised a flag"
-      }
-    ],
-    "notable_quotes": ["string array - 5-7 most revealing direct quotes from the interview with context"],
-    "red_flags_detected": ["string array - specific warning signs observed with evidence"],
-    "green_flags_detected": ["string array - positive signals observed with evidence"],
-    "questions_they_asked": ["string array - questions the candidate asked, if any (indicates engagement/interest)"],
-    "topics_avoided_or_deflected": ["string array - topics they seemed uncomfortable discussing"],
-    "consistency_assessment": "string - were their answers consistent across different questions?",
-    "authenticity_assessment": "string - did responses feel genuine or rehearsed?"
-  },
-  "skills_and_capabilities": {
-    "core_hard_skills": ["string array - skills demonstrated with evidence from interview"],
-    "skill_depth_analysis": {
-      "expert_level": ["string array - skills they demonstrated deep expertise in with quotes"],
-      "proficient_level": ["string array - skills they can use effectively"],
-      "basic_level": ["string array - skills mentioned but not demonstrated deeply"]
-    },
-    "tools_and_technologies": ["string array - tools they mentioned with context of how they used them"],
-    "soft_skills_and_behaviors": ["string array - behaviors observed with specific examples from interview"],
-    "strengths_summary": "string - 2-3 sentences on what they do well with supporting evidence",
-    "notable_gaps_or_limits": ["string array - weaknesses with evidence${jobDescription ? " for this role" : ""}"]
-  },
-  "personality_and_values": {
-    "personality_summary": "string - detailed personality assessment based on interview demeanor, word choices, and response patterns",
-    "values_and_what_matters": ["string array - values with supporting quotes showing how they expressed them"],
-    "response_to_stress_and_feedback": "string - specific examples from interview of how they handled difficult questions",
-    "decision_making_style": "string - how they approach decisions with examples from their answers",
-    "emotional_intelligence_indicators": "string - observations about self-awareness, empathy, social skills"
-  },
-  "work_style_and_collaboration": {
-    "day_to_day_work_style": "string - detailed description with quotes about how they prefer to work",
-    "team_and_collaboration_style": "string - how they described working with others, with specific examples",
-    "communication_style": "string - assessment of clarity, conciseness, structure in their responses",
-    "leadership_indicators": "string - any signs of leadership ability or preference",
-    "examples_from_interview": ["string array - 3-5 specific examples they gave about teamwork/collaboration"]
-  },
-  "technical_and_domain_profile": {
-    "domain_focus": ["string array - their areas of expertise with depth indicators"],
-    "technical_depth_summary": "string - detailed depth vs breadth assessment with evidence",
-    "problem_solving_approach": "string - how they approach problems based on examples they shared",
-    "typical_problems_they_can_solve": ["string array - problem types with complexity level"],
-    "technical_communication_ability": "string - how well they explain technical concepts",
-    "areas_for_further_development": ["string array - growth areas with reasoning"]
-  },
-  "motivation_and_career_direction": {
-    "why_they_are_in_this_field": "string - their motivation with supporting quotes",
-    "what_excites_them": "string - what they expressed enthusiasm about during interview",
-    "reasons_for_looking_or_leaving": "string - with context and quotes if discussed",
-    "short_term_goals_1_2_years": "string - their stated goals with assessment of realism",
-    "long_term_direction_3_5_years": "string - their vision with assessment of clarity",
-    "career_ambition_level": "HIGH|MEDIUM|LOW - based on how they described their goals",
-    "clarity_and_realism_assessment": "string - detailed analysis of goal clarity and achievability"
-  },
-  "risk_and_stability": {
-    "integrated_risk_view": "string - overall risk assessment",
-    "job_hopping_risk_note": "string - tenure patterns if discussed",
-    "unemployment_gap_risk_note": "string - gaps if discussed",
-    "stability_overall_assessment": "string - stability outlook"
-  },
-  "environment_and_culture_fit": {
-    "environments_where_they_thrive": ["string array - good fit environments"],
-    "environments_where_they_struggle": ["string array - poor fit environments"],
-    "non_negotiables_summary": "string - their must-haves",
-    "culture_fit_notes": "string - culture fit observations${jobDescription ? " for this role" : ""}"
-  },
-  "recommended_roles_and_pathways": {
-    "recommended_role_types": ["string array - suitable roles"],
-    "suitable_team_or_org_contexts": ["string array - good team/org fits"],
-    "leadership_vs_ic_potential": "string - IC vs leadership trajectory",
-    "development_recommendations": ["string array - growth suggestions"]
-  },
-  "scores": {
-    "technical_skills_score_0_100": "number 0-100",
-    "experience_score_0_100": "number 0-100",
-    "cultural_fit_score_0_100": "number 0-100",
-    "overall_weighted_score_0_100": "number - calculated as 0.4×tech + 0.4×exp + 0.2×culture"
-  },
-  "job_match": ${jobDescription ? `{
-    "job_title_evaluated_for": "string - role title from JD",
-    "requirements_met": [
-      {
-        "requirement": "string - the job requirement",
-        "evidence_from_interview": "string - specific quote or example from interview proving they meet this"
-      }
-    ],
-    "requirements_partially_met": [
-      {
-        "requirement": "string - the job requirement",
-        "what_they_demonstrated": "string - what they showed in interview",
-        "gap": "string - what's missing"
-      }
-    ],
-    "requirements_not_met": [
-      {
-        "requirement": "string - the job requirement",
-        "evidence_of_gap": "string - why interview showed they don't meet this"
-      }
-    ],
-    "skills_mentioned_in_interview_matching_jd": ["string array - skills from JD that candidate mentioned/demonstrated"],
-    "skills_in_jd_not_discussed": ["string array - skills from JD that were never mentioned"],
-    "strongest_alignment_areas": ["string array - best fit areas with evidence"],
-    "biggest_gaps_for_role": ["string array - biggest concerns with evidence"],
-    "interest_level_in_role": "HIGH|MEDIUM|LOW|UNCLEAR - based on how they spoke about the opportunity",
-    "culture_alignment_with_role": "string - how their expressed preferences align with the role",
-    "overall_job_fit_assessment": "string - 3-4 sentence detailed fit summary with specific evidence",
-    "hire_recommendation": "strong_match|good_match|potential_match|weak_match|not_recommended",
-    "recommendation_reasoning": "string - detailed explanation of recommendation with key evidence"
-  }` : "null"},
-  "derived_tags": ["string array - lowercase tags like 'senior_engineer', 'strong_communicator'"],
-  "data_quality_and_limits": {
-    "overall_confidence_0_100": "number - your confidence in this assessment",
-    "major_gaps_in_information": ["string array - what's missing"],
-    "inconsistencies": ["string array - any contradictions noted"],
-    "notes": "string - any caveats"
-  }
-}
-
-Return ONLY the JSON. No markdown, no explanation, no text outside the JSON.`;
+    // Generate the V4 prompt
+    const prompt = INTERVIEW_PROFILE_GENERATOR_V4(
+      userData,
+      interviewResponses,
+      resumeAnalysisForPrompt,
+      resumeContent,
+      jobDescription || null
+    );
 
     try {
       const response = await wrapOpenAIRequest(
@@ -1526,7 +1085,7 @@ Return ONLY the JSON. No markdown, no explanation, no text outside the JSON.`;
           messages: [
             {
               role: "system",
-              content: "You are a rigorous interview assessor. Score ONLY what candidates demonstrably proved in the transcript - never assume competence without evidence. Default to lower scores when evidence is weak or missing. Be skeptical of vague claims; reward specific, verifiable examples with clear ownership and measurable outcomes."
+              content: "You are an expert behavioral psychologist and talent assessment specialist. Your task is to analyze interview transcripts with rigor and precision. Score ONLY what candidates demonstrably proved - never assume competence without evidence. Use direct quotes to support every major claim. Default to lower scores when evidence is weak or missing. Be skeptical of vague claims; reward specific, verifiable examples with clear ownership and measurable outcomes."
             },
             {
               role: "user",
@@ -1546,68 +1105,96 @@ Return ONLY the JSON. No markdown, no explanation, no text outside the JSON.`;
       const profile = JSON.parse(response.choices[0].message.content || '{}');
 
       console.log({
-        profile
+        profile,
+        version: 'V4'
       });
-      
+
       // Store the comprehensive profile for employers
       const comprehensiveProfile = profile;
 
-      // Extract basic info for backward compatibility using new structure
-      const legacySkills = comprehensiveProfile.skills_and_capabilities?.core_hard_skills ||
-                          comprehensiveProfile.skills_and_capabilities?.tools_and_technologies ||
-                          comprehensiveProfile.detailed_breakdown?.technical_skills?.matched_skills || [];
+      // Extract basic info for backward compatibility using V4 structure
+      const legacySkills = comprehensiveProfile.detailed_profile?.skills_demonstrated?.technical_skills?.map((s: any) => s.skill) ||
+                          comprehensiveProfile.skills_and_capabilities?.core_hard_skills ||
+                          comprehensiveProfile.skills_and_capabilities?.tools_and_technologies || [];
 
-      // Extract scores from new detailed_breakdown structure (v3) or fall back to old scores structure (v2)
-      const detailedBreakdown = comprehensiveProfile.detailed_breakdown || {};
-      const oldScores = comprehensiveProfile.scores || {};
+      // Extract scores from V4 structure
+      const v4Scores = comprehensiveProfile.scores || {};
 
       const technicalScore = Math.round(
-        detailedBreakdown.technical_skills?.score ||
-        oldScores.technical_skills_score_0_100 || 70
+        v4Scores.technical_competence?.score ||
+        v4Scores.technical_skills_score_0_100 || 50
       );
       const experienceScore = Math.round(
-        detailedBreakdown.experience?.score ||
-        oldScores.experience_score_0_100 || 70
+        v4Scores.experience_quality?.score ||
+        v4Scores.experience_score_0_100 || 50
       );
       const culturalFitScore = Math.round(
-        detailedBreakdown.cultural_fit?.score ||
-        oldScores.cultural_fit_score_0_100 || 70
-      );
-      // Calculate overall score: 40% tech + 40% experience + 20% cultural fit
-      const overallScore = Math.round(
-        oldScores.overall_weighted_score_0_100 ||
-        (0.4 * technicalScore + 0.4 * experienceScore + 0.2 * culturalFitScore)
+        v4Scores.cultural_collaboration_fit?.score ||
+        v4Scores.cultural_fit_score_0_100 || 50
       );
 
-      // Extract job match data if available
-      const jobMatch = comprehensiveProfile.job_match || null;
+      // Calculate overall score using V4 weighting: 25% tech + 25% experience + 15% communication + 15% self-awareness + 20% job fit
+      // Fall back to legacy weighting if V4 scores not available
+      const communicationScore = Math.round(v4Scores.communication_presence?.score || 50);
+      const selfAwarenessScore = Math.round(v4Scores.self_awareness_growth?.score || 50);
+      const jobFitScore = Math.round(v4Scores.job_specific_fit?.score || v4Scores.general_employability?.score || 50);
+
+      const overallScore = Math.round(
+        v4Scores.overall_score?.value ||
+        (0.25 * technicalScore + 0.25 * experienceScore + 0.15 * communicationScore + 0.15 * selfAwarenessScore + 0.20 * jobFitScore)
+      );
+
+      // Extract job match data if available (map from V4 structure)
+      const v4JobMatch = comprehensiveProfile.job_match_analysis;
+      const jobMatch = v4JobMatch ? {
+        job_title_evaluated_for: v4JobMatch.job_title || '',
+        requirements_met: v4JobMatch.requirements_assessment?.filter((r: any) => r.met_status === 'CLEARLY_MET').map((r: any) => r.requirement) || [],
+        requirements_partially_met: v4JobMatch.requirements_assessment?.filter((r: any) => r.met_status === 'PARTIALLY_MET').map((r: any) => r.requirement) || [],
+        requirements_not_met: v4JobMatch.requirements_assessment?.filter((r: any) => r.met_status === 'NOT_MET' || r.met_status === 'NOT_DEMONSTRATED').map((r: any) => r.requirement) || [],
+        strongest_alignment_areas: v4JobMatch.strongest_alignments || [],
+        biggest_gaps_for_role: v4JobMatch.critical_gaps || [],
+        overall_job_fit_assessment: v4JobMatch.recommendation_reasoning || '',
+        hire_recommendation: v4JobMatch.recommendation?.toLowerCase().replace(/_/g, '_') || null
+      } : null;
 
       // Extract verdict for hire recommendation
-      const verdict = comprehensiveProfile.verdict || null;
+      const verdict = comprehensiveProfile.executive_summary || null;
+      const hiringGuidance = comprehensiveProfile.hiring_guidance || null;
 
-      // Return legacy format for backward compatibility with new comprehensive data
+      // Return legacy format for backward compatibility with V4 comprehensive data
       return {
-        summary: comprehensiveProfile.executive_summary?.one_liner ||
-                comprehensiveProfile.meta_profile_overview?.one_line_summary ||
-                comprehensiveProfile.identity_and_background?.brief_background_summary ||
+        summary: comprehensiveProfile.executive_summary?.one_sentence ||
+                comprehensiveProfile.executive_summary?.key_impression ||
+                comprehensiveProfile.detailed_profile?.professional_identity?.identity_summary ||
                 "Candidate assessment completed.",
         skills: legacySkills,
-        personality: comprehensiveProfile.personality_and_values?.personality_summary || "Not assessed",
+        personality: comprehensiveProfile.detailed_profile?.personality_indicators?.communication_style ||
+                    comprehensiveProfile.personality_and_values?.personality_summary ||
+                    "Not assessed",
         experience: [], // Will be populated from existing profile data
-        strengths: comprehensiveProfile.meta_profile_overview?.key_highlights || [],
-        careerGoals: comprehensiveProfile.motivation_and_career_direction?.short_term_goals_1_2_years ||
+        strengths: [
+          comprehensiveProfile.executive_summary?.standout_positive,
+          ...(comprehensiveProfile.transcript_analysis?.green_flags_detected?.map((f: any) => f.description) || [])
+        ].filter(Boolean).slice(0, 5),
+        careerGoals: comprehensiveProfile.detailed_profile?.career_trajectory?.stated_goals ||
+                    comprehensiveProfile.motivation_and_career_direction?.short_term_goals_1_2_years ||
                     "Career goals extracted from interview responses.",
-        workStyle: comprehensiveProfile.work_style_and_collaboration?.day_to_day_work_style || "Not assessed",
+        workStyle: comprehensiveProfile.detailed_profile?.work_preferences?.stated_preferences?.join('; ') ||
+                  comprehensiveProfile.work_style_and_collaboration?.day_to_day_work_style ||
+                  "Not assessed",
         matchScorePercentage: overallScore,
         experiencePercentage: experienceScore,
         techSkillsPercentage: technicalScore,
         culturalFitPercentage: culturalFitScore,
         // Job-specific match data (only populated if job description was provided)
         jobMatch,
-        hireRecommendation: verdict?.decision || jobMatch?.hire_recommendation || null,
-        // Store the full comprehensive profile for employer access
+        hireRecommendation: hiringGuidance?.proceed_to_next_round ||
+                          v4JobMatch?.recommendation ||
+                          verdict?.fit_verdict ||
+                          null,
+        // Store the full V4 comprehensive profile for employer access
         brutallyHonestProfile: {
-          version: 3,
+          version: 4,
           ...comprehensiveProfile
         }
       };
