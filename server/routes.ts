@@ -4394,6 +4394,228 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
+  // Career Insights Upload URL - get signed URL for document upload
+  app.post('/api/career-insights/upload-url', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'User authentication required' });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const { uploadURL, filePath } = await objectStorageService.getCareerInsightsUploadURL(userId);
+
+      res.json({
+        success: true,
+        uploadURL,
+        filePath
+      });
+    } catch (error) {
+      console.error('Error getting career insights upload URL:', error);
+      res.status(500).json({
+        error: 'Failed to get upload URL',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Career Insights Analyze Document - process uploaded document and generate insights
+  app.post('/api/career-insights/analyze-document', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'User authentication required' });
+      }
+
+      const { filePath, fileName, fileSize, mimeType, language = 'english', saveToHistory = true } = req.body;
+
+      if (!filePath || !fileName || !mimeType) {
+        return res.status(400).json({ error: 'Missing required fields: filePath, fileName, mimeType' });
+      }
+
+      // Validate mime type
+      const allowedMimeTypes = [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/msword',
+        'text/plain'
+      ];
+
+      if (!allowedMimeTypes.includes(mimeType)) {
+        return res.status(400).json({
+          error: 'Invalid file type',
+          message: 'Supported file types: PDF, DOCX, DOC, TXT'
+        });
+      }
+
+      console.log(`📄 Processing career insights document for user ${userId}: ${fileName}`);
+
+      // Extract text from document
+      const extractedText = await resumeService.extractTextFromDocument(filePath, mimeType);
+
+      if (!extractedText || extractedText.trim().length < 50) {
+        return res.status(400).json({
+          error: 'Insufficient document content',
+          message: 'The document appears to be empty or contains very little text. Please upload a document with more content.'
+        });
+      }
+
+      console.log(`📝 Extracted ${extractedText.length} characters from document`);
+
+      // Generate career suggestions from the document
+      const careerSuggestions = await aiCareerSuggestionAgent.generateCareerSuggestionsFromDocument(extractedText, language);
+
+      // Save to history if requested
+      let analysisId: number | null = null;
+      if (saveToHistory) {
+        const analysis = await storage.createCareerInsightsAnalysis({
+          userId,
+          sourceType: 'uploaded_document',
+          documentFileName: fileName,
+          documentFilePath: filePath,
+          documentFileSize: fileSize || 0,
+          documentMimeType: mimeType,
+          extractedText: extractedText.substring(0, 50000), // Limit stored text
+          suggestions: careerSuggestions,
+          language
+        });
+        analysisId = analysis.id;
+      }
+
+      console.log(`✅ Career insights generated for user ${userId} from document`);
+
+      res.json({
+        success: true,
+        suggestions: careerSuggestions,
+        analysisId,
+        generatedAt: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('Error analyzing document for career insights:', error);
+      res.status(500).json({
+        error: 'Failed to analyze document',
+        message: error instanceof Error ? error.message : 'An error occurred while analyzing your document.'
+      });
+    }
+  });
+
+  // Career Insights History - get user's analysis history
+  app.get('/api/career-insights/history', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'User authentication required' });
+      }
+
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      const [history, totalCount] = await Promise.all([
+        storage.getCareerInsightsHistory(userId, limit, offset),
+        storage.getCareerInsightsHistoryCount(userId)
+      ]);
+
+      res.json({
+        success: true,
+        history: history.map(analysis => ({
+          id: analysis.id,
+          sourceType: analysis.sourceType,
+          documentFileName: analysis.documentFileName,
+          language: analysis.language,
+          createdAt: analysis.createdAt,
+          // Include a preview of the first suggestion
+          preview: (analysis.suggestions as any)?.paragraphs?.[0]?.substring(0, 150) + '...'
+        })),
+        totalCount,
+        limit,
+        offset
+      });
+
+    } catch (error) {
+      console.error('Error getting career insights history:', error);
+      res.status(500).json({
+        error: 'Failed to get history',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Career Insights - get specific analysis by ID
+  app.get('/api/career-insights/history/:id', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'User authentication required' });
+      }
+
+      const analysisId = parseInt(req.params.id);
+      if (isNaN(analysisId)) {
+        return res.status(400).json({ error: 'Invalid analysis ID' });
+      }
+
+      const analysis = await storage.getCareerInsightsAnalysis(analysisId, userId);
+
+      if (!analysis) {
+        return res.status(404).json({ error: 'Analysis not found' });
+      }
+
+      res.json({
+        success: true,
+        analysis: {
+          id: analysis.id,
+          sourceType: analysis.sourceType,
+          documentFileName: analysis.documentFileName,
+          suggestions: analysis.suggestions,
+          language: analysis.language,
+          createdAt: analysis.createdAt
+        }
+      });
+
+    } catch (error) {
+      console.error('Error getting career insights analysis:', error);
+      res.status(500).json({
+        error: 'Failed to get analysis',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Career Insights - archive/delete analysis
+  app.delete('/api/career-insights/history/:id', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'User authentication required' });
+      }
+
+      const analysisId = parseInt(req.params.id);
+      if (isNaN(analysisId)) {
+        return res.status(400).json({ error: 'Invalid analysis ID' });
+      }
+
+      // Verify the analysis exists and belongs to the user
+      const analysis = await storage.getCareerInsightsAnalysis(analysisId, userId);
+      if (!analysis) {
+        return res.status(404).json({ error: 'Analysis not found' });
+      }
+
+      await storage.archiveCareerInsightsAnalysis(analysisId, userId);
+
+      res.json({
+        success: true,
+        message: 'Analysis archived successfully'
+      });
+
+    } catch (error) {
+      console.error('Error archiving career insights analysis:', error);
+      res.status(500).json({
+        error: 'Failed to archive analysis',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Debug endpoint to check Airtable connection
   app.get('/api/debug-airtable', async (req, res) => {
     try {

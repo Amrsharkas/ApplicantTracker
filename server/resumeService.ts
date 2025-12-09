@@ -56,16 +56,65 @@ export class ResumeService {
   async extractTextFromPDF(filePath: string): Promise<string> {
     try {
       const fileContent = await this.objectStorageService.getFileContent(filePath);
-      
+
       // Dynamic import to avoid module loading issues
       const pdfParse = await import('pdf-parse');
       const pdf = pdfParse.default;
-      
+
       const data = await pdf(fileContent);
       return data.text;
     } catch (error) {
       console.error("Error extracting text from PDF:", error);
       throw new Error("Failed to extract text from PDF");
+    }
+  }
+
+  // Extract text from various document types (PDF, DOCX, DOC, TXT)
+  async extractTextFromDocument(filePath: string, mimeType: string): Promise<string> {
+    try {
+      const fileContent = await this.objectStorageService.getFileContent(filePath);
+
+      // Handle different file types based on MIME type
+      if (mimeType === 'application/pdf') {
+        const pdfParse = await import('pdf-parse');
+        const pdf = pdfParse.default;
+        const data = await pdf(fileContent);
+        return data.text;
+      }
+
+      if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        // DOCX files
+        const mammoth = await import('mammoth');
+        const result = await mammoth.extractRawText({ buffer: fileContent });
+        return result.value;
+      }
+
+      if (mimeType === 'application/msword') {
+        // Legacy DOC files - use mammoth which can handle some DOC files
+        // For better support, we fall back to converting via text extraction
+        try {
+          const mammoth = await import('mammoth');
+          const result = await mammoth.extractRawText({ buffer: fileContent });
+          return result.value;
+        } catch (docError) {
+          console.error("Error parsing DOC file with mammoth:", docError);
+          // Try to extract as raw text as a fallback
+          return fileContent.toString('utf-8').replace(/[\x00-\x1F\x7F-\x9F]/g, ' ');
+        }
+      }
+
+      if (mimeType === 'text/plain') {
+        // Plain text files
+        return fileContent.toString('utf-8');
+      }
+
+      // Default: try to read as text
+      console.warn(`Unknown MIME type ${mimeType}, attempting text extraction`);
+      return fileContent.toString('utf-8');
+
+    } catch (error) {
+      console.error(`Error extracting text from document (${mimeType}):`, error);
+      throw new Error(`Failed to extract text from document: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

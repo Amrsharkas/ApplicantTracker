@@ -1532,104 +1532,261 @@ export class AICareerSuggestionAgent {
   async generateCareerSuggestions(profileData: any, language: string = 'english'): Promise<{
     paragraphs: string[];
   }> {
-    const prompt = `You are an expert career strategist and AI-powered career advisor providing direct, actionable advice to help the user advance their career. Write as if you're speaking directly to them.
+    // Helper to calculate career trajectory and gaps
+    const analyzeCareerTrajectory = () => {
+      const experiences = profileData?.workExperiences || [];
+      if (!experiences.length) return { trajectory: 'unknown', progressionRate: 'unknown', avgTenure: 'unknown' };
 
-${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Provide ALL responses in Egyptian Arabic dialect (اللهجة المصرية العامية). Use casual Egyptian slang like "إزيك", "عامل إيه", "يلا", "معلش", "ماشي", "كدا", "دي". Use informal pronouns like "انت" not "أنت". Talk directly to them as if you\'re their personal career coach having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى).' : 'LANGUAGE INSTRUCTION: Write directly to the user in a professional but personal tone. Use "you" and address them directly as their personal career advisor.'}
+      const titles = experiences.map((e: any) => e.position?.toLowerCase() || '');
+      const seniorityKeywords = ['intern', 'junior', 'associate', 'mid', 'senior', 'lead', 'principal', 'staff', 'manager', 'director', 'vp', 'chief', 'head'];
+      const seniorityScores = titles.map((t: string) => {
+        const idx = seniorityKeywords.findIndex(k => t.includes(k));
+        return idx >= 0 ? idx : 3; // default to mid-level
+      });
 
-COMPREHENSIVE USER PROFILE DATA:
-=== PERSONAL INFORMATION ===
-Name: ${profileData?.name || 'Not specified'}
-Total Years of Experience: ${profileData?.totalYearsOfExperience || 'Not specified'}
-Summary: ${profileData?.summary || 'Not specified'}
+      const isAscending = seniorityScores.every((score: number, i: number) => i === 0 || score >= seniorityScores[i - 1]);
+      const isFlat = seniorityScores.every((score: number) => Math.abs(score - seniorityScores[0]) <= 1);
 
-=== WORK EXPERIENCE ===
+      return {
+        trajectory: isAscending ? 'upward' : isFlat ? 'lateral' : 'mixed',
+        progressionRate: experiences.length > 1 ? (isAscending ? 'good' : 'needs_attention') : 'early_career',
+        avgTenure: experiences.length > 0 ?
+          (experiences.reduce((sum: number, e: any) => sum + (parseFloat(e.yearsAtPosition) || 1), 0) / experiences.length).toFixed(1) + ' years'
+          : 'unknown'
+      };
+    };
+
+    // Helper to identify skill gaps based on target roles
+    const identifySkillGaps = () => {
+      const targetTitles = profileData?.jobTitles || [];
+      const currentSkills = [
+        ...(profileData?.skillsData?.technicalSkills?.map((s: any) => s.skill?.toLowerCase()) || []),
+        ...(profileData?.skillsData?.softSkills?.map((s: any) => s.skill?.toLowerCase()) || [])
+      ];
+
+      // Common requirements by role type
+      const roleRequirements: Record<string, string[]> = {
+        'engineer': ['system design', 'algorithms', 'cloud', 'ci/cd', 'testing'],
+        'developer': ['git', 'agile', 'api design', 'debugging', 'code review'],
+        'manager': ['leadership', 'stakeholder management', 'budgeting', 'hiring', 'performance reviews'],
+        'designer': ['figma', 'user research', 'prototyping', 'design systems', 'accessibility'],
+        'analyst': ['sql', 'data visualization', 'statistical analysis', 'reporting', 'excel'],
+        'scientist': ['machine learning', 'python', 'statistics', 'research', 'experimentation']
+      };
+
+      const relevantRequirements = new Set<string>();
+      targetTitles.forEach((title: string) => {
+        const lowerTitle = title.toLowerCase();
+        Object.entries(roleRequirements).forEach(([role, reqs]) => {
+          if (lowerTitle.includes(role)) {
+            reqs.forEach(r => relevantRequirements.add(r));
+          }
+        });
+      });
+
+      const gaps = Array.from(relevantRequirements).filter(req =>
+        !currentSkills.some(skill => skill?.includes(req) || req.includes(skill || ''))
+      );
+
+      return gaps.slice(0, 5);
+    };
+
+    // Calculate experience metrics
+    const careerAnalysis = analyzeCareerTrajectory();
+    const skillGaps = identifySkillGaps();
+
+    // Determine career stage for tailored advice
+    const yearsExp = parseFloat(profileData?.totalYearsOfExperience) || 0;
+    const careerStage = yearsExp < 2 ? 'early_career' : yearsExp < 5 ? 'developing' : yearsExp < 10 ? 'established' : 'senior';
+
+    // Analyze education-experience alignment
+    const hasRelevantDegree = profileData?.degrees?.some((d: any) => {
+      const field = d.field?.toLowerCase() || '';
+      const targets = profileData?.jobCategories?.map((c: string) => c.toLowerCase()) || [];
+      return targets.some((t: string) => field.includes(t) || t.includes(field));
+    });
+
+    const prompt = `You are an elite career strategist with 20+ years of experience in executive coaching, talent acquisition, and career development. You have deep expertise in labor market dynamics, salary negotiations, and career transitions across multiple industries.
+
+${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Provide ALL responses in Egyptian Arabic dialect (اللهجة المصرية العامية). Use casual Egyptian slang like "إزيك", "عامل إيه", "يلا", "معلش", "ماشي", "كدا", "دي", "خلي بالك", "براحتك", "بص", "يعني". Use informal pronouns like "انت" not "أنت". Talk directly to them as if you\'re their personal career coach having a strategic but friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى).' : 'LANGUAGE INSTRUCTION: Write directly to the user in a professional but personal tone. Use "you" and address them directly as their personal career advisor. Be specific and avoid generic advice.'}
+
+══════════════════════════════════════════════════════════════════
+                    COMPREHENSIVE CANDIDATE DOSSIER
+══════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────┐
+│ PERSONAL PROFILE                                                │
+├─────────────────────────────────────────────────────────────────┤
+│ Name: ${profileData?.name || 'Not specified'}
+│ Total Experience: ${profileData?.totalYearsOfExperience || 'Not specified'} years
+│ Career Stage: ${careerStage.replace('_', ' ').toUpperCase()}
+│ Professional Summary: ${profileData?.summary || 'Not specified'}
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ CAREER TRAJECTORY ANALYSIS                                      │
+├─────────────────────────────────────────────────────────────────┤
+│ Progression Pattern: ${careerAnalysis.trajectory.toUpperCase()}
+│ Career Momentum: ${careerAnalysis.progressionRate.replace('_', ' ')}
+│ Average Tenure: ${careerAnalysis.avgTenure}
+│ Education Alignment: ${hasRelevantDegree ? 'ALIGNED with target roles' : 'POTENTIAL PIVOT - may need bridging'}
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ DETAILED WORK HISTORY                                           │
+├─────────────────────────────────────────────────────────────────┤
 ${profileData?.workExperiences?.length ?
   profileData.workExperiences.map((exp: any, index: number) =>
-    `Position ${index + 1}: ${exp.position || 'N/A'} at ${exp.company || 'N/A'} (${exp.startDate || 'N/A'} - ${exp.endDate || 'Present'})\n  Responsibilities: ${exp.responsibilities || 'N/A'}\n  Duration: ${exp.yearsAtPosition || 'N/A'}`
-  ).join('\n\n')
-  : 'No work experience specified'
+    `│ [${index + 1}] ${exp.position || 'N/A'} @ ${exp.company || 'N/A'}
+│     Period: ${exp.startDate || 'N/A'} → ${exp.endDate || 'Present'} (${exp.yearsAtPosition || 'N/A'})
+│     Key Responsibilities: ${exp.responsibilities?.substring(0, 200) || 'N/A'}${exp.responsibilities?.length > 200 ? '...' : ''}`
+  ).join('\n│\n')
+  : '│ No work experience on record'
 }
+└─────────────────────────────────────────────────────────────────┘
 
-=== EDUCATION ===
-Current Education Level: ${profileData?.currentEducationLevel || 'Not specified'}
+┌─────────────────────────────────────────────────────────────────┐
+│ EDUCATIONAL BACKGROUND                                          │
+├─────────────────────────────────────────────────────────────────┤
+│ Highest Level: ${profileData?.currentEducationLevel || 'Not specified'}
 ${profileData?.degrees?.length ?
   profileData.degrees.map((deg: any) =>
-    `• ${deg.degree || 'N/A'} in ${deg.field || 'N/A'} from ${deg.institution || 'N/A'} (${deg.startDate || 'N/A'} - ${deg.endDate || 'Present'})${deg.gpa ? ` - GPA: ${deg.gpa}` : ''}`
+    `│ • ${deg.degree || 'N/A'} in ${deg.field || 'N/A'}
+│   Institution: ${deg.institution || 'N/A'} (${deg.startDate || 'N/A'} - ${deg.endDate || 'N/A'})${deg.gpa ? `\n│   GPA: ${deg.gpa}` : ''}`
   ).join('\n')
-  : 'No degrees specified'
+  : '│ No formal degrees listed'
 }
+└─────────────────────────────────────────────────────────────────┘
 
-=== SKILLS ===
-${profileData?.skillsData ?
-  `Technical Skills: ${profileData.skillsData.technicalSkills?.map((skill: any) => `${skill.skill} (${skill.level})`).join(', ') || 'None specified'}
-Soft Skills: ${profileData.skillsData.softSkills?.map((skill: any) => `${skill.skill} (${skill.level})`).join(', ') || 'None specified'}`
-  : 'No skills data specified'
-}
+┌─────────────────────────────────────────────────────────────────┐
+│ SKILLS INVENTORY                                                │
+├─────────────────────────────────────────────────────────────────┤
+│ TECHNICAL SKILLS:
+│ ${profileData?.skillsData?.technicalSkills?.map((skill: any) => `${skill.skill} [${skill.level}]`).join(', ') || 'None specified'}
+│
+│ SOFT SKILLS:
+│ ${profileData?.skillsData?.softSkills?.map((skill: any) => `${skill.skill} [${skill.level}]`).join(', ') || 'None specified'}
+│
+│ IDENTIFIED SKILL GAPS FOR TARGET ROLES:
+│ ${skillGaps.length > 0 ? skillGaps.map(g => `⚠️ ${g}`).join(', ') : '✓ No major gaps detected'}
+└─────────────────────────────────────────────────────────────────┘
 
-=== LANGUAGES ===
-${profileData?.languages?.length ?
-  profileData.languages.map((lang: any) => `${lang.language}: ${lang.proficiency}${lang.certification ? ` (${lang.certification})` : ''}`).join(', ')
-  : 'No languages specified'
-}
+┌─────────────────────────────────────────────────────────────────┐
+│ LANGUAGES & CERTIFICATIONS                                      │
+├─────────────────────────────────────────────────────────────────┤
+│ Languages: ${profileData?.languages?.length ?
+  profileData.languages.map((lang: any) => `${lang.language} (${lang.proficiency})${lang.certification ? ` [${lang.certification}]` : ''}`).join(', ')
+  : 'Not specified'}
+│
+│ Certifications: ${profileData?.certifications?.length ?
+  profileData.certifications.map((cert: any) => `${cert.name} - ${cert.issuer || 'N/A'} (${cert.issueDate || 'N/A'})`).join('; ')
+  : 'None listed'}
+└─────────────────────────────────────────────────────────────────┘
 
-=== CERTIFICATIONS ===
-${profileData?.certifications?.length ?
-  profileData.certifications.map((cert: any) => `${cert.name} by ${cert.issuer || 'N/A'} (${cert.issueDate || 'N/A'})`).join(', ')
-  : 'No certifications specified'
-}
+┌─────────────────────────────────────────────────────────────────┐
+│ CAREER ASPIRATIONS & PREFERENCES                                │
+├─────────────────────────────────────────────────────────────────┤
+│ Target Positions: ${profileData?.jobTitles?.join(', ') || 'Not specified'}
+│ Target Industries: ${profileData?.jobCategories?.join(', ') || 'Not specified'}
+│ Desired Career Level: ${profileData?.careerLevel || 'Not specified'}
+│ Preferred Job Types: ${profileData?.jobTypes?.join(', ') || 'Not specified'}
+│ Work Environment: ${profileData?.workplaceSettings || 'Not specified'}
+│ Salary Expectations: ${profileData?.minimumSalary || 'Not specified'}
+│ Location Preferences: ${profileData?.preferredWorkCountries?.join(', ') || 'Not specified'}
+└─────────────────────────────────────────────────────────────────┘
 
-=== CAREER PREFERENCES ===
-Target Job Titles: ${profileData?.jobTitles?.join(', ') || 'Not specified'}
-Target Industries/Categories: ${profileData?.jobCategories?.join(', ') || 'Not specified'}
-Career Level: ${profileData?.careerLevel || 'Not specified'}
-Job Types: ${profileData?.jobTypes?.join(', ') || 'Not specified'}
-Workplace Settings: ${profileData?.workplaceSettings || 'Not specified'}
-Minimum Salary Expectation: ${profileData?.minimumSalary || 'Not specified'}
-Preferred Work Countries: ${profileData?.preferredWorkCountries?.join(', ') || 'Not specified'}
+┌─────────────────────────────────────────────────────────────────┐
+│ ACHIEVEMENTS & ONLINE PRESENCE                                  │
+├─────────────────────────────────────────────────────────────────┤
+│ Key Achievements: ${profileData?.achievements || 'None specified'}
+│
+│ Digital Footprint:
+│ • LinkedIn: ${profileData?.linkedinUrl ? '✓ Present' : '✗ Missing (CRITICAL for job search)'}
+│ • GitHub: ${profileData?.githubUrl ? '✓ Present' : profileData?.jobCategories?.some((c: string) => c.toLowerCase().includes('tech') || c.toLowerCase().includes('software')) ? '⚠️ Missing (recommended for tech roles)' : '○ N/A'}
+│ • Portfolio: ${profileData?.websiteUrl ? '✓ Present' : '○ Not provided'}
+└─────────────────────────────────────────────────────────────────┘
 
-=== ACHIEVEMENTS ===
-${profileData?.achievements || 'No achievements specified'}
+══════════════════════════════════════════════════════════════════
+                    STRATEGIC ANALYSIS FRAMEWORK
+══════════════════════════════════════════════════════════════════
 
-=== ONLINE PRESENCE ===
-LinkedIn: ${profileData?.linkedinUrl || 'Not specified'}
-GitHub: ${profileData?.githubUrl || 'Not specified'}
-Portfolio/Website: ${profileData?.websiteUrl || 'Not specified'}
+You must analyze this candidate through these expert lenses:
 
-ANALYSIS REQUIREMENTS:
-1. Be direct and personal - speak TO the user, not ABOUT them
-2. Provide brutally honest but encouraging advice
-3. Give specific, actionable steps they can take immediately
-4. Focus on what they should do, not just what they should know
-5. Consider their actual background, skills, and career goals
+1. CAREER POSITIONING ANALYSIS
+   - Where do they stand in their industry's hierarchy?
+   - What's their unique value proposition vs. competitors?
+   - Are they progressing at the expected rate for their field?
+   - What market forces (AI, automation, industry shifts) affect their trajectory?
 
-Write exactly 5 paragraphs that give DIRECT ADVICE to the user:
-1. Your current career situation and what it means for you
-2. Your key strengths to leverage and skills you need to improve
-3. Specific career opportunities you should pursue right now
-4. Realistic salary expectations and negotiation strategies for your level
-5. Immediate next steps you should take this week and this month
+2. COMPETENCY GAP ASSESSMENT
+   - Technical skills: What's industry-standard vs. what they have?
+   - Soft skills: Leadership readiness, communication, strategic thinking
+   - Certifications: What credentials would accelerate their career?
+   - Experience gaps: What types of projects/exposure are they missing?
 
-Write DIRECTLY TO THE USER using "you" and giving them clear instructions. For example: "You should focus on...", "Your next step is...", "I recommend you..."
+3. MARKET OPPORTUNITY MAPPING
+   - Which specific companies/roles match their profile?
+   - What emerging opportunities align with their trajectory?
+   - Hidden job markets they might not be aware of
+   - Geographic arbitrage opportunities (remote, relocation)
 
-Return ONLY JSON in this exact format:
+4. COMPENSATION INTELLIGENCE
+   - Realistic salary ranges based on their EXACT profile
+   - Factors that increase/decrease their market value
+   - Negotiation leverage points specific to their situation
+   - Total compensation considerations (equity, benefits, growth)
+
+5. TACTICAL ACTION PLANNING
+   - Immediate actions (this week) with expected outcomes
+   - Short-term milestones (30-60-90 days)
+   - Skill development priorities with specific resources
+   - Networking strategy tailored to their industry
+
+══════════════════════════════════════════════════════════════════
+
+CRITICAL INSTRUCTIONS:
+• Be BRUTALLY HONEST - sugar-coating helps no one
+• Be HYPER-SPECIFIC - mention exact companies, tools, certifications by name
+• Be ACTIONABLE - every sentence should lead to a concrete action
+• Be PERSONALIZED - this advice should only apply to THIS person
+• Consider 2024-2025 market realities (AI impact, economic conditions, remote work trends)
+• Reference their ACTUAL data - don't give generic advice that could apply to anyone
+
+Write exactly 5 substantive paragraphs (each 150-250 words) that provide DIRECT, PERSONALIZED ADVICE:
+
+PARAGRAPH 1 - CAREER REALITY CHECK:
+Assess their current market position honestly. Where do they rank among peers? What's working? What's holding them back? How does their trajectory compare to successful professionals in their target field? Be specific about their competitive advantages and disadvantages.
+
+PARAGRAPH 2 - STRATEGIC SKILL DEVELOPMENT:
+Beyond listing skills to learn, explain WHY each skill matters for THEIR specific goals. Name exact courses, certifications, or experiences. Prioritize ruthlessly - what gives the highest ROI for their situation? Address the identified skill gaps directly.
+
+PARAGRAPH 3 - TARGETED OPPORTUNITY STRATEGY:
+Name specific types of companies, roles, and industries they should target. Explain non-obvious opportunities they might be missing. Consider their experience level, location preferences, and career goals. Suggest specific search strategies and channels.
+
+PARAGRAPH 4 - COMPENSATION & NEGOTIATION REALITY:
+Give realistic salary ranges for their profile (be specific with numbers if possible). Explain what factors increase or decrease their value. Provide concrete negotiation tactics relevant to their situation and career level.
+
+PARAGRAPH 5 - 90-DAY EXECUTION PLAN:
+Break down specific weekly actions. Week 1-2: [specific tasks]. Week 3-4: [specific tasks]. Month 2: [milestones]. Month 3: [goals]. Include accountability metrics and expected outcomes.
+
+Return ONLY valid JSON in this exact format:
 {
   "paragraphs": [
-    "Direct advice about your current career situation...",
-    "Direct advice about your strengths and skills to develop...",
-    "Direct advice about specific opportunities you should pursue...",
-    "Direct advice about realistic salary and negotiation...",
-    "Direct advice about immediate next steps to take..."
+    "Detailed career reality check paragraph...",
+    "Strategic skill development paragraph...",
+    "Targeted opportunity strategy paragraph...",
+    "Compensation and negotiation paragraph...",
+    "90-day execution plan paragraph..."
   ]
 }`;
 
     try {
-      const messages = language === 'arabic' ? [
-        {
-          role: "system" as const,
-          content: "انت خبير استشارات مهنية محترف وبتتكلم عامية مصرية بس. استخدم كلمات زي 'إزيك' و 'عامل إيه' و 'يلا' و 'معلش' و 'ماشي' و 'كدا' و 'دي'. ممنوع تستخدم فصحى خالص. اتكلم كإنك خبير بتقدم نصايح مهنية عملية في قهوة في وسط البلد."
-        },
-        { role: "user" as const, content: prompt }
-      ] : [
+      const systemMessage = language === 'arabic'
+        ? "انت خبير استشارات مهنية محترف ومتخصص في سوق العمل المصري والعربي. بتتكلم عامية مصرية بس - استخدم كلمات زي 'إزيك' و 'عامل إيه' و 'يلا' و 'معلش' و 'ماشي' و 'كدا' و 'دي' و 'خلي بالك' و 'بص'. ممنوع تستخدم فصحى خالص. اتكلم كإنك خبير بتقدم نصايح مهنية استراتيجية لصاحبك في قهوة. لازم تكون صريح وعملي ومحدد - قول أسماء شركات وكورسات ومبالغ فعلية."
+        : "You are an elite career strategist combining deep market intelligence with actionable coaching. You've helped hundreds of professionals navigate career transitions successfully. Your advice is known for being brutally honest yet constructive, hyper-specific rather than generic, and always grounded in current market realities. You cite specific companies, salary figures, tools, and certifications rather than speaking in generalities. Your recommendations are immediately actionable with clear success metrics.";
+
+      const messages = [
+        { role: "system" as const, content: systemMessage },
         { role: "user" as const, content: prompt }
       ];
 
@@ -1638,7 +1795,8 @@ Return ONLY JSON in this exact format:
           model: process.env.OPENAI_MODEL_CAREER_SUGGESTIONS || "gpt-4o",
           messages,
           response_format: { type: "json_object" },
-          temperature: 0.7
+          temperature: 0.75,
+          max_tokens: 4000
         }),
         {
           requestType: "generateCareerSuggestions",
@@ -1667,6 +1825,84 @@ Return ONLY JSON in this exact format:
         "You should take immediate action by networking within your industry, updating your resume to highlight your key achievements, and identifying specific skills to develop over the next few months. Set clear, measurable goals and track your progress."
       ]
     };
+  }
+
+  // Generate career suggestions from an uploaded document (resume, cover letter, career doc)
+  async generateCareerSuggestionsFromDocument(documentText: string, language: string = 'english'): Promise<{
+    paragraphs: string[];
+  }> {
+    try {
+      const prompt = `You are an elite career strategist with 20+ years of experience in executive coaching, talent acquisition, and career development. You have deep expertise in labor market dynamics, salary negotiations, and career transitions across multiple industries.
+
+${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Provide ALL responses in Egyptian Arabic dialect (اللهجة المصرية العامية). Use casual Egyptian slang like "إزيك", "عامل إيه", "يلا", "معلش", "ماشي", "كدا", "دي", "خلي بالك", "براحتك", "بص", "يعني". Use informal pronouns like "انت" not "أنت". Talk directly to them as if you\'re their personal career coach having a strategic but friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى).' : 'LANGUAGE INSTRUCTION: Write directly to the user in a professional but personal tone. Use "you" and address them directly as their personal career advisor. Be specific and avoid generic advice.'}
+
+══════════════════════════════════════════════════════════════════
+                    DOCUMENT ANALYSIS
+══════════════════════════════════════════════════════════════════
+
+The following document was uploaded for career analysis. It may be a resume, CV, cover letter, career goals document, or any professional document. Analyze it comprehensively to provide career insights.
+
+DOCUMENT CONTENT:
+${documentText.substring(0, 12000)}
+
+══════════════════════════════════════════════════════════════════
+
+Based on this document, provide exactly 5 detailed paragraphs of career insights:
+
+1. **CAREER REALITY CHECK** (500+ words): Analyze the person's current market position based on the document. What are their competitive advantages and disadvantages? How do they compare to others in similar roles?
+
+2. **SKILL DEVELOPMENT ROADMAP** (500+ words): Based on what's in the document, what skills should they develop? What certifications or courses would add the most value to their profile?
+
+3. **OPPORTUNITY STRATEGY** (500+ words): What types of companies, roles, or industries should they target based on their document? What career moves would be strategic for them?
+
+4. **COMPENSATION INTELLIGENCE** (500+ words): Based on their experience level and skills shown in the document, what salary ranges should they expect? How can they maximize their earning potential?
+
+5. **90-DAY ACTION PLAN** (500+ words): Provide specific, actionable recommendations they can implement in the next 90 days based on what their document reveals about their career.
+
+CRITICAL: Be specific to THIS document. Reference specific skills, experiences, or goals mentioned. Don't give generic advice.
+
+Respond in this JSON format:
+{
+  "paragraphs": [
+    "Detailed career reality check paragraph...",
+    "Detailed skill development paragraph...",
+    "Detailed opportunity strategy paragraph...",
+    "Detailed compensation intelligence paragraph...",
+    "Detailed 90-day action plan paragraph..."
+  ]
+}`;
+
+      const response = await wrapOpenAIRequest(
+        () => this.openai.chat.completions.create({
+          model: process.env.OPENAI_MODEL_CAREER_SUGGESTIONS || "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: "You are an expert career strategist providing personalized, actionable career advice based on uploaded documents."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.7,
+          max_tokens: 8000,
+        }),
+        {
+          requestType: "generateCareerSuggestionsFromDocument",
+          model: process.env.OPENAI_MODEL_CAREER_SUGGESTIONS || "gpt-4o",
+        }
+      );
+
+      const suggestions = JSON.parse(response.choices[0].message.content || '{}');
+      return {
+        paragraphs: suggestions.paragraphs || []
+      };
+    } catch (error) {
+      console.error("Error generating career suggestions from document:", error);
+      return this.getFallbackCareerSuggestions();
+    }
   }
 }
 

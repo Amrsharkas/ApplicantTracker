@@ -1461,6 +1461,7 @@ const translations = {
       generatedAt: "Generated",
       profileCompleteness: "Profile Completeness",
       insight: "Career Insight",
+      clickToView: "Click to view details",
       paragraphTitles: {
         overview: "Your Career Position",
         skills: "Your Skills & Development",
@@ -1468,6 +1469,65 @@ const translations = {
         market: "Your Value & Salary",
         recommendations: "Your Next Steps"
       }
+    },
+
+    careerInsights: {
+      // Data Source Selection
+      selectDataSource: "Choose Your Data Source",
+      selectDataSourceDescription: "Select how you'd like to generate your career insights",
+      useCurrentProfile: "Use Current Profile",
+      useCurrentProfileDescription: "Analyze your existing profile data including work experience, skills, and education",
+      uploadNewDocument: "Upload New Document",
+      uploadNewDocumentDescription: "Upload a resume, CV, cover letter, or any career-related document for analysis",
+      ready: "Ready",
+      profileCompleteness: "Profile Completeness",
+      analyzeProfile: "Analyze My Profile",
+      completeProfileFirst: "Complete Profile First",
+      uploadDocument: "Upload Document",
+      viewPreviousAnalyses: "View Previous Analyses",
+
+      // Upload
+      uploadYourDocument: "Upload Your Document",
+      uploadDescription: "Upload a resume, CV, cover letter, or any career-related document",
+      backToSelection: "Back to Selection",
+      invalidFileType: "Invalid file type. Please upload PDF, DOCX, DOC, or TXT files.",
+      fileTooLarge: "File too large. Maximum size is 10MB.",
+      dragAndDrop: "Drag and drop your file here",
+      orBrowse: "or click to browse",
+      selectFile: "Select File",
+      supportedFormats: "Supported: PDF, DOCX, DOC, TXT (max 10MB)",
+      changeFile: "Change File",
+      uploadAndAnalyze: "Upload & Analyze",
+      uploading: "Uploading...",
+      uploadSuccess: "File uploaded successfully",
+      uploadFailed: "Failed to upload file. Please try again.",
+
+      // Analysis
+      analyzingDocument: "Analyzing your document...",
+      analyzingDescription: "This may take a moment. We're extracting insights from your document.",
+      analysisFailed: "Analysis failed",
+      loadFailed: "Failed to load analysis",
+
+      // History
+      analysisHistory: "Analysis History",
+      analyses: "analyses",
+      noHistory: "No previous analyses",
+      noHistoryDescription: "Your career insight analyses will appear here",
+      fromProfile: "From Profile",
+      uploadedDocument: "Uploaded Document",
+      profile: "Profile",
+      document: "Document",
+      loadingHistory: "Loading history...",
+      historyError: "Failed to load history",
+      goBack: "Go Back",
+      analysisDeleted: "Analysis deleted",
+      analysisDeletedDescription: "The analysis has been removed from your history",
+      deleteFailed: "Delete failed",
+      deleteFailedDescription: "Could not delete the analysis. Please try again.",
+
+      // Results
+      newAnalysis: "New Analysis",
+      tryAgain: "Try Again"
     },
   },
   ar: {
@@ -2901,6 +2961,7 @@ const translations = {
       generatedAt: "تم الإنشاء",
       profileCompleteness: "اكتمال الملف الشخصي",
       insight: "رؤية مهنية",
+      clickToView: "انقر لعرض التفاصيل",
       paragraphTitles: {
         overview: "مكانتك المهنية الحالية",
         skills: "مهاراتك وتطويرك",
@@ -2908,6 +2969,65 @@ const translations = {
         market: "قيمتك وراتبك",
         recommendations: "خطواتك التالية"
       }
+    },
+
+    careerInsights: {
+      // Data Source Selection
+      selectDataSource: "اختر مصدر البيانات",
+      selectDataSourceDescription: "اختر كيف تريد إنشاء رؤى مهنية",
+      useCurrentProfile: "استخدم الملف الشخصي الحالي",
+      useCurrentProfileDescription: "تحليل بيانات ملفك الشخصي الحالي بما في ذلك الخبرة العملية والمهارات والتعليم",
+      uploadNewDocument: "رفع مستند جديد",
+      uploadNewDocumentDescription: "ارفع سيرة ذاتية أو خطاب تعريفي أو أي مستند متعلق بالمهنة للتحليل",
+      ready: "جاهز",
+      profileCompleteness: "اكتمال الملف الشخصي",
+      analyzeProfile: "حلل ملفي الشخصي",
+      completeProfileFirst: "أكمل الملف الشخصي أولاً",
+      uploadDocument: "رفع مستند",
+      viewPreviousAnalyses: "عرض التحليلات السابقة",
+
+      // Upload
+      uploadYourDocument: "ارفع المستند الخاص بك",
+      uploadDescription: "ارفع سيرة ذاتية أو خطاب تعريفي أو أي مستند متعلق بالمهنة",
+      backToSelection: "العودة للاختيار",
+      invalidFileType: "نوع ملف غير صالح. يرجى رفع ملفات PDF أو DOCX أو DOC أو TXT.",
+      fileTooLarge: "الملف كبير جداً. الحد الأقصى هو 10 ميجابايت.",
+      dragAndDrop: "اسحب وأفلت الملف هنا",
+      orBrowse: "أو انقر للتصفح",
+      selectFile: "اختر ملف",
+      supportedFormats: "المدعومة: PDF, DOCX, DOC, TXT (الحد الأقصى 10 ميجابايت)",
+      changeFile: "تغيير الملف",
+      uploadAndAnalyze: "رفع وتحليل",
+      uploading: "جاري الرفع...",
+      uploadSuccess: "تم رفع الملف بنجاح",
+      uploadFailed: "فشل في رفع الملف. يرجى المحاولة مرة أخرى.",
+
+      // Analysis
+      analyzingDocument: "جاري تحليل المستند...",
+      analyzingDescription: "قد يستغرق هذا لحظة. نحن نستخرج رؤى من المستند الخاص بك.",
+      analysisFailed: "فشل التحليل",
+      loadFailed: "فشل في تحميل التحليل",
+
+      // History
+      analysisHistory: "سجل التحليلات",
+      analyses: "تحليلات",
+      noHistory: "لا توجد تحليلات سابقة",
+      noHistoryDescription: "ستظهر تحليلات رؤى المهنية الخاصة بك هنا",
+      fromProfile: "من الملف الشخصي",
+      uploadedDocument: "مستند مرفوع",
+      profile: "الملف الشخصي",
+      document: "مستند",
+      loadingHistory: "جاري تحميل السجل...",
+      historyError: "فشل في تحميل السجل",
+      goBack: "رجوع",
+      analysisDeleted: "تم حذف التحليل",
+      analysisDeletedDescription: "تم إزالة التحليل من سجلك",
+      deleteFailed: "فشل الحذف",
+      deleteFailedDescription: "لم نتمكن من حذف التحليل. يرجى المحاولة مرة أخرى.",
+
+      // Results
+      newAnalysis: "تحليل جديد",
+      tryAgain: "حاول مرة أخرى"
     },
   },
 
@@ -4352,6 +4472,7 @@ const translations = {
       generatedAt: "Généré",
       profileCompleteness: "Complétude du profil",
       insight: "Conseil de carrière",
+      clickToView: "Cliquez pour voir les détails",
       paragraphTitles: {
         overview: "Votre position professionnelle",
         skills: "Vos compétences et développement",
@@ -4359,6 +4480,65 @@ const translations = {
         market: "Votre valeur et salaire",
         recommendations: "Vos prochaines étapes"
       }
+    },
+
+    careerInsights: {
+      // Data Source Selection
+      selectDataSource: "Choisissez votre source de données",
+      selectDataSourceDescription: "Sélectionnez comment vous souhaitez générer vos conseils de carrière",
+      useCurrentProfile: "Utiliser le profil actuel",
+      useCurrentProfileDescription: "Analyser les données de votre profil existant, y compris l'expérience professionnelle, les compétences et l'éducation",
+      uploadNewDocument: "Télécharger un nouveau document",
+      uploadNewDocumentDescription: "Téléchargez un CV, une lettre de motivation ou tout document lié à la carrière pour analyse",
+      ready: "Prêt",
+      profileCompleteness: "Complétude du profil",
+      analyzeProfile: "Analyser mon profil",
+      completeProfileFirst: "Complétez d'abord le profil",
+      uploadDocument: "Télécharger le document",
+      viewPreviousAnalyses: "Voir les analyses précédentes",
+
+      // Upload
+      uploadYourDocument: "Téléchargez votre document",
+      uploadDescription: "Téléchargez un CV, une lettre de motivation ou tout document lié à la carrière",
+      backToSelection: "Retour à la sélection",
+      invalidFileType: "Type de fichier invalide. Veuillez télécharger des fichiers PDF, DOCX, DOC ou TXT.",
+      fileTooLarge: "Fichier trop volumineux. La taille maximale est de 10 Mo.",
+      dragAndDrop: "Glissez et déposez votre fichier ici",
+      orBrowse: "ou cliquez pour parcourir",
+      selectFile: "Sélectionner un fichier",
+      supportedFormats: "Pris en charge : PDF, DOCX, DOC, TXT (max 10 Mo)",
+      changeFile: "Changer de fichier",
+      uploadAndAnalyze: "Télécharger et analyser",
+      uploading: "Téléchargement...",
+      uploadSuccess: "Fichier téléchargé avec succès",
+      uploadFailed: "Échec du téléchargement. Veuillez réessayer.",
+
+      // Analysis
+      analyzingDocument: "Analyse de votre document...",
+      analyzingDescription: "Cela peut prendre un moment. Nous extrayons des informations de votre document.",
+      analysisFailed: "Échec de l'analyse",
+      loadFailed: "Échec du chargement de l'analyse",
+
+      // History
+      analysisHistory: "Historique des analyses",
+      analyses: "analyses",
+      noHistory: "Aucune analyse précédente",
+      noHistoryDescription: "Vos analyses de conseils de carrière apparaîtront ici",
+      fromProfile: "Depuis le profil",
+      uploadedDocument: "Document téléchargé",
+      profile: "Profil",
+      document: "Document",
+      loadingHistory: "Chargement de l'historique...",
+      historyError: "Échec du chargement de l'historique",
+      goBack: "Retour",
+      analysisDeleted: "Analyse supprimée",
+      analysisDeletedDescription: "L'analyse a été supprimée de votre historique",
+      deleteFailed: "Échec de la suppression",
+      deleteFailedDescription: "Impossible de supprimer l'analyse. Veuillez réessayer.",
+
+      // Results
+      newAnalysis: "Nouvelle analyse",
+      tryAgain: "Réessayer"
     }
   }
 };

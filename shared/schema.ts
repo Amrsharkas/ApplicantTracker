@@ -541,6 +541,31 @@ export const resumeUploads = pgTable("resume_uploads", {
   uploadedAt: timestamp("uploaded_at").defaultNow(),
 });
 
+// Career insights analyses table - stores history of all career analyses
+export const careerInsightsAnalyses = pgTable("career_insights_analyses", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  sourceType: varchar("source_type").notNull(), // 'profile' | 'uploaded_document'
+
+  // For uploaded documents
+  documentFileName: varchar("document_file_name"),
+  documentFilePath: varchar("document_file_path"),
+  documentFileSize: integer("document_file_size"),
+  documentMimeType: varchar("document_mime_type"),
+  extractedText: text("extracted_text"),
+
+  // Analysis results
+  suggestions: jsonb("suggestions").notNull(), // { paragraphs: string[] }
+
+  // Metadata
+  language: varchar("language").default("english"),
+  createdAt: timestamp("created_at").defaultNow(),
+  isArchived: boolean("is_archived").default(false),
+}, (table) => [
+  index("idx_career_insights_user_id").on(table.userId),
+  index("idx_career_insights_created_at").on(table.createdAt),
+]);
+
 // Interview sessions table (from ApplicantTracker)
 export const interviewSessions = pgTable("interview_sessions", {
   id: serial("id").primaryKey(),
@@ -763,6 +788,8 @@ export type Application = typeof applications.$inferSelect;
 export type InsertApplication = z.infer<typeof insertApplicationSchema>;
 export type ResumeUpload = typeof resumeUploads.$inferSelect;
 export type InsertResumeUpload = z.infer<typeof insertResumeUploadSchema>;
+export type CareerInsightsAnalysis = typeof careerInsightsAnalyses.$inferSelect;
+export type InsertCareerInsightsAnalysis = typeof careerInsightsAnalyses.$inferInsert;
 export type InterviewSession = typeof interviewSessions.$inferSelect;
 export type InsertInterviewSession = z.infer<typeof insertInterviewSessionSchema>;
 export type InterviewRecording = typeof interviewRecordings.$inferSelect;
@@ -894,6 +921,11 @@ export const insertInterviewSessionSchema = createInsertSchema(interviewSessions
 export const insertResumeUploadSchema = createInsertSchema(resumeUploads).omit({
   id: true,
   uploadedAt: true,
+});
+
+export const insertCareerInsightsAnalysisSchema = createInsertSchema(careerInsightsAnalyses).omit({
+  id: true,
+  createdAt: true,
 });
 
 // Airtable replacement tables

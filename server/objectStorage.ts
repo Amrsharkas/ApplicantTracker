@@ -104,6 +104,31 @@ export class ObjectStorageService {
     return { uploadURL, filePath: fullPath };
   }
 
+  // Gets the upload URL for a career insights document.
+  async getCareerInsightsUploadURL(userId: string): Promise<{ uploadURL: string; filePath: string }> {
+    const privateObjectDir = this.getPrivateObjectDir();
+    if (!privateObjectDir) {
+      throw new Error(
+        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
+          "tool and set PRIVATE_OBJECT_DIR env var."
+      );
+    }
+
+    const fileId = randomUUID();
+    const fullPath = `${privateObjectDir}/career-insights/${userId}/${fileId}`;
+
+    const { bucketName, objectName } = parseObjectPath(fullPath);
+
+    const uploadURL = await signObjectURL({
+      bucketName,
+      objectName,
+      method: "PUT",
+      ttlSec: 900, // 15 minutes
+    });
+
+    return { uploadURL, filePath: fullPath };
+  }
+
   // Gets the resume file from the object path.
   async getResumeFile(filePath: string): Promise<File> {
     const { bucketName, objectName } = parseObjectPath(filePath);

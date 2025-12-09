@@ -7,6 +7,7 @@ import {
   interviewSessions,
   resumeUploads,
   interviewRecordings,
+  careerInsightsAnalyses,
   type User,
   type UpsertUser,
   type InsertApplicantProfile,
@@ -23,6 +24,8 @@ import {
   type ResumeUpload,
   type InsertInterviewRecording,
   type InterviewRecording,
+  type CareerInsightsAnalysis,
+  type InsertCareerInsightsAnalysis,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -81,6 +84,13 @@ export interface IStorage {
   getResumeUpload(userId: string): Promise<ResumeUpload | undefined>;
   updateResumeAnalysis(id: number, analysis: any): Promise<void>;
   setActiveResume(userId: string, resumeId: number): Promise<void>;
+
+  // Career insights operations
+  createCareerInsightsAnalysis(data: InsertCareerInsightsAnalysis): Promise<CareerInsightsAnalysis>;
+  getCareerInsightsHistory(userId: string, limit?: number, offset?: number): Promise<CareerInsightsAnalysis[]>;
+  getCareerInsightsAnalysis(id: number, userId: string): Promise<CareerInsightsAnalysis | undefined>;
+  archiveCareerInsightsAnalysis(id: number, userId: string): Promise<void>;
+  getCareerInsightsHistoryCount(userId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -725,6 +735,60 @@ export class DatabaseStorage implements IStorage {
       .from(jobs)
       .where(sql`${jobs.id} IN (${sql.join(jobIds, sql`,`)})`);
     return jobsList;
+  }
+
+  // Career insights operations
+  async createCareerInsightsAnalysis(data: InsertCareerInsightsAnalysis): Promise<CareerInsightsAnalysis> {
+    const [analysis] = await db
+      .insert(careerInsightsAnalyses)
+      .values(data)
+      .returning();
+    return analysis;
+  }
+
+  async getCareerInsightsHistory(userId: string, limit: number = 20, offset: number = 0): Promise<CareerInsightsAnalysis[]> {
+    return await db
+      .select()
+      .from(careerInsightsAnalyses)
+      .where(and(
+        eq(careerInsightsAnalyses.userId, userId),
+        eq(careerInsightsAnalyses.isArchived, false)
+      ))
+      .orderBy(desc(careerInsightsAnalyses.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async getCareerInsightsAnalysis(id: number, userId: string): Promise<CareerInsightsAnalysis | undefined> {
+    const [analysis] = await db
+      .select()
+      .from(careerInsightsAnalyses)
+      .where(and(
+        eq(careerInsightsAnalyses.id, id),
+        eq(careerInsightsAnalyses.userId, userId)
+      ));
+    return analysis;
+  }
+
+  async archiveCareerInsightsAnalysis(id: number, userId: string): Promise<void> {
+    await db
+      .update(careerInsightsAnalyses)
+      .set({ isArchived: true })
+      .where(and(
+        eq(careerInsightsAnalyses.id, id),
+        eq(careerInsightsAnalyses.userId, userId)
+      ));
+  }
+
+  async getCareerInsightsHistoryCount(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(careerInsightsAnalyses)
+      .where(and(
+        eq(careerInsightsAnalyses.userId, userId),
+        eq(careerInsightsAnalyses.isArchived, false)
+      ));
+    return Number(result[0]?.count || 0);
   }
 }
 
