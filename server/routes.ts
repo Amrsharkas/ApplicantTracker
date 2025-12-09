@@ -2016,6 +2016,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Build interview context with job data and AI profile for realtime interview
+      let interviewContext: any = null;
+      try {
+        // Get full job data if we have a jobId
+        let fullJobData = job;
+        if (job.jobId) {
+          const fullJobRecord = await db
+            .select()
+            .from(jobs)
+            .where(eq(jobs.id, job.jobId))
+            .limit(1);
+
+          if (fullJobRecord[0]) {
+            fullJobData = {
+              ...job,
+              title: fullJobRecord[0].title || job.jobTitle,
+              description: fullJobRecord[0].description,
+              requirements: fullJobRecord[0].requirements,
+              technicalSkills: fullJobRecord[0].technicalSkills,
+              softSkills: fullJobRecord[0].softSkills,
+              seniorityLevel: fullJobRecord[0].seniorityLevel,
+              industry: fullJobRecord[0].industry,
+              employerQuestions: fullJobRecord[0].employerQuestions
+            };
+          }
+        }
+
+        // Extract AI profile data (prefer newAiProfile, fallback to aiProfile)
+        const aiProfile = (profile as any)?.newAiProfile || (profile as any)?.aiProfile;
+
+        // Build condensed interview context
+        interviewContext = {
+          jobContext: {
+            title: fullJobData.title || fullJobData.jobTitle || '',
+            description: fullJobData.description?.substring(0, 2000) || fullJobData.jobDescription?.substring(0, 2000) || '',
+            requirements: fullJobData.requirements?.substring(0, 1000) || '',
+            technicalSkills: Array.isArray(fullJobData.technicalSkills) ? fullJobData.technicalSkills.slice(0, 10) : [],
+            softSkills: Array.isArray(fullJobData.softSkills) ? fullJobData.softSkills.slice(0, 8) : [],
+            seniorityLevel: fullJobData.seniorityLevel || '',
+            industry: fullJobData.industry || '',
+            employerQuestions: Array.isArray(fullJobData.employerQuestions) ? fullJobData.employerQuestions.slice(0, 5) : []
+          },
+          candidateProfile: aiProfile ? {
+            verdict: aiProfile.verdict || null,
+            executiveSummary: aiProfile.executive_summary || null,
+            technicalScore: aiProfile.detailed_breakdown?.technical_skills?.score || null,
+            matchedSkills: aiProfile.detailed_breakdown?.technical_skills?.matched_skills?.slice(0, 10) || [],
+            missingSkills: aiProfile.detailed_breakdown?.technical_skills?.missing_skills?.slice(0, 10) || [],
+            experienceScore: aiProfile.detailed_breakdown?.experience?.score || null,
+            verifiedClaims: aiProfile.cross_reference_analysis?.verified_claims?.slice(0, 5) || [],
+            unverifiedClaims: aiProfile.cross_reference_analysis?.unverified_claims?.slice(0, 5) || [],
+            discrepancies: aiProfile.cross_reference_analysis?.resume_interview_discrepancies?.slice(0, 3) || [],
+            redFlags: aiProfile.red_flags?.slice(0, 3) || [],
+            keyHighlights: aiProfile.meta_profile_overview?.key_highlights?.slice(0, 5) || [],
+            keyWatchouts: aiProfile.meta_profile_overview?.key_watchouts?.slice(0, 3) || []
+          } : null
+        };
+
+        console.log('📋 Built interview context for job-specific interview:', {
+          hasJobContext: !!interviewContext.jobContext.title,
+          hasCandidateProfile: !!interviewContext.candidateProfile
+        });
+      } catch (contextError) {
+        console.error('⚠️ Failed to build interview context:', contextError);
+        // Continue without context - interview can still proceed
+      }
+
       // Generate job-specific practice set
       const practiceSet = await aiInterviewService.generateJobPracticeInterview({
         ...user,
@@ -2031,7 +2098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           responses: [],
           currentQuestionIndex: 0,
           interviewSet: practiceSet,
-          context: { job },
+          context: { job, interviewContext },
           mode: 'voice'
         },
         isCompleted: false
@@ -2054,7 +2121,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         questions: practiceSet.questions,
         firstQuestion,
         welcomeMessage,
-        userProfile: { ...user, ...profile }
+        userProfile: { ...user, ...profile },
+        interviewContext
       });
     } catch (error) {
       console.error('Error starting job practice voice interview:', error);

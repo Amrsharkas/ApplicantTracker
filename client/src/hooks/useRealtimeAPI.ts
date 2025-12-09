@@ -34,7 +34,39 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
   
   const { toast } = useToast();
 
-  const connect = useCallback(async (interviewParams?: { interviewType?: string; questions?: any[]; interviewSet?: any; language?: string; aiPrompt?: string }) => {
+  const connect = useCallback(async (interviewParams?: {
+    interviewType?: string;
+    questions?: any[];
+    interviewSet?: any;
+    language?: string;
+    aiPrompt?: string;
+    interviewContext?: {
+      jobContext?: {
+        title?: string;
+        description?: string;
+        requirements?: string;
+        technicalSkills?: string[];
+        softSkills?: string[];
+        seniorityLevel?: string;
+        industry?: string;
+        employerQuestions?: string[];
+      };
+      candidateProfile?: {
+        verdict?: any;
+        executiveSummary?: any;
+        technicalScore?: number | null;
+        matchedSkills?: string[];
+        missingSkills?: string[];
+        experienceScore?: number | null;
+        verifiedClaims?: string[];
+        unverifiedClaims?: string[];
+        discrepancies?: string[];
+        redFlags?: any[];
+        keyHighlights?: string[];
+        keyWatchouts?: string[];
+      };
+    } | null;
+  }) => {
     if (isConnecting || isConnected) return;
     
     setIsConnecting(true);
@@ -258,7 +290,39 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
         setIsConnecting(false);
         
         // Generate dynamic instructions based on interview parameters
-        const buildInstructions = (interviewParams?: { interviewType?: string; questions?: any[]; interviewSet?: any; language?: string; aiPrompt?: string }) => {
+        const buildInstructions = (interviewParams?: {
+          interviewType?: string;
+          questions?: any[];
+          interviewSet?: any;
+          language?: string;
+          aiPrompt?: string;
+          interviewContext?: {
+            jobContext?: {
+              title?: string;
+              description?: string;
+              requirements?: string;
+              technicalSkills?: string[];
+              softSkills?: string[];
+              seniorityLevel?: string;
+              industry?: string;
+              employerQuestions?: string[];
+            };
+            candidateProfile?: {
+              verdict?: any;
+              executiveSummary?: any;
+              technicalScore?: number | null;
+              matchedSkills?: string[];
+              missingSkills?: string[];
+              experienceScore?: number | null;
+              verifiedClaims?: string[];
+              unverifiedClaims?: string[];
+              discrepancies?: string[];
+              redFlags?: any[];
+              keyHighlights?: string[];
+              keyWatchouts?: string[];
+            };
+          } | null;
+        }) => {
           const language = interviewParams?.language || 'english';
 
           // Get custom AI prompt if available
@@ -638,6 +702,121 @@ IMPORTANT: The interview language is determined by the 'language' parameter: "${
 - If language is "arabic", conduct the interview in Standard Modern Arabic (العربية الفصحى)
 - If language is "egyptian_arabic" or "egyptian-arabic", conduct the interview in Egyptian Arabic (العامية المصرية)
 - Use the appropriate language from your very first greeting onwards`;
+
+          // Add job-specific context for job-practice interviews
+          if (interviewParams?.interviewType === 'job-practice' && interviewParams?.interviewContext) {
+            const { jobContext, candidateProfile } = interviewParams.interviewContext;
+
+            if (jobContext || candidateProfile) {
+              instructions += `
+
+--------------------
+JOB-SPECIFIC INTERVIEW CONTEXT (CRITICAL)
+--------------------
+
+This is a JOB-SPECIFIC interview for a particular role. You MUST use the following context to guide your questions and validate the candidate's claims.
+
+## TARGET POSITION
+${jobContext?.title ? `- **Job Title:** ${jobContext.title}` : ''}
+${jobContext?.seniorityLevel ? `- **Seniority Level:** ${jobContext.seniorityLevel}` : ''}
+${jobContext?.industry ? `- **Industry:** ${jobContext.industry}` : ''}
+
+## JOB DESCRIPTION
+${jobContext?.description || 'No description available'}
+
+${jobContext?.requirements ? `### Additional Requirements:
+${jobContext.requirements}` : ''}
+
+${jobContext?.technicalSkills && jobContext.technicalSkills.length > 0 ? `### Required Technical Skills:
+${jobContext.technicalSkills.join(', ')}` : ''}
+
+${jobContext?.softSkills && jobContext.softSkills.length > 0 ? `### Required Soft Skills:
+${jobContext.softSkills.join(', ')}` : ''}
+
+${jobContext?.employerQuestions && jobContext.employerQuestions.length > 0 ? `### Employer's Specific Questions to Address:
+${jobContext.employerQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}` : ''}`;
+
+              // Add candidate profile validation data if available
+              if (candidateProfile) {
+                instructions += `
+
+--------------------
+CANDIDATE AI PROFILE ANALYSIS (FOR VALIDATION)
+--------------------
+
+You have access to the candidate's AI profile analysis from previous assessments. Use this to:
+1. Validate claims they make during the interview
+2. Probe areas where discrepancies were found
+3. Ask follow-up questions on unverified claims
+4. Assess their fit against the job requirements
+
+## Overall Assessment
+${candidateProfile.verdict?.decision ? `- **Verdict:** ${candidateProfile.verdict.decision}` : ''}
+${candidateProfile.verdict?.confidence ? `- **Confidence:** ${candidateProfile.verdict.confidence}` : ''}
+${candidateProfile.verdict?.risk_level ? `- **Risk Level:** ${candidateProfile.verdict.risk_level}` : ''}
+${candidateProfile.verdict?.top_strength ? `- **Top Strength:** ${candidateProfile.verdict.top_strength}` : ''}
+${candidateProfile.verdict?.top_concern ? `- **Top Concern:** ${candidateProfile.verdict.top_concern}` : ''}
+
+## Technical Assessment
+${candidateProfile.technicalScore !== null && candidateProfile.technicalScore !== undefined ? `- **Technical Score:** ${candidateProfile.technicalScore}/100` : ''}
+${candidateProfile.experienceScore !== null && candidateProfile.experienceScore !== undefined ? `- **Experience Score:** ${candidateProfile.experienceScore}/100` : ''}
+
+${candidateProfile.matchedSkills && candidateProfile.matchedSkills.length > 0 ? `### Skills Already Verified:
+${candidateProfile.matchedSkills.join(', ')}` : ''}
+
+${candidateProfile.missingSkills && candidateProfile.missingSkills.length > 0 ? `### Skills NOT Demonstrated (PROBE THESE):
+${candidateProfile.missingSkills.join(', ')}` : ''}
+
+## Claims Verification Status
+
+${candidateProfile.verifiedClaims && candidateProfile.verifiedClaims.length > 0 ? `### VERIFIED Claims (Can Trust):
+${candidateProfile.verifiedClaims.map(c => `- ${c}`).join('\n')}` : ''}
+
+${candidateProfile.unverifiedClaims && candidateProfile.unverifiedClaims.length > 0 ? `### UNVERIFIED Claims (Need to Probe):
+${candidateProfile.unverifiedClaims.map(c => `- ${c}`).join('\n')}` : ''}
+
+${candidateProfile.discrepancies && candidateProfile.discrepancies.length > 0 ? `### DISCREPANCIES Found (Must Address):
+${candidateProfile.discrepancies.map(d => `- ${d}`).join('\n')}` : ''}
+
+${candidateProfile.redFlags && candidateProfile.redFlags.length > 0 ? `### RED FLAGS to Investigate:
+${candidateProfile.redFlags.map(rf => `- [${rf.severity || 'MEDIUM'}] ${rf.issue || rf}: ${rf.evidence || ''}`).join('\n')}` : ''}
+
+## Key Points to Consider
+
+${candidateProfile.keyHighlights && candidateProfile.keyHighlights.length > 0 ? `### Strengths to Build On:
+${candidateProfile.keyHighlights.map(h => `- ${h}`).join('\n')}` : ''}
+
+${candidateProfile.keyWatchouts && candidateProfile.keyWatchouts.length > 0 ? `### Areas of Concern to Explore:
+${candidateProfile.keyWatchouts.map(w => `- ${w}`).join('\n')}` : ''}`;
+              }
+
+              // Add job-specific interviewer instructions
+              instructions += `
+
+--------------------
+JOB-SPECIFIC INTERVIEW INSTRUCTIONS
+--------------------
+
+1. **Reference Job Requirements:** Frame questions around the specific job requirements listed above. Ask how their experience maps to these requirements.
+
+2. **Validate Claims:** When the candidate mentions skills or experiences, compare against the verified/unverified claims list. For unverified claims, ask for specific examples and evidence.
+
+3. **Probe Discrepancies:** If the candidate mentions something that contradicts the discrepancies listed above, politely but directly address it.
+
+4. **Assess Job Fit:** Evaluate whether their demonstrated skills match the required technical and soft skills for this role.
+
+5. **Address Employer Questions:** Naturally incorporate the employer's specific questions into your interview flow.
+
+6. **Be Direct About Gaps:** If you notice the candidate lacks a required skill, ask how they plan to address this gap for this role.
+
+7. **Challenge Unverified Claims:** For claims marked as unverified, ask follow-up questions like:
+   - "Can you walk me through a specific project where you used [skill]?"
+   - "What metrics did you achieve with [claimed accomplishment]?"
+   - "How would you demonstrate [skill] in this role?"
+
+Remember: You are evaluating this candidate specifically for the ${jobContext?.title || 'target'} role. Every question should relate to their fit for THIS specific position.`;
+            }
+          }
 
           // Add custom AI prompt if provided
           if (customPrompt) {

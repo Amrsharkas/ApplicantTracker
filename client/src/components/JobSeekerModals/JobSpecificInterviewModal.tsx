@@ -193,12 +193,18 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           // Use job-specific interview language, fallback to provided language
           const interviewLanguage = getInterviewLanguage(job, language);
           console.log('🎤 Using interview language:', interviewLanguage, 'from job:', job?.interviewLanguage);
-          // Then connect voice session
+          // Then connect voice session with job and AI profile context
+          const interviewContext = data.sessionData?.context?.interviewContext || null;
+          console.log('📋 Passing interview context to realtime API:', {
+            hasJobContext: !!interviewContext?.jobContext,
+            hasCandidateProfile: !!interviewContext?.candidateProfile
+          });
           await realtimeAPI.connect({
             interviewType: 'job-practice',
             questions: data.sessionData.questions,
             language: interviewLanguage,
-            aiPrompt: job?.aiPrompt
+            aiPrompt: job?.aiPrompt,
+            interviewContext
           });
         }
       } catch (e: any) {
