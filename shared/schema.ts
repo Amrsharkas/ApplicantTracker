@@ -47,6 +47,8 @@ export const users = pgTable("users", {
   // Google OAuth fields
   googleId: varchar("google_id"),
   authProvider: varchar("auth_provider").default("local"),
+  // Super admin field
+  isSuperAdmin: boolean("is_super_admin").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -682,6 +684,19 @@ export const resumeJobScores = pgTable("resume_job_scores", {
   index("idx_resume_job_scores_profile_job").on(table.profileId, table.jobId),
 ]);
 
+// Custom rules for resume parsing
+export const customRules = pgTable("custom_rules", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: varchar("organization_id").notNull(),
+  jobId: integer("job_id"), // nullable - rules can be org-wide or job-specific
+  rulesText: text("rules_text").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_custom_rules_organization_id").on(table.organizationId),
+  index("idx_custom_rules_job_id").on(table.jobId),
+  index("idx_custom_rules_created_at").on(table.createdAt),
+]);
+
 export const shortlistedApplicants = pgTable("shortlisted_applicants", {
   id: text("id").primaryKey().notNull(),
   employerId: text("employer_id"),
@@ -817,6 +832,8 @@ export type ResumeProfile = typeof resumeProfiles.$inferSelect;
 export type InsertResumeProfile = typeof resumeProfiles.$inferInsert;
 export type ResumeJobScore = typeof resumeJobScores.$inferSelect;
 export type InsertResumeJobScore = typeof resumeJobScores.$inferInsert;
+export type CustomRule = typeof customRules.$inferSelect;
+export type InsertCustomRule = typeof customRules.$inferInsert;
 export type InsertOpenAIRequest = typeof openaiRequests.$inferInsert;
 export type OrganizationInvitation = typeof organizationInvitations.$inferSelect;
 export type InsertOrganizationInvitation = typeof organizationInvitations.$inferInsert;
