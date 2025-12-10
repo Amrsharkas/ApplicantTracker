@@ -310,6 +310,7 @@ export const jobs = pgTable("jobs", {
   seniorityLevel: varchar("seniority_level").notNull(),
   industry: varchar("industry").notNull(),
   languagesRequired: jsonb("languages_required"),
+  assessmentQuestions: jsonb("assessment_questions"),
   interviewLanguage: varchar("interview_language"),
   certifications: text("certifications"),
   organizationId: varchar("organization_id"),
@@ -838,6 +839,42 @@ export type InsertOpenAIRequest = typeof openaiRequests.$inferInsert;
 export type OrganizationInvitation = typeof organizationInvitations.$inferSelect;
 export type InsertOrganizationInvitation = typeof organizationInvitations.$inferInsert;
 
+// Assessment question types for job postings
+export type AssessmentQuestionType =
+  | 'text'
+  | 'multiple_choice'
+  | 'yes_no'
+  | 'numeric'
+  | 'rating'
+  | 'file_upload';
+
+export interface AssessmentQuestionOption {
+  id: string;
+  label: string;
+  value: string;
+}
+
+export interface AssessmentQuestionValidation {
+  required?: boolean;
+  minLength?: number;      // text
+  maxLength?: number;      // text
+  minValue?: number;       // numeric
+  maxValue?: number;       // numeric
+  allowedFileTypes?: string[]; // file_upload
+  maxFileSize?: number;    // file_upload (bytes)
+}
+
+export interface AssessmentQuestion {
+  id: string;
+  questionText: string;
+  type: AssessmentQuestionType;
+  description?: string;
+  options?: AssessmentQuestionOption[];       // For multiple_choice
+  ratingScale?: { min: number; max: number }; // For rating (default 1-5)
+  validation?: AssessmentQuestionValidation;
+  order: number;
+}
+
 export const insertOrganizationSchema = createInsertSchema(organizations, {
   url: (schema) => schema.trim().min(1, "Organization URL is required"),
 }).omit({
@@ -999,7 +1036,7 @@ export const airtableJobApplications = pgTable("airtable_job_applications", {
   applicationDate: timestamp("application_date").defaultNow(),
   jobDescription: text("job_description"),
   sessionId: integer("session_id"), // Reference to interview session for video URL
-  applicantProfileId: integer("applicant_profile_id"), // Reference to applicant_profiles.id for precise profile lookup
+applicantProfileId: integer("applicant_profile_id"), // Reference to applicant_profiles.id for precise profile lookup
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1020,6 +1057,10 @@ export const airtableJobMatches = pgTable("airtable_job_matches", {
   interviewComments: text("interview_comments"), // AI-generated feedback
   status: varchar("status").default("pending"),
   token: varchar("token").unique().notNull(),
+  reminder1hSent: boolean("reminder_1h_sent").default(false),
+  reminder24hSent: boolean("reminder_24h_sent").default(false),
+  reminder1hJobId: varchar("reminder_1h_job_id"),
+  reminder24hJobId: varchar("reminder_24h_job_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
