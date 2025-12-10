@@ -50,6 +50,40 @@ const uploadRecording = multer({ storage: recordingStorage });
 const chunksDir = path.join(__dirname, '..', 'uploads/chunks');
 fs.mkdirSync(chunksDir, { recursive: true });
 
+// Career insights documents directory
+const careerInsightsDir = path.join(__dirname, '..', 'uploads/career-insights');
+fs.mkdirSync(careerInsightsDir, { recursive: true });
+
+const careerInsightsStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, careerInsightsDir);
+  },
+  filename: (req, file, cb) => {
+    const userId = (req as any).user?.id || 'unknown';
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `career-insights-${userId}-${uniqueSuffix}${ext}`);
+  },
+});
+
+const uploadCareerInsights = multer({
+  storage: careerInsightsStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword',
+      'text/plain'
+    ];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Supported: PDF, DOCX, DOC, TXT'));
+    }
+  }
+});
+
 const chunkStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, chunksDir);
@@ -2603,15 +2637,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .limit(1);
 
             // Since we're no longer using Airtable, we'll update the local database instead
-            // Find and update job match record with interview score and status
+            // Find and update job match record with interview score and status based on thresholds
             try {
               if (relevantMatch) {
+                // Get job details to check threshold settings
+                let jobDetails: Job | null = null;
+                if (relevantMatch.jobId) {
+                  const [fetchedJob] = await db
+                    .select()
+                    .from(jobs)
+                    .where(eq(jobs.id, parseInt(relevantMatch.jobId)))
+                    .limit(1);
+                  jobDetails = fetchedJob || null;
+                }
+
+                // Determine status based on score and job thresholds
+                // Defaults: autoShortlistThreshold = 70, autoDeniedThreshold = 30
+                const autoShortlistThreshold = (jobDetails as any)?.autoShortlistThreshold ?? 70;
+                const autoDeniedThreshold = (jobDetails as any)?.autoDeniedThreshold ?? 30;
+
+                let newStatus = 'completed'; // Default status for scores in between thresholds
+                if (score >= autoShortlistThreshold) {
+                  newStatus = 'shortlisted';
+                  console.log(`✅ Auto-shortlisted: Score ${score} >= threshold ${autoShortlistThreshold}`);
+                } else if (score < autoDeniedThreshold) {
+                  newStatus = 'declined';
+                  console.log(`❌ Auto-denied: Score ${score} < threshold ${autoDeniedThreshold}`);
+                } else {
+                  console.log(`📋 Completed: Score ${score} is between thresholds (denied: ${autoDeniedThreshold}, shortlist: ${autoShortlistThreshold})`);
+                }
+
                 await localDatabaseService.updateJobMatch(relevantMatch.id, {
                   score,
-                  status: 'completed',
+                  status: newStatus,
                   interviewComments: rationale || ''
                 });
-                console.log('✅ Updated job match with interview score:', relevantMatch.id);
+                console.log(`✅ Updated job match with interview score: ${relevantMatch.id}, status: ${newStatus}`);
               } else {
                 console.log('ℹ️ No matching job record found for interview score update');
               }
@@ -3056,7 +3117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Continue with default score
         }
 
-        // Update job match record with score and status
+        // Update job match record with score and status based on thresholds
         try {
           const [relevantMatch] = await db
             .select()
@@ -3065,12 +3126,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .limit(1);
 
           if (relevantMatch) {
+            // Get job details to check threshold settings
+            let jobDetails: Job | null = null;
+            if (relevantMatch.jobId) {
+              const [fetchedJob] = await db
+                .select()
+                .from(jobs)
+                .where(eq(jobs.id, parseInt(relevantMatch.jobId)))
+                .limit(1);
+              jobDetails = fetchedJob || null;
+            }
+
+            // Determine status based on score and job thresholds
+            // Defaults: autoShortlistThreshold = 70, autoDeniedThreshold = 30
+            const autoShortlistThreshold = (jobDetails as any)?.autoShortlistThreshold ?? 70;
+            const autoDeniedThreshold = (jobDetails as any)?.autoDeniedThreshold ?? 30;
+
+            let newStatus = 'completed'; // Default status for scores in between thresholds
+            if (score >= autoShortlistThreshold) {
+              newStatus = 'shortlisted';
+              console.log(`✅ Auto-shortlisted: Score ${score} >= threshold ${autoShortlistThreshold}`);
+            } else if (score < autoDeniedThreshold) {
+              newStatus = 'declined';
+              console.log(`❌ Auto-denied: Score ${score} < threshold ${autoDeniedThreshold}`);
+            } else {
+              console.log(`📋 Completed: Score ${score} is between thresholds (denied: ${autoDeniedThreshold}, shortlist: ${autoShortlistThreshold})`);
+            }
+
             await localDatabaseService.updateJobMatch(relevantMatch.id, {
               score,
-              status: 'completed',
+              status: newStatus,
               interviewComments: rationale || ''
             });
-            console.log('✅ Updated job match with voice interview score:', relevantMatch.id);
+            console.log(`✅ Updated job match with voice interview score: ${relevantMatch.id}, status: ${newStatus}`);
           } else {
             console.log('ℹ️ No matching job record found for voice interview score update');
           }
@@ -4447,26 +4535,36 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     }
   });
 
-  // Career Insights Upload URL - get signed URL for document upload
-  app.post('/api/career-insights/upload-url', requireAuth, async (req: any, res) => {
+  // Career Insights Upload - direct file upload to local storage
+  app.post('/api/career-insights/upload', requireAuth, uploadCareerInsights.single('file'), async (req: any, res) => {
     try {
       const userId = req.user?.id;
       if (!userId) {
         return res.status(401).json({ error: 'User authentication required' });
       }
 
-      const objectStorageService = new ObjectStorageService();
-      const { uploadURL, filePath } = await objectStorageService.getCareerInsightsUploadURL(userId);
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      const filePath = req.file.path;
+      const fileName = req.file.originalname;
+      const fileSize = req.file.size;
+      const mimeType = req.file.mimetype;
+
+      console.log(`📄 Career insights file uploaded for user ${userId}: ${fileName}`);
 
       res.json({
         success: true,
-        uploadURL,
-        filePath
+        filePath,
+        fileName,
+        fileSize,
+        mimeType
       });
     } catch (error) {
-      console.error('Error getting career insights upload URL:', error);
+      console.error('Error uploading career insights file:', error);
       res.status(500).json({
-        error: 'Failed to get upload URL',
+        error: 'Failed to upload file',
         message: error instanceof Error ? error.message : 'Unknown error'
       });
     }

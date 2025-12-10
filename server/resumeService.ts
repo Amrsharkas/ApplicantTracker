@@ -1,6 +1,8 @@
 import OpenAI from "openai";
 import { ObjectStorageService } from "./objectStorage.js";
 import { wrapOpenAIRequest } from "./openaiTracker.js";
+import fs from "fs/promises";
+import path from "path";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -57,9 +59,8 @@ export class ResumeService {
     try {
       const fileContent = await this.objectStorageService.getFileContent(filePath);
 
-      // Dynamic import to avoid module loading issues
-      const pdfParse = await import('pdf-parse');
-      const pdf = pdfParse.default;
+      // Import directly from lib to avoid pdf-parse's debug mode test code
+      const pdf = (await import('pdf-parse/lib/pdf-parse.js')).default;
 
       const data = await pdf(fileContent);
       return data.text;
@@ -72,12 +73,20 @@ export class ResumeService {
   // Extract text from various document types (PDF, DOCX, DOC, TXT)
   async extractTextFromDocument(filePath: string, mimeType: string): Promise<string> {
     try {
-      const fileContent = await this.objectStorageService.getFileContent(filePath);
+      // Check if it's a local file path (starts with uploads/ or is an absolute path to uploads)
+      let fileContent: Buffer;
+      if (filePath.includes('uploads/') || filePath.startsWith('/var/www/')) {
+        // Read from local filesystem
+        fileContent = await fs.readFile(filePath);
+      } else {
+        // Read from object storage
+        fileContent = await this.objectStorageService.getFileContent(filePath);
+      }
 
       // Handle different file types based on MIME type
       if (mimeType === 'application/pdf') {
-        const pdfParse = await import('pdf-parse');
-        const pdf = pdfParse.default;
+        // Import directly from lib to avoid pdf-parse's debug mode test code
+        const pdf = (await import('pdf-parse/lib/pdf-parse.js')).default;
         const data = await pdf(fileContent);
         return data.text;
       }

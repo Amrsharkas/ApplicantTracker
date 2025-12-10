@@ -105,42 +105,33 @@ export function CareerInsightsUploader({
     setError(null);
 
     try {
-      // Step 1: Get signed upload URL
+      // Upload file directly to server
       setUploadProgress(10);
-      const urlResponse = await fetch('/api/career-insights/upload-url', {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const uploadResponse = await fetch('/api/career-insights/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        body: formData,
         credentials: 'include'
       });
 
-      if (!urlResponse.ok) {
-        throw new Error('Failed to get upload URL');
-      }
-
-      const { uploadURL, filePath } = await urlResponse.json();
-      setUploadProgress(30);
-
-      // Step 2: Upload file to signed URL
-      const uploadResponse = await fetch(uploadURL, {
-        method: 'PUT',
-        body: selectedFile,
-        headers: {
-          'Content-Type': selectedFile.type
-        }
-      });
+      setUploadProgress(70);
 
       if (!uploadResponse.ok) {
-        throw new Error('Failed to upload file');
+        const errorData = await uploadResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to upload file');
       }
 
+      const { filePath, fileName, fileSize, mimeType } = await uploadResponse.json();
       setUploadProgress(100);
 
       // Success! Pass the result to parent
       onUploadComplete({
         filePath,
-        fileName: selectedFile.name,
-        fileSize: selectedFile.size,
-        mimeType: selectedFile.type
+        fileName,
+        fileSize,
+        mimeType
       });
 
       toast({
