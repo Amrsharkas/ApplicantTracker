@@ -999,6 +999,7 @@ export const airtableJobApplications = pgTable("airtable_job_applications", {
   applicationDate: timestamp("application_date").defaultNow(),
   jobDescription: text("job_description"),
   sessionId: integer("session_id"), // Reference to interview session for video URL
+  applicantProfileId: integer("applicant_profile_id"), // Reference to applicant_profiles.id for precise profile lookup
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

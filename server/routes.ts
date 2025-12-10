@@ -3080,6 +3080,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create new record in airtable_job_applications after job practice voice interview completion
+      let createdApplicationId: string | null = null;
       if (interviewType === 'job-practice' && job) {
         try {
           // Get job match details to find organization and charge credits
@@ -3142,6 +3143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const jobApplicationData = {
             applicantName: userName,
             applicantUserId: userId,
+            applicantProfileId: userProfile?.id, // Reference to applicant_profiles.id for precise profile lookup
             applicantEmail: user?.email || '',
             jobTitle: job.jobTitle || job.title || '',
             jobId: jobRecord.id || job.id,
@@ -3153,8 +3155,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sessionId: session.id, // Reference to session for video URL
           };
 
-          await localDatabaseService.createJobApplication(jobApplicationData);
-          console.log('✅ Created new job application record after voice interview completion:', job.jobTitle);
+          createdApplicationId = (await localDatabaseService.createJobApplication(jobApplicationData)).id;
+          console.log('✅ Created new job application record:', createdApplicationId, 'for job:', job.jobTitle);
         } catch (applicationError) {
           console.warn('⚠️ Error creating job application record:', applicationError);
           // Continue with flow even if application creation fails
@@ -3167,6 +3169,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate final comprehensive profile only after ALL 3 interviews are complete
       console.log(`🎯 All 3 voice interviews completed for user ${userId}. Generating final profile...`);
       const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job);
+
+      // Auto-shortlist or auto-decline based on profile match score
+      const profileScore = generatedProfile?.matchScorePercentage;
+      if (typeof profileScore === 'number' && createdApplicationId) {
+        const HIRING_INTELLIGENCE_URL = process.env.HIRING_INTELLIGENCE_URL || 'http://localhost:5000';
+        const SERVICE_API_KEY = process.env.SERVICE_API_KEY;
+
+        if (SERVICE_API_KEY) {
+          if (profileScore >= 70) {
+            // Auto-shortlist high performers
+            try {
+              const response = await fetch(`${HIRING_INTELLIGENCE_URL}/api/real-applicants/${createdApplicationId}/shortlist`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${SERVICE_API_KEY}`
+                }
+              });
+              if (response.ok) {
+                console.log(`✅ Auto-shortlisted applicant ${createdApplicationId} with profile score ${profileScore}`);
+              } else {
+                console.warn(`⚠️ Failed to auto-shortlist:`, await response.text());
+              }
+            } catch (error) {
+              console.error('❌ Error auto-shortlisting:', error);
+            }
+          } else if (profileScore < 30) {
+            // Auto-decline low performers
+            try {
+              const response = await fetch(`${HIRING_INTELLIGENCE_URL}/api/real-applicants/${createdApplicationId}/decline`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${SERVICE_API_KEY}`
+                }
+              });
+              if (response.ok) {
+                console.log(`✅ Auto-declined applicant ${createdApplicationId} with profile score ${profileScore}`);
+              } else {
+                console.warn(`⚠️ Failed to auto-decline:`, await response.text());
+              }
+            } catch (error) {
+              console.error('❌ Error auto-declining:', error);
+            }
+          } else {
+            console.log(`ℹ️ Profile score ${profileScore} in manual review range (30-69), no auto-action`);
+          }
+        } else {
+          console.log('ℹ️ SERVICE_API_KEY not configured, skipping auto-shortlist/decline');
+        }
+      }
 
       // Update profile completion percentage
       await storage.updateProfileCompletion(userId);
