@@ -754,6 +754,50 @@ export async function setupAuth(app: Express) {
     }
   });
 
+  // Test login endpoint - allows login by ID without password
+  // Only enabled when ENABLE_TEST_LOGIN environment variable is true
+  app.get("/api/auth/test-login", async (req: any, res) => {
+    // Check if test login is enabled
+    if (process.env.ENABLE_TEST_LOGIN !== 'true') {
+      return res.status(404).json({ error: "Test login endpoint is disabled" });
+    }
+
+    try {
+      const { userId } = req.query;
+      const userIdStr = Array.isArray(userId) ? userId[0] : String(userId);
+
+      if (!userIdStr) {
+        return res.status(400).json({ error: "userId is required" });
+      }
+
+      // Get user by ID
+      const user = await storage.getUser(userIdStr);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Check if user has the required role (only "applicant" role allowed)
+      if (user.role !== "applicant") {
+        console.error(`❌ Test login access denied for user: ${user.email} - Role: ${user.role} (required: applicant)`);
+        return res.status(403).json({
+          error: "Access denied",
+          message: "This test login is only available for users with 'applicant' role",
+          userRole: user.role
+        });
+      }
+
+      // Create session for the user
+      req.session.userId = user.id;
+
+      console.log(`🔓 Test login successful for user: ${user.email} (ID: ${user.id})`);
+
+      res.redirect('/dashboard');
+    } catch (error) {
+      console.error("Test login error:", error);
+      res.status(500).json({ error: "Test login failed" });
+    }
+  });
+
   // Google OAuth routes
   app.get("/auth/google", passport.authenticate("google"));
 
