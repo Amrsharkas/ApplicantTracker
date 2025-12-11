@@ -20,7 +20,7 @@ import { creditService } from './creditService';
 // Dynamic import for pdf-parse will be used when needed
 import { db } from "./db";
 import { applicantProfiles, interviewSessions, interviewRecordings, resumeUploads, jobMatches, applications, sessions, users } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
 
@@ -2297,6 +2297,205 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Failed to start job practice interview' });
     }
   });
+
+  // ==================== STANDALONE PRACTICE INTERVIEW ENDPOINTS ====================
+
+  // Start a standalone practice interview (user enters job title + seniority manually)
+  app.post('/api/practice-interview/start',
+    requireAuth,
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { jobTitle, seniorityLevel, language = 'english' } = req.body || {};
+
+      if (!jobTitle || !seniorityLevel) {
+        return res.status(400).json({ message: 'Job title and seniority level are required' });
+      }
+
+      // Validate seniority level
+      const validSeniorityLevels = ['internship', 'entry-level', 'junior', 'mid-level', 'senior', 'lead'];
+      if (!validSeniorityLevels.includes(seniorityLevel.toLowerCase())) {
+        return res.status(400).json({
+          message: 'Invalid seniority level',
+          validOptions: validSeniorityLevels
+        });
+      }
+
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+
+      // Generate practice interview questions
+      const practiceSet = await aiInterviewService.generateStandalonePracticeInterview(
+        { ...user, ...profile },
+        jobTitle,
+        seniorityLevel,
+        language
+      );
+
+      // Create a session for the practice interview
+      const session = await storage.createInterviewSession({
+        userId,
+        interviewType: 'standalone-practice',
+        sessionData: {
+          questions: practiceSet.questions || [],
+          responses: [],
+          currentQuestionIndex: 0,
+          interviewSet: practiceSet,
+          practiceConfig: {
+            jobTitle,
+            seniorityLevel,
+            language
+          },
+          mode: 'voice'
+        },
+        isCompleted: false
+      });
+
+      // Generate practice-specific welcome message
+      const welcomeMessage = await aiInterviewService.generatePracticeWelcomeMessage(
+        { ...user, ...profile },
+        jobTitle,
+        seniorityLevel,
+        language
+      );
+
+      const firstQuestion = Array.isArray(practiceSet.questions) && practiceSet.questions.length > 0
+        ? (typeof practiceSet.questions[0] === 'string' ? practiceSet.questions[0] : practiceSet.questions[0]?.question || '')
+        : '';
+
+      console.log(`🎯 Started standalone practice interview for user ${userId}: ${jobTitle} (${seniorityLevel})`);
+
+      res.json({
+        sessionId: session.id,
+        interviewType: 'standalone-practice',
+        interviewSet: practiceSet,
+        questions: practiceSet.questions,
+        firstQuestion,
+        welcomeMessage,
+        userProfile: { ...user, ...profile },
+        practiceConfig: {
+          jobTitle,
+          seniorityLevel,
+          language
+        }
+      });
+    } catch (error) {
+      console.error('Error starting standalone practice interview:', error);
+      res.status(500).json({ message: 'Failed to start practice interview' });
+    }
+  });
+
+  // Complete a standalone practice interview and get feedback
+  app.post('/api/practice-interview/complete',
+    requireAuth,
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { sessionId, conversationHistory, jobTitle, seniorityLevel, language = 'english' } = req.body || {};
+
+      if (!sessionId) {
+        return res.status(400).json({ message: 'Session ID is required' });
+      }
+
+      if (!conversationHistory || !Array.isArray(conversationHistory) || conversationHistory.length === 0) {
+        return res.status(400).json({ message: 'Conversation history is required' });
+      }
+
+      // Verify session exists and belongs to user - query by session ID directly
+      const [session] = await db
+        .select()
+        .from(interviewSessions)
+        .where(eq(interviewSessions.id, sessionId))
+        .limit(1);
+
+      if (!session) {
+        return res.status(404).json({ message: 'Interview session not found' });
+      }
+      if (session.userId !== userId) {
+        return res.status(403).json({ message: 'Unauthorized access to this session' });
+      }
+
+      // Get practice config from session or request
+      const practiceConfig = (session.sessionData as any)?.practiceConfig || { jobTitle, seniorityLevel, language };
+      const finalJobTitle = practiceConfig.jobTitle || jobTitle || 'Unknown Role';
+      const finalSeniorityLevel = practiceConfig.seniorityLevel || seniorityLevel || 'mid-level';
+      const finalLanguage = practiceConfig.language || language || 'english';
+
+      // Generate feedback
+      const feedback = await aiInterviewService.generatePracticeInterviewFeedback(
+        conversationHistory,
+        finalJobTitle,
+        finalSeniorityLevel,
+        finalLanguage
+      );
+
+      // Update session with completion data and feedback
+      await storage.updateInterviewSession(sessionId, {
+        isCompleted: true,
+        completedAt: new Date(),
+        sessionData: {
+          ...(session.sessionData as any),
+          conversationHistory,
+          feedback,
+          completedAt: new Date().toISOString()
+        }
+      });
+
+      console.log(`✅ Completed standalone practice interview ${sessionId} for user ${userId}. Score: ${feedback.overallScore}`);
+
+      res.json({
+        success: true,
+        sessionId,
+        feedback
+      });
+    } catch (error) {
+      console.error('Error completing practice interview:', error);
+      res.status(500).json({ message: 'Failed to complete practice interview' });
+    }
+  });
+
+  // Get practice interview history for a user
+  app.get('/api/practice-interview/history',
+    requireAuth,
+    async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+
+      // Get all practice interview sessions for the user
+      const sessions = await db
+        .select()
+        .from(interviewSessions)
+        .where(
+          and(
+            eq(interviewSessions.userId, userId),
+            eq(interviewSessions.interviewType, 'standalone-practice')
+          )
+        )
+        .orderBy(desc(interviewSessions.createdAt))
+        .limit(20);
+
+      const history = sessions.map((session: any) => {
+        const sessionData = session.sessionData as any;
+        return {
+          sessionId: session.id,
+          jobTitle: sessionData?.practiceConfig?.jobTitle || 'Unknown',
+          seniorityLevel: sessionData?.practiceConfig?.seniorityLevel || 'Unknown',
+          overallScore: sessionData?.feedback?.overallScore || null,
+          isCompleted: session.isCompleted,
+          createdAt: session.createdAt,
+          completedAt: sessionData?.completedAt || null
+        };
+      });
+
+      res.json({ interviews: history });
+    } catch (error) {
+      console.error('Error fetching practice interview history:', error);
+      res.status(500).json({ message: 'Failed to fetch practice interview history' });
+    }
+  });
+
+  // ==================== END STANDALONE PRACTICE INTERVIEW ENDPOINTS ====================
+
   app.post('/api/interview/welcome', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;

@@ -1471,6 +1471,43 @@ const translations = {
       }
     },
 
+    practiceInterview: {
+      title: "Practice Interview",
+      subtitle: "AI-Powered Training",
+      description: "Practice job interviews with AI and get instant feedback to improve your skills",
+      jobTitle: "Job Title",
+      seniorityLevel: "Seniority Level",
+      language: "Interview Language",
+      start: "Start Practice Interview",
+      preparing: "Preparing...",
+      whatToExpect: "What to expect",
+      expectPoint1: "8-10 mixed questions (behavioral & technical)",
+      expectPoint2: "Interactive voice interview",
+      expectPoint3: "Instant feedback after completion",
+      feedback: {
+        title: "Interview Results",
+        strengths: "Strengths",
+        improvements: "Areas for Improvement",
+        questionAnalysis: "Question Analysis",
+        whatYouDidWell: "What You Did Well",
+        suggestion: "Suggestion for Improvement",
+        yourAnswer: "Your Answer Summary",
+        question: "Question",
+        practiceAgain: "Practice Again",
+        close: "Close"
+      },
+      analyzing: "Analyzing your interview...",
+      analyzingSubtitle: "This will take a few seconds",
+      seniority: {
+        internship: "Internship",
+        entryLevel: "Entry Level",
+        junior: "Junior",
+        midLevel: "Mid Level",
+        senior: "Senior",
+        lead: "Lead / Manager"
+      }
+    },
+
     careerInsights: {
       // Data Source Selection
       selectDataSource: "Choose Your Data Source",
@@ -2968,6 +3005,43 @@ const translations = {
         opportunities: "فرصك التالية",
         market: "قيمتك وراتبك",
         recommendations: "خطواتك التالية"
+      }
+    },
+
+    practiceInterview: {
+      title: "مقابلة تدريبية",
+      subtitle: "تدريب بالذكاء الاصطناعي",
+      description: "تدرب على مقابلات العمل مع الذكاء الاصطناعي واحصل على تقييم فوري لتحسين مهاراتك",
+      jobTitle: "المسمى الوظيفي",
+      seniorityLevel: "المستوى الوظيفي",
+      language: "لغة المقابلة",
+      start: "ابدأ المقابلة التدريبية",
+      preparing: "جاري التحضير...",
+      whatToExpect: "ماذا تتوقع",
+      expectPoint1: "8-10 أسئلة مختلطة (سلوكية وتقنية)",
+      expectPoint2: "مقابلة صوتية تفاعلية",
+      expectPoint3: "تقييم فوري بعد الانتهاء",
+      feedback: {
+        title: "نتائج المقابلة",
+        strengths: "نقاط القوة",
+        improvements: "مجالات التحسين",
+        questionAnalysis: "تحليل الأسئلة",
+        whatYouDidWell: "ما قمت به بشكل جيد",
+        suggestion: "اقتراح للتحسين",
+        yourAnswer: "ملخص إجابتك",
+        question: "السؤال",
+        practiceAgain: "تدرب مرة أخرى",
+        close: "إغلاق"
+      },
+      analyzing: "جاري تحليل المقابلة...",
+      analyzingSubtitle: "سيستغرق هذا بضع ثوانٍ",
+      seniority: {
+        internship: "تدريب",
+        entryLevel: "مستوى مبتدئ",
+        junior: "مبتدئ",
+        midLevel: "متوسط",
+        senior: "خبير",
+        lead: "قائد / مدير"
       }
     },
 
@@ -4479,6 +4553,43 @@ const translations = {
         opportunities: "Vos prochaines opportunités",
         market: "Votre valeur et salaire",
         recommendations: "Vos prochaines étapes"
+      }
+    },
+
+    practiceInterview: {
+      title: "Entretien d'entraînement",
+      subtitle: "Formation par IA",
+      description: "Entraînez-vous aux entretiens d'embauche avec l'IA et obtenez un retour instantané pour améliorer vos compétences",
+      jobTitle: "Intitulé du poste",
+      seniorityLevel: "Niveau d'expérience",
+      language: "Langue de l'entretien",
+      start: "Démarrer l'entretien d'entraînement",
+      preparing: "Préparation...",
+      whatToExpect: "À quoi s'attendre",
+      expectPoint1: "8-10 questions mixtes (comportementales et techniques)",
+      expectPoint2: "Entretien vocal interactif",
+      expectPoint3: "Retour instantané après la fin",
+      feedback: {
+        title: "Résultats de l'entretien",
+        strengths: "Points forts",
+        improvements: "Points à améliorer",
+        questionAnalysis: "Analyse des questions",
+        whatYouDidWell: "Ce que vous avez bien fait",
+        suggestion: "Suggestion d'amélioration",
+        yourAnswer: "Résumé de votre réponse",
+        question: "Question",
+        practiceAgain: "S'entraîner à nouveau",
+        close: "Fermer"
+      },
+      analyzing: "Analyse de votre entretien...",
+      analyzingSubtitle: "Cela prendra quelques secondes",
+      seniority: {
+        internship: "Stage",
+        entryLevel: "Niveau débutant",
+        junior: "Junior",
+        midLevel: "Intermédiaire",
+        senior: "Senior",
+        lead: "Lead / Manager"
       }
     },
 

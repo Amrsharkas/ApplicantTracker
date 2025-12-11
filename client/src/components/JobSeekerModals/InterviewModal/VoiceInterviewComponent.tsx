@@ -26,6 +26,7 @@ interface VoiceInterviewComponentProps {
   onToggleTranscription: () => void;
   onSubmitOrEndInterview: () => void;
   cameraError?: string;
+  lightMode?: boolean;
 }
 
 export function VoiceInterviewComponent({
@@ -48,7 +49,8 @@ export function VoiceInterviewComponent({
   onExitInterview,
   onToggleTranscription,
   onSubmitOrEndInterview,
-  cameraError
+  cameraError,
+  lightMode = false
 }: VoiceInterviewComponentProps) {
   const { t } = useLanguage();
   const languageLabel = selectedInterviewLanguage === 'arabic' ? t('arabic') : t('english');
@@ -69,7 +71,7 @@ export function VoiceInterviewComponent({
       {/* Main content area */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-0 min-h-0 overflow-hidden relative">
         {/* Video section - takes full width when transcription is hidden */}
-        <div className={`${showTranscription ? 'lg:col-span-1' : 'lg:col-span-2'} relative bg-gray-900 overflow-hidden`}>
+        <div className={`${showTranscription ? 'lg:col-span-1' : 'lg:col-span-2'} relative ${lightMode ? 'bg-gray-100' : 'bg-gray-900'} overflow-hidden`}>
           <CameraPreview
             stream={cameraStream}
             isActive={isConnected}
@@ -93,11 +95,12 @@ export function VoiceInterviewComponent({
           conversationHistory={conversationHistory}
           isAiSpeaking={isAiSpeaking}
           showTranscription={showTranscription}
+          lightMode={lightMode}
         />
       </div>
 
       {/* Meeting controls */}
-      <div className="bg-gray-900 border-t border-gray-800 px-4 py-3">
+      <div className={`${lightMode ? 'bg-gray-50 border-gray-200' : 'bg-gray-900 border-gray-800'} border-t px-4 py-3`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             {/* Recording status indicator */}
@@ -112,16 +115,16 @@ export function VoiceInterviewComponent({
             <div className={`h-3 w-3 rounded-full ${
               sessionTerminated ? 'bg-red-500' : windowBlurCount > 0 ? 'bg-yellow-500' : 'bg-green-500'
             } animate-pulse`} />
-            <span className="text-gray-400 text-sm">{statusText}</span>
+            <span className={`${lightMode ? 'text-gray-600' : 'text-gray-400'} text-sm`}>{statusText}</span>
 
             {showTranscription && (
-              <span className="text-gray-500 text-xs">
+              <span className={`${lightMode ? 'text-gray-500' : 'text-gray-500'} text-xs`}>
                 • {t('interview.transcriptionEnabled')}
               </span>
             )}
 
             {/* Language indicator */}
-            <span className="text-gray-500 text-xs">
+            <span className={`${lightMode ? 'text-gray-500' : 'text-gray-500'} text-xs`}>
               • {languageIndicator}
             </span>
           </div>
@@ -129,7 +132,7 @@ export function VoiceInterviewComponent({
           <div className="flex items-center space-x-3">
             <button
                 onClick={onExitInterview}
-                className="text-gray-400 hover:text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
+                className={`${lightMode ? 'text-gray-600 hover:text-gray-900 hover:bg-gray-200' : 'text-gray-400 hover:text-white hover:bg-gray-800'} px-4 py-2 rounded-lg transition-colors text-sm`}
                 disabled={isAiSpeaking || isProcessingInterview || isUploading}
               >
                 ← {t('interview.exitInterview')}

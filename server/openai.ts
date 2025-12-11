@@ -2266,5 +2266,317 @@ ${formattedTranscript}`;
           };
         });
     }
+  },
+
+  // Standalone practice interview - generic based on job title and seniority
+  generateStandalonePracticeInterview: async (userData: any, jobTitle: string, seniorityLevel: string, language: string = 'english') => {
+    // Build candidate profile block from available user data
+    const safeJoin = (arr: unknown, sep: string = ', '): string => Array.isArray(arr) ? (arr.filter(Boolean) as string[]).join(sep) : '';
+    const experienceLines: string[] = Array.isArray((userData as any)?.workExperiences)
+      ? ((userData as any).workExperiences as any[]).map((exp: any) => {
+          const position: string = typeof exp?.position === 'string' ? exp.position : '';
+          const company: string = typeof exp?.company === 'string' ? exp.company : '';
+          const dateRange: string = [exp?.startDate, exp?.endDate].filter(Boolean).join(' - ');
+          const responsibilitiesText: string = typeof exp?.responsibilities === 'string' ? exp.responsibilities : '';
+          return `• ${position}${company ? ` at ${company}` : ''}${dateRange ? ` (${dateRange})` : ''}${responsibilitiesText ? `\n  Responsibilities: ${responsibilitiesText}` : ''}`.trim();
+        })
+      : [];
+    const educationLines: string[] = Array.isArray((userData as any)?.degrees)
+      ? ((userData as any).degrees as any[]).map((deg: any) => {
+          const degree: string = typeof deg?.degree === 'string' ? deg.degree : '';
+          const field: string = typeof deg?.field === 'string' ? deg.field : '';
+          const institution: string = typeof deg?.institution === 'string' ? deg.institution : '';
+          const dateRange: string = [deg?.startDate, deg?.endDate].filter(Boolean).join(' - ');
+          return `• ${degree}${field ? ` in ${field}` : ''}${institution ? ` from ${institution}` : ''}${dateRange ? ` (${dateRange})` : ''}`.trim();
+        })
+      : [];
+    const skillsList: string = safeJoin((userData as any)?.skillsList, ', ');
+    const targetJobTitles: string = safeJoin((userData as any)?.jobTitles, ', ');
+
+    const candidateProfileBlock = `
+CANDIDATE PROFILE DATA:
+Name: ${(userData as any)?.name || 'Candidate'}
+Summary: ${(userData as any)?.summary || ''}
+Target Roles: ${targetJobTitles}
+Skills: ${skillsList}
+Experience:
+${experienceLines.join('\n') || 'No work experience provided'}
+Education:
+${educationLines.join('\n') || 'No education provided'}
+Total Years of Experience: ${(userData as any)?.totalYearsOfExperience || 'Not specified'}
+`;
+
+    // Seniority level expectations
+    const seniorityExpectations: Record<string, string> = {
+      'internship': 'No prior experience required. Focus on learning potential, academic projects, eagerness to learn, and basic understanding of concepts.',
+      'entry-level': '0-1 years of experience. Focus on foundational skills, academic projects, ability to follow instructions, and willingness to grow.',
+      'junior': '1-2 years of experience. Focus on practical application of skills, ability to work on assigned tasks independently, and learning from feedback.',
+      'mid-level': '3-5 years of experience. Focus on independent work, project ownership, problem-solving skills, and ability to mentor juniors.',
+      'senior': '5-8 years of experience. Focus on leadership, architectural decisions, mentoring others, and strategic thinking.',
+      'lead': '8+ years of experience. Focus on team management, cross-functional collaboration, vision setting, and organizational impact.'
+    };
+
+    const seniorityContext = seniorityExpectations[seniorityLevel.toLowerCase()] || seniorityExpectations['mid-level'];
+
+    const prompt = `You are an expert interviewer creating a comprehensive practice interview for a candidate.
+
+TARGET POSITION:
+- Job Title: ${jobTitle}
+- Seniority Level: ${seniorityLevel}
+- Seniority Expectations: ${seniorityContext}
+
+${candidateProfileBlock}
+
+${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). Use casual Egyptian slang naturally.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in professional English.'}
+
+Create a balanced mixed practice interview with 8-10 questions that includes:
+
+1. OPENING (1 question): A warm, open-ended question to build rapport and ease the candidate into the interview
+2. BEHAVIORAL (3-4 questions): STAR-method questions about past experiences, teamwork, challenges, and achievements
+3. TECHNICAL (3-4 questions): Role-specific technical knowledge, problem-solving, and domain expertise questions appropriate for ${jobTitle}
+4. CLOSING (1 question): Opportunity for candidate to share anything else or ask questions
+
+CRITICAL GUIDELINES:
+- Calibrate ALL questions to ${seniorityLevel} level expectations
+- For ${seniorityLevel}: ${seniorityContext}
+- Include at least one situational/hypothetical scenario
+- Make questions specific to ${jobTitle} responsibilities
+- Reference candidate's background where relevant to personalize
+- Avoid generic cliché questions - be specific and thoughtful
+- Each question should have a clear purpose
+
+Return ONLY JSON:
+{
+  "questions": [
+    {"question": "...", "type": "opening", "context": "why this question matters"},
+    {"question": "...", "type": "behavioral", "context": "..."},
+    {"question": "...", "type": "behavioral", "context": "..."},
+    {"question": "...", "type": "behavioral", "context": "..."},
+    {"question": "...", "type": "technical", "context": "..."},
+    {"question": "...", "type": "technical", "context": "..."},
+    {"question": "...", "type": "technical", "context": "..."},
+    {"question": "...", "type": "technical", "context": "..."},
+    {"question": "...", "type": "closing", "context": "..."}
+  ]
+}`;
+
+    const messages = language === 'arabic' ? [
+      { role: "system" as const, content: "انت مصري من القاهرة وبتتكلم عامية مصرية بس. الأسئلة لازم تكون عملية ومناسبة للوظيفة والمستوى الوظيفي." },
+      { role: "user" as const, content: prompt }
+    ] : [
+      { role: "user" as const, content: prompt }
+    ];
+
+    try {
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: process.env.OPENAI_MODEL_PRACTICE_INTERVIEW || "gpt-4o",
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.7
+        }),
+        {
+          requestType: "generateStandalonePracticeInterview",
+          model: process.env.OPENAI_MODEL_PRACTICE_INTERVIEW || "gpt-4o",
+          userId: userData?.id || null,
+        }
+      );
+      const result = JSON.parse(response.choices[0].message.content || '{}');
+      return {
+        type: 'standalone-practice',
+        title: `Practice Interview: ${jobTitle}`,
+        description: `${seniorityLevel} level practice interview for ${jobTitle}`,
+        questions: result.questions || []
+      };
+    } catch (error) {
+      console.error('Error generating standalone practice interview:', error);
+      // Fallback questions
+      return {
+        type: 'standalone-practice',
+        title: `Practice Interview: ${jobTitle}`,
+        description: `${seniorityLevel} level practice interview for ${jobTitle}`,
+        questions: [
+          { question: `Tell me about yourself and what draws you to a ${jobTitle} role.`, type: 'opening', context: 'Build rapport and understand motivation' },
+          { question: `Describe a challenging project you worked on. What was your role and what was the outcome?`, type: 'behavioral', context: 'Assess problem-solving and ownership' },
+          { question: `Tell me about a time you had to work with a difficult team member. How did you handle it?`, type: 'behavioral', context: 'Assess interpersonal skills' },
+          { question: `What's a professional failure you've experienced and what did you learn from it?`, type: 'behavioral', context: 'Assess self-awareness and growth mindset' },
+          { question: `Walk me through how you would approach a typical ${jobTitle} task from start to finish.`, type: 'technical', context: 'Assess technical process understanding' },
+          { question: `What tools and technologies are you most proficient with for this type of role?`, type: 'technical', context: 'Assess technical skills depth' },
+          { question: `How do you stay updated with the latest trends and best practices in your field?`, type: 'technical', context: 'Assess continuous learning' },
+          { question: `Where do you see yourself in 3-5 years?`, type: 'closing', context: 'Understand career goals and fit' }
+        ]
+      };
+    }
+  },
+
+  // Generate feedback for a completed practice interview
+  generatePracticeInterviewFeedback: async (
+    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>,
+    jobTitle: string,
+    seniorityLevel: string,
+    language: string = 'english'
+  ) => {
+    // Format conversation history into Q&A pairs
+    const qaPairs: Array<{ question: string; answer: string }> = [];
+    for (let i = 0; i < conversationHistory.length; i++) {
+      const item = conversationHistory[i];
+      if (item.role === 'assistant') {
+        // Find the next user response
+        const nextUserResponse = conversationHistory.slice(i + 1).find(m => m.role === 'user');
+        if (nextUserResponse) {
+          qaPairs.push({
+            question: item.content,
+            answer: nextUserResponse.content
+          });
+        }
+      }
+    }
+
+    const formattedQAPairs = qaPairs.map((qa, index) =>
+      `Question ${index + 1}: ${qa.question}\nCandidate Answer: ${qa.answer}`
+    ).join('\n\n---\n\n');
+
+    const prompt = `You are an expert interview coach providing detailed, constructive feedback on a practice interview.
+
+INTERVIEW CONTEXT:
+- Position: ${jobTitle}
+- Level: ${seniorityLevel}
+
+CONVERSATION TRANSCRIPT (EXACT TRANSCRIPTION - DO NOT MODIFY OR FABRICATE):
+${formattedQAPairs}
+
+CRITICAL INSTRUCTIONS:
+1. ONLY analyze the EXACT transcription provided above - do NOT generate, fabricate, or assume any answers
+2. If a candidate's answer is brief (like "OK" or "Yes"), analyze that exact response - do not imagine what they might have said
+3. Base ALL feedback strictly on what was actually said in the transcript
+4. If the transcript is incomplete or has minimal responses, reflect that honestly in your scoring and feedback
+
+Analyze this practice interview and provide comprehensive feedback. Be encouraging but honest - focus on actionable, specific feedback that will help the candidate improve.
+
+${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Provide feedback in Egyptian Arabic dialect (اللهجة المصرية العامية).' : 'LANGUAGE INSTRUCTION: Provide feedback in professional English.'}
+
+SCORING GUIDELINES:
+- 0-40: Needs significant improvement - answers were unclear, off-topic, minimal, or lacked substance
+- 41-60: Developing - shows potential but needs more structure, examples, or depth
+- 61-80: Good - solid answers with room for refinement
+- 81-100: Excellent - well-structured, specific, and compelling answers
+
+Return ONLY JSON:
+{
+  "overallScore": <number 0-100>,
+  "summary": "<2-3 sentence overall assessment based ONLY on actual transcript>",
+  "strengths": ["<specific strength observed in actual responses>", "..."],
+  "improvements": ["<specific area for improvement based on actual responses>", "..."],
+  "questionFeedback": [
+    {
+      "questionIndex": 1,
+      "question": "<copy the exact question from transcript>",
+      "userAnswer": "<copy the exact answer from transcript - do not summarize or fabricate>",
+      "score": <number 0-100>,
+      "feedback": "<what they did well based on their actual answer>",
+      "suggestion": "<specific suggestion for improvement>"
+    }
+  ]
+}`;
+
+    const messages = language === 'arabic' ? [
+      { role: "system" as const, content: "انت مدرب مقابلات محترف. قدم ملاحظات بناءة بالعامية المصرية." },
+      { role: "user" as const, content: prompt }
+    ] : [
+      { role: "user" as const, content: prompt }
+    ];
+
+    try {
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: process.env.OPENAI_MODEL_PRACTICE_FEEDBACK || "gpt-4o",
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.5
+        }),
+        {
+          requestType: "generatePracticeInterviewFeedback",
+          model: process.env.OPENAI_MODEL_PRACTICE_FEEDBACK || "gpt-4o",
+          userId: null,
+        }
+      );
+      const result = JSON.parse(response.choices[0].message.content || '{}');
+      return {
+        success: true,
+        overallScore: result.overallScore || 50,
+        summary: result.summary || 'Feedback generation completed.',
+        strengths: result.strengths || [],
+        improvements: result.improvements || [],
+        questionFeedback: result.questionFeedback || []
+      };
+    } catch (error) {
+      console.error('Error generating practice interview feedback:', error);
+      return {
+        success: false,
+        overallScore: 50,
+        summary: 'Unable to generate detailed feedback at this time. Please try again.',
+        strengths: ['Completed the practice interview'],
+        improvements: ['Practice with more mock interviews to improve'],
+        questionFeedback: []
+      };
+    }
+  },
+
+  // Generate a practice-specific welcome message (simpler, no strict rules)
+  generatePracticeWelcomeMessage: async (userData: any, jobTitle: string, seniorityLevel: string, language: string = 'english') => {
+    const prompt = `You are a friendly AI interview coach helping a candidate practice for interviews.
+
+Generate a brief, encouraging welcome message for a practice interview session.
+
+CANDIDATE INFO:
+- Name: ${userData?.name || 'there'}
+- Practicing for: ${jobTitle} (${seniorityLevel} level)
+
+${language === 'arabic' ? 'LANGUAGE: Use Egyptian Arabic dialect (العامية المصرية). Be warm and encouraging like a supportive Egyptian friend.' : 'LANGUAGE: Use professional but friendly English.'}
+
+The message should:
+1. Greet them warmly
+2. Mention this is a PRACTICE session (no pressure, just practice)
+3. Briefly explain you'll ask a mix of behavioral and technical questions
+4. Encourage them to answer naturally as if in a real interview
+5. Let them know they'll get feedback at the end
+
+Keep it short (3-4 sentences max). Be encouraging and supportive.`;
+
+    const messages = language === 'arabic' ? [
+      { role: "system" as const, content: "انت مدرب مقابلات مصري ودود. اتكلم عامية مصرية بس." },
+      { role: "user" as const, content: prompt }
+    ] : [
+      { role: "user" as const, content: prompt }
+    ];
+
+    try {
+      const response = await wrapOpenAIRequest(
+        () => openai.chat.completions.create({
+          model: process.env.OPENAI_MODEL_WELCOME_MESSAGE || "gpt-4o",
+          messages,
+          temperature: 0.7,
+          max_completion_tokens: 200
+        }),
+        {
+          requestType: "generatePracticeWelcomeMessage",
+          model: process.env.OPENAI_MODEL_WELCOME_MESSAGE || "gpt-4o",
+          userId: userData?.id || null,
+        }
+      );
+      return response.choices[0].message.content?.trim() || aiInterviewService.getFallbackPracticeWelcomeMessage(userData?.name, jobTitle, language);
+    } catch (error) {
+      console.error('Error generating practice welcome message:', error);
+      return aiInterviewService.getFallbackPracticeWelcomeMessage(userData?.name, jobTitle, language);
+    }
+  },
+
+  getFallbackPracticeWelcomeMessage: (name?: string, jobTitle?: string, language: string = 'english') => {
+    if (language === 'arabic') {
+      const displayName = name ? ` يا ${name}` : '';
+      return `أهلاً${displayName}! دي جلسة تدريب على المقابلات علشان تتمرن على وظيفة ${jobTitle || 'الوظيفة'}. هسألك شوية أسئلة سلوكية وتقنية - جاوب براحتك وبشكل طبيعي زي ما هتعمل في مقابلة حقيقية. في الآخر هديك ملاحظات تساعدك تتحسن. يلا نبدأ!`;
+    }
+    const displayName = name ? `, ${name}` : '';
+    return `Hi${displayName}! This is a practice interview session to help you prepare for a ${jobTitle || 'role'}. I'll ask you a mix of behavioral and technical questions - just answer naturally as you would in a real interview. At the end, you'll receive feedback to help you improve. Let's get started!`;
   }
 };

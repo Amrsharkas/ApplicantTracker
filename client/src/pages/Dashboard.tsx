@@ -12,7 +12,8 @@ import {
   AlertCircle,
   X,
   Brain,
-  Settings
+  Settings,
+  Mic
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useResumeRequirement } from "@/hooks/useResumeRequirement";
@@ -34,6 +35,7 @@ import { InvitedJobsModal } from "@/components/JobSeekerModals/InvitedJobsModal"
 import { JobPostingsModal } from "@/components/JobSeekerModals/JobPostingsModal";
 import { JobSpecificAIInterviewsModal } from "@/components/JobSeekerModals/JobSpecificAIInterviewsModal";
 import { CareerSuggestionsModal } from "@/components/JobSeekerModals/CareerSuggestionsModal";
+import { PracticeInterviewModal } from "@/components/JobSeekerModals/PracticeInterviewModal";
 
 export default function Dashboard() {
   const { user, isLoading } = useAuth();
@@ -622,6 +624,24 @@ export default function Dashboard() {
                     {t('careerSuggestions.description') || "Get personalized career development suggestions based on your profile"}
                   </p>
                 </button>
+
+                <button
+                  onClick={() => openModal('practiceInterview')}
+                  className="bg-gradient-to-br from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
+                >
+                  <div className="flex items-center space-x-3 sm:space-x-4 rtl:space-x-reverse mb-3 sm:mb-4">
+                    <div className="bg-white bg-opacity-20 rounded-lg p-2 sm:p-3">
+                      <Mic className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="text-xl sm:text-2xl font-bold">{t('practiceInterview.title') || "Practice Interview"}</h4>
+                      <p className="text-amber-100 text-sm sm:text-lg">{t('practiceInterview.subtitle') || "AI-Powered Training"}</p>
+                    </div>
+                  </div>
+                  <p className="text-amber-100 text-sm sm:text-base leading-relaxed">
+                    {t('practiceInterview.description') || "Practice job interviews with AI and get instant feedback to improve your skills"}
+                  </p>
+                </button>
               </div>
 
               {/* Job specific AI interviews - New widget (above upcoming) */}
@@ -839,6 +859,10 @@ export default function Dashboard() {
       />
       <CareerSuggestionsModal
         isOpen={activeModal === 'careerSuggestions'}
+        onClose={closeModal}
+      />
+      <PracticeInterviewModal
+        isOpen={activeModal === 'practiceInterview'}
         onClose={closeModal}
       />
       <InvitedJobsModal
