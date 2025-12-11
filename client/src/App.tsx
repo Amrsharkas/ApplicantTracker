@@ -7,7 +7,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { PasswordSetupModal } from "@/components/PasswordSetupModal";
 import Landing from "@/pages/Landing";
-import Dashboard from "@/pages/Dashboard";
+import JobSeekerDashboard from "@/pages/JobSeekerDashboard";
 import AIInterviewInitiation from "@/pages/AIInterviewInitiation";
 import VerifyEmailPage from "@/pages/VerifyEmailPage";
 import VerificationSentPage from "@/pages/VerificationSentPage";
@@ -78,7 +78,19 @@ function Router() {
       <Route path="/dashboard">
         {isAuthenticated ? (
           isEmailVerified ? (
-            <Dashboard />
+            <JobSeekerDashboard />
+          ) : (
+            <Redirect to="/verification-pending" />
+          )
+        ) : (
+          <Redirect to="/" />
+        )}
+      </Route>
+
+      <Route path="/dashboard/:rest*">
+        {isAuthenticated ? (
+          isEmailVerified ? (
+            <JobSeekerDashboard />
           ) : (
             <Redirect to="/verification-pending" />
           )

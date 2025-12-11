@@ -309,7 +309,7 @@ export default function Dashboard() {
     <div className={`min-h-screen bg-gray-50 ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+        <div className="px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2 rtl:space-x-reverse">
               <img
@@ -355,7 +355,7 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Getting Started Section or Hiring Stats */}
         <div className="mb-8">
           {/* Show full dashboard for completed users */}
