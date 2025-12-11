@@ -877,6 +877,21 @@ export interface AssessmentQuestion {
   order: number;
 }
 
+// Assessment response for storing applicant answers
+export interface AssessmentResponse {
+  questionId: string;
+  questionText: string; // Store for readability
+  type: AssessmentQuestionType;
+  answer: string | number | boolean | string[]; // Depends on question type
+  fileUrl?: string; // For file_upload type
+}
+
+// Wrapper for storing complete assessment submission
+export interface AssessmentSubmission {
+  completedAt: string;
+  responses: AssessmentResponse[];
+}
+
 export const insertOrganizationSchema = createInsertSchema(organizations, {
   url: (schema) => schema.trim().min(1, "Organization URL is required"),
 }).omit({
@@ -1063,6 +1078,7 @@ export const airtableJobMatches = pgTable("airtable_job_matches", {
   reminder24hSent: boolean("reminder_24h_sent").default(false),
   reminder1hJobId: varchar("reminder_1h_job_id"),
   reminder24hJobId: varchar("reminder_24h_job_id"),
+  assessmentResponses: jsonb("assessment_responses"), // Stores user answers to assessment questions
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

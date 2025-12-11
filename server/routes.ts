@@ -99,6 +99,47 @@ const uploadChunk = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB per chunk
 });
 
+// Assessment uploads directory
+const assessmentsDir = path.join(__dirname, '..', 'uploads/assessments');
+fs.mkdirSync(assessmentsDir, { recursive: true });
+
+const assessmentStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const userId = (req as any).user?.id || 'unknown';
+    const dir = path.join(assessmentsDir, userId);
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `assessment-${uniqueSuffix}${ext}`);
+  },
+});
+
+const uploadAssessment = multer({
+  storage: assessmentStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    // Default allowed types - can be overridden per question
+    const allowedMimeTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword',
+      'text/plain',
+      'text/rtf',
+      'image/png',
+      'image/jpeg',
+      'image/jpg'
+    ];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Supported: PDF, DOCX, DOC, TXT, RTF, PNG, JPG'));
+    }
+  }
+});
+
 import { wrapOpenAIRequest } from "./openaiTracker";
 
 const upload = multer({
@@ -3884,6 +3925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         return {
           recordId: match.id,
+          jobId: match.jobId,
           jobTitle: match.jobTitle || 'Untitled Position',
           jobDescription: match.jobDescription || '',
           companyName: match.companyName || 'Unknown Company',
@@ -3892,6 +3934,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           interviewComments: match.interviewComments || '',
           aiPrompt: job.aiPrompt || '',
           interviewLanguage: job.interviewLanguage,
+          assessmentQuestions: job.assessmentQuestions || null,
+          assessmentResponses: match.assessmentResponses || null,
         }
       });
 
@@ -3899,6 +3943,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching job-specific AI interviews:', error);
       return res.status(500).json({ message: 'Failed to fetch job-specific AI interviews' });
+    }
+  });
+
+  // Submit assessment responses for a job
+  app.post('/api/assessment/submit', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { jobMatchId, responses } = req.body;
+
+      if (!jobMatchId || !responses || !Array.isArray(responses)) {
+        return res.status(400).json({ message: 'Missing jobMatchId or responses' });
+      }
+
+      console.log(`📝 Submitting assessment for job match ${jobMatchId} by user ${userId}`);
+
+      // Get the job match to verify ownership
+      const jobMatch = await localDatabaseService.getJobMatchById(jobMatchId);
+      if (!jobMatch) {
+        return res.status(404).json({ message: 'Job match not found' });
+      }
+
+      if (jobMatch.userId !== userId) {
+        return res.status(403).json({ message: 'Unauthorized access to job match' });
+      }
+
+      // Get the job to validate required questions (use storage.getJobsByIds like GET endpoint)
+      const jobs = await storage.getJobsByIds([jobMatch.jobId]);
+      const job = jobs.find(j => j.id == jobMatch.jobId);
+      if (!job || !job.assessmentQuestions) {
+        return res.status(400).json({ message: 'Job has no assessment questions' });
+      }
+
+      const assessmentQuestions = job.assessmentQuestions as any[];
+
+      // Validate all required questions are answered
+      const requiredQuestionIds = assessmentQuestions
+        .filter((q: any) => q.validation?.required)
+        .map((q: any) => q.id);
+
+      const answeredQuestionIds = responses.map((r: any) => r.questionId);
+      const missingRequired = requiredQuestionIds.filter(
+        (id: string) => !answeredQuestionIds.includes(id)
+      );
+
+      if (missingRequired.length > 0) {
+        return res.status(400).json({
+          message: 'Missing required questions',
+          missingQuestionIds: missingRequired
+        });
+      }
+
+      // Build the assessment submission
+      const assessmentSubmission = {
+        completedAt: new Date().toISOString(),
+        responses: responses.map((r: any) => {
+          const question = assessmentQuestions.find((q: any) => q.id === r.questionId);
+          return {
+            questionId: r.questionId,
+            questionText: question?.questionText || '',
+            type: question?.type || 'text',
+            answer: r.answer,
+            fileUrl: r.fileUrl || undefined
+          };
+        })
+      };
+
+      // Update the job match with assessment responses
+      await localDatabaseService.updateJobMatchAssessmentResponses(jobMatchId, assessmentSubmission);
+
+      console.log(`✅ Assessment submitted successfully for job match ${jobMatchId}`);
+      return res.json({ success: true, message: 'Assessment submitted successfully' });
+    } catch (error) {
+      console.error('Error submitting assessment:', error);
+      return res.status(500).json({ message: 'Failed to submit assessment' });
+    }
+  });
+
+  // Upload file for assessment question
+  app.post('/api/assessment/upload', requireAuth, uploadAssessment.single('file'), async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      console.log(`📎 Assessment file uploaded by user ${userId}: ${file.originalname}`);
+
+      // Build the file URL
+      const fileUrl = `/uploads/assessments/${userId}/${file.filename}`;
+
+      return res.json({
+        success: true,
+        fileUrl,
+        filename: file.originalname,
+        size: file.size,
+        mimeType: file.mimetype
+      });
+    } catch (error) {
+      console.error('Error uploading assessment file:', error);
+      return res.status(500).json({ message: 'Failed to upload file' });
     }
   });
 

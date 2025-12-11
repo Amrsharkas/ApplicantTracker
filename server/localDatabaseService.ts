@@ -586,6 +586,33 @@ export class LocalDatabaseService {
     }
   }
 
+  async getJobMatchById(id: string): Promise<AirtableJobMatch | null> {
+    try {
+      const [match] = await db
+        .select()
+        .from(schema.airtableJobMatches)
+        .where(eq(schema.airtableJobMatches.id, id));
+      return match || null;
+    } catch (error) {
+      console.error('Error getting job match by id:', error);
+      throw error;
+    }
+  }
+
+  async updateJobMatchAssessmentResponses(id: string, assessmentResponses: any): Promise<AirtableJobMatch | null> {
+    try {
+      const [match] = await db
+        .update(schema.airtableJobMatches)
+        .set({ assessmentResponses, updatedAt: new Date() })
+        .where(eq(schema.airtableJobMatches.id, id))
+        .returning();
+      return match || null;
+    } catch (error) {
+      console.error('Error updating job match assessment responses:', error);
+      throw error;
+    }
+  }
+
   async getUpcomingInterviews(): Promise<any[]> {
     try {
       const now = new Date();

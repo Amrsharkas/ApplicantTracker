@@ -15,6 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface InvitedJob {
   recordId: string;
+  jobId: string | number;
   jobTitle: string;
   jobDescription?: string;
   companyName: string;
@@ -25,6 +26,8 @@ interface InvitedJob {
   interviewComments?: string;
   aiPrompt?: string;
   interviewLanguage?: string;
+  assessmentQuestions?: any[];
+  assessmentResponses?: any;
 }
 
 interface JobSpecificAIInterviewsModalProps {
@@ -37,6 +40,7 @@ interface JobSpecificAIInterviewsModalProps {
 
 import { JobSpecificInterviewOptionsModal } from "./JobSpecificInterviewOptionsModal";
 import { JobSpecificInterviewModal } from "./JobSpecificInterviewModal";
+import { AssessmentFormModal } from "./AssessmentFormModal";
 import { getInterviewLanguage } from "@/lib/interviewUtils";
 
 export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPractice, onStartJobPracticeVoice, onInterviewComplete }: JobSpecificAIInterviewsModalProps) {
@@ -48,6 +52,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
   const [interviewOpen, setInterviewOpen] = useState(false);
   const [interviewMode, setInterviewMode] = useState<'text' | 'voice'>('text');
   const [interviewLanguage, setInterviewLanguage] = useState<'english' | 'arabic'>('english');
+  const [assessmentOpen, setAssessmentOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'invited' | 'completed'>('invited');
 
@@ -109,6 +114,32 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
     onInterviewComplete?.();
     // Switch to completed tab to show the finished interview
     setActiveTab('completed');
+  };
+
+  // Check if job has assessment questions that need to be completed
+  const needsAssessment = (job: InvitedJob | null): boolean => {
+    if (!job) return false;
+    const hasQuestions = job.assessmentQuestions && job.assessmentQuestions.length > 0;
+    const alreadyCompleted = job.assessmentResponses !== null && job.assessmentResponses !== undefined;
+    return hasQuestions && !alreadyCompleted;
+  };
+
+  // Handler for starting interview - checks for assessment first
+  const handleStartInterviewClick = (job: InvitedJob) => {
+    setSelectedJob(job);
+    if (needsAssessment(job)) {
+      setAssessmentOpen(true);
+    } else {
+      setOptionsOpen(true);
+    }
+  };
+
+  // Handler for when assessment is completed
+  const handleAssessmentComplete = async () => {
+    setAssessmentOpen(false);
+    await refetch(); // Refresh to get updated assessmentResponses
+    // Now open the interview options modal
+    setOptionsOpen(true);
   };
 
   return (
@@ -220,11 +251,11 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                             </Button>
                             <Button
                               size="sm"
-                              onClick={() => { setSelectedJob(job); setOptionsOpen(true); }}
+                              onClick={() => handleStartInterviewClick(job)}
                               className="flex items-center gap-1"
                             >
                               <Play className="h-3 w-3" />
-                              Start interview
+                              {needsAssessment(job) ? 'Start assessment' : 'Start interview'}
                             </Button>
                           </div>
                         </div>
@@ -436,11 +467,11 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                     ) : (
                       <Button
                         variant="secondary"
-                        onClick={() => { setOptionsOpen(true); }}
+                        onClick={() => handleStartInterviewClick(selectedJob)}
                         className="flex items-center gap-2 px-6"
                       >
                         <Play className="h-4 w-4" />
-                        Start interview
+                        {needsAssessment(selectedJob) ? 'Start assessment' : 'Start interview'}
                       </Button>
                     )}
                   </div>
@@ -483,6 +514,19 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
               // Simple toast; reuse parent toast
             }
           }}
+        />
+
+        <AssessmentFormModal
+          isOpen={assessmentOpen}
+          onClose={() => setAssessmentOpen(false)}
+          onComplete={handleAssessmentComplete}
+          job={selectedJob ? {
+            recordId: selectedJob.recordId,
+            jobId: selectedJob.jobId,
+            jobTitle: selectedJob.jobTitle,
+            companyName: selectedJob.companyName,
+            assessmentQuestions: selectedJob.assessmentQuestions || [],
+          } : null}
         />
       </DialogContent>
     </Dialog>
