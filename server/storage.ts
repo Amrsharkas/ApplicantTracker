@@ -730,6 +730,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getJobsByIds(jobIds: string[]): Promise<Job[]> {
+    if (jobIds.length === 0) {
+      return [];
+    }
     const jobsList = await db
       .select()
       .from(jobs)
