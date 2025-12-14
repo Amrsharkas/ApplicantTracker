@@ -1069,6 +1069,15 @@ export class AIProfileAnalysisAgent {
       credibility_assessment: resumeAnalysis.raw_analysis?.credibility_assessment || null
     } : null;
 
+    // Calculate word count metrics for insufficient data detection
+    const exchangeCount = interviewResponses.length;
+    const totalWordCount = interviewResponses.reduce((sum, r) => {
+      return sum + (r.answer?.split(/\s+/).filter(w => w.length > 0).length || 0);
+    }, 0);
+    const avgResponseLength = interviewResponses.length > 0
+      ? Math.round(interviewResponses.reduce((sum, r) => sum + (r.answer?.length || 0), 0) / interviewResponses.length)
+      : 0;
+
     // Generate the V5 prompt (more rigorous, evidence-based assessment)
     const prompt = INTERVIEW_PROFILE_GENERATOR_V5(
       userData,
@@ -1175,34 +1184,52 @@ export class AIProfileAnalysisAgent {
       const verdict = comprehensiveProfile.executive_summary || null;
       const hiringGuidance = comprehensiveProfile.hiring_guidance || null;
 
+      // Check if this is an insufficient data case
+      const isInsufficientData = comprehensiveProfile.executive_summary?.fit_verdict === 'INSUFFICIENT_DATA' ||
+                                totalWordCount < 50 ||
+                                comprehensiveProfile.interview_metadata?.exchange_count === 0 ||
+                                (comprehensiveProfile.interview_metadata?.avg_response_length_chars || 0) < 10;
+
       // Return legacy format for backward compatibility with V4 comprehensive data
       return {
-        summary: comprehensiveProfile.executive_summary?.one_sentence ||
+        summary: isInsufficientData ?
+                "Candidate provided insufficient responses for evaluation." :
+                comprehensiveProfile.executive_summary?.one_sentence ||
                 comprehensiveProfile.executive_summary?.key_impression ||
                 comprehensiveProfile.detailed_profile?.professional_identity?.identity_summary ||
                 "Candidate assessment completed.",
-        skills: legacySkills,
-        personality: comprehensiveProfile.detailed_profile?.personality_indicators?.communication_style ||
+        skills: isInsufficientData ? [] : legacySkills,
+        personality: isInsufficientData ?
+                    "Cannot assess - insufficient interview responses provided." :
+                    comprehensiveProfile.detailed_profile?.personality_indicators?.communication_style ||
                     comprehensiveProfile.personality_and_values?.personality_summary ||
                     "Not assessed",
         experience: [], // Will be populated from existing profile data
-        strengths: [
-          comprehensiveProfile.executive_summary?.standout_positive,
-          ...(comprehensiveProfile.transcript_analysis?.green_flags_detected?.map((f: any) => f.description) || [])
-        ].filter(Boolean).slice(0, 5),
-        careerGoals: comprehensiveProfile.detailed_profile?.career_trajectory?.stated_goals ||
-                    comprehensiveProfile.motivation_and_career_direction?.short_term_goals_1_2_years ||
-                    "Career goals extracted from interview responses.",
-        workStyle: comprehensiveProfile.detailed_profile?.work_preferences?.stated_preferences?.join('; ') ||
-                  comprehensiveProfile.work_style_and_collaboration?.day_to_day_work_style ||
-                  "Not assessed",
-        matchScorePercentage: overallScore,
-        experiencePercentage: experienceScore,
-        techSkillsPercentage: technicalScore,
-        culturalFitPercentage: culturalFitScore,
+        strengths: isInsufficientData ?
+                   [] :
+                   [
+                     comprehensiveProfile.executive_summary?.standout_positive,
+                     ...(comprehensiveProfile.transcript_analysis?.green_flags_detected?.map((f: any) => f.description) || [])
+                   ].filter(Boolean).slice(0, 5),
+        careerGoals: isInsufficientData ?
+                     "No career goals expressed - insufficient interview responses." :
+                     comprehensiveProfile.detailed_profile?.career_trajectory?.stated_goals ||
+                     comprehensiveProfile.motivation_and_career_direction?.short_term_goals_1_2_years ||
+                     "Career goals extracted from interview responses.",
+        workStyle: isInsufficientData ?
+                   "Cannot determine work style - insufficient responses provided." :
+                   comprehensiveProfile.detailed_profile?.work_preferences?.stated_preferences?.join('; ') ||
+                   comprehensiveProfile.work_style_and_collaboration?.day_to_day_work_style ||
+                   "Not assessed",
+        matchScorePercentage: isInsufficientData ? 0 : overallScore,
+        experiencePercentage: isInsufficientData ? 0 : experienceScore,
+        techSkillsPercentage: isInsufficientData ? 0 : technicalScore,
+        culturalFitPercentage: isInsufficientData ? 0 : culturalFitScore,
         // Job-specific match data (only populated if job description was provided)
         jobMatch,
-        hireRecommendation: hiringGuidance?.proceed_to_next_round ||
+        hireRecommendation: isInsufficientData ?
+                          "DO_NOT_RECOMMEND" :
+                          hiringGuidance?.proceed_to_next_round ||
                           jobMatchAnalysis?.recommendation ||
                           verdict?.fit_verdict ||
                           null,
@@ -1211,14 +1238,25 @@ export class AIProfileAnalysisAgent {
       };
     } catch (error) {
       console.error("Error generating comprehensive profile:", error);
+      // Return a negative profile for insufficient data rather than generic positive text
       return {
-        summary: "Professional candidate seeking new opportunities.",
+        summary: "Candidate provided insufficient responses for assessment.",
         skills: [],
-        personality: "Dedicated and motivated professional.",
+        personality: "Not assessed due to insufficient interview data.",
         experience: [],
         strengths: [],
-        careerGoals: "Looking to advance career in chosen field.",
-        workStyle: "Team-oriented with focus on results.",
+        careerGoals: "Not expressed - insufficient interview responses.",
+        workStyle: "Cannot determine from minimal responses provided.",
+        matchScorePercentage: 0,
+        experiencePercentage: 0,
+        techSkillsPercentage: 0,
+        culturalFitPercentage: 0,
+        jobMatch: null,
+        hireRecommendation: "DO_NOT_RECOMMEND",
+        brutallyHonestProfile: {
+          error: "Profile generation failed",
+          reason: "Insufficient interview data provided"
+        }
       };
     }
   }
