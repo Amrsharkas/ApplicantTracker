@@ -3498,6 +3498,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🎯 All 3 voice interviews completed for user ${userId}. Generating final profile...`);
       const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job);
 
+      // Save the generated profile to the job application
+      if (generatedProfile && createdApplicationId) {
+        try {
+          await localDatabaseService.updateJobApplication(createdApplicationId, {
+            generatedProfile: generatedProfile
+          });
+          console.log(`✅ Saved generated profile to job application ${createdApplicationId}`);
+        } catch (profileSaveError) {
+          console.error('❌ Error saving generated profile to job application:', profileSaveError);
+          // Continue with flow even if profile save fails
+        }
+      }
+
       // Auto-shortlist or auto-decline based on profile match score
       const profileScore = generatedProfile?.matchScorePercentage;
       if (typeof profileScore === 'number' && createdApplicationId) {

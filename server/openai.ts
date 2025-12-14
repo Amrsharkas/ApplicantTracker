@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { toFile } from "openai/uploads";
 import { wrapOpenAIRequest } from "./openaiTracker";
 import fs from 'fs';
-import { INTERVIEW_PROFILE_GENERATOR_V4 } from "./prompts/interview-profile-generator-v4";
+import { INTERVIEW_PROFILE_GENERATOR_V5 } from "./prompts/interview-profile-generator-v5";
 
 // OpenAI client - models are configured via environment variables
 const openai = new OpenAI({
@@ -1069,8 +1069,8 @@ export class AIProfileAnalysisAgent {
       credibility_assessment: resumeAnalysis.raw_analysis?.credibility_assessment || null
     } : null;
 
-    // Generate the V4 prompt
-    const prompt = INTERVIEW_PROFILE_GENERATOR_V4(
+    // Generate the V5 prompt (more rigorous, evidence-based assessment)
+    const prompt = INTERVIEW_PROFILE_GENERATOR_V5(
       userData,
       interviewResponses,
       resumeAnalysisForPrompt,
@@ -1085,7 +1085,7 @@ export class AIProfileAnalysisAgent {
           messages: [
             {
               role: "system",
-              content: "You are an expert behavioral psychologist and talent assessment specialist. Your task is to analyze interview transcripts with rigor and precision. Score ONLY what candidates demonstrably proved - never assume competence without evidence. Use direct quotes to support every major claim. Default to lower scores when evidence is weak or missing. Be skeptical of vague claims; reward specific, verifiable examples with clear ownership and measurable outcomes."
+              content: "You are a senior hiring decision-maker with 20+ years of experience. Your role is to produce BRUTALLY HONEST assessments that directly inform hiring decisions. CRITICAL RULES: 1) Every claim requires a VERBATIM QUOTE - no quote = no claim. 2) Default to 50/100 (average) and adjust based on evidence. 3) Short interviews (under 7 questions) cap scores at 70 maximum. 4) Detect and penalize generic/rehearsed responses. 5) Omissions matter - note what strong candidates would have said but this one didn't. 6) Anti-inflation: 90+ requires exceptional evidence; mediocre interviews produce mediocre profiles. Never inflate scores to be nice."
             },
             {
               role: "user",
@@ -1106,55 +1106,69 @@ export class AIProfileAnalysisAgent {
 
       console.log({
         profile,
-        version: 'V4'
+        version: 'V5'
       });
 
       // Store the comprehensive profile for employers
       const comprehensiveProfile = profile;
 
-      // Extract basic info for backward compatibility using V4 structure
+      // Extract basic info for backward compatibility using V5 structure
       const legacySkills = comprehensiveProfile.detailed_profile?.skills_demonstrated?.technical_skills?.map((s: any) => s.skill) ||
                           comprehensiveProfile.skills_and_capabilities?.core_hard_skills ||
                           comprehensiveProfile.skills_and_capabilities?.tools_and_technologies || [];
 
-      // Extract scores from V4 structure
-      const v4Scores = comprehensiveProfile.scores || {};
+      // Extract scores from V5 structure (V5 uses final_score, V4 uses score - support both)
+      const profileScores = comprehensiveProfile.scores || {};
 
       const technicalScore = Math.round(
-        v4Scores.technical_competence?.score ||
-        v4Scores.technical_skills_score_0_100 || 50
+        profileScores.technical_competence?.final_score ||
+        profileScores.technical_competence?.score ||
+        profileScores.technical_skills_score_0_100 || 0
       );
       const experienceScore = Math.round(
-        v4Scores.experience_quality?.score ||
-        v4Scores.experience_score_0_100 || 50
+        profileScores.experience_quality?.final_score ||
+        profileScores.experience_quality?.score ||
+        profileScores.experience_score_0_100 || 0
       );
       const culturalFitScore = Math.round(
-        v4Scores.cultural_collaboration_fit?.score ||
-        v4Scores.cultural_fit_score_0_100 || 50
+        profileScores.cultural_collaboration_fit?.final_score ||
+        profileScores.cultural_collaboration_fit?.score ||
+        profileScores.cultural_fit_score_0_100 || 0
       );
 
-      // Calculate overall score using V4 weighting: 25% tech + 25% experience + 15% communication + 15% self-awareness + 20% job fit
-      // Fall back to legacy weighting if V4 scores not available
-      const communicationScore = Math.round(v4Scores.communication_presence?.score || 50);
-      const selfAwarenessScore = Math.round(v4Scores.self_awareness_growth?.score || 50);
-      const jobFitScore = Math.round(v4Scores.job_specific_fit?.score || v4Scores.general_employability?.score || 50);
+      // Calculate overall score using weighting: 25% tech + 25% experience + 15% communication + 15% self-awareness + 20% job fit
+      const communicationScore = Math.round(
+        profileScores.communication_presence?.final_score ||
+        profileScores.communication_presence?.score || 0
+      );
+      const selfAwarenessScore = Math.round(
+        profileScores.self_awareness_growth?.final_score ||
+        profileScores.self_awareness_growth?.score || 0
+      );
+      const jobFitScore = Math.round(
+        profileScores.job_specific_fit?.final_score ||
+        profileScores.job_specific_fit?.score ||
+        profileScores.general_employability?.final_score ||
+        profileScores.general_employability?.score || 0
+      );
 
       const overallScore = Math.round(
-        v4Scores.overall_score?.value ||
+        profileScores.overall_score?.value ||
         (0.25 * technicalScore + 0.25 * experienceScore + 0.15 * communicationScore + 0.15 * selfAwarenessScore + 0.20 * jobFitScore)
       );
 
-      // Extract job match data if available (map from V4 structure)
-      const v4JobMatch = comprehensiveProfile.job_match_analysis;
-      const jobMatch = v4JobMatch ? {
-        job_title_evaluated_for: v4JobMatch.job_title || '',
-        requirements_met: v4JobMatch.requirements_assessment?.filter((r: any) => r.met_status === 'CLEARLY_MET').map((r: any) => r.requirement) || [],
-        requirements_partially_met: v4JobMatch.requirements_assessment?.filter((r: any) => r.met_status === 'PARTIALLY_MET').map((r: any) => r.requirement) || [],
-        requirements_not_met: v4JobMatch.requirements_assessment?.filter((r: any) => r.met_status === 'NOT_MET' || r.met_status === 'NOT_DEMONSTRATED').map((r: any) => r.requirement) || [],
-        strongest_alignment_areas: v4JobMatch.strongest_alignments || [],
-        biggest_gaps_for_role: v4JobMatch.critical_gaps || [],
-        overall_job_fit_assessment: v4JobMatch.recommendation_reasoning || '',
-        hire_recommendation: v4JobMatch.recommendation?.toLowerCase().replace(/_/g, '_') || null
+      // Extract job match data if available
+      const jobMatchAnalysis = comprehensiveProfile.job_match_analysis;
+      const jobMatch = jobMatchAnalysis ? {
+        job_title_evaluated_for: jobMatchAnalysis.job_title || '',
+        requirements_met: jobMatchAnalysis.requirements_assessment?.filter((r: any) => r.met_status === 'CLEARLY_MET').map((r: any) => r.requirement) || [],
+        requirements_partially_met: jobMatchAnalysis.requirements_assessment?.filter((r: any) => r.met_status === 'PARTIALLY_MET').map((r: any) => r.requirement) || [],
+        requirements_not_met: jobMatchAnalysis.requirements_assessment?.filter((r: any) => r.met_status === 'NOT_MET' || r.met_status === 'NOT_DEMONSTRATED' || r.met_status === 'CONTRADICTED').map((r: any) => r.requirement) || [],
+        strongest_alignment_areas: jobMatchAnalysis.strongest_alignments || [],
+        biggest_gaps_for_role: jobMatchAnalysis.critical_gaps || [],
+        overall_job_fit_assessment: jobMatchAnalysis.recommendation_reasoning || '',
+        hire_recommendation: jobMatchAnalysis.recommendation?.toLowerCase().replace(/_/g, '_') || null,
+        fit_score: jobMatchAnalysis.fit_score || null
       } : null;
 
       // Extract verdict for hire recommendation
@@ -1189,14 +1203,11 @@ export class AIProfileAnalysisAgent {
         // Job-specific match data (only populated if job description was provided)
         jobMatch,
         hireRecommendation: hiringGuidance?.proceed_to_next_round ||
-                          v4JobMatch?.recommendation ||
+                          jobMatchAnalysis?.recommendation ||
                           verdict?.fit_verdict ||
                           null,
-        // Store the full V4 comprehensive profile for employer access
-        brutallyHonestProfile: {
-          version: 4,
-          ...comprehensiveProfile
-        }
+        // Store the full comprehensive profile for employer access
+        brutallyHonestProfile: comprehensiveProfile
       };
     } catch (error) {
       console.error("Error generating comprehensive profile:", error);
@@ -2503,7 +2514,7 @@ Return ONLY JSON:
       const result = JSON.parse(response.choices[0].message.content || '{}');
       return {
         success: true,
-        overallScore: result.overallScore || 50,
+        overallScore: result.overallScore || 0,
         summary: result.summary || 'Feedback generation completed.',
         strengths: result.strengths || [],
         improvements: result.improvements || [],
