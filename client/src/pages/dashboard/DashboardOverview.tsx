@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   User,
   Target,
@@ -39,6 +39,7 @@ export default function DashboardOverview() {
   const { t, isRTL } = useLanguage();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const [, navigate] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Queries
@@ -230,7 +231,7 @@ export default function DashboardOverview() {
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
                     className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-md"
-                    onClick={() => setActiveModal('invitedJobs')}
+                    onClick={() => navigate('/dashboard/job-interviews')}
                   >
                     View Jobs
                     <ArrowRight className="w-4 h-4 ml-2" />
