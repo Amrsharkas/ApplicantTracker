@@ -72,6 +72,9 @@ export const organizations = pgTable("organizations", {
   subscriptionStatus: varchar("subscription_status").default("inactive"), // active, inactive, trial, past_due, canceled
   currentSubscriptionId: varchar("current_subscription_id"),
   jobPostsUsed: integer("job_posts_used").notNull().default(0),
+  // White label branding fields
+  brandLogoPath: varchar("brand_logo_path"),
+  brandPrimaryColor: varchar("brand_primary_color"), // HSL format: "207, 90%, 54%"
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -638,6 +641,32 @@ export const scoredApplicants = pgTable("scored_applicants", {
   jobId: varchar("job_id"),
   organizationId: varchar("organization_id"),
   scoredAt: timestamp("scored_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const offerLetters = pgTable("offer_letters", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  applicantId: varchar("applicant_id").notNull(),
+  jobId: varchar("job_id").notNull(),
+  organizationId: varchar("organization_id").notNull(),
+
+  // Offer details
+  offerContent: text("offer_content").notNull(),
+  position: varchar("position").notNull(),
+  salary: varchar("salary"),
+  startDate: varchar("start_date"),
+
+  // Email tracking
+  recipientEmail: varchar("recipient_email").notNull(),
+  recipientName: varchar("recipient_name").notNull(),
+
+  // Status tracking
+  status: varchar("status").notNull().default("sent"),
+  sentAt: timestamp("sent_at").notNull(),
+  sentBy: varchar("sent_by").notNull(),
+
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
