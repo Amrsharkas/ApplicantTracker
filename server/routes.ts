@@ -160,7 +160,7 @@ interface JobSummary {
   location?: string;
 }
 
-async function generateComprehensiveAIProfile(userId: string, updatedProfile: any, storage: any, aiInterviewService: any, localDatabaseService: any, job?: JobSummary) {
+async function generateComprehensiveAIProfile(userId: string, updatedProfile: any, storage: any, aiInterviewService: any, localDatabaseService: any, job?: JobSummary, sessionId?: number) {
   // Check if profile generation is already in progress for this user
   if (profileGenerationLock.has(userId)) {
     console.log(`📋 AI profile generation already in progress for user ${userId}, waiting...`);
@@ -181,11 +181,17 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
       // Get user data for comprehensive analysis
       const user = await storage.getUser(userId);
       
-      // Get all interview sessions for this user using the new method
-      const allInterviewSessions = await storage.getAllInterviewSessions(userId);
-      const allResponses = allInterviewSessions.flatMap((session: any) => 
-        session.sessionData?.responses || []
-      );
+      // Determine which session(s) to use for responses. If a specific `sessionId` was provided,
+      // fetch that session and use its responses. Otherwise, fall back to all sessions for the user.
+      let allResponses: any[] = [];
+      if (sessionId) {
+        const sessionRecord = await storage.getInterviewSessionById(sessionId);
+        allResponses = sessionRecord?.sessionData?.responses || [];
+      } else {
+        // Backwards-compatible: use all sessions for the user
+        const allInterviewSessions = await storage.getAllInterviewSessions(userId);
+        allResponses = allInterviewSessions.flatMap((s: any) => s.sessionData?.responses || []);
+      }
 
       // Get resume content from profile
       const resumeContent = updatedProfile?.resumeContent || null;
@@ -2973,7 +2979,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             const updatedProfile = await storage.getApplicantProfile(userId);
 
-            await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job);
+            await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job, session.id);
 
             return res.json({ isComplete: true, jobPractice: true, score });
           } catch (scoringError) {
@@ -3003,7 +3009,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                      updatedProfile?.technicalInterviewCompleted;
 
         if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
-          const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job);
+          const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job, session.id);
 
           res.json({ 
             isComplete: true,
@@ -3184,7 +3190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
         // Generate final comprehensive profile only after ALL 3 interviews are complete
         console.log(`🎯 All 3 interviews completed for user ${userId}. Generating final profile...`);
-        const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService);
+        const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, undefined, session.id);
 
         res.json({ 
           isComplete: true,
@@ -3496,7 +3502,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate final comprehensive profile only after ALL 3 interviews are complete
       console.log(`🎯 All 3 voice interviews completed for user ${userId}. Generating final profile...`);
-      const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job);
+      const generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job, session.id);
 
       // Save the generated profile to the job application
       if (generatedProfile && createdApplicationId) {

@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { toFile } from "openai/uploads";
 import { wrapOpenAIRequest } from "./openaiTracker";
 import fs from 'fs';
-import { INTERVIEW_PROFILE_GENERATOR_V5 } from "./prompts/interview-profile-generator-v5";
+import { INTERVIEW_PROFILE_GENERATOR_V6 } from "./prompts/interview-profile-generator-v6";
 
 // OpenAI client - models are configured via environment variables
 const openai = new OpenAI({
@@ -22,9 +22,9 @@ export interface InterviewSet {
 }
 
 export interface InterviewResponse {
-  question: string;
-  answer: string;
-  followUp?: string;
+  role: string;
+  content: string;
+  timestamp?: string;
 }
 
 export interface JobMatch {
@@ -1070,22 +1070,38 @@ export class AIProfileAnalysisAgent {
     } : null;
 
     // Calculate word count metrics for insufficient data detection
-    const exchangeCount = interviewResponses.length;
     const totalWordCount = interviewResponses.reduce((sum, r) => {
-      return sum + (r.answer?.split(/\s+/).filter(w => w.length > 0).length || 0);
+      return sum + (r.content?.split(/\s+/).filter(w => w.length > 0).length || 0);
     }, 0);
-    const avgResponseLength = interviewResponses.length > 0
-      ? Math.round(interviewResponses.reduce((sum, r) => sum + (r.answer?.length || 0), 0) / interviewResponses.length)
-      : 0;
 
-    // Generate the V5 prompt (more rigorous, evidence-based assessment)
-    const prompt = INTERVIEW_PROFILE_GENERATOR_V5(
+    // Generate the V6 prompt (advanced transcription analysis and comprehensive assessment)
+    const prompt = INTERVIEW_PROFILE_GENERATOR_V6(
       userData,
       interviewResponses,
       resumeAnalysisForPrompt,
       resumeContent,
       jobDescription || null
     );
+
+    // Log the prompt to /tmp for debugging/auditing.
+    try {
+      // Use a filename that includes user id (if available) and a timestamp
+      const safeUserId = (userData && userData.id) ? String(userData.id).replace(/[^a-zA-Z0-9-_]/g, '_') : 'unknown';
+      const filename = `/tmp/generateComprehensiveProfile_prompt_${safeUserId}_${Date.now()}.txt`;
+      // Lazy-import fs so this file doesn't change module loading semantics if not needed elsewhere
+      const fs = await import('fs');
+      fs.writeFileSync(filename, JSON.stringify({
+        prompt,
+        userData,
+        interviewResponses,
+        resumeAnalysisForPrompt,
+        resumeContent,
+        jobDescription
+      }, null, 2), { encoding: 'utf8' });
+      console.log(`Wrote comprehensive profile prompt to ${filename}`);
+    } catch (err) {
+      console.error('Failed to write comprehensive profile prompt to /tmp:', err);
+    }
 
     try {
       const response = await wrapOpenAIRequest(
