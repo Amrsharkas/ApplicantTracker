@@ -155,29 +155,9 @@ export async function setupAuth(app: Express) {
             console.log(`✅ Successfully linked Google account for: ${updatedUser.email}`);
             return done(null, updatedUser);
           } else if (user && user.role !== "applicant") {
-            // Email exists but with different role - create new Google OAuth user with 'applicant' role
-            console.log(`📧 Email exists with different role (${user.role}) - creating new Google OAuth user: ${email}`);
-            try {
-              const userId = randomBytes(16).toString('hex'); // Generate unique ID
-              const newUser = await storage.createUser({
-                id: userId,
-                email,
-                password: await hashPassword(randomBytes(32).toString('hex')), // Random password for OAuth users
-                firstName,
-                lastName,
-                profileImageUrl,
-                isVerified: true, // Auto-verify Google users
-                googleId,
-                authProvider: 'google',
-                passwordNeedsSetup: false,
-                role: 'applicant', // Explicitly set role to 'applicant' for Google OAuth users
-              });
-              console.log(`✅ Created new Google OAuth user with 'applicant' role: ${email} (ID: ${newUser.id})`);
-              return done(null, newUser);
-            } catch (createError) {
-              console.error(`❌ Failed to create Google OAuth user:`, createError);
-              return done(createError as Error);
-            }
+            // Email exists but with different role - reject login (don't create new account)
+            console.log(`❌ Email exists with different role (${user.role}) - access denied for applicant app: ${email}`);
+            return done(null, false, { message: `This email is registered with a different role (${user.role}). Please use the correct application to sign in.` });
           }
 
           // Create new user from Google profile
