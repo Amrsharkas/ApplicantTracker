@@ -12,8 +12,7 @@ import {
   AlertCircle,
   X,
   Brain,
-  Settings,
-  Mic
+  Settings
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useResumeRequirement } from "@/hooks/useResumeRequirement";
@@ -28,7 +27,6 @@ import { MatchesModal } from "@/components/JobSeekerModals/MatchesModal";
 import { ComprehensiveProfileModal } from "@/components/JobSeekerModals/ComprehensiveProfileModal";
 import { UserProfileModal } from "@/components/JobSeekerModals/UserProfileModal";
 import { ApplicationsModal } from "@/components/JobSeekerModals/ApplicationsModal";
-import { StaticQuestionsModal } from "@/components/JobSeekerModals/StaticQuestionsModal";
 import { UpcomingInterviewModal } from "@/components/JobSeekerModals/UpcomingInterviewModal";
 import { InvitedJobsModal } from "@/components/JobSeekerModals/InvitedJobsModal";
 
@@ -221,21 +219,16 @@ export default function Dashboard() {
 
   // Use backend-calculated completion percentage for consistency
   const profileProgress = (comprehensiveProfile as any)?.completionPercentage || 0;
-  
+
   // Check if comprehensive profile has required fields completed (75% threshold for interviews)
   const hasCompleteProfile = profileProgress >= 75;
-  
-  // More strict interview completion check - require ALL three interviews AND aiProfileGenerated
-  const hasCompletedPersonalInterview = true;
-  const hasCompletedProfessionalInterview = true;
-  const hasCompletedTechnicalInterview = true;
-  const staticQuestionsAnswers = (!!(profile as any)?.staticQuestionsAnswers) || false
 
-  const hasCompletedAllInterviews = hasCompletedPersonalInterview && hasCompletedProfessionalInterview && hasCompletedTechnicalInterview && staticQuestionsAnswers;
-  const hasCompletedInterview = hasCompletedAllInterviews;
-  
-  // Show full dashboard only when BOTH steps are complete: complete profile (including CV) AND ALL interviews completed
-  const showFullDashboard = hasCompleteProfile && hasCompletedInterview;
+  // Interview step removed - consider all interviews complete by default
+  const hasCompletedAllInterviews = true;
+  const hasCompletedInterview = true;
+
+  // Show full dashboard when profile is complete (interview step removed)
+  const showFullDashboard = hasCompleteProfile;
 
   // Show welcome toast only once after completing interview
   useEffect(() => {
@@ -440,52 +433,6 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Step 2: AI Interview */}
-                <div className={`bg-white rounded-lg p-4 sm:p-6 border-2 transition-all ${
-                  !hasCompleteProfile
-                    ? 'border-gray-200 opacity-60'
-                    : hasCompletedInterview
-                      ? 'border-green-200 bg-green-50'
-                      : 'border-purple-200 shadow-md'
-                }`}>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="flex items-start space-x-3 sm:space-x-4 rtl:space-x-reverse">
-                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-lg flex-shrink-0 ${
-                        !hasCompleteProfile
-                          ? 'bg-gray-400'
-                          : hasCompletedInterview
-                            ? 'bg-green-600'
-                            : 'bg-purple-600'
-                      }`}>
-                        {hasCompletedInterview ? '✓' : '2'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900">{t('takeInterview')}</h3>
-                        <p className="text-gray-600 text-sm sm:text-base">
-                          {!hasCompleteProfile
-                            ? t('interviewDescription')
-                            : hasCompletedInterview
-                              ? t('dashboard.excellentInterviewComplete')
-                              : t('step2')
-                          }
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => openModal('interview')}
-                      disabled={!hasCompleteProfile}
-                      className={`px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base w-full sm:w-auto ${
-                        !hasCompleteProfile
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : hasCompletedInterview
-                            ? 'bg-green-600 text-white hover:bg-green-700'
-                            : 'bg-purple-600 text-white hover:bg-purple-700'
-                      }`}
-                    >
-{hasCompletedInterview ? t('dashboard.reviewInterview') : t('startInterview')}
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
           )}
@@ -831,17 +778,9 @@ export default function Dashboard() {
         isOpen={activeModal === 'userProfile'} 
         onClose={closeModal} 
       />
-      <ComprehensiveProfileModal 
-        isOpen={activeModal === 'profile'} 
-        onClose={closeModal} 
-      />
-      <StaticQuestionsModal
-        isOpen={activeModal === 'interview'}
+      <ComprehensiveProfileModal
+        isOpen={activeModal === 'profile'}
         onClose={closeModal}
-        onComplete={() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/comprehensive-profile"] });
-        }}
       />
 
       <MatchesModal 

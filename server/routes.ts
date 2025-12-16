@@ -4,7 +4,6 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
 import { aiInterviewService, aiProfileAnalysisAgent, aiInterviewAgent, aiCareerSuggestionAgent } from "./openai";
-import { generatePlatoAiProfile } from "./profileAnalyzerService";
 import { localDatabaseService } from "./localDatabaseService";
 import { aiJobFilteringService } from "./aiJobFiltering";
 import { employerQuestionService } from "./employerQuestions";
@@ -141,6 +140,7 @@ const uploadAssessment = multer({
 });
 
 import { wrapOpenAIRequest } from "./openaiTracker";
+import { json } from "stream/consumers";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -676,6 +676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Missing token' });
       }
 
+
       console.log(`🔍 Looking up job match for token: ${token}`);
 
       // First, try to find the job match by token (this replaces the Airtable record lookup)
@@ -689,40 +690,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`✅ Found job match: ${jobMatch.name} for job: ${jobMatch.jobTitle}`);
 
       // Extract user information from the job match
-      const userId = jobMatch.userId;
+      const resumeProfileId = jobMatch.userId;
 
       // Get the resume profile to extract the email
       let resumeProfile;
+      let user;
+
       try {
-        resumeProfile = await localDatabaseService.getUserProfile(userId);
-        console.log(`📄 Retrieved resume profile for user ID: ${userId}`);
+        resumeProfile = await localDatabaseService.getUserProfile(resumeProfileId);
+        console.log(`📄 Retrieved resume profile for user ID: ${resumeProfileId}`);
+
+        user = await storage.getUserByEmail(resumeProfile?.email ?? '')
       } catch (profileError) {
         console.warn('Failed to retrieve resume profile:', profileError);
-      }
-
-      let user = await storage.getUser(userId);
-      
-      // Get the user by email if not found 
-      if (!user && resumeProfile?.email) {
-        user = await storage.getUserByEmail(resumeProfile.email)
       }
 
       // If user doesn't exist, create one (this should not happen normally, but handle it)
       if (!user) {
         try {
-          console.log(`🔍 Creating new user for job match user ID: ${userId}`);
+          console.log(`🔍 Creating new user for job match user ID: ${resumeProfileId}`);
 
           // Use email from resume profile if available, otherwise generate a unique email
-          const email = resumeProfile?.email || `interview_${userId}@candidate.local`;
+          const email = resumeProfile?.email || `interview_${resumeProfileId}@candidate.local`;
 
           // Create user with empty password and flag for password setup
           user = await storage.createUser({
-            id: userId,
             email,
             password: '', // Empty password for now
             firstName: resumeProfile?.name?.split(' ')[0] || jobMatch.name?.split(' ')[0] || 'Interview',
             lastName: resumeProfile?.name?.split(' ').slice(1).join(' ') || jobMatch.name?.split(' ').slice(1).join(' ') || 'Candidate',
-            username: `candidate_${userId}_${Math.random().toString(36).substr(2, 9)}`,
+            username: `candidate_${resumeProfileId}_${Math.random().toString(36).substr(2, 9)}`,
             role: 'applicant',
             isVerified: true,
             passwordNeedsSetup: true // Flag to indicate password needs to be set
@@ -735,6 +732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ error: 'Failed to create user account' });
         }
       }
+
 
       if (!user) {
         return res.status(404).json({ error: 'User not found for job match' });
@@ -5316,84 +5314,6 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       });
     }
   });
-
-  // =============================================
-  // STATIC QUESTIONS & NEW AI PROFILE GENERATION
-  // =============================================
-
-  app.post('/api/profile/submit-static-questions',
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const userId = req.user.id;
-        const { answers } = req.body;
-
-        // Validate that all 5 answers are provided
-        if (!answers || typeof answers !== 'object') {
-          return res.status(400).json({
-            message: "Invalid answers format. Expected an object with question-answer pairs."
-          });
-        }
-
-        const questionKeys = ['question1', 'question2', 'question3', 'question4', 'question5'];
-        const missingQuestions = questionKeys.filter(key => !answers[key] || answers[key].trim() === '');
-
-        if (missingQuestions.length > 0) {
-          return res.status(400).json({
-            message: "All 5 questions must be answered",
-            missingQuestions
-          });
-        }
-
-        // Get user profile
-        const profile = await storage.getApplicantProfile(userId);
-
-        if (!profile) {
-          return res.status(404).json({ message: "Profile not found" });
-        }
-
-        // Save the Q&A answers
-        const staticQuestionsAnswers = {
-          question1: answers.question1,
-          question2: answers.question2,
-          question3: answers.question3,
-          question4: answers.question4,
-          question5: answers.question5,
-          submittedAt: new Date().toISOString()
-        };
-
-        console.log('[STATIC_QUESTIONS] Saving Q&A for user:', userId);
-
-        // Generate AI profile using PLATO_PROFILE_ANALYZER
-        console.log('[STATIC_QUESTIONS] Generating new AI profile...');
-        const newAiProfile = await generatePlatoAiProfile(profile);
-
-        // Update profile with both Q&As and AI profile
-        await storage.updateApplicantProfile(userId, {
-          staticQuestionsAnswers: staticQuestionsAnswers as any,
-          staticQuestionsCompletedAt: new Date(),
-          newAiProfile: newAiProfile as any,
-          newAiProfileGenerated: true
-        });
-
-        console.log('[STATIC_QUESTIONS] Successfully saved Q&A and generated AI profile');
-
-        res.json({
-          message: "Static questions submitted and AI profile generated successfully",
-          staticQuestionsAnswers,
-          newAiProfile,
-          success: true
-        });
-
-      } catch (error) {
-        console.error("Error submitting static questions:", error);
-        res.status(500).json({
-          message: "Failed to submit static questions and generate AI profile",
-          error: error instanceof Error ? error.message : "Unknown error"
-        });
-      }
-    }
-  );
 
   // =============================================
   // PREMIUM FEATURE ROUTES - PROFILE VIEWS & VISIBILITY

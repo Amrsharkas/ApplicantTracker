@@ -1029,6 +1029,10 @@ export const insertCareerInsightsAnalysisSchema = createInsertSchema(careerInsig
 });
 
 // Airtable replacement tables
+/**
+ * @deprecated Use resumeProfiles table instead. This table is kept for backward compatibility.
+ * The userId in airtable_job_matches refers to resume_profiles.id, not this table.
+ */
 export const airtableUserProfiles = pgTable("airtable_user_profiles", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: varchar("name").notNull(),
@@ -1118,7 +1122,9 @@ export const airtableJobMatches = pgTable("airtable_job_matches", {
 ]);
 
 // Type definitions for Airtable replacement tables
+/** @deprecated Use ResumeProfile instead */
 export type AirtableUserProfile = typeof airtableUserProfiles.$inferSelect;
+/** @deprecated Use InsertResumeProfile instead */
 export type InsertAirtableUserProfile = typeof airtableUserProfiles.$inferInsert;
 export type AirtableJobPosting = typeof airtableJobPostings.$inferSelect;
 export type InsertAirtableJobPosting = typeof airtableJobPostings.$inferInsert;
@@ -1128,6 +1134,7 @@ export type AirtableJobMatch = typeof airtableJobMatches.$inferSelect;
 export type InsertAirtableJobMatch = typeof airtableJobMatches.$inferInsert;
 
 // Schemas for Airtable replacement tables
+/** @deprecated Use insertResumeProfileSchema instead */
 export const insertAirtableUserProfileSchema = createInsertSchema(airtableUserProfiles).omit({
   id: true,
   createdAt: true,

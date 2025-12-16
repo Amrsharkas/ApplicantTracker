@@ -29,7 +29,6 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 // Import modals that will remain as modals
-import { StaticQuestionsModal } from "@/components/JobSeekerModals/StaticQuestionsModal";
 import { InvitedJobsModal } from "@/components/JobSeekerModals/InvitedJobsModal";
 
 export default function DashboardOverview() {
@@ -91,9 +90,8 @@ export default function DashboardOverview() {
   // Profile completion logic
   const profileProgress = (comprehensiveProfile as any)?.completionPercentage || 0;
   const hasCompleteProfile = profileProgress >= 75;
-  const staticQuestionsAnswers = !!(profile as any)?.staticQuestionsAnswers;
-  const hasCompletedInterview = staticQuestionsAnswers;
-  const showFullDashboard = hasCompleteProfile && hasCompletedInterview;
+  // Interview step removed - show full dashboard when profile is complete
+  const showFullDashboard = hasCompleteProfile;
   const invitedJobsTotal = invitedJobsCount ? (invitedJobsCount as any).count : 0;
 
   // End all interview sessions on load
@@ -381,80 +379,6 @@ export default function DashboardOverview() {
                 </div>
               </motion.div>
 
-              {/* Step 2: Complete Interview */}
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-                className={cn(
-                  "relative p-5 rounded-2xl border-2 transition-all duration-300",
-                  !hasCompleteProfile
-                    ? "border-slate-200 opacity-60 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50"
-                    : hasCompletedInterview
-                      ? "border-emerald-300 bg-gradient-to-br from-emerald-50 to-green-50 dark:border-emerald-700 dark:from-emerald-900/30 dark:to-green-900/20 shadow-lg shadow-emerald-500/10"
-                      : "border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50 dark:border-purple-700 dark:from-purple-900/30 dark:to-pink-900/20 shadow-lg shadow-purple-500/10"
-                )}
-              >
-                <div className="flex items-start gap-5">
-                  <motion.div
-                    className={cn(
-                      "w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold flex-shrink-0 shadow-lg",
-                      !hasCompleteProfile
-                        ? "bg-slate-400 dark:bg-slate-600"
-                        : hasCompletedInterview
-                          ? "bg-gradient-to-br from-emerald-500 to-green-600"
-                          : "bg-gradient-to-br from-purple-500 to-pink-600"
-                    )}
-                    animate={
-                      hasCompletedInterview
-                        ? { scale: [1, 1.05, 1] }
-                        : hasCompleteProfile && !hasCompletedInterview
-                        ? { scale: [1, 1.05, 1] }
-                        : {}
-                    }
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    {hasCompletedInterview ? (
-                      <CheckCircle2 className="w-6 h-6" />
-                    ) : (
-                      <Mic className="w-6 h-6" />
-                    )}
-                  </motion.div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">
-                        {t('completeInterview')}
-                      </h3>
-                      {hasCompletedInterview && (
-                        <Badge className="bg-emerald-500 text-white border-0">
-                          Completed
-                        </Badge>
-                      )}
-                      {!hasCompleteProfile && (
-                        <Badge variant="outline" className="border-slate-400 text-slate-600">
-                          Locked
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-slate-600 dark:text-slate-400 mb-3">
-                      {hasCompletedInterview
-                        ? t('dashboard.interviewCompleted')
-                        : t('interviewDescription')}
-                    </p>
-                    {hasCompleteProfile && !hasCompletedInterview && (
-                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                        <Button
-                          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-md"
-                          onClick={() => setActiveModal('staticQuestions')}
-                        >
-                          <Mic className="w-4 h-4 mr-2" />
-                          Start Interview
-                        </Button>
-                      </motion.div>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
             </CardContent>
           </Card>
         </motion.div>
@@ -670,14 +594,6 @@ export default function DashboardOverview() {
       )}
 
       {/* Modals */}
-      <StaticQuestionsModal
-        isOpen={activeModal === 'staticQuestions'}
-        onClose={closeModal}
-        onComplete={() => {
-          closeModal();
-          queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
-        }}
-      />
       <InvitedJobsModal
         isOpen={activeModal === 'invitedJobs'}
         onClose={closeModal}

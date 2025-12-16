@@ -9,12 +9,16 @@ import {
   AirtableJobApplication,
   InsertAirtableJobApplication,
   AirtableJobMatch,
-  InsertAirtableJobMatch
+  InsertAirtableJobMatch,
+  ResumeProfile
 } from '../shared/schema';
 
 export class LocalDatabaseService {
 
   // User Profiles Operations
+  /**
+   * @deprecated Use resume_profiles table instead. This method writes to the deprecated airtable_user_profiles table.
+   */
   async createUserProfile(data: InsertAirtableUserProfile): Promise<AirtableUserProfile> {
     try {
       const [profile] = await db
@@ -28,19 +32,26 @@ export class LocalDatabaseService {
     }
   }
 
-  async getUserProfile(userId: string): Promise<AirtableUserProfile | null> {
+  /**
+   * Get a resume profile by ID. Note: The parameter is called userId for backwards compatibility,
+   * but it actually represents the resume_profile_id from the airtable_job_matches table.
+   */
+  async getUserProfile(userId: string): Promise<ResumeProfile | null> {
     try {
       const [profile] = await db
         .select()
-        .from(schema.airtableUserProfiles)
-        .where(eq(schema.airtableUserProfiles.userId, userId));
+        .from(schema.resumeProfiles)
+        .where(eq(schema.resumeProfiles.id, userId));
       return profile || null;
     } catch (error) {
-      console.error('Error getting user profile:', error);
+      console.error('Error getting resume profile:', error);
       throw error;
     }
   }
 
+  /**
+   * @deprecated Use resume_profiles table instead. This method updates the deprecated airtable_user_profiles table.
+   */
   async updateUserProfile(userId: string, data: Partial<InsertAirtableUserProfile>): Promise<AirtableUserProfile | null> {
     try {
       const [profile] = await db
@@ -55,6 +66,9 @@ export class LocalDatabaseService {
     }
   }
 
+  /**
+   * @deprecated Use resume_profiles table instead. This method queries the deprecated airtable_user_profiles table.
+   */
   async getAllUserProfiles(): Promise<AirtableUserProfile[]> {
     try {
       return await db
@@ -67,6 +81,9 @@ export class LocalDatabaseService {
     }
   }
 
+  /**
+   * @deprecated Use resume_profiles table instead. This method queries the deprecated airtable_user_profiles table.
+   */
   async searchUserProfiles(query: string): Promise<AirtableUserProfile[]> {
     try {
       return await db
@@ -87,6 +104,9 @@ export class LocalDatabaseService {
     }
   }
 
+  /**
+   * @deprecated Use resume_profiles table instead. This method queries the deprecated airtable_user_profiles table.
+   */
   async getUserProfilesByExperienceLevel(experienceLevel: string): Promise<AirtableUserProfile[]> {
     try {
       return await db
@@ -100,6 +120,9 @@ export class LocalDatabaseService {
     }
   }
 
+  /**
+   * @deprecated Use resume_profiles table instead. This method queries the deprecated airtable_user_profiles table.
+   */
   async getUserProfilesByLocation(location: string): Promise<AirtableUserProfile[]> {
     try {
       return await db
@@ -698,6 +721,9 @@ export class LocalDatabaseService {
   }
 
   // Statistics and Analytics
+  /**
+   * @deprecated Use resume_profiles table instead. This method queries the deprecated airtable_user_profiles table.
+   */
   async getUserProfileStats(): Promise<any> {
     try {
       const totalProfiles = await db
