@@ -4,6 +4,7 @@ import { CameraPreview } from '@/components/CameraPreview';
 import { VideoOverlay } from './VideoOverlay';
 import { TranscriptionPanel } from './TranscriptionPanel';
 import { useLanguage } from '@/contexts/LanguageContext';
+import type { ProctoringStatus } from '@/types/proctoring';
 
 interface VoiceInterviewComponentProps {
   cameraStream: MediaStream | null;
@@ -27,6 +28,12 @@ interface VoiceInterviewComponentProps {
   onSubmitOrEndInterview: () => void;
   cameraError?: string;
   lightMode?: boolean;
+  /** Callback when video element is ready for proctoring */
+  onVideoReady?: (videoElement: HTMLVideoElement) => void;
+  /** Current proctoring status */
+  proctoringStatus?: ProctoringStatus;
+  /** Whether to show proctoring overlay */
+  showProctoringOverlay?: boolean;
 }
 
 export function VoiceInterviewComponent({
@@ -50,7 +57,10 @@ export function VoiceInterviewComponent({
   onToggleTranscription,
   onSubmitOrEndInterview,
   cameraError,
-  lightMode = false
+  lightMode = false,
+  onVideoReady,
+  proctoringStatus,
+  showProctoringOverlay = true,
 }: VoiceInterviewComponentProps) {
   const { t } = useLanguage();
   const languageLabel = selectedInterviewLanguage === 'arabic' ? t('arabic') : t('english');
@@ -79,6 +89,9 @@ export function VoiceInterviewComponent({
             error={cameraError}
             connecting={isStartingInterview}
             className="h-full"
+            onVideoReady={onVideoReady}
+            proctoringStatus={proctoringStatus}
+            showProctoringOverlay={showProctoringOverlay}
           />
 
           {/* Video overlay with status and AI info */}

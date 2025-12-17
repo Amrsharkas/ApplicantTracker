@@ -1,7 +1,8 @@
 import { useRef, useEffect, useState } from 'react';
-import { CameraOff, AlertCircle, Video, Circle } from 'lucide-react';
+import { CameraOff, AlertCircle, Video, Circle, Eye, Users, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
+import type { ProctoringStatus } from '@/types/proctoring';
 
 interface CameraPreviewProps {
   stream: MediaStream | null;
@@ -10,9 +11,25 @@ interface CameraPreviewProps {
   error?: string | null;
   className?: string;
   connecting?: boolean;
+  /** Callback when video element is ready for proctoring */
+  onVideoReady?: (videoElement: HTMLVideoElement) => void;
+  /** Current proctoring status for overlay display */
+  proctoringStatus?: ProctoringStatus;
+  /** Whether to show proctoring status overlay */
+  showProctoringOverlay?: boolean;
 }
 
-export function CameraPreview({ stream, isActive, isRecording = false, error, className = '', connecting = false }: CameraPreviewProps) {
+export function CameraPreview({
+  stream,
+  isActive,
+  isRecording = false,
+  error,
+  className = '',
+  connecting = false,
+  onVideoReady,
+  proctoringStatus,
+  showProctoringOverlay = false,
+}: CameraPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const { t } = useLanguage();
@@ -40,6 +57,13 @@ export function CameraPreview({ stream, isActive, isRecording = false, error, cl
       setIsVideoReady(false);
     }
   }, [stream]);
+
+  // Notify parent when video element is ready for proctoring
+  useEffect(() => {
+    if (videoRef.current && stream && isVideoReady && onVideoReady) {
+      onVideoReady(videoRef.current);
+    }
+  }, [stream, isVideoReady, onVideoReady]);
 
   if (error) {
     return (
@@ -108,6 +132,45 @@ export function CameraPreview({ stream, isActive, isRecording = false, error, cl
               </div>
             )}
           </>
+        )}
+
+        {/* Proctoring status overlay */}
+        {showProctoringOverlay && proctoringStatus && isVideoReady && (
+          <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+            {/* Face detection indicator */}
+            <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium ${
+              proctoringStatus.currentFaceCount === 1
+                ? 'bg-green-600/90 text-white'
+                : proctoringStatus.currentFaceCount === 0
+                  ? 'bg-red-600/90 text-white'
+                  : 'bg-yellow-600/90 text-white'
+            }`}>
+              {proctoringStatus.currentFaceCount === 1 ? (
+                <>
+                  <Eye className="h-3 w-3" />
+                  <span>Face detected</span>
+                </>
+              ) : proctoringStatus.currentFaceCount === 0 ? (
+                <>
+                  <AlertTriangle className="h-3 w-3" />
+                  <span>No face</span>
+                </>
+              ) : (
+                <>
+                  <Users className="h-3 w-3" />
+                  <span>{proctoringStatus.currentFaceCount} faces</span>
+                </>
+              )}
+            </div>
+
+            {/* Violation counter */}
+            {proctoringStatus.totalViolations > 0 && (
+              <div className="flex items-center space-x-2 bg-red-600/90 text-white px-3 py-1.5 rounded-full text-xs font-medium">
+                <AlertTriangle className="h-3 w-3" />
+                <span>{proctoringStatus.totalViolations} violation{proctoringStatus.totalViolations > 1 ? 's' : ''}</span>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

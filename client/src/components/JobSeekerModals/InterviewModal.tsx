@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,9 @@ import { isUnauthorizedError } from '@/lib/authUtils';
 import { ResumeRequiredModal } from '@/components/ResumeRequiredModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCameraRecorder } from '@/hooks/useCameraRecorder';
+import { useProctoring } from '@/hooks/useProctoring';
+import { getViolationDescription } from '@/types/proctoring';
+import type { ProctoringViolation } from '@/types/proctoring';
 import {
   ViolationRulesComponent,
   ModeSelectionComponent,
@@ -52,6 +55,113 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
   const queryClient = useQueryClient();
   const { t, isRTL } = useLanguage();
   const { isRecording, startRecording, stopRecording, cleanup } = useCameraRecorder();
+
+  // Proctoring state
+  const [proctoringViolationCount, setProctoringViolationCount] = useState(0);
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
+
+  // Handle proctoring violations
+  const handleProctoringViolation = useCallback((violation: ProctoringViolation) => {
+    console.log('[InterviewModal] Proctoring violation received:', violation);
+
+    // Don't count violations if session is already terminated
+    if (sessionTerminated) return;
+
+    // Increment proctoring violation count
+    setProctoringViolationCount(prev => {
+      const newCount = prev + 1;
+      const totalViolations = windowBlurCount + newCount;
+
+      console.log(`[InterviewModal] Total violations: ${totalViolations} (tab: ${windowBlurCount}, proctoring: ${newCount})`);
+
+      // Check if we should terminate
+      if (totalViolations >= maxBlurCount) {
+        setSessionTerminated(true);
+        toast({
+          title: t('interview.sessionTerminatedTitle') || "Session Terminated",
+          description: t('interview.sessionTerminatedDueToViolations') || "Interview session has been terminated due to multiple violations.",
+          variant: "destructive",
+        });
+      } else {
+        // Show warning
+        const remaining = maxBlurCount - totalViolations;
+        toast({
+          title: t('interview.proctoringWarning') || "Proctoring Warning",
+          description: getViolationDescription(violation.type, violation.details) +
+            `. ${remaining} more violation${remaining > 1 ? 's' : ''} before session termination.`,
+          variant: "destructive",
+        });
+      }
+
+      return newCount;
+    });
+  }, [sessionTerminated, windowBlurCount, maxBlurCount, toast, t]);
+
+  // Initialize proctoring hook
+  const {
+    status: proctoringStatus,
+    violations: proctoringViolations,
+    startProctoring,
+    stopProctoring,
+    loadModels: loadProctoringModels,
+    isModelLoaded: isProctoringModelLoaded,
+  } = useProctoring({
+    detectionInterval: 500,
+    consecutiveFrameThreshold: 3,
+    headPoseThresholds: {
+      yaw: 30,
+      pitch: 25,
+      roll: 20,
+    },
+    onViolation: handleProctoringViolation,
+    onStatusChange: (status) => {
+      // Log status changes for debugging
+      if (status.error) {
+        console.error('[Proctoring] Error:', status.error);
+      }
+    },
+  });
+
+  // Handle video element ready from CameraPreview
+  const handleVideoReady = useCallback((videoElement: HTMLVideoElement) => {
+    console.log('[InterviewModal] Video element ready for proctoring');
+    videoElementRef.current = videoElement;
+
+    // Start proctoring if models are loaded
+    if (isProctoringModelLoaded) {
+      console.log('[InterviewModal] Starting proctoring detection...');
+      startProctoring(videoElement);
+    }
+  }, [isProctoringModelLoaded, startProctoring]);
+
+  // Load proctoring models when entering voice mode
+  useEffect(() => {
+    if (mode === 'voice' && !isProctoringModelLoaded) {
+      console.log('[InterviewModal] Loading proctoring models for voice interview...');
+      loadProctoringModels().then((success) => {
+        if (success && videoElementRef.current) {
+          console.log('[InterviewModal] Models loaded, starting proctoring...');
+          startProctoring(videoElementRef.current);
+        }
+      });
+    }
+  }, [mode, isProctoringModelLoaded, loadProctoringModels, startProctoring]);
+
+  // Stop proctoring when leaving voice mode
+  useEffect(() => {
+    if (mode !== 'voice') {
+      stopProctoring();
+    }
+  }, [mode, stopProctoring]);
+
+  // Clean up proctoring on modal close
+  useEffect(() => {
+    if (!isOpen) {
+      stopProctoring();
+      setProctoringViolationCount(0);
+    }
+  }, [isOpen, stopProctoring]);
+
   const languageDisplayName = selectedInterviewLanguage === 'arabic' ? t('arabic') : t('english');
   const remainingViolations = Math.max(maxBlurCount - windowBlurCount, 0);
   const violationLabel = t('interview.violationCountLabel')
@@ -92,6 +202,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
       setSessionTerminated(false);
       setShowViolationRules(false);
       setViolationRulesAccepted(false);
+      setProctoringViolationCount(0);
     }
   }, [isOpen]);
 
@@ -1116,6 +1227,8 @@ const startVoiceInterview = async () => {
     setWarningVisible(false);
     setSessionTerminated(false);
     setCameraStream(null);
+    setProctoringViolationCount(0);
+    stopProctoring();
   };
 
   // Reset interview state when modal opens
@@ -1520,6 +1633,9 @@ const startVoiceInterview = async () => {
                 onToggleTranscription={() => setShowTranscription(!showTranscription)}
                 onSubmitOrEndInterview={handleSubmitOrEndInterview}
                 cameraError={realtimeAPI.cameraError}
+                onVideoReady={handleVideoReady}
+                proctoringStatus={proctoringStatus}
+                showProctoringOverlay={true}
               />
             </div>
           </div>
