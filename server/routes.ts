@@ -2,7 +2,7 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, requireAuth } from "./auth";
+import { setupAuth, requireAuth, requireAuthOrService } from "./auth";
 import { aiInterviewService, aiProfileAnalysisAgent, aiInterviewAgent, aiCareerSuggestionAgent } from "./openai";
 import { localDatabaseService } from "./localDatabaseService";
 import { aiJobFilteringService } from "./aiJobFiltering";
@@ -3622,6 +3622,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching interview session:", error);
       res.status(500).json({ message: "Failed to fetch interview session" });
+    }
+  });
+
+  // Regenerate AI profile for a job application
+  app.post('/api/job-applications/:applicationId/regenerate-profile', requireAuthOrService, async (req: any, res) => {
+    console.log('📨 Received regeneration request for application:', req.params.applicationId);
+
+    try {
+      const applicationId = req.params.applicationId;
+
+      // 1. Validate application exists
+      const application = await localDatabaseService.getJobApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+
+      // 2. Get the applicant's user ID and profile
+      const userId = application.applicantUserId;
+      if (!userId) {
+        return res.status(400).json({ message: "Application missing user ID" });
+      }
+
+      // 3. Fetch user and profile data
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+
+      if (!user || !profile) {
+        return res.status(404).json({ message: "User or profile not found" });
+      }
+
+      // 4. Get interview session data
+      const sessionId = application.sessionId;
+      if (!sessionId) {
+        return res.status(400).json({ message: "No interview session found for this application" });
+      }
+
+      // 5. Prepare job data from application
+      const job: JobSummary = {
+        recordId: application.jobId,
+        jobTitle: application.jobTitle,
+        jobDescription: application.jobDescription || undefined,
+        companyName: application.company,
+      };
+
+      // 6. Regenerate profile using existing helper function
+      console.log(`🔄 Regenerating profile for application ${applicationId}, user ${userId}`);
+      const generatedProfile = await generateComprehensiveAIProfile(
+        userId,
+        profile,
+        storage,
+        aiInterviewService,
+        localDatabaseService,
+        job,
+        sessionId
+      );
+
+      // 7. Update the application with new profile
+      await localDatabaseService.updateJobApplication(applicationId, {
+        generatedProfile: generatedProfile,
+        updatedAt: new Date()
+      });
+
+      console.log(`✅ Profile regenerated successfully for application ${applicationId}`);
+
+      // 8. Return success with the new profile
+      res.json({
+        success: true,
+        message: "Profile regenerated successfully",
+        generatedProfile
+      });
+
+    } catch (error) {
+      console.error("Error regenerating profile:", error);
+      res.status(500).json({ message: "Failed to regenerate profile" });
     }
   });
 

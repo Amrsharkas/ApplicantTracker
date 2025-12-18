@@ -80,7 +80,7 @@ export const requireAuth: RequestHandler = async (req: any, res, next) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
-  
+
   // Get user data and attach to request
   try {
     const user = await storage.getUser(req.session.userId);
@@ -93,6 +93,45 @@ export const requireAuth: RequestHandler = async (req: any, res, next) => {
     console.error('Auth middleware error:', error);
     return res.status(500).json({ error: 'Authentication error' });
   }
+};
+
+// Authentication middleware for service-to-service calls
+// Accepts either user session OR SERVICE_API_KEY Bearer token
+export const requireAuthOrService: RequestHandler = async (req: any, res, next) => {
+  // Check if user is authenticated via session
+  if (req.session.userId) {
+    try {
+      const user = await storage.getUser(req.session.userId);
+      if (user) {
+        req.user = user;
+        console.log('✅ Authenticated via session:', user.email);
+        return next();
+      }
+    } catch (error) {
+      console.error('Auth middleware error:', error);
+    }
+  }
+
+  // Check for SERVICE_API_KEY in Authorization header
+  const authHeader = req.headers.authorization;
+  console.log('🔑 Checking service authentication. Auth header:', authHeader ? 'Present' : 'Missing');
+
+  if (authHeader) {
+    const token = authHeader.replace('Bearer ', '').trim();
+    const serviceApiKey = process.env.SERVICE_API_KEY;
+
+    console.log('🔑 Service API Key from env:', serviceApiKey ? 'Present' : 'Missing');
+    console.log('🔑 Token matches:', token === serviceApiKey);
+
+    if (serviceApiKey && token === serviceApiKey) {
+      // Service authenticated, continue without user object
+      console.log('✅ Authenticated via SERVICE_API_KEY');
+      return next();
+    }
+  }
+
+  console.log('❌ Authentication failed - neither session nor valid service key');
+  return res.status(401).json({ error: 'Authentication required' });
 };
 
 // Setup authentication routes
