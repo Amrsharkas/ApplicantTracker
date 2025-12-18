@@ -827,15 +827,89 @@ Return ONLY valid JSON in this enhanced structure:
   "skill_taxonomy_mapping": {
     ${jobRequirements ? `
     "required_skills": {
-      "demonstrated": ["skills they've shown they have"],
-      "partially_demonstrated": ["skills they've partially shown"],
-      "not_demonstrated": ["skills that weren't evident"],
-      "missing_critical": ["skills that are essential but missing"]
+      "matched_skills": [
+        {
+          "skill_name": "name of the skill",
+          "category": "technical|soft_skill|domain_knowledge",
+          "proficiency_level": "EXPERT|ADVANCED|PROFICIENT|BASIC",
+          "proficiency_score": "0-100",
+          "evidence": ["specific examples from transcript demonstrating this skill"],
+          "key_indicators": ["observable behaviors or statements showing mastery"],
+          "demonstration_quality": "STRONG|MODERATE|WEAK",
+          "interview_examples": ["direct quotes or paraphrased examples from responses"],
+          "resume_alignment": "how this skill is represented in resume",
+          "growth_trajectory": "signs of improvement or deepening expertise",
+          "application_context": "where and how they've applied this skill"
+        }
+      ],
+      "partially_matched_skills": [
+        {
+          "skill_name": "name of the skill",
+          "category": "technical|soft_skill|domain_knowledge",
+          "proficiency_level": "BASIC|NOVICE",
+          "proficiency_score": "0-100",
+          "evidence": ["limited examples showing partial competency"],
+          "gap_description": "what aspects are missing or underdeveloped",
+          "development_potential": "HIGH|MEDIUM|LOW likelihood of quick development",
+          "learning_indicators": "signs they could develop this skill quickly",
+          "bridging_timeline": "estimated time to reach proficiency",
+          "suggested_training": ["specific training or development approaches"]
+        }
+      ],
+      "missing_skills": [
+        {
+          "skill_name": "name of the missing skill",
+          "category": "technical|soft_skill|domain_knowledge",
+          "criticality": "CRITICAL|HIGH|MEDIUM|LOW",
+          "impact_on_role": "how the absence affects job performance",
+          "gap_severity": "SEVERE|MODERATE|MINOR",
+          "compensating_factors": ["other skills or traits that might compensate"],
+          "development_difficulty": "EASY|MODERATE|DIFFICULT|VERY_DIFFICULT",
+          "learning_curve_estimate": "estimated time to acquire (e.g., '2-3 months')",
+          "alternative_approaches": ["workarounds or team support strategies"],
+          "hiring_risk": "risk level this gap presents to hiring decision",
+          "mitigation_strategy": "how to address this gap if candidate is hired",
+          "red_flag_indicator": "boolean - is this a deal-breaker?"
+        }
+      ]
     },
     "preferred_skills": {
-      "demonstrated": ["preferred skills they've shown"],
-      "potential_indicators": ["signs they might have these skills"]
-    }` : '"required_skills": {}, "preferred_skills": {}'}
+      "matched_skills": [
+        {
+          "skill_name": "name of the preferred skill",
+          "category": "technical|soft_skill|domain_knowledge",
+          "proficiency_level": "EXPERT|ADVANCED|PROFICIENT|BASIC",
+          "proficiency_score": "0-100",
+          "evidence": ["examples demonstrating this preferred skill"],
+          "competitive_advantage": "how this skill differentiates the candidate",
+          "value_add_potential": "additional value this brings to the role"
+        }
+      ],
+      "missing_preferred_skills": [
+        {
+          "skill_name": "name of missing preferred skill",
+          "category": "technical|soft_skill|domain_knowledge",
+          "impact_level": "HIGH|MEDIUM|LOW",
+          "potential_indicators": ["signs they might develop or have related skills"],
+          "importance_to_role": "significance of this absence"
+        }
+      ]
+    },
+    "skills_summary": {
+      "total_required_skills": "number",
+      "matched_required_count": "number",
+      "partially_matched_count": "number",
+      "missing_required_count": "number",
+      "critical_gaps_count": "number",
+      "required_skills_coverage": "percentage 0-100",
+      "total_preferred_skills": "number",
+      "matched_preferred_count": "number",
+      "preferred_skills_coverage": "percentage 0-100",
+      "overall_skill_match": "percentage 0-100",
+      "strengths_summary": ["key skill strengths"],
+      "gaps_summary": ["key skill gaps"],
+      "competitive_advantages": ["unique skills or combinations that stand out"]
+    }` : '"required_skills": {}, "preferred_skills": {}, "skills_summary": {}'}
   },
 
   "predictive_assessment": {
