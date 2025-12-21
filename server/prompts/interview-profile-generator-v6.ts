@@ -460,648 +460,429 @@ Score each dimension 0-100 with detailed rationale:
 
 ## OUTPUT SPECIFICATION
 
-Return ONLY valid JSON in this enhanced structure:
+Return ONLY valid JSON in this enhanced structure (aligned with resume scoring system for UI consistency):
 
 {
   "version": "6.0",
   "candidate_name": "${candidateName}",
   "assessment_date": "${new Date().toISOString()}",
-  "assessment_confidence": "VERY_HIGH|HIGH|MEDIUM|LOW|VERY_LOW",
 
-  "executive_summary": {
-    "overall_verdict": "EXCEPTIONAL_CANDIDATE|STRONG_HIRE|HIRE|CONSIDER|MAYBE|PASS",
-    "core_competency_level": "EXPERT|SENIOR|INTERMEDIATE|JUNIOR|ENTRY",
-    "unique_value_proposition": "What makes this candidate distinctive",
-    "primary_hiring_risks": "Main concerns for hiring decision",
-    "success_probability": "percentage 0-100",
-    "role_fit_score": "number 0-100",
-    "team_compatibility": "EXCELLENT|GOOD|MODERATE|MIXED|POOR"
+  "overallScore": "0-100 (composite interview performance score)",
+  "technicalSkillsScore": "0-100",
+  "experienceScore": "0-100",
+  "culturalFitScore": "0-100",
+  "communicationScore": "0-100",
+  "leadershipScore": "0-100",
+
+  "sectionA": "0-30 (Technical Competency)",
+  "sectionB": "0-25 (Experience & Problem Solving)",
+  "sectionC": "0-20 (Communication & Soft Skills)",
+  "sectionD": "0-10 (Cultural Fit & Values)",
+  "sectionE": "0-10 (Leadership & Growth Potential)",
+  "sectionF": "-5 to +5 (Modifiers - Bonuses/Penalties)",
+
+  "recommendation": "STRONG_YES|YES|MAYBE|NO|STRONG_NO",
+  "recommendationReason": "Crisp 1-2 sentence hiring recommendation with key evidence",
+
+  "executiveSummary": {
+    "oneLiner": "10-word max summary for quick scanning",
+    "fitScore": "EXCELLENT|GOOD|FAIR|POOR|MISMATCH",
+    "hiringUrgency": "EXPEDITE|STANDARD|LOW_PRIORITY|PASS",
+    "competencyLevel": "EXPERT|SENIOR|INTERMEDIATE|JUNIOR|ENTRY",
+    "uniqueValueProposition": "What makes this candidate distinctive"
   },
 
-  "linguistic_analysis": {
-    "vocabulary_sophistication": {
-      "score": "0-100",
-      "indicators": ["specific evidence of vocabulary range"],
-      "technical_accuracy": "assessment of technical terminology usage"
-    },
-    "cognitive_complexity": {
-      "score": "0-100",
-      "abstract_thinking": "demonstrated abstract reasoning",
-      "systems_thinking": "ability to see interconnected systems",
-      "analytical_depth": "depth of analytical approach"
-    },
-    "communication_patterns": {
-      "clarity_score": "0-100",
-      "structure_utilization": "use of structured communication",
-      "example_quality": "quality and relevance of examples",
-      "conciseness_effectiveness": "balance of detail and brevity"
+  "verdict": {
+    "decision": "INTERVIEW|CONSIDER|REVIEW|NOT PASS",
+    "confidence": "HIGH|MEDIUM|LOW",
+    "summary": "One powerful sentence answering: Should we hire this person?",
+    "topStrength": "The single most compelling reason to proceed",
+    "topConcern": "The single biggest risk (or 'None identified' if strong match)",
+    "dealbreakers": ["List any absolute disqualifiers, or empty array"],
+    "riskLevel": "LOW|MEDIUM|HIGH|CRITICAL"
+  },
+
+  "matchSummary": "3-4 sentence brutally honest assessment written for the hiring manager",
+
+  "strengthsHighlights": [
+    {
+      "strength": "Specific strength observed",
+      "evidence": "Direct quote or specific example from interview",
+      "impact": "HIGH|MEDIUM|LOW",
+      "relevanceToJob": "How this maps to job requirements",
+      "category": "technical|behavioral|communication|leadership|cultural"
     }
-  },
+  ],
 
-  "technical_mastery": {
-    "score": "0-100",
-    "depth_of_knowledge": "assessment of technical expertise",
-    "practical_application": "demonstrated real-world application",
-    "problem_solving_methodology": "approach to technical challenges",
-    "tool_proficiency": {
-      "score": "0-100",
-      "mastered_tools": ["list of tools they've mastered"],
-      "familiar_tools": ["tools they know well"],
-      "learning_capability": "ability with new tools"
-    },
-    "code_quality_indicators": {
-      "best_practices": "demonstrated knowledge of best practices",
-      "scalability_awareness": "understanding of scalable solutions",
-      "security_considerations": "security-conscious approach"
+  "improvementAreas": [
+    {
+      "gap": "What's missing or concerning",
+      "reason": "Detailed explanation of WHY this is considered a gap",
+      "severity": "CRITICAL|MAJOR|MINOR",
+      "jobRequirement": "Related job requirement if applicable",
+      "impact": "Business impact of this gap",
+      "trainable": true|false,
+      "recommendation": "Specific actionable suggestion to address",
+      "timeToAddress": "Estimated time to close this gap",
+      "evidenceFromInterview": "Quote or reference from interview",
+      "workaround": "Potential alternative approach"
     }
-  },
+  ],
 
-  "problem_solving_capability": {
-    "score": "0-100",
-    "analytical_approach": "method of breaking down problems",
-    "creative_solutions": "innovative thinking examples",
-    "decision_process": "how they make technical decisions",
-    "trade_off_understanding": "awareness of technical trade-offs",
-    "complexity_handling": "ability with complex challenges"
-  },
-
-  "communication_excellence": {
-    "score": "0-100",
-    "articulation_clarity": "how clearly they express ideas",
-    "active_listening": "evidence of listening to questions",
-    "stakeholder_communication": "ability to communicate with different audiences",
-    "technical_translation": "ability to explain complex concepts simply",
-    "presentation_skills": "organization and delivery of information"
-  },
-
-  "leadership_potential": {
-    "score": "0-100",
-    "initiative_demonstration": "examples of taking initiative",
-    "influence_without_authority": "ability to lead without formal power",
-    "team_collaboration": "evidence of effective teamwork",
-    "mentoring_indicators": "examples of helping others grow",
-    "strategic_thinking": "ability to see bigger picture"
-  },
-
-  "cultural_alignment": {
-    "score": "0-100",
-    "value_alignment": "alignment with company values",
-    "work_style_fit": "compatibility with work environment",
-    "team_dynamics": "how they'll fit with existing team",
-    "adaptability_flexibility": "ability to adapt to culture",
-    "long_term_commitment": "likelihood of staying long-term"
-  },
-
-  "learning_agility": {
-    "score": "0-100",
-    "learning_speed": "how quickly they acquire new skills",
-    "knowledge_application": "ability to apply learning immediately",
-    "continuous_learning": "evidence of ongoing self-education",
-    "feedback_receptivity": "how they handle and use feedback",
-    "curiosity_indicators": "evidence of genuine curiosity"
-  },
-
-  "emotional_intelligence": {
-    "score": "0-100",
-    "self_awareness": {
-      "score": "0-100",
-      "strength_recognition": "accuracy in identifying own strengths",
-      "limitation_acknowledgment": "awareness and acceptance of limitations",
-      "values_clarity": "ability to articulate personal and professional values",
-      "emotional_regulation": "demonstrated control over emotional responses",
-      "impact_awareness": "understanding of personal impact on others"
-    },
-    "empathy_demonstration": {
-      "score": "0-100",
-      "stakeholder_perspective": "ability to understand different viewpoints",
-      "customer_empathy": "demonstrated understanding of customer needs",
-      "team_empathy": "understanding of team member perspectives",
-      "cultural_sensitivity": "awareness of cultural differences",
-      "emotional_support": "ability to provide emotional support to others"
-    },
-    "conflict_resolution": {
-      "score": "0-100",
-      "approach_style": "collaborative/competitive/compromising/avoiding/accommodating",
-      "solution_orientation": "focus on win-win solutions",
-      "emotional_control": "ability to remain calm during conflicts",
-      "relationship_preservation": "effort to maintain relationships",
-      "learning_from_conflict": "ability to learn and grow from conflicts"
-    },
-    "relationship_building": {
-      "score": "0-100",
-      "trust_building": "ability to establish and maintain trust",
-      "network_development": "skill in building professional networks",
-      "mentoring_ability": "capacity to guide and develop others",
-      "collaboration_facilitation": "skill in fostering teamwork",
-      "long_term_maintenance": "ability to sustain professional relationships"
-    },
-    "stress_management": {
-      "score": "0-100",
-      "pressure_response": "how they handle high-pressure situations",
-      "deadline_management": "ability to work under time constraints",
-      "recovery_ability": "how quickly they bounce back from setbacks",
-      "coping_mechanisms": "healthy strategies for dealing with stress",
-      "performance_under_stress": "quality of work under pressure"
-    }
-  },
-
-  "psycholinguistic_analysis": {
-    "personality_traits": {
-      "big_five_assessment": {
-        "openness": {
-          "score": "0-100",
-          "indicators": ["specific behavioral examples"],
-          "creativity_indicators": "evidence of creative thinking",
-          "innovation_readiness": "willingness to try new approaches"
-        },
-        "conscientiousness": {
-          "score": "0-100",
-          "detail_orientation": "attention to detail and accuracy",
-          "organization_skills": "ability to structure and plan",
-          "reliability_indicators": "dependability demonstration",
-          "quality_focus": "commitment to high standards"
-        },
-        "extraversion": {
-          "score": "0-100",
-          "communication_style": "preference for interaction styles",
-          "energy_level": "demonstrated enthusiasm and energy",
-          "social_confidence": "comfort in social situations",
-          "leadership_presence": "natural leadership tendencies"
-        },
-        "agreeableness": {
-          "score": "0-100",
-          "cooperation_level": "willingness to work with others",
-          "conflict_avoidance": "tendency to avoid or address conflicts",
-          "team_orientation": "focus on group success",
-          "flexibility": "adaptability to others' needs"
-        },
-        "neuroticism": {
-          "score": "0-100",
-          "stress_tolerance": "ability to handle pressure",
-          "emotional_stability": "consistency of emotional responses",
-          "anxiety_indicators": "signs of stress or worry",
-          "confidence_level": "self-assurance demonstration"
-        }
+  "detailedBreakdown": {
+    "sectionA": {
+      "A1_technicalKnowledge": {
+        "score": "0-15",
+        "scorePercent": "0-100",
+        "evidence": "Specific technical discussions from interview",
+        "demonstratedSkills": ["skills shown in interview"],
+        "missingAreas": ["technical gaps identified"]
       },
-      "cognitive_reflection": {
-        "score": "0-100",
-        "analytical_depth": "depth of analytical thinking",
-        "critical_thinking": "ability to evaluate information critically",
-        "problem_complexity_handling": "comfort with complex problems",
-        "logical_reasoning": "strength of logical arguments"
+      "A2_problemSolving": {
+        "score": "0-10",
+        "scorePercent": "0-100",
+        "approach": "How they approached problems",
+        "examples": ["specific problem-solving instances"]
       },
-      "risk_tolerance": {
-        "score": "0-100",
-        "calculated_risk_taking": "ability to take appropriate risks",
-        "innovation_willingness": "readiness to try new approaches",
-        "failure_acceptance": "comfort with potential failure",
-        "risk_assessment": "ability to evaluate risks effectively"
+      "A3_practicalApplication": {
+        "score": "0-5",
+        "scorePercent": "0-100",
+        "realWorldExamples": ["examples of applying knowledge"]
       }
     },
-    "communication_psychology": {
-      "assertiveness": {
-        "score": "0-100",
-        "confidence_expression": "ability to express ideas confidently",
-        "boundary_setting": "skill in setting professional boundaries",
-        "self_advocacy": "ability to advocate for own ideas",
-        "respectful_disagreement": "ability to disagree constructively"
+    "sectionB": {
+      "B1_experienceDepth": {
+        "score": "0-10",
+        "scorePercent": "0-100",
+        "yearsRelevant": "years of relevant experience demonstrated",
+        "evidenceQuality": "STRONG|MODERATE|WEAK"
       },
-      "learning_orientation": {
-        "score": "0-100",
-        "growth_mindset": "belief in ability to develop and improve",
-        "feedback_seeking": "proactive request for feedback",
-        "curiosity_indicators": "evidence of genuine curiosity",
-        "knowledge_application": "ability to apply learning immediately"
+      "B2_achievementCommunication": {
+        "score": "0-10",
+        "scorePercent": "0-100",
+        "quantifiedResults": ["achievements with metrics mentioned"],
+        "projectScope": "scale of projects discussed"
       },
-      "collaboration_style": {
-        "score": "0-100",
-        "team_preference": "preference for team vs. individual work",
-        "knowledge_sharing": "willingness to share expertise",
-        "support_provision": "readiness to help team members",
-        "consensus_building": "ability to build agreement"
+      "B3_careerProgression": {
+        "score": "0-5",
+        "scorePercent": "0-100",
+        "progression": "ASCENDING|STABLE|MIXED|DESCENDING",
+        "evidence": "career growth indicators from interview"
       }
     },
-    "behavioral_consistency": {
-      "authenticity_score": "0-100",
-      "value_alignment": "alignment between stated values and behavior",
-      "contradiction_detection": ["detected contradictions between statements"],
-      "consistency_indicators": "evidence of consistent behavior patterns",
-      "behavioral_reliability": "predictability of responses"
+    "sectionC": {
+      "C1_communicationClarity": {
+        "score": "0-10",
+        "scorePercent": "0-100",
+        "articulation": "clarity of expression",
+        "technicalExplanation": "ability to explain complex topics"
+      },
+      "C2_listeningSkills": {
+        "score": "0-5",
+        "scorePercent": "0-100",
+        "questionUnderstanding": "how well they understood questions",
+        "followUpQuality": "quality of their follow-up questions"
+      },
+      "C3_softSkillsEvidence": {
+        "score": "0-5",
+        "scorePercent": "0-100",
+        "matchedSoftSkills": ["soft skills demonstrated"],
+        "evidenceQuality": "STRONG|MODERATE|WEAK"
+      }
+    },
+    "sectionD": {
+      "D1_valueAlignment": {
+        "score": "0-5",
+        "scorePercent": "0-100",
+        "alignedValues": ["values that match company culture"],
+        "concerns": ["potential misalignments"]
+      },
+      "D2_teamFit": {
+        "score": "0-5",
+        "scorePercent": "0-100",
+        "collaborationStyle": "their preferred work style",
+        "teamDynamicsMatch": "how they'd fit with team"
+      }
+    },
+    "sectionE": {
+      "E1_leadershipPotential": {
+        "score": "0-5",
+        "scorePercent": "0-100",
+        "leadershipStyle": "TRANSFORMATIONAL|TRANSACTIONAL|SERVANT|SITUATIONAL|DEMOCRATIC",
+        "evidenceOfLeadership": ["leadership examples from interview"]
+      },
+      "E2_growthMindset": {
+        "score": "0-5",
+        "scorePercent": "0-100",
+        "learningOrientation": "evidence of continuous learning",
+        "adaptability": "how they handle change"
+      }
+    },
+    "sectionF": {
+      "bonusPoints": {
+        "score": "0-5",
+        "appliedBonuses": [{"condition": "reason", "points": 1}]
+      },
+      "penalties": {
+        "score": "0",
+        "appliedPenalties": [{"issue": "concern", "points": -1}]
+      }
     }
   },
 
-  "technical_philosophy": {
-    "score": "0-100",
-    "code_quality_mindset": {
-      "score": "0-100",
-      "clean_code_advocacy": "commitment to writing maintainable code",
-      "testing_philosophy": "approach to software testing",
-      "documentation_commitment": "dedication to code documentation",
-      "refactoring_approach": "attitude toward code improvement",
-      "quality_standards": "adherence to coding standards"
-    },
-    "technical_debt_awareness": {
-      "score": "0-100",
-      "debt_identification": "ability to recognize technical debt",
-      "prioritization_strategy": "approach to managing technical debt",
-      "prevention_mindset": "focus on preventing future debt",
-      "stakeholder_communication": "ability to explain technical trade-offs",
-      "strategic_thinking": "long-term technical planning"
-    },
-    "architectural_thinking": {
-      "score": "0-100",
-      "scalability_considerations": "thoughts about system scalability",
-      "design_pattern_usage": "application of design patterns",
-      "trade_off_analysis": "ability to analyze technical trade-offs",
-      "system_integration": "understanding of system components",
-      "future_proofing": "consideration for future requirements"
-    },
-    "innovation_quotient": {
-      "score": "0-100",
-      "technology_trends_awareness": "knowledge of current trends",
-      "experimentation_willingness": "readiness to experiment",
-      "creative_problem_solving": "innovative approaches to problems",
-      "continuous_learning": "commitment to staying current",
-      "thought_leadership": "ability to influence technical direction"
-    }
-  },
-
-  "leadership_dynamics": {
-    "score": "0-100",
-    "leadership_style": {
-      "primary_style": "TRANSFORMATIONAL|TRANSACTIONAL|SERVANT|SITUATIONAL|AUTHORITATIVE|DEMOCRATIC",
-      "adaptability": "ability to adjust style based on situation",
-      "vision_communication": "skill in articulating vision",
-      "strategic_thinking": "ability to see bigger picture",
-      "decision_making_approach": "collaborative vs. autocratic tendencies"
-    },
-    "team_integration": {
-      "score": "0-100",
-      "collaboration_effectiveness": "ability to work effectively in teams",
-      "conflict_resolution_style": "approach to team conflicts",
-      "inclusion_advocacy": "support for diverse perspectives",
-      "psychological_safety": "contribution to safe team environment",
-      "remote_team_compatibility": "effectiveness in remote settings"
-    },
-    "influence_ability": {
-      "score": "0-100",
-      "persuasive_communication": "skill in convincing others",
-      "stakeholder_management": "ability to manage stakeholder relationships",
-      "network_leverage": "ability to utilize professional networks",
-      "change_leadership": "skill in leading through change",
-      "mentorship_impact": "ability to develop others"
-    },
-    "accountability_ownership": {
-      "score": "0-100",
-      "responsibility_acceptance": "willingness to take ownership",
-      "follow_through_commitment": "dedication to completing tasks",
-      "team_success_focus": "prioritization of team over individual success",
-      "learning_from_failure": "ability to accept and learn from mistakes",
-      "transparency_level": "openness about challenges and limitations"
-    }
-  },
-
-  "adaptability_resilience": {
-    "score": "0-100",
-    "learning_agility": {
-      "score": "0-100",
-      "learning_speed": "how quickly they acquire new skills",
-      "versatility": "ability to work across different domains",
-      "cross_functional_adaptation": "ability to work in different functions",
-      "tool_adoption_speed": "quickness to adopt new tools",
-      "knowledge_transfer": "ability to apply learning in new contexts"
-    },
-    "change_resilience": {
-      "score": "0-100",
-      "adaptation_speed": "how quickly they adapt to change",
-      "ambiguity_tolerance": "comfort with uncertainty",
-      "flexibility_demonstration": "evidence of adaptability",
-      "transition_effectiveness": "success in transitioning between roles/projects",
-      "uncertainty_navigation": "ability to work with incomplete information"
-    },
-    "stress_resilience": {
-      "score": "0-100",
-      "pressure_performance": "quality of work under pressure",
-      "recovery_speed": "how quickly they bounce back from setbacks",
-      "coping_strategies": "effective mechanisms for handling stress",
-      "setback_learning": "ability to learn from failures",
-      "emotional_stability": "consistency under stress"
-    },
-    "growth_trajectory": {
-      "score": "0-100",
-      "development_roadmap": "clear path for skill development",
-      "ambition_alignment": "alignment between personal goals and role",
-      "potential_ceiling": "estimated growth potential",
-      "learning_orientation": "commitment to continuous improvement",
-      "career_progression": "historical evidence of growth"
-    }
-  },
-
-  "behavioral_indicators": {
-    "strengths": [
+  "skillAnalysis": {
+    "matchedSkills": [
       {
-        "category": "technical/behavioral/cultural",
-        "description": "specific strength observed",
-        "evidence": "example from transcript",
-        "impact_level": "HIGH|MEDIUM|LOW"
+        "skill": "Skill name",
+        "matchType": "EXACT|PARTIAL|RELATED",
+        "depth": "EXPERT|PROFICIENT|FAMILIAR|LISTED",
+        "evidence": "Specific proof from interview",
+        "recency": "CURRENT|RECENT|DATED"
       }
     ],
-    "development_areas": [
+    "partialMatches": [
       {
-        "category": "technical/behavioral/cultural",
-        "description": "area needing development",
-        "evidence": "example from transcript",
-        "development_suggestions": "how to improve"
+        "required": "Required skill",
+        "found": "Related skill candidate has",
+        "similarityPercent": "0-100",
+        "note": "Why partial",
+        "trainable": true|false
       }
     ],
-    "red_flags": [
+    "missingSkills": [
       {
-        "severity": "CRITICAL|HIGH|MEDIUM|LOW",
-        "description": "concerning behavior or response",
-        "evidence": "specific example",
-        "hiring_impact": "why this matters for hiring"
+        "skill": "Missing skill",
+        "importance": "MUST_HAVE|IMPORTANT|NICE_TO_HAVE",
+        "severity": "CRITICAL|MAJOR|MINOR",
+        "trainable": true|false,
+        "timeToAcquire": "Estimated learning time"
+      }
+    ],
+    "skillDepthSummary": {
+      "expert": 0,
+      "proficient": 0,
+      "familiar": 0,
+      "listedOnly": 0
+    },
+    "skillGapRisk": "LOW|MEDIUM|HIGH|CRITICAL"
+  },
+
+  "experienceAnalysis": {
+    "totalYears": 0,
+    "relevantYears": 0,
+    "experienceSummary": "2-3 sentence summary of experience from interview",
+    "careerProgression": "ASCENDING|STABLE|MIXED|DESCENDING",
+    "progressionExplanation": "Explanation of career trajectory",
+    "seniorityMatch": {
+      "jobRequiredLevel": "Level from job",
+      "candidateLevel": "Candidate's demonstrated level",
+      "match": "EXACT|OVERQUALIFIED|UNDERQUALIFIED|MISMATCH",
+      "gapExplanation": "Details of any seniority gap"
+    },
+    "keyProjects": [
+      {
+        "project": "Project name/description",
+        "role": "Their role",
+        "impact": "What they achieved",
+        "relevance": "HIGH|MEDIUM|LOW",
+        "technologiesUsed": ["technologies mentioned"]
       }
     ]
   },
 
-  "skill_taxonomy_mapping": {
-    ${jobRequirements ? `
-    "required_skills": {
-      "matched_skills": [
-        {
-          "skill_name": "name of the skill",
-          "category": "technical|soft_skill|domain_knowledge",
-          "proficiency_level": "EXPERT|ADVANCED|PROFICIENT|BASIC",
-          "proficiency_score": "0-100",
-          "evidence": ["specific examples from transcript demonstrating this skill"],
-          "key_indicators": ["observable behaviors or statements showing mastery"],
-          "demonstration_quality": "STRONG|MODERATE|WEAK",
-          "interview_examples": ["direct quotes or paraphrased examples from responses"],
-          "resume_alignment": "how this skill is represented in resume",
-          "growth_trajectory": "signs of improvement or deepening expertise",
-          "application_context": "where and how they've applied this skill"
-        }
-      ],
-      "partially_matched_skills": [
-        {
-          "skill_name": "name of the skill",
-          "category": "technical|soft_skill|domain_knowledge",
-          "proficiency_level": "BASIC|NOVICE",
-          "proficiency_score": "0-100",
-          "evidence": ["limited examples showing partial competency"],
-          "gap_description": "what aspects are missing or underdeveloped",
-          "development_potential": "HIGH|MEDIUM|LOW likelihood of quick development",
-          "learning_indicators": "signs they could develop this skill quickly",
-          "bridging_timeline": "estimated time to reach proficiency",
-          "suggested_training": ["specific training or development approaches"]
-        }
-      ],
-      "missing_skills": [
-        {
-          "skill_name": "name of the missing skill",
-          "category": "technical|soft_skill|domain_knowledge",
-          "criticality": "CRITICAL|HIGH|MEDIUM|LOW",
-          "impact_on_role": "how the absence affects job performance",
-          "gap_severity": "SEVERE|MODERATE|MINOR",
-          "compensating_factors": ["other skills or traits that might compensate"],
-          "development_difficulty": "EASY|MODERATE|DIFFICULT|VERY_DIFFICULT",
-          "learning_curve_estimate": "estimated time to acquire (e.g., '2-3 months')",
-          "alternative_approaches": ["workarounds or team support strategies"],
-          "hiring_risk": "risk level this gap presents to hiring decision",
-          "mitigation_strategy": "how to address this gap if candidate is hired",
-          "red_flag_indicator": "boolean - is this a deal-breaker?"
-        }
-      ]
-    },
-    "preferred_skills": {
-      "matched_skills": [
-        {
-          "skill_name": "name of the preferred skill",
-          "category": "technical|soft_skill|domain_knowledge",
-          "proficiency_level": "EXPERT|ADVANCED|PROFICIENT|BASIC",
-          "proficiency_score": "0-100",
-          "evidence": ["examples demonstrating this preferred skill"],
-          "competitive_advantage": "how this skill differentiates the candidate",
-          "value_add_potential": "additional value this brings to the role"
-        }
-      ],
-      "missing_preferred_skills": [
-        {
-          "skill_name": "name of missing preferred skill",
-          "category": "technical|soft_skill|domain_knowledge",
-          "impact_level": "HIGH|MEDIUM|LOW",
-          "potential_indicators": ["signs they might develop or have related skills"],
-          "importance_to_role": "significance of this absence"
-        }
-      ]
-    },
-    "skills_summary": {
-      "total_required_skills": "number",
-      "matched_required_count": "number",
-      "partially_matched_count": "number",
-      "missing_required_count": "number",
-      "critical_gaps_count": "number",
-      "required_skills_coverage": "percentage 0-100",
-      "total_preferred_skills": "number",
-      "matched_preferred_count": "number",
-      "preferred_skills_coverage": "percentage 0-100",
-      "overall_skill_match": "percentage 0-100",
-      "strengths_summary": ["key skill strengths"],
-      "gaps_summary": ["key skill gaps"],
-      "competitive_advantages": ["unique skills or combinations that stand out"]
-    }` : '"required_skills": {}, "preferred_skills": {}, "skills_summary": {}'}
-  },
-
-  "predictive_assessment": {
-    "performance_trajectory": {
+  "communicationAnalysis": {
+    "overallScore": "0-100",
+    "clarity": {
       "score": "0-100",
-      "ramp_up_timeline": "estimated time to full productivity (weeks)",
-      "peak_performance_timeline": "estimated time to peak performance (months)",
-      "growth_acceleration": "factors indicating accelerated growth",
-      "skill_development_rate": "predicted speed of skill acquisition",
-      "advancement_readiness": "readiness for increased responsibility"
+      "strengths": ["communication strengths"],
+      "weaknesses": ["areas to improve"]
     },
-    "retention_analysis": {
-      "probability_score": "0-100",
-      "risk_factors": ["factors that might increase turnover risk"],
-      "retention_drivers": ["factors that encourage long-term stay"],
-      "cultural_fit_strength": "strength of cultural alignment",
-      "career_path_alignment": "alignment between goals and company opportunities",
-      "commitment_indicators": "evidence of long-term commitment"
-    },
-    "leadership_potential": {
-      "current_readiness": "0-100",
-      "leadership_development_timeline": "estimated time to leadership readiness",
-      "leadership_style_prediction": "predicted leadership approach",
-      "influence_trajectory": "predicted growth in influence",
-      "team_scale_readiness": "ability to lead larger teams",
-      "strategic_impact_potential": "potential for strategic contribution"
-    },
-    "innovation_capacity": {
+    "structuredThinking": {
       "score": "0-100",
-      "creative_problem_solving": "ability to develop novel solutions",
-      "technology_innovation": "potential for technical innovation",
-      "process_improvement": "likelihood of improving existing processes",
-      "industry_thought_leadership": "potential for external influence",
-      "disruptive_thinking": "capacity for game-changing ideas"
+      "usesSTAR": true|false,
+      "organizesThoughts": "well organized|somewhat organized|disorganized"
     },
-    "team_integration": {
-      "collaboration_success_probability": "0-100",
-      "conflict_resolution_effectiveness": "predicted success in managing conflicts",
-      "team_morale_impact": "predicted impact on team dynamics",
-      "knowledge_sharing_propensity": "likelihood of sharing expertise",
-      "mentorship_potential": "ability to develop team members",
-      "cultural_enhancement": "potential to positively impact culture"
+    "technicalExplanation": {
+      "score": "0-100",
+      "canSimplifyComplexTopics": true|false,
+      "examples": ["examples of good/poor explanations"]
+    },
+    "listeningSkills": {
+      "score": "0-100",
+      "answersQuestionAsked": true|false,
+      "asksFollowUps": true|false
     }
   },
 
-  "hiring_recommendation": {
-    "recommendation": "EXCEPTIONAL_CANDIDATE|STRONG_HIRE|HIRE|CONSIDER|MAYBE|PASS",
-    "confidence_level": "VERY_HIGH|HIGH|MEDIUM|LOW|VERY_LOW",
-    "decision_urgency": "HIGH|MEDIUM|LOW",
-    "offer_readiness": "IMMEDIATE|NEXT_ROUND|ADDITIONAL_ASSESSMENT_REQUIRED",
-    "key_success_factors": ["what will make them successful"],
-    "potential_blockers": ["factors that could hinder success"],
-    "mitigation_strategies": ["how to address concerns"],
-    "onboarding_recommendations": {
-      "first_week_priorities": ["critical activities for first week"],
-      "first_month_goals": ["objectives for first month"],
-      "training_requirements": ["specific training or certifications needed"],
-      "mentorship_needs": "type of mentorship support required",
-      "team_integration_plan": "strategy for team integration",
-      "resource_requirements": ["tools, systems, or resources needed"]
+  "behavioralIndicators": {
+    "emotionalIntelligence": {
+      "score": "0-100",
+      "selfAwareness": "evidence of self-awareness",
+      "empathy": "evidence of empathy",
+      "conflictResolution": "how they handle conflicts"
     },
-    "growth_path": {
-      "trajectory_12_months": "expected development in first year",
-      "trajectory_3_years": "predicted growth over 3 years",
-      "leadership_potential_timeline": "timeline for leadership development",
-      "skill_development_roadmap": "recommended skill acquisition path",
-      "career_progression_opportunities": ["potential advancement paths"]
+    "workStyle": {
+      "preferredEnvironment": "remote|hybrid|onsite|flexible",
+      "collaborationStyle": "independent|collaborative|balanced",
+      "stressHandling": "evidence of stress management"
     },
-    "compensation_analysis": {
-      "market_alignment": "alignment with market rates",
-      "value_proposition": "unique value justifying compensation",
-      "total_value_score": "0-100",
-      "investment_return_timeline": "expected time to return on investment",
-      "compensation_risks": ["factors that might affect compensation satisfaction"]
+    "motivationDrivers": ["what motivates them based on interview"],
+    "potentialConcerns": ["behavioral concerns if any"]
+  },
+
+  "psycholinguisticAnalysis": {
+    "personalityIndicators": {
+      "openness": {"score": "0-100", "evidence": "examples"},
+      "conscientiousness": {"score": "0-100", "evidence": "examples"},
+      "extraversion": {"score": "0-100", "evidence": "examples"},
+      "agreeableness": {"score": "0-100", "evidence": "examples"},
+      "neuroticism": {"score": "0-100", "evidence": "examples"}
     },
-    "team_integration_strategy": {
-      "optimal_team_placement": "best team fit within organization",
-      "collaboration_setup": "how to establish effective collaboration",
-      "reporting_structure_preference": "optimal reporting relationship",
-      "team_role_expectations": "expected role within team dynamics",
-      "cross_functional_opportunities": ["potential cross-team collaboration areas"]
+    "cognitiveStyle": {
+      "analyticalThinking": "0-100",
+      "creativeThinking": "0-100",
+      "decisionMaking": "analytical|intuitive|balanced"
     },
-    "interview_process_recommendation": {
-      "additional_rounds_needed": ["types of additional interviews required"],
-      "specific_focus_areas": ["areas to explore in further interviews"],
-      "interview_panel_composition": ["who should be involved in future interviews"],
-      "technical_assessment_needs": "additional technical evaluation requirements",
-      "cultural_fit_validation": "methods to validate cultural alignment"
+    "authenticity": {
+      "score": "0-100",
+      "genuineResponses": true|false,
+      "consistencyAcrossAnswers": true|false,
+      "contradictions": ["any contradictions detected"]
     }
   },
 
-  "follow_up_questions": {
-    "technical_deep_dive": {
-      "core_competencies": ["questions about primary technical skills"],
-      "architecture_and_design": ["questions about system design and architecture"],
-      "problem_solving_scenarios": ["complex problems to solve together"],
-      "tool_specific_questions": ["questions about specific technologies mentioned"],
-      "best_practices_validation": ["questions to validate understanding of best practices"],
-      "code_review_exercise": "suggested code review scenarios"
-    },
-    "behavioral_exploration": {
-      "conflict_resolution_scenarios": ["hypothetical conflict situations to explore"],
-      "failure_learning_questions": ["questions about past failures and learning"],
-      "collaboration_style_deep_dive": ["questions to understand teamwork approach"],
-      "adaptability_scenarios": ["situations to test adaptability and resilience"],
-      "leadership_situations": ["scenarios to assess leadership potential"],
-      "cultural_value_alignment": ["questions to explore value alignment"]
-    },
-    "psycholinguistic_deep_dive": {
-      "personality_trait_validation": ["questions to validate personality assessments"],
-      "communication_style_exploration": ["questions about communication preferences"],
-      "decision_process_analysis": ["questions to understand how they make decisions"],
-      "learning_style_assessment": ["questions to understand learning preferences"],
-      "stress_response_evaluation": ["questions to understand how they handle pressure"],
-      "motivation_drivers": ["questions to understand what motivates them"]
-    },
-    "cultural_fit": {
-      "work_style_preferences": ["questions about preferred work environment"],
-      "team_dynamics_compatibility": ["questions about team interaction preferences"],
-      "company_values_alignment": ["questions about alignment with company values"],
-      "remote_work_adaptation": ["questions about remote/hybrid work preferences"],
-      "feedback_style_compatibility": ["questions about feedback preferences"],
-      "innovation_culture_fit": ["questions about innovation and risk tolerance"]
-    },
-    "leadership_assessment": {
-      "strategic_thinking_evaluation": ["questions to assess strategic thinking"],
-      "influence_style_analysis": ["questions about how they influence others"],
-      "team_development_approach": ["questions about developing team members"],
-      "change_management_scenarios": ["situations about leading through change"],
-      "vision_communication": ["questions about articulating and communicating vision"],
-      "accountability_and_ownership": ["questions about leadership responsibility"]
-    },
-    "growth_and_development": {
-      "career_goal_alignment": ["questions about long-term career goals"],
-      "skill_development_planning": ["questions about skill development approach"],
-      "learning_capacity_assessment": ["questions about ability and desire to learn"],
-      "ambition_level_evaluation": ["questions to gauge ambition level"],
-      "industry_trends_engagement": ["questions about industry knowledge and trends"],
-      "personal_brand_development": ["questions about professional growth"]
+  "leadershipAssessment": {
+    "score": "0-100",
+    "currentLevel": "IC|TEAM_LEAD|MANAGER|DIRECTOR|EXECUTIVE",
+    "potentialLevel": "estimated future level",
+    "style": "TRANSFORMATIONAL|TRANSACTIONAL|SERVANT|SITUATIONAL|DEMOCRATIC",
+    "strengths": ["leadership strengths"],
+    "developmentAreas": ["areas to develop"],
+    "readinessForPromotion": "READY|NEEDS_DEVELOPMENT|NOT_READY",
+    "mentorshipCapability": {
+      "score": "0-100",
+      "evidence": "examples of mentoring"
     }
   },
 
-  "interview_metadata": {
-    "session_details": {
-      "questions_asked": ${interviewerQuestions.length},
-      "responses_provided": ${candidateExchangeCount},
-      "total_response_words": ${totalWords},
-      "average_response_length": ${avgResponseLength},
-      "estimated_speaking_time_minutes": ${Math.round(estimatedTotalSpeakingTime)},
-      "interview_duration_category": "COMPREHENSIVE|STANDARD|BRIEF|MINIMAL",
-      "question_response_ratio": ${interviewerQuestions.length > 0 ? (candidateExchangeCount / interviewerQuestions.length).toFixed(2) : 0}
+  "culturalFitAnalysis": {
+    "score": "0-100",
+    "valueAlignment": {
+      "score": "0-100",
+      "alignedValues": ["values that match"],
+      "potentialConflicts": ["potential value conflicts"]
     },
-    "engagement_metrics": {
-      "engagement_level": "HIGH|MEDIUM|LOW",
-      "response_proactiveness": "PROACTIVE|RESPONSIVE|PASSIVE",
-      "question_clarity_requests": "number of times candidate asked for clarification",
-      "follow_up_questions_asked": "number of questions candidate asked interviewer",
-      "enthusiasm_indicators": "evidence of genuine interest and excitement",
-      "preparation_level": "HIGH|MEDIUM|LOW based on responses"
+    "teamDynamics": {
+      "score": "0-100",
+      "collaborationStyle": "their style",
+      "teamRolePreference": "leader|contributor|facilitator|specialist"
     },
-    "communication_analysis": {
-      "clarity_score": "0-100",
-      "conciseness_effectiveness": "balance of detail and brevity",
-      "articulation_quality": "how well they express complex ideas",
-      "listening_indicators": "evidence of active listening",
-      "adaptability_to_audience": "ability to adjust communication style",
-      "technical_explanation_skill": "ability to explain technical concepts clearly"
+    "workEnvironmentFit": {
+      "score": "0-100",
+      "preferredPace": "fast|moderate|methodical",
+      "structurePreference": "structured|flexible|balanced"
+    }
+  },
+
+  "redFlags": [
+    {
+      "type": "BEHAVIORAL|TECHNICAL|COMMUNICATION|CULTURAL|EXPERIENCE|OTHER",
+      "severity": "HIGH|MEDIUM|LOW",
+      "issue": "Clear description of the concern",
+      "evidence": "Specific proof from interview",
+      "impact": "Effect on hiring decision",
+      "mitigatingFactors": "Any context that reduces concern"
+    }
+  ],
+
+  "quantifiedAchievements": [
+    {
+      "achievement": "Description from interview",
+      "metric": "The specific number/percentage",
+      "category": "REVENUE|EFFICIENCY|SCALE|QUALITY|LEADERSHIP|INNOVATION",
+      "impactLevel": "HIGH|MEDIUM|LOW",
+      "verifiable": true|false
+    }
+  ],
+
+  "interviewRecommendations": {
+    "mustExplore": ["Critical topics to probe in next round"],
+    "technicalValidation": ["Skills to verify through testing"],
+    "redFlagQuestions": ["Questions to address specific concerns"],
+    "culturalFitTopics": ["Soft skill and culture questions"],
+    "referenceCheckFocus": ["What to verify with references"]
+  },
+
+  "followUpQuestions": {
+    "technical": ["Specific technical questions for next round"],
+    "behavioral": ["Behavioral scenarios to explore"],
+    "leadership": ["Leadership situations to discuss"],
+    "cultural": ["Culture fit validation questions"],
+    "clarification": ["Questions to clarify unclear areas"]
+  },
+
+  "predictiveAssessment": {
+    "performanceTrajectory": {
+      "score": "0-100",
+      "rampUpWeeks": "estimated weeks to productivity",
+      "peakPerformanceMonths": "months to peak performance"
     },
-    "transcript_quality": {
-      "transcript_analysis_quality": "EXCELLENT|GOOD|ADEQUATE|LIMITED",
-      "content_depth_level": "DEEP|MODERATE|SURFACE|SUPERFICIAL",
-      "example_quality_assessment": "quality and relevance of examples provided",
-      "consistency_rating": "consistency across responses",
-      "authenticity_indicators": "evidence of genuine vs. rehearsed responses",
-      "completeness_level": "thoroughness in addressing questions"
+    "retentionRisk": {
+      "score": "0-100 (higher = more likely to stay)",
+      "riskFactors": ["factors that might cause turnover"],
+      "retentionDrivers": ["factors that encourage staying"]
     },
-    "assessment_confidence": {
-      "overall_confidence": "VERY_HIGH|HIGH|MEDIUM|LOW|VERY_LOW",
-      "data_sufficiency": "SUFFICIENT|ADEQUATE|LIMITED|INSUFFICIENT",
-      "data_limitations": ["factors limiting assessment accuracy"],
-      "confidence_enhancers": ["factors that increase assessment confidence"],
-      "confidence_reducers": ["factors that decrease assessment confidence"],
-      "assessment_depth": "COMPREHENSIVE|DETAILED|ADEQUATE|BASIC",
-      "validation_level": "HIGHLY_VALIDATED|MODERATELY_VALIDATED|REQUIRES_VALIDATION"
+    "growthPotential": {
+      "score": "0-100",
+      "trajectory12Months": "expected development in year 1",
+      "leadershipTimeline": "when they could take leadership roles"
+    }
+  },
+
+  "hiringRecommendation": {
+    "decision": "STRONG_HIRE|HIRE|CONSIDER|MAYBE|PASS",
+    "confidence": "VERY_HIGH|HIGH|MEDIUM|LOW|VERY_LOW",
+    "urgency": "HIGH|MEDIUM|LOW",
+    "nextSteps": ["recommended next steps"],
+    "onboardingRecommendations": {
+      "firstWeekPriorities": ["week 1 focus areas"],
+      "firstMonthGoals": ["month 1 objectives"],
+      "trainingNeeds": ["specific training required"],
+      "mentorshipNeeds": "type of mentorship needed"
     },
-    "session_dynamics": {
-      "conversation_flow": "NATURAL|STRUCTURED|MECHANICAL|DISJOINTED",
-      "rapport_building": "EXCELLENT|GOOD|ADEQUATE|POOR",
-      "energy_level": "HIGH|MEDIUM|LOW throughout interview",
-      "stress_indicators": ["signs of nervousness or stress"],
-      "recovery_from_difficult_questions": "how they handled challenging questions",
-      "closing_impression": "strength of interview conclusion"
+    "compensationConsiderations": {
+      "marketAlignment": "above|at|below market",
+      "valueJustification": "why they're worth their ask"
+    }
+  },
+
+  "interviewMetadata": {
+    "sessionDetails": {
+      "questionsAsked": ${interviewerQuestions.length},
+      "responsesProvided": ${candidateExchangeCount},
+      "totalResponseWords": ${totalWords},
+      "averageResponseLength": ${avgResponseLength},
+      "estimatedSpeakingTimeMinutes": ${Math.round(estimatedTotalSpeakingTime)},
+      "interviewDurationCategory": "COMPREHENSIVE|STANDARD|BRIEF|MINIMAL",
+      "questionResponseRatio": ${interviewerQuestions.length > 0 ? (candidateExchangeCount / interviewerQuestions.length).toFixed(2) : 0}
+    },
+    "engagementMetrics": {
+      "engagementLevel": "HIGH|MEDIUM|LOW",
+      "responseProactiveness": "PROACTIVE|RESPONSIVE|PASSIVE",
+      "enthusiasmIndicators": "evidence of genuine interest",
+      "preparationLevel": "HIGH|MEDIUM|LOW"
+    },
+    "transcriptQuality": {
+      "analysisQuality": "EXCELLENT|GOOD|ADEQUATE|LIMITED",
+      "contentDepth": "DEEP|MODERATE|SURFACE|SUPERFICIAL",
+      "exampleQuality": "quality of examples provided",
+      "authenticityIndicators": "genuine vs rehearsed"
+    },
+    "assessmentConfidence": {
+      "overallConfidence": "VERY_HIGH|HIGH|MEDIUM|LOW|VERY_LOW",
+      "dataSufficiency": "SUFFICIENT|ADEQUATE|LIMITED|INSUFFICIENT",
+      "dataLimitations": ["factors limiting accuracy"],
+      "confidenceEnhancers": ["factors increasing confidence"]
     }
   }
 }
