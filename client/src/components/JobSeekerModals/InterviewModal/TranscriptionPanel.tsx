@@ -21,7 +21,7 @@ export function TranscriptionPanel({
   return (
     <div className={`${lightMode ? 'bg-white border-gray-200' : 'bg-gray-900 border-gray-800'} border-l flex flex-col h-full min-h-0`}>
       {/* Transcription header */}
-      <div className={`${lightMode ? 'bg-gray-50 border-gray-200' : 'bg-gray-800 border-gray-700'} px-4 py-3 border-b flex-shrink-0`}>
+      <div className={`${lightMode ? 'bg-gray-50 border-gray-200' : 'bg-gray-800 border-gray-700'} px-4 py-3 border-b shrink-0`}>
         <div className="flex items-center justify-between">
           <h3 className={`${lightMode ? 'text-gray-900' : 'text-white'} font-medium flex items-center space-x-2`}>
             <MessageCircle className="h-4 w-4" />

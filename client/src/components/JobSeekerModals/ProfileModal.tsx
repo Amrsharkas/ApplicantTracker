@@ -209,8 +209,8 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         
         <div className="max-h-[75vh] overflow-y-auto space-y-6">
           {/* Profile Header */}
-          <div className="flex items-center space-x-4 rtl:space-x-reverse p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+          <div className="flex items-center space-x-4 rtl:space-x-reverse p-4 bg-linear-to-r from-blue-50 to-purple-50 rounded-xl">
+            <div className="w-16 h-16 bg-linear-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
               <User className="w-8 h-8 text-white" />
             </div>
             <div>
@@ -460,7 +460,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
               {/* AI Profile Display */}
               {profile?.aiProfile && typeof profile.aiProfile === 'object' && (
-                <Card className="glass-card bg-gradient-to-r from-blue-50 to-purple-50">
+                <Card className="glass-card bg-linear-to-r from-blue-50 to-purple-50">
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
                       <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
@@ -501,7 +501,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                 <Button
                   type="submit"
                   disabled={updateProfileMutation.isPending}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                  className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
                 >
                   {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
                 </Button>

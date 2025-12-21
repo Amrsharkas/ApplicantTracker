@@ -243,7 +243,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-center text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <DialogTitle className="text-center text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
 {t('auth.welcomeToPlato')}
           </DialogTitle>
         </DialogHeader>
@@ -309,7 +309,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 disabled={loginMutation.isPending}
               >
                 {loginMutation.isPending ? t('auth.signingIn') : t('auth.signIn')}
@@ -540,7 +540,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     registerMutation.isPending ||
                     (currentStep === 1 ? !isStepOneValid : !passwordMatch || !acceptedTerms)
                   }
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
                   {currentStep === 1
                     ? "Continue"

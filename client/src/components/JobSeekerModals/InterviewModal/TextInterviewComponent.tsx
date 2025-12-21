@@ -55,7 +55,7 @@ export function TextInterviewComponent({
         </Badge>
       </div>
 
-      <div className="max-h-[32rem] overflow-y-auto space-y-4 pr-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
+      <div className="max-h-128 overflow-y-auto space-y-4 pr-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
         {messages.map((message, index) => (
           <div
             key={index}

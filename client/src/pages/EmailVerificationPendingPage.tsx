@@ -66,15 +66,15 @@ export default function EmailVerificationPendingPage() {
 
           <div className="space-y-3">
             <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+              <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
               <span>{t('auth.verification.sent.steps.checkInbox')}</span>
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+              <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
               <span>{t('auth.verification.sent.steps.clickLink')}</span>
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+              <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
               <span>{t('auth.verification.sent.steps.startUsing')}</span>
             </div>
           </div>

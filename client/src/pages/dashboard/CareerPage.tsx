@@ -315,7 +315,7 @@ export default function CareerPage() {
       )}
 
       {/* Main Content Area */}
-      <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/60 dark:border-slate-700/60 rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border border-slate-200/60 dark:border-slate-700/60 rounded-lg shadow-xs overflow-hidden">
         <AnimatePresence mode="wait">
           {/* Phase: Source Selection */}
           {phase === 'source-selection' && (
@@ -467,11 +467,11 @@ export default function CareerPage() {
                         <motion.div
                           whileHover={{ scale: 1.02 }}
                           transition={{ duration: 0.2 }}
-                          className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/60 dark:border-slate-700/60 rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-200 p-6 h-full"
+                          className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border border-slate-200/60 dark:border-slate-700/60 rounded-lg shadow-xs hover:shadow-lg transition-shadow duration-200 p-6 h-full"
                         >
                           <div className="flex flex-col items-center text-center gap-4">
                             {/* Icon with gradient */}
-                            <div className={`p-3 rounded-lg bg-gradient-to-r ${card.iconGradient || 'from-blue-500 to-blue-600'}`}>
+                            <div className={`p-3 rounded-lg bg-linear-to-r ${card.iconGradient || 'from-blue-500 to-blue-600'}`}>
                               <div className="text-white">
                                 {card.icon}
                               </div>
@@ -550,7 +550,7 @@ export default function CareerPage() {
               >
                 {/* Header */}
                 <div className="flex items-start gap-4 pb-4 border-b border-slate-200 dark:border-slate-700">
-                  <div className={`p-3 rounded-lg bg-gradient-to-r ${selectedCard.iconGradient || 'from-blue-500 to-blue-600'}`}>
+                  <div className={`p-3 rounded-lg bg-linear-to-r ${selectedCard.iconGradient || 'from-blue-500 to-blue-600'}`}>
                     <div className="text-white">
                       {selectedCard.icon}
                     </div>
@@ -581,7 +581,7 @@ export default function CareerPage() {
                                 className={isBullet ? "flex gap-2 mb-2" : "mb-2"}
                               >
                                 {isBullet && (
-                                  <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500 mt-2" />
+                                  <div className="shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500 mt-2" />
                                 )}
                                 <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
                                   {sentence.trim().replace(/^[-•*]\s/, '') +
@@ -604,7 +604,7 @@ export default function CareerPage() {
 
                     <Button
                       onClick={() => setSelectedCard(null)}
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                      className="bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
                     >
                       {t('careerSuggestions.close') || "Close"}
                     </Button>

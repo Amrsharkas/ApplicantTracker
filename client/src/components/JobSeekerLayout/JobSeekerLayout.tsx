@@ -12,7 +12,7 @@ export function JobSeekerLayout({ children, activePage }: JobSeekerLayoutProps) 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900/30">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900/30">
       {/* Sidebar */}
       <JobSeekerSidebar
         activePage={activePage}

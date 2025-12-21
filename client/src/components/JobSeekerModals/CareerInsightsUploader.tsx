@@ -220,7 +220,7 @@ export function CareerInsightsUploader({
           animate={{ opacity: 1, y: 0 }}
           className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3"
         >
-          <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+          <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
           <p className="text-red-700 text-sm">{error}</p>
         </motion.div>
       )}
@@ -313,7 +313,7 @@ export function CareerInsightsUploader({
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <motion.div
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full"
+                  className="bg-linear-to-r from-purple-500 to-pink-500 h-2 rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: `${uploadProgress}%` }}
                   transition={{ duration: 0.3 }}
@@ -334,7 +334,7 @@ export function CareerInsightsUploader({
               </Button>
               <Button
                 onClick={handleUpload}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                className="flex-1 bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
               >
                 <Upload className="h-4 w-4 mr-2" />
                 {t('careerInsights.uploadAndAnalyze') || "Upload & Analyze"}

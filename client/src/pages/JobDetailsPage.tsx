@@ -166,7 +166,7 @@ export default function JobDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50">
         <div className="container mx-auto px-4 py-8 max-w-5xl">
           <div className="animate-pulse space-y-8">
             <div className="h-8 w-32 rounded-lg bg-slate-200" />
@@ -188,7 +188,7 @@ export default function JobDetailsPage() {
 
   if (error || !job) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50">
         <div className="container mx-auto px-4 py-8 max-w-5xl">
           <Button
             onClick={() => navigate("/")}
@@ -220,7 +220,7 @@ export default function JobDetailsPage() {
   ].filter((skill, index, self) => self.indexOf(skill) === index);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50">
       <div className="container mx-auto px-4 py-8 max-w-5xl">
         {/* Back button */}
         <motion.div
@@ -244,7 +244,7 @@ export default function JobDetailsPage() {
           transition={{ delay: 0.1 }}
           className="mb-8"
         >
-          <Card className="border-0 bg-white/70 shadow-lg backdrop-blur-sm">
+          <Card className="border-0 bg-white/70 shadow-lg backdrop-blur-xs">
             <CardContent className="p-8">
               <div className="space-y-6">
                 {/* Title and company */}
@@ -315,7 +315,7 @@ export default function JobDetailsPage() {
                   <Button
                     onClick={handleApply}
                     size="lg"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:from-blue-700 hover:to-purple-700 px-8"
+                    className="bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:from-blue-700 hover:to-purple-700 px-8"
                   >
                     Apply for this Position
                   </Button>
@@ -334,7 +334,7 @@ export default function JobDetailsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Card className="border-0 bg-white/70 shadow-md backdrop-blur-sm">
+              <Card className="border-0 bg-white/70 shadow-md backdrop-blur-xs">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-3 mb-3">
                     <DollarSign className="h-5 w-5 text-green-600" />
@@ -357,7 +357,7 @@ export default function JobDetailsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <Card className="border-0 bg-white/70 shadow-md backdrop-blur-sm">
+            <Card className="border-0 bg-white/70 shadow-md backdrop-blur-xs">
               <CardContent className="p-6">
                 <h2 className="text-2xl font-semibold text-slate-800 mb-4">
                   Job Description
@@ -376,7 +376,7 @@ export default function JobDetailsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <Card className="border-0 bg-white/70 shadow-md backdrop-blur-sm">
+              <Card className="border-0 bg-white/70 shadow-md backdrop-blur-xs">
                 <CardContent className="p-6">
                   <h2 className="text-2xl font-semibold text-slate-800 mb-4">
                     Requirements
@@ -396,7 +396,7 @@ export default function JobDetailsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
             >
-              <Card className="border-0 bg-white/70 shadow-md backdrop-blur-sm">
+              <Card className="border-0 bg-white/70 shadow-md backdrop-blur-xs">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-3 mb-4">
                     <CheckCircle2 className="h-5 w-5 text-blue-600" />
@@ -427,7 +427,7 @@ export default function JobDetailsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
             >
-              <Card className="border-0 bg-white/70 shadow-md backdrop-blur-sm">
+              <Card className="border-0 bg-white/70 shadow-md backdrop-blur-xs">
                 <CardContent className="p-6">
                   <h2 className="text-2xl font-semibold text-slate-800 mb-4">
                     Benefits
@@ -449,7 +449,7 @@ export default function JobDetailsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7 }}
             >
-              <Card className="border-0 bg-white/70 shadow-md backdrop-blur-sm">
+              <Card className="border-0 bg-white/70 shadow-md backdrop-blur-xs">
                 <CardContent className="p-6">
                   <h2 className="text-2xl font-semibold text-slate-800 mb-4">
                     Additional Information
@@ -487,7 +487,7 @@ export default function JobDetailsPage() {
           transition={{ delay: 0.8 }}
           className="mt-8 mb-12"
         >
-          <Card className="border-0 bg-gradient-to-r from-blue-600 to-purple-600 shadow-xl">
+          <Card className="border-0 bg-linear-to-r from-blue-600 to-purple-600 shadow-xl">
             <CardContent className="p-8 text-center">
               <h3 className="text-2xl font-bold text-white mb-4">
                 Ready to Apply?

@@ -1107,7 +1107,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
           {/* Main Content */}
           <div className="flex-1 flex flex-col max-h-full">
             {/* Search Bar */}
-            <div className="p-4 border-b bg-white flex-shrink-0">
+            <div className="p-4 border-b bg-white shrink-0">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
@@ -1121,7 +1121,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
 
             {/* Smart Notice */}
             {showRelatedNotice && (
-              <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 flex-shrink-0">
+              <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 shrink-0">
                 <p className="text-sm text-blue-800">
                   <Zap className="h-4 w-4 inline mr-1" />
                   {t("jobPostingsModal.relatedNotice")}
@@ -1299,7 +1299,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                                 </div>
                               </div>
                               
-                              <div className="ml-6 flex-shrink-0 flex items-center">
+                              <div className="ml-6 shrink-0 flex items-center">
                                 <div className="w-16 h-16 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center">
                                   <Building className="w-8 h-8 text-gray-400" />
                                 </div>
@@ -1342,7 +1342,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                 className="w-2/3 max-w-3xl bg-white shadow-2xl flex flex-col"
               >
                 {/* Sticky Header */}
-                <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+                <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-xs">
                   <div className="flex justify-between items-center p-6">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
@@ -1656,7 +1656,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-[60]"
+              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-60"
             >
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
@@ -1677,7 +1677,7 @@ export function JobPostingsModal({ isOpen, onClose, initialJobTitle, initialJobI
                         repeat: Infinity,
                         ease: "easeInOut"
                       }}
-                      className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl"
+                      className="w-full h-full bg-linear-to-br from-blue-400 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl"
                     >
                       🧠
                     </motion.div>

@@ -55,7 +55,7 @@ export function PracticeSetupForm({ onSubmit, isLoading }: PracticeSetupFormProp
       {/* Header */}
       <div className="text-center space-y-3">
         <div className="flex justify-center">
-          <div className="p-3 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-full">
+          <div className="p-3 bg-linear-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-full">
             <Mic className="h-8 w-8 text-amber-600 dark:text-amber-400" />
           </div>
         </div>
@@ -165,7 +165,7 @@ export function PracticeSetupForm({ onSubmit, isLoading }: PracticeSetupFormProp
         {/* Submit Button */}
         <Button
           type="submit"
-          className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
+          className="w-full bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
           disabled={isLoading || !form.watch('jobTitle')}
         >
           {isLoading ? (

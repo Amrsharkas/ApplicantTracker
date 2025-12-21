@@ -416,7 +416,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       <>
       <div className="fixed inset-0 w-full h-screen bg-white dark:bg-gray-950 flex flex-col z-50">
         {/* Header with enhanced controls */}
-        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-border px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0">
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-border px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
               <div className={`h-3 w-3 rounded-full ${realtimeAPI.isConnected ? 'bg-green-500' : 'bg-yellow-500'} animate-pulse`} />
@@ -477,11 +477,11 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                 connecting={loading}
                 className="h-full"
               />
-              <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-medium">
+              <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-xs text-white px-3 py-1.5 rounded-full text-sm font-medium">
                 You
               </div>
               {realtimeAPI.isConnected && (
-                <div className="absolute bottom-4 left-4 flex items-center space-x-2 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                <div className="absolute bottom-4 left-4 flex items-center space-x-2 bg-black/70 backdrop-blur-xs px-3 py-1.5 rounded-full">
                   <div className="h-3 w-3 bg-green-500 rounded-full animate-pulse" />
                   <span className="text-white text-sm font-medium">Connected</span>
                 </div>
@@ -542,7 +542,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           </div>
 
           {/* Meeting controls bar */}
-          <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-border px-6 py-4 flex-shrink-0">
+          <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-border px-6 py-4 shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 {/* Recording status indicator */}

@@ -152,7 +152,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
         {/* Only show header when not in interview mode */}
         {!interviewOpen ? (
           <>
-            <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
               <DialogTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   Job specific AI interviews ({invitedJobs.length})
@@ -183,7 +183,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
             </DialogHeader>
 
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full flex flex-col flex-1 min-h-0">
-          <div className="px-4 pt-4 flex-shrink-0">
+          <div className="px-4 pt-4 shrink-0">
             <TabsList>
               <TabsTrigger value="invited">Pending interviews</TabsTrigger>
               <TabsTrigger value="completed">Finished interviews</TabsTrigger>
@@ -191,7 +191,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
           </div>
 
           {/* Search Bar (per tab) */}
-          <div className="px-4 pb-4 border-b bg-white flex-shrink-0">
+          <div className="px-4 pb-4 border-b bg-white shrink-0">
             <div className="relative">
               <Input
                 placeholder="Search by title, company, or description..."
@@ -259,7 +259,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                             </Button>
                           </div>
                         </div>
-                        <div className="ml-6 flex-shrink-0 flex items-center">
+                        <div className="ml-6 shrink-0 flex items-center">
                           <div className="w-16 h-16 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center">
                             <Building className="w-8 h-8 text-gray-400" />
                           </div>
@@ -320,7 +320,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                               </Button>
                             </div>
                           </div>
-                          <div className="ml-6 flex-shrink-0 flex items-center">
+                          <div className="ml-6 shrink-0 flex items-center">
                             <div className="w-16 h-16 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center">
                               <Building className="w-8 h-8 text-gray-400" />
                             </div>
@@ -369,7 +369,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                 className="w-2/3 max-w-3xl bg-white shadow-2xl flex flex-col"
               >
-                <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+                <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-xs">
                   <div className="flex justify-between items-center p-6">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">

@@ -66,13 +66,13 @@ export default function MatchesPage() {
   const getCardElevation = (score: number) => {
     if (score >= 80) return "shadow-lg shadow-emerald-500/10";
     if (score >= 60) return "shadow-md shadow-blue-500/10";
-    return "shadow-sm";
+    return "shadow-xs";
   };
 
   const getProgressColor = (score: number) => {
-    if (score >= 80) return "[&>div]:bg-gradient-to-r [&>div]:from-emerald-500 [&>div]:to-emerald-600";
-    if (score >= 60) return "[&>div]:bg-gradient-to-r [&>div]:from-blue-500 [&>div]:to-blue-600";
-    if (score >= 40) return "[&>div]:bg-gradient-to-r [&>div]:from-amber-500 [&>div]:to-amber-600";
+    if (score >= 80) return "[&>div]:bg-linear-to-r [&>div]:from-emerald-500 [&>div]:to-emerald-600";
+    if (score >= 60) return "[&>div]:bg-linear-to-r [&>div]:from-blue-500 [&>div]:to-blue-600";
+    if (score >= 40) return "[&>div]:bg-linear-to-r [&>div]:from-amber-500 [&>div]:to-amber-600";
     return "[&>div]:bg-slate-400";
   };
 
@@ -100,12 +100,12 @@ export default function MatchesPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <Card className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-950/40 dark:via-purple-950/40 dark:to-pink-950/40 border-blue-200/60 dark:border-blue-700/60">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 animate-pulse"></div>
+        <Card className="relative overflow-hidden bg-linear-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-950/40 dark:via-purple-950/40 dark:to-pink-950/40 border-blue-200/60 dark:border-blue-700/60">
+          <div className="absolute inset-0 bg-linear-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 animate-pulse"></div>
           <CardContent className="relative p-6">
             <div className="flex items-start gap-4">
               <motion.div
-                className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/30"
+                className="p-3 rounded-2xl bg-linear-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/30"
                 whileHover={{ scale: 1.05, rotate: 5 }}
                 transition={{ type: "spring", stiffness: 400, damping: 10 }}
               >
@@ -116,7 +116,7 @@ export default function MatchesPage() {
                   <h3 className="font-semibold text-lg text-slate-800 dark:text-slate-200">
                     AI-Powered Matching
                   </h3>
-                  <Badge className="bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0">
+                  <Badge className="bg-linear-to-r from-blue-500 to-purple-600 text-white border-0">
                     <Zap className="w-3 h-3 mr-1" />
                     Active
                   </Badge>
@@ -165,15 +165,15 @@ export default function MatchesPage() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <Card className="relative overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-full -mr-32 -mt-32"></div>
+          <Card className="relative overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-linear-to-bl from-blue-500/10 to-transparent rounded-full -mr-32 -mt-32"></div>
             <CardContent className="relative p-12 text-center">
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
               >
-                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/40 dark:to-purple-900/40 flex items-center justify-center">
+                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-linear-to-br from-blue-100 to-purple-100 dark:from-blue-900/40 dark:to-purple-900/40 flex items-center justify-center">
                   <Target className="w-10 h-10 text-blue-600 dark:text-blue-400" />
                 </div>
               </motion.div>
@@ -187,7 +187,7 @@ export default function MatchesPage() {
                 Complete your profile to unlock personalized AI-powered job matches
               </p>
               <Link href="/dashboard/profile">
-                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg shadow-blue-500/25">
+                <Button className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg shadow-blue-500/25">
                   <Briefcase className="w-4 h-4 mr-2" />
                   Complete Profile
                 </Button>
@@ -211,18 +211,18 @@ export default function MatchesPage() {
                 whileHover={{ y: -4 }}
               >
                 <Card className={cn(
-                  "relative overflow-hidden bg-white dark:bg-slate-800 backdrop-blur-sm border-slate-200 dark:border-slate-700 transition-all duration-300",
+                  "relative overflow-hidden bg-white dark:bg-slate-800 backdrop-blur-xs border-slate-200 dark:border-slate-700 transition-all duration-300",
                   getCardElevation(matchScore),
                   "hover:shadow-2xl hover:border-blue-300 dark:hover:border-blue-600"
                 )}>
                   {/* Gradient Accent */}
                   <div className={cn(
-                    "absolute top-0 left-0 right-0 h-1 bg-gradient-to-r",
+                    "absolute top-0 left-0 right-0 h-1 bg-linear-to-r",
                     getGradientByScore(matchScore).replace("via-transparent to-transparent", "to-transparent")
                   )} />
 
                   <div className={cn(
-                    "absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl opacity-30 pointer-events-none",
+                    "absolute top-0 right-0 w-96 h-96 bg-linear-to-bl opacity-30 pointer-events-none",
                     getGradientByScore(matchScore)
                   )} />
 
@@ -235,7 +235,7 @@ export default function MatchesPage() {
                           <div className="flex items-start gap-4">
                             {/* Company Logo Placeholder */}
                             <motion.div
-                              className="flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 border border-slate-200 dark:border-slate-600 flex items-center justify-center shadow-sm"
+                              className="shrink-0 w-14 h-14 rounded-xl bg-linear-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 border border-slate-200 dark:border-slate-600 flex items-center justify-center shadow-xs"
                               whileHover={{ scale: 1.05 }}
                             >
                               <Building2 className="w-7 h-7 text-slate-400 dark:text-slate-500" />
@@ -279,7 +279,7 @@ export default function MatchesPage() {
                                 >
                                   <Badge
                                     variant="secondary"
-                                    className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50 font-medium px-3 py-1"
+                                    className="bg-linear-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50 font-medium px-3 py-1"
                                   >
                                     {skill}
                                   </Badge>
@@ -349,7 +349,7 @@ export default function MatchesPage() {
                             transition={{ delay: index * 0.1 + 0.3 }}
                           >
                             <Badge className={cn(
-                              "px-3 py-1.5 text-xs font-semibold shadow-sm",
+                              "px-3 py-1.5 text-xs font-semibold shadow-xs",
                               matchScore >= 80 && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
                               matchScore >= 60 && matchScore < 80 && "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border-blue-200 dark:border-blue-800",
                               matchScore >= 40 && matchScore < 60 && "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 border-amber-200 dark:border-amber-800",
@@ -387,7 +387,7 @@ export default function MatchesPage() {
                         <Link href={`/jobs/${match.jobId}`}>
                           <Button
                             size="sm"
-                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-500/25"
+                            className="bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-500/25"
                           >
                             View Full Job
                             <ExternalLink className="w-4 h-4 ml-2" />
@@ -414,7 +414,7 @@ export default function MatchesPage() {
                                   initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: 0.1 }}
-                                  className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl p-5 border border-blue-100 dark:border-blue-900/50"
+                                  className="bg-linear-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl p-5 border border-blue-100 dark:border-blue-900/50"
                                 >
                                   <div className="flex items-start gap-3 mb-3">
                                     <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/40">

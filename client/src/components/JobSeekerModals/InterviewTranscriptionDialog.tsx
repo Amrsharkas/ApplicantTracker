@@ -364,7 +364,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none overflow-hidden flex flex-col p-0">
         {/* Header */}
-        <DialogHeader className="border-b px-6 py-4 flex-shrink-0">
+        <DialogHeader className="border-b px-6 py-4 shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle className="text-xl">{t("interviewTranscriptionDialog.title")}</DialogTitle>
@@ -394,7 +394,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
         {/* Main Content - Two Column Layout */}
         <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
           {/* Left Column - Video Player (sticky on desktop) */}
-          <div className="lg:w-2/5 flex-shrink-0 border-b lg:border-b-0 lg:border-r bg-muted/30">
+          <div className="lg:w-2/5 shrink-0 border-b lg:border-b-0 lg:border-r bg-muted/30">
             <div className="p-4 h-full flex flex-col">
               {recording?.recordingUrl ? (
                 <div className="flex-1 flex flex-col">
@@ -444,7 +444,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
                 {parsedQA.map((qa, index) => (
                   <div key={index} className="space-y-3">
                     {/* Q&A Card */}
-                    <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
+                    <div className="border rounded-lg overflow-hidden bg-card shadow-xs">
                       {/* Header with Question Number and Timestamps */}
                       <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b">
                         <span className="text-sm font-semibold text-foreground">
@@ -465,7 +465,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
                       {/* Question Section */}
                       <div className="px-4 py-3 border-b bg-blue-50/50 dark:bg-blue-950/20">
                         <div className="flex items-start gap-3">
-                          <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center shrink-0 mt-0.5">
                             <User className="h-3.5 w-3.5 text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -483,7 +483,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
                       {/* Answer Section */}
                       <div className="px-4 py-3 bg-green-50/50 dark:bg-green-950/20">
                         <div className="flex items-start gap-3">
-                          <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center shrink-0 mt-0.5">
                             <MessageCircle className="h-3.5 w-3.5 text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -501,10 +501,10 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
 
                     {/* Separate Feedback Card */}
                     {hasMeaningfulFeedback(qa.feedback) && (
-                      <div className="border rounded-lg overflow-hidden bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 shadow-sm">
+                      <div className="border rounded-lg overflow-hidden bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 shadow-xs">
                         <div className="px-4 py-3">
                           <div className="flex items-start gap-3">
-                            <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center shrink-0 mt-0.5">
                               <Lightbulb className="h-3.5 w-3.5 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -529,7 +529,7 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
         </div>
 
         {/* Footer */}
-        <div className="border-t px-6 py-4 flex justify-end flex-shrink-0">
+        <div className="border-t px-6 py-4 flex justify-end shrink-0">
           <Button onClick={onClose}>{t("interviewTranscriptionDialog.close")}</Button>
         </div>
       </DialogContent>

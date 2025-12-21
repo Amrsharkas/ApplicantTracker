@@ -495,7 +495,7 @@ export default function JobsPage() {
       <div className="flex gap-6">
         {/* Filters Sidebar */}
         <div className="w-72 space-y-4">
-          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
             <CardContent className="p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -681,7 +681,7 @@ export default function JobsPage() {
         {/* Main Content */}
         <div className="flex-1 space-y-4">
           {/* Search Bar */}
-          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
             <CardContent className="p-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -697,7 +697,7 @@ export default function JobsPage() {
 
           {/* AI Filtering Notice */}
           {isFilteringInProgress && (
-            <Card className="bg-blue-50/80 dark:bg-blue-900/20 backdrop-blur-sm border-blue-200/60 dark:border-blue-700/60">
+            <Card className="bg-blue-50/80 dark:bg-blue-900/20 backdrop-blur-xs border-blue-200/60 dark:border-blue-700/60">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400" />
@@ -709,7 +709,7 @@ export default function JobsPage() {
 
           {/* Smart Notice for Related Jobs */}
           {showRelatedNotice && (
-            <Card className="bg-blue-50/80 dark:bg-blue-900/20 backdrop-blur-sm border-blue-200/60 dark:border-blue-700/60">
+            <Card className="bg-blue-50/80 dark:bg-blue-900/20 backdrop-blur-xs border-blue-200/60 dark:border-blue-700/60">
               <CardContent className="p-3">
                 <p className="text-sm text-blue-800 dark:text-blue-200 flex items-center gap-1">
                   <Zap className="h-4 w-4" />
@@ -720,7 +720,7 @@ export default function JobsPage() {
           )}
 
           {/* Jobs Table */}
-          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
             <CardContent className="p-0">
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
@@ -737,7 +737,7 @@ export default function JobsPage() {
                   <p className="text-slate-600 dark:text-slate-400 mb-4">
                     {t("jobPostingsModal.errorDescription")}
                   </p>
-                  <Button onClick={handleManualRefresh} className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
+                  <Button onClick={handleManualRefresh} className="bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Try Again
                   </Button>
@@ -789,7 +789,7 @@ export default function JobsPage() {
                         >
                           <TableCell>
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <div className="w-10 h-10 bg-linear-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shrink-0">
                                 <Building className="w-5 h-5 text-white" />
                               </div>
                               <div>
@@ -864,7 +864,7 @@ export default function JobsPage() {
                                 e.stopPropagation();
                                 handleViewJob(job);
                               }}
-                              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                              className="bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                             >
                               <Eye className="w-4 h-4 mr-1" />
                               View

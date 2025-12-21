@@ -106,7 +106,7 @@ export function MatchesModal({ isOpen, onClose }: MatchesModalProps) {
                 <Button
                   onClick={handleRefresh}
                   disabled={isRefreshing}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white disabled:opacity-70"
+                  className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white disabled:opacity-70"
                 >
                   <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                   {t("matchesModal.emptyPrimaryCta")}

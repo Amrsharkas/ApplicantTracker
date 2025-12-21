@@ -194,8 +194,8 @@ export default function DashboardOverview() {
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           >
-            <Card className="relative overflow-hidden bg-gradient-to-r from-purple-50 via-pink-50 to-blue-50 dark:from-purple-900/20 dark:via-pink-900/20 dark:to-blue-900/20 border-purple-200/60 dark:border-purple-700/60 shadow-lg">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-pink-500/5 to-blue-500/5" />
+            <Card className="relative overflow-hidden bg-linear-to-r from-purple-50 via-pink-50 to-blue-50 dark:from-purple-900/20 dark:via-pink-900/20 dark:to-blue-900/20 border-purple-200/60 dark:border-purple-700/60 shadow-lg">
+              <div className="absolute inset-0 bg-linear-to-r from-purple-500/5 via-pink-500/5 to-blue-500/5" />
               <motion.div
                 className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-purple-500/10 blur-2xl"
                 animate={{
@@ -211,7 +211,7 @@ export default function DashboardOverview() {
               <CardContent className="p-6 flex items-center justify-between relative z-10">
                 <div className="flex items-center gap-4">
                   <motion.div
-                    className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg"
+                    className="p-3 rounded-xl bg-linear-to-br from-purple-500 to-pink-500 shadow-lg"
                     whileHover={{ scale: 1.05 }}
                     transition={{ type: "spring", stiffness: 400, damping: 10 }}
                   >
@@ -228,7 +228,7 @@ export default function DashboardOverview() {
                 </div>
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-md"
+                    className="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-md"
                     onClick={() => navigate('/dashboard/job-interviews')}
                   >
                     View Jobs
@@ -248,11 +248,11 @@ export default function DashboardOverview() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <Card className="relative overflow-hidden bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-xl">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5" />
+          <Card className="relative overflow-hidden bg-linear-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-xl">
+            <div className="absolute inset-0 bg-linear-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5" />
             <CardHeader className="relative z-10">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500">
+                <div className="p-2 rounded-lg bg-linear-to-br from-blue-500 to-purple-500">
                   <Sparkles className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -267,7 +267,7 @@ export default function DashboardOverview() {
             </CardHeader>
             <CardContent className="space-y-6 relative z-10">
               {/* Vertical Stepper Line */}
-              <div className="absolute left-[52px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-purple-200 to-transparent dark:from-blue-800 dark:via-purple-800" />
+              <div className="absolute left-[52px] top-0 bottom-0 w-0.5 bg-linear-to-b from-blue-200 via-purple-200 to-transparent dark:from-blue-800 dark:via-purple-800" />
 
               {/* Step 1: Build Profile */}
               <motion.div
@@ -277,17 +277,17 @@ export default function DashboardOverview() {
                 className={cn(
                   "relative p-5 rounded-2xl border-2 transition-all duration-300",
                   hasCompleteProfile
-                    ? "border-emerald-300 bg-gradient-to-br from-emerald-50 to-green-50 dark:border-emerald-700 dark:from-emerald-900/30 dark:to-green-900/20 shadow-lg shadow-emerald-500/10"
-                    : "border-blue-300 bg-gradient-to-br from-blue-50 to-indigo-50 dark:border-blue-700 dark:from-blue-900/30 dark:to-indigo-900/20 shadow-lg shadow-blue-500/10"
+                    ? "border-emerald-300 bg-linear-to-br from-emerald-50 to-green-50 dark:border-emerald-700 dark:from-emerald-900/30 dark:to-green-900/20 shadow-lg shadow-emerald-500/10"
+                    : "border-blue-300 bg-linear-to-br from-blue-50 to-indigo-50 dark:border-blue-700 dark:from-blue-900/30 dark:to-indigo-900/20 shadow-lg shadow-blue-500/10"
                 )}
               >
                 <div className="flex items-start gap-5">
                   <motion.div
                     className={cn(
-                      "w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold flex-shrink-0 shadow-lg",
+                      "w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 shadow-lg",
                       hasCompleteProfile
-                        ? "bg-gradient-to-br from-emerald-500 to-green-600"
-                        : "bg-gradient-to-br from-blue-500 to-indigo-600"
+                        ? "bg-linear-to-br from-emerald-500 to-green-600"
+                        : "bg-linear-to-br from-blue-500 to-indigo-600"
                     )}
                     animate={
                       hasCompleteProfile
@@ -320,7 +320,7 @@ export default function DashboardOverview() {
                     </p>
                     {!hasCompleteProfile && (
                       <>
-                        <div className="mb-4 p-4 rounded-xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm">
+                        <div className="mb-4 p-4 rounded-xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-xs">
                           <div className="flex items-center justify-between text-sm mb-2">
                             <span className="font-medium text-slate-700 dark:text-slate-300">
                               Profile Completion
@@ -331,7 +331,7 @@ export default function DashboardOverview() {
                           </div>
                           <div className="relative h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                             <motion.div
-                              className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full"
+                              className="absolute inset-y-0 left-0 bg-linear-to-r from-blue-500 to-indigo-600 rounded-full"
                               initial={{ width: 0 }}
                               animate={{ width: `${profileProgress}%` }}
                               transition={{ duration: 1, ease: "easeOut" }}
@@ -341,7 +341,7 @@ export default function DashboardOverview() {
                         <div className="flex flex-wrap gap-3">
                           <Link href="/dashboard/profile">
                             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                              <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
+                              <Button className="bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
                                 <User className="w-4 h-4 mr-2" />
                                 Complete Profile
                               </Button>
@@ -393,28 +393,28 @@ export default function DashboardOverview() {
               title: "Profile Completion",
               value: `${profileProgress}%`,
               icon: User,
-              color: "bg-gradient-to-br from-blue-500 to-blue-600",
+              color: "bg-linear-to-br from-blue-500 to-blue-600",
             },
             {
               href: "/dashboard/applications",
               title: "Applications",
               value: (applications as any[]).length,
               icon: FileText,
-              color: "bg-gradient-to-br from-purple-500 to-purple-600",
+              color: "bg-linear-to-br from-purple-500 to-purple-600",
             },
             {
               href: "/dashboard/matches",
               title: "Job Matches",
               value: (matches as any[]).length,
               icon: Target,
-              color: "bg-gradient-to-br from-emerald-500 to-emerald-600",
+              color: "bg-linear-to-br from-emerald-500 to-emerald-600",
             },
             {
               href: "/dashboard/interviews",
               title: "Scheduled Interviews",
               value: (upcomingInterviews as any[]).length,
               icon: Calendar,
-              color: "bg-gradient-to-br from-amber-500 to-amber-600",
+              color: "bg-linear-to-br from-amber-500 to-amber-600",
             },
           ].map((stat) => (
             <motion.div
@@ -423,7 +423,7 @@ export default function DashboardOverview() {
               whileTap={{ scale: 0.98 }}
             >
               <Link href={stat.href}>
-                <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -456,28 +456,28 @@ export default function DashboardOverview() {
                 title: "Job Matches",
                 description: "AI-curated opportunities for you",
                 icon: Target,
-                gradient: "bg-gradient-to-r from-blue-500 to-blue-600",
+                gradient: "bg-linear-to-r from-blue-500 to-blue-600",
                 to: "/dashboard/matches",
               },
               {
                 title: "Browse Jobs",
                 description: "Explore all available positions",
                 icon: Briefcase,
-                gradient: "bg-gradient-to-r from-emerald-500 to-emerald-600",
+                gradient: "bg-linear-to-r from-emerald-500 to-emerald-600",
                 to: "/dashboard/jobs",
               },
               {
                 title: "Career Insights",
                 description: "AI-powered career guidance",
                 icon: Brain,
-                gradient: "bg-gradient-to-r from-purple-500 to-purple-600",
+                gradient: "bg-linear-to-r from-purple-500 to-purple-600",
                 to: "/dashboard/career",
               },
               {
                 title: "Practice Interview",
                 description: "Prepare for your next interview",
                 icon: Mic,
-                gradient: "bg-gradient-to-r from-amber-500 to-amber-600",
+                gradient: "bg-linear-to-r from-amber-500 to-amber-600",
                 to: "/dashboard/practice",
               },
             ].map((action) => (
@@ -491,7 +491,7 @@ export default function DashboardOverview() {
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
+                          <div className="p-3 rounded-xl bg-white/20 backdrop-blur-xs">
                             <action.icon className="w-6 h-6 text-white" />
                           </div>
                           <div>
@@ -523,7 +523,7 @@ export default function DashboardOverview() {
               </Button>
             </Link>
           </div>
-          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
             <CardContent className="p-6">
               <div className="space-y-4">
                 {(upcomingInterviews as any[]).slice(0, 3).map((interview, index) => (
@@ -538,8 +538,8 @@ export default function DashboardOverview() {
 
                     <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/60 hover:shadow-md transition-all duration-200">
                       {/* Timeline dot */}
-                      <div className="relative flex-shrink-0">
-                        <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600">
+                      <div className="relative shrink-0">
+                        <div className="p-3 rounded-xl bg-linear-to-br from-amber-500 to-amber-600">
                           <Calendar className="w-5 h-5 text-white" />
                         </div>
                       </div>
@@ -557,7 +557,7 @@ export default function DashboardOverview() {
                               </p>
                             )}
                           </div>
-                          <Badge className="bg-amber-500 text-white border-0 flex-shrink-0">
+                          <Badge className="bg-amber-500 text-white border-0 shrink-0">
                             Scheduled
                           </Badge>
                         </div>

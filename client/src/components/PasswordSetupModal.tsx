@@ -74,7 +74,7 @@ export function PasswordSetupModal({ isOpen, onClose, onSuccess }: PasswordSetup
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-center text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent flex items-center justify-center gap-2">
+          <DialogTitle className="text-center text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent flex items-center justify-center gap-2">
             <Lock className="w-6 h-6" />
             {t("auth.passwordSetup.title")}
           </DialogTitle>

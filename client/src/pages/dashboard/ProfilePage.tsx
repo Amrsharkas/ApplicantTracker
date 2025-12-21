@@ -563,7 +563,7 @@ export default function ProfilePage() {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <div className="relative">
                 <div className="overflow-x-auto pb-2">
-                  <TabsList className="inline-flex w-full min-w-max h-auto p-1 gap-1 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/60 dark:border-slate-700/60 rounded-lg">
+                  <TabsList className="inline-flex w-full min-w-max h-auto p-1 gap-1 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border border-slate-200/60 dark:border-slate-700/60 rounded-lg">
                     {tabTriggers.map(({ value, label, icon: Icon }) => (
                       <TabsTrigger
                         key={value}
@@ -582,7 +582,7 @@ export default function ProfilePage() {
 
             {/* Personal Details Tab */}
             <TabsContent value="personal" className="space-y-4">
-              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse text-slate-800 dark:text-slate-200">
                     <User className="h-5 w-5" />
@@ -818,7 +818,7 @@ export default function ProfilePage() {
 
             {/* Government ID Tab */}
             <TabsContent value="government" className="space-y-4">
-              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse text-slate-800 dark:text-slate-200">
                     <Shield className="h-5 w-5" />
@@ -896,7 +896,7 @@ export default function ProfilePage() {
 
             {/* Links & Portfolio Tab */}
             <TabsContent value="links" className="space-y-4">
-              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse text-slate-800 dark:text-slate-200">
                     <Globe className="h-5 w-5" />
@@ -990,7 +990,7 @@ export default function ProfilePage() {
 
             {/* Work Eligibility Tab */}
             <TabsContent value="eligibility" className="space-y-4">
-              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse text-slate-800 dark:text-slate-200">
                     <MapPin className="h-5 w-5" />
@@ -1115,7 +1115,7 @@ export default function ProfilePage() {
 
             {/* Languages Tab */}
             <TabsContent value="languages" className="space-y-4">
-              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between text-slate-800 dark:text-slate-200">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
@@ -1206,7 +1206,7 @@ export default function ProfilePage() {
 
             {/* Skills Tab */}
             <TabsContent value="skills" className="space-y-4">
-              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse text-slate-800 dark:text-slate-200">
                     <Settings className="h-5 w-5" />
@@ -1377,7 +1377,7 @@ export default function ProfilePage() {
 
             {/* Education Tab */}
             <TabsContent value="education" className="space-y-4">
-              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between text-slate-800 dark:text-slate-200">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
@@ -1554,7 +1554,7 @@ export default function ProfilePage() {
 
             {/* Experience Tab */}
             <TabsContent value="experience" className="space-y-4">
-              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between text-slate-800 dark:text-slate-200">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
@@ -1736,7 +1736,7 @@ export default function ProfilePage() {
 
             {/* Certifications Tab */}
             <TabsContent value="certifications" className="space-y-4">
-              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between text-slate-800 dark:text-slate-200">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
@@ -1872,7 +1872,7 @@ export default function ProfilePage() {
 
             {/* Awards Tab */}
             <TabsContent value="awards" className="space-y-4">
-              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between text-slate-800 dark:text-slate-200">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
@@ -2005,7 +2005,7 @@ export default function ProfilePage() {
 
             {/* Job Target Tab */}
             <TabsContent value="target" className="space-y-4">
-              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+              <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2 rtl:space-x-reverse text-slate-800 dark:text-slate-200">
                     <Target className="h-5 w-5" />

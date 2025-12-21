@@ -206,18 +206,18 @@ export default function ApplicationsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <Card className="relative overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-slate-200/60 dark:border-slate-700/60 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+          <Card className="relative overflow-hidden bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-slate-200/60 dark:border-slate-700/60 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Applications</p>
                   <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-2">{stats.total}</p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-slate-400 to-slate-600 dark:from-slate-600 dark:to-slate-800 flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 rounded-xl bg-linear-to-br from-slate-400 to-slate-600 dark:from-slate-600 dark:to-slate-800 flex items-center justify-center shadow-lg">
                   <Briefcase className="w-6 h-6 text-white" />
                 </div>
               </div>
-              <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-slate-400 to-slate-600"></div>
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-linear-to-r from-slate-400 to-slate-600"></div>
             </CardContent>
           </Card>
         </motion.div>
@@ -227,18 +227,18 @@ export default function ApplicationsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card className="relative overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border-amber-200/60 dark:border-amber-800/60 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+          <Card className="relative overflow-hidden bg-linear-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border-amber-200/60 dark:border-amber-800/60 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Pending Review</p>
                   <p className="text-3xl font-bold text-amber-900 dark:text-amber-300 mt-2">{stats.pending}</p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 dark:from-amber-600 dark:to-orange-700 flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 rounded-xl bg-linear-to-br from-amber-400 to-orange-500 dark:from-amber-600 dark:to-orange-700 flex items-center justify-center shadow-lg">
                   <Clock className="w-6 h-6 text-white" />
                 </div>
               </div>
-              <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-amber-400 to-orange-500"></div>
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-linear-to-r from-amber-400 to-orange-500"></div>
             </CardContent>
           </Card>
         </motion.div>
@@ -248,18 +248,18 @@ export default function ApplicationsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <Card className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200/60 dark:border-blue-800/60 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+          <Card className="relative overflow-hidden bg-linear-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200/60 dark:border-blue-800/60 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-blue-700 dark:text-blue-400">Shortlisted</p>
                   <p className="text-3xl font-bold text-blue-900 dark:text-blue-300 mt-2">{stats.shortlisted}</p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 dark:from-blue-600 dark:to-indigo-700 flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 rounded-xl bg-linear-to-br from-blue-400 to-indigo-500 dark:from-blue-600 dark:to-indigo-700 flex items-center justify-center shadow-lg">
                   <ListChecks className="w-6 h-6 text-white" />
                 </div>
               </div>
-              <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-indigo-500"></div>
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-linear-to-r from-blue-400 to-indigo-500"></div>
             </CardContent>
           </Card>
         </motion.div>
@@ -269,18 +269,18 @@ export default function ApplicationsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <Card className="relative overflow-hidden bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border-emerald-200/60 dark:border-emerald-800/60 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+          <Card className="relative overflow-hidden bg-linear-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border-emerald-200/60 dark:border-emerald-800/60 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Accepted</p>
                   <p className="text-3xl font-bold text-emerald-900 dark:text-emerald-300 mt-2">{stats.accepted}</p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 dark:from-emerald-600 dark:to-teal-700 flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 rounded-xl bg-linear-to-br from-emerald-400 to-teal-500 dark:from-emerald-600 dark:to-teal-700 flex items-center justify-center shadow-lg">
                   <Target className="w-6 h-6 text-white" />
                 </div>
               </div>
-              <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-linear-to-r from-emerald-400 to-teal-500"></div>
             </CardContent>
           </Card>
         </motion.div>
@@ -291,7 +291,7 @@ export default function ApplicationsPage() {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.5 }}
-        className="flex items-center gap-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/60 dark:border-slate-700/60 rounded-lg p-3 shadow-sm"
+        className="flex items-center gap-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border border-slate-200/60 dark:border-slate-700/60 rounded-lg p-3 shadow-xs"
       >
         <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
           <Filter className="w-4 h-4" />
@@ -346,18 +346,18 @@ export default function ApplicationsPage() {
         transition={{ delay: 0.6 }}
       >
         {isLoading ? (
-          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
             <CardContent className="p-16 text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-200 dark:border-slate-700 border-t-blue-600 dark:border-t-blue-400 mx-auto"></div>
               <p className="text-slate-500 dark:text-slate-400 mt-4 font-medium">Loading applications...</p>
             </CardContent>
           </Card>
         ) : filteredApplications.length === 0 ? (
-          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
             <CardContent className="p-16 text-center">
               <div className="max-w-sm mx-auto">
                 <div className="relative w-24 h-24 mx-auto mb-6">
-                  <div className="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 rounded-full"></div>
+                  <div className="absolute inset-0 bg-linear-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 rounded-full"></div>
                   <div className="absolute inset-2 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center">
                     <Inbox className="w-12 h-12 text-slate-400 dark:text-slate-600" />
                   </div>
@@ -372,7 +372,7 @@ export default function ApplicationsPage() {
                 </p>
                 {filter === "all" && (
                   <Link href="/dashboard/jobs">
-                    <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+                    <Button className="bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300">
                       <Briefcase className="w-4 h-4 mr-2" />
                       Browse Jobs
                     </Button>
@@ -399,15 +399,15 @@ export default function ApplicationsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05, duration: 0.3 }}
               >
-                <Card className="group relative overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <Card className="group relative overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
                   {/* Status Indicator Bar */}
                   <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${getStatusColor(application.status)}`}></div>
 
                   <CardContent className="p-6 pl-8">
                     <div className="flex items-start gap-4">
                       {/* Company Logo Placeholder */}
-                      <div className="flex-shrink-0">
-                        <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow duration-300">
+                      <div className="shrink-0">
+                        <div className="w-16 h-16 rounded-xl bg-linear-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow duration-300">
                           <Building2 className="w-8 h-8 text-slate-500 dark:text-slate-400" />
                         </div>
                       </div>
@@ -478,7 +478,7 @@ export default function ApplicationsPage() {
                               transition={{ delay: index * 0.05 + 0.2, duration: 0.8, ease: "easeOut" }}
                               className={`h-full ${getStatusColor(application.status)} rounded-full relative`}
                             >
-                              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/30"></div>
+                              <div className="absolute inset-0 bg-linear-to-r from-transparent to-white/30"></div>
                             </motion.div>
                           </div>
                         </div>

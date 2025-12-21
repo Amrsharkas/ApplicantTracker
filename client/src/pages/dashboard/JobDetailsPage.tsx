@@ -282,7 +282,7 @@ export default function JobDetailsPage() {
           <ArrowLeft className="w-4 h-4" />
           Back to Jobs
         </Button>
-        <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+        <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
           <CardContent className="p-12 text-center">
             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Briefcase className="w-8 h-8 text-red-600 dark:text-red-400" />
@@ -320,11 +320,11 @@ export default function JobDetailsPage() {
       </Button>
 
       {/* Job Header Card */}
-      <Card className="overflow-hidden bg-gradient-to-r from-blue-500 to-blue-600 border-0">
+      <Card className="overflow-hidden bg-linear-to-r from-blue-500 to-blue-600 border-0">
         <CardContent className="p-8 text-white">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
             <div className="flex items-start gap-6 flex-1">
-              <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center flex-shrink-0">
+              <div className="w-20 h-20 bg-white/20 backdrop-blur-xs rounded-2xl flex items-center justify-center shrink-0">
                 <Building className="w-10 h-10" />
               </div>
               <div className="flex-1">
@@ -395,7 +395,7 @@ export default function JobDetailsPage() {
         {/* Left Column - Main Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Job Description */}
-          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
             <CardContent className="p-6">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                 <Briefcase className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -409,7 +409,7 @@ export default function JobDetailsPage() {
 
           {/* Requirements */}
           {job.requirements && (
-            <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+            <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
               <CardContent className="p-6">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -424,7 +424,7 @@ export default function JobDetailsPage() {
 
           {/* Skills */}
           {job.skills && job.skills.length > 0 && (
-            <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+            <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
               <CardContent className="p-6">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                   <Award className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -449,7 +449,7 @@ export default function JobDetailsPage() {
         {/* Right Column - Sidebar */}
         <div className="space-y-6">
           {/* Job Details Card */}
-          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60">
+          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60">
             <CardContent className="p-6 space-y-4">
               <h3 className="font-semibold text-slate-900 dark:text-slate-100">Job Details</h3>
 
@@ -509,9 +509,9 @@ export default function JobDetailsPage() {
 
           {/* Match Score Card */}
           {matchScore >= 50 && (
-            <Card className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border-emerald-200/60 dark:border-emerald-700/60">
+            <Card className="bg-linear-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border-emerald-200/60 dark:border-emerald-700/60">
               <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-linear-to-br from-emerald-500 to-green-600 flex items-center justify-center">
                   <Star className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-emerald-700 dark:text-emerald-400 mb-1">
@@ -534,7 +534,7 @@ export default function JobDetailsPage() {
                 Submit your application and let the AI match you with the employer.
               </p>
               <Button
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                className="w-full bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                 onClick={() => proceedWithApplication(job)}
                 disabled={newApplicationMutation.isPending}
               >
@@ -562,7 +562,7 @@ export default function JobDetailsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[60]"
+            className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-60"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -572,7 +572,7 @@ export default function JobDetailsPage() {
             >
               {aiLoadingResult.type === null ? (
                 <div className="space-y-6">
-                  <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center text-4xl">
+                  <div className="w-20 h-20 mx-auto bg-linear-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center text-4xl">
                     🤖
                   </div>
                   <div>
@@ -587,7 +587,7 @@ export default function JobDetailsPage() {
                     <motion.div
                       animate={{ x: ["-100%", "100%"] }}
                       transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                      className="h-full w-1/2 bg-gradient-to-r from-blue-500 to-blue-600"
+                      className="h-full w-1/2 bg-linear-to-r from-blue-500 to-blue-600"
                     />
                   </div>
                   <p className="text-sm text-slate-500 dark:text-slate-400 italic">
@@ -621,7 +621,7 @@ export default function JobDetailsPage() {
                         setLocation("/dashboard/applications");
                       }
                     }}
-                    className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                    className="bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                   >
                     {aiLoadingResult.type === 'success' ? 'View Applications' : t("close")}
                   </Button>

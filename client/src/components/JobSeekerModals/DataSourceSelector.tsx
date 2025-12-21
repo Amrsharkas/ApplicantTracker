@@ -40,7 +40,7 @@ export function DataSourceSelector({
       >
         <div className="flex items-center justify-center gap-2 mb-3">
           <Sparkles className="h-6 w-6 text-blue-500" />
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h2 className="text-3xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             {t('careerInsights.selectDataSource') || "Choose Your Data Source"}
           </h2>
         </div>
@@ -64,7 +64,7 @@ export function DataSourceSelector({
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
             className={`
               relative overflow-hidden
-              bg-gradient-to-br from-blue-50 via-indigo-50 to-cyan-50
+              bg-linear-to-br from-blue-50 via-indigo-50 to-cyan-50
               dark:from-blue-950 dark:via-indigo-950 dark:to-cyan-950
               rounded-2xl border-2
               ${hasProfile ? 'border-blue-300 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-600' : 'border-gray-300 dark:border-gray-700'}
@@ -73,8 +73,8 @@ export function DataSourceSelector({
             `}
           >
             {/* Background decorations */}
-            <div className="absolute -top-12 -right-12 w-32 h-32 bg-gradient-to-br from-blue-400 to-indigo-400 opacity-10 rounded-full blur-2xl group-hover:opacity-20 transition-opacity duration-300" />
-            <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-br from-cyan-400 to-blue-400 opacity-10 rounded-full blur-2xl group-hover:opacity-20 transition-opacity duration-300" />
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-linear-to-br from-blue-400 to-indigo-400 opacity-10 rounded-full blur-2xl group-hover:opacity-20 transition-opacity duration-300" />
+            <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-linear-to-br from-cyan-400 to-blue-400 opacity-10 rounded-full blur-2xl group-hover:opacity-20 transition-opacity duration-300" />
 
             {hasProfile && (
               <motion.div
@@ -83,7 +83,7 @@ export function DataSourceSelector({
                 transition={{ type: "spring", delay: 0.3 }}
                 className="absolute -top-3 -right-3 z-10"
               >
-                <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg">
+                <div className="bg-linear-to-r from-green-500 to-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg">
                   <CheckCircle className="h-4 w-4" />
                   {t('careerInsights.ready') || "Ready"}
                 </div>
@@ -97,7 +97,7 @@ export function DataSourceSelector({
                 transition={{ duration: 0.5 }}
                 className="relative"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-2xl blur-xl opacity-30 group-hover:opacity-50 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-linear-to-br from-blue-500 to-indigo-500 rounded-2xl blur-xl opacity-30 group-hover:opacity-50 transition-opacity duration-300" />
                 <div className="relative bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-xl border-2 border-blue-100 dark:border-blue-800">
                   <User className="h-12 w-12 text-blue-600 dark:text-blue-400" />
                 </div>
@@ -137,9 +137,9 @@ export function DataSourceSelector({
                       initial={{ width: 0 }}
                       animate={{ width: `${profileCompleteness}%` }}
                       transition={{ delay: 0.6, duration: 0.8, ease: "easeOut" }}
-                      className="bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-500 h-2.5 rounded-full relative overflow-hidden"
+                      className="bg-linear-to-r from-blue-500 via-indigo-500 to-cyan-500 h-2.5 rounded-full relative overflow-hidden"
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
+                      <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
                     </motion.div>
                   </div>
                 </motion.div>
@@ -150,7 +150,7 @@ export function DataSourceSelector({
                 className={`
                   w-full mt-2
                   ${hasProfile
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                    ? 'bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
                     : 'bg-gray-400 cursor-not-allowed'}
                   text-white font-semibold shadow-lg hover:shadow-xl
                   transition-all duration-300
@@ -180,7 +180,7 @@ export function DataSourceSelector({
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
             className="
               relative overflow-hidden
-              bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50
+              bg-linear-to-br from-purple-50 via-pink-50 to-rose-50
               dark:from-purple-950 dark:via-pink-950 dark:to-rose-950
               rounded-2xl border-2 border-purple-300 dark:border-purple-700
               hover:border-purple-400 dark:hover:border-purple-600
@@ -189,8 +189,8 @@ export function DataSourceSelector({
             "
           >
             {/* Background decorations */}
-            <div className="absolute -top-12 -right-12 w-32 h-32 bg-gradient-to-br from-purple-400 to-pink-400 opacity-10 rounded-full blur-2xl group-hover:opacity-20 transition-opacity duration-300" />
-            <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-br from-pink-400 to-purple-400 opacity-10 rounded-full blur-2xl group-hover:opacity-20 transition-opacity duration-300" />
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-linear-to-br from-purple-400 to-pink-400 opacity-10 rounded-full blur-2xl group-hover:opacity-20 transition-opacity duration-300" />
+            <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-linear-to-br from-pink-400 to-purple-400 opacity-10 rounded-full blur-2xl group-hover:opacity-20 transition-opacity duration-300" />
 
             <div className="relative flex flex-col items-center text-center gap-5">
               {/* Icon */}
@@ -199,7 +199,7 @@ export function DataSourceSelector({
                 transition={{ duration: 0.5 }}
                 className="relative"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl blur-xl opacity-30 group-hover:opacity-50 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-linear-to-br from-purple-500 to-pink-500 rounded-2xl blur-xl opacity-30 group-hover:opacity-50 transition-opacity duration-300" />
                 <div className="relative bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-xl border-2 border-purple-100 dark:border-purple-800">
                   <Upload className="h-12 w-12 text-purple-600 dark:text-purple-400" />
                 </div>
@@ -238,7 +238,7 @@ export function DataSourceSelector({
               </div>
 
               {/* CTA Button */}
-              <Button className="w-full mt-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
+              <Button className="w-full mt-2 bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
                 {t('careerInsights.uploadDocument') || "Upload Document"}
                 <FileText className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>

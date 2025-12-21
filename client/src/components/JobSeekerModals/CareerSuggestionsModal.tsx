@@ -409,7 +409,7 @@ export function CareerSuggestionsModal({ isOpen, onClose }: CareerSuggestionsMod
                         className="cursor-pointer"
                         onClick={() => setSelectedCard(card)}
                       >
-                        <div className={`bg-gradient-to-br ${card.bgGradient} rounded-xl border-2 ${cardConfigs[index]?.borderColor} ${cardConfigs[index]?.hoverBorder} shadow-md hover:shadow-xl transition-all duration-300 p-8 h-full flex flex-col items-center justify-center text-center gap-4`}>
+                        <div className={`bg-linear-to-br ${card.bgGradient} rounded-xl border-2 ${cardConfigs[index]?.borderColor} ${cardConfigs[index]?.hoverBorder} shadow-md hover:shadow-xl transition-all duration-300 p-8 h-full flex flex-col items-center justify-center text-center gap-4`}>
                           <div className={`${card.color} bg-white rounded-full p-4 shadow-lg`}>
                             {card.icon}
                           </div>
@@ -452,7 +452,7 @@ export function CareerSuggestionsModal({ isOpen, onClose }: CareerSuggestionsMod
                           <ArrowLeft className="h-4 w-4" />
                           {t('careerInsights.newAnalysis') || "New Analysis"}
                         </Button>
-                        <Button onClick={onClose} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                        <Button onClick={onClose} className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                           {t('careerSuggestions.close') || "Close"}
                         </Button>
                       </div>
@@ -479,7 +479,7 @@ export function CareerSuggestionsModal({ isOpen, onClose }: CareerSuggestionsMod
                 <DialogHeader>
                   <div className="flex items-start justify-between gap-4">
                     <DialogTitle className="flex items-center gap-3 text-2xl font-bold">
-                      <div className={`${selectedCard.color} bg-gradient-to-br ${selectedCard.bgGradient} rounded-lg p-3 shadow-md`}>
+                      <div className={`${selectedCard.color} bg-linear-to-br ${selectedCard.bgGradient} rounded-lg p-3 shadow-md`}>
                         {selectedCard.icon}
                       </div>
                       {selectedCard.title}
@@ -488,7 +488,7 @@ export function CareerSuggestionsModal({ isOpen, onClose }: CareerSuggestionsMod
                       variant="ghost"
                       size="sm"
                       onClick={() => setSelectedCard(null)}
-                      className="flex-shrink-0"
+                      className="shrink-0"
                     >
                       <X className="h-5 w-5" />
                     </Button>
@@ -496,7 +496,7 @@ export function CareerSuggestionsModal({ isOpen, onClose }: CareerSuggestionsMod
                 </DialogHeader>
 
                 <div className="mt-6">
-                  <div className={`bg-gradient-to-br ${selectedCard.bgGradient} rounded-xl p-6 border-2 ${cardConfigs.find(c => c.title === selectedCard.title)?.borderColor || 'border-gray-200'}`}>
+                  <div className={`bg-linear-to-br ${selectedCard.bgGradient} rounded-xl p-6 border-2 ${cardConfigs.find(c => c.title === selectedCard.title)?.borderColor || 'border-gray-200'}`}>
                     <div className="text-gray-700 leading-relaxed space-y-4">
                       {selectedCard.description.split('. ').map((sentence, sentenceIndex) => {
                         if (sentence.trim() === '') return null;
@@ -518,7 +518,7 @@ export function CareerSuggestionsModal({ isOpen, onClose }: CareerSuggestionsMod
                   <div className="mt-6 flex justify-end">
                     <Button
                       onClick={() => setSelectedCard(null)}
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                      className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                     >
                       {t('careerSuggestions.close') || "Close"}
                     </Button>

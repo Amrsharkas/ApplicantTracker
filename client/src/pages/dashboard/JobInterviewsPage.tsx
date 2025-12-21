@@ -170,7 +170,7 @@ export default function JobInterviewsPage() {
             <TabsList className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 p-1.5 text-slate-600 dark:text-slate-400 shadow-inner">
               <TabsTrigger
                 value="invited"
-                className="relative inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-700 dark:data-[state=active]:text-blue-400 gap-2"
+                className="relative inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-xs dark:data-[state=active]:bg-slate-700 dark:data-[state=active]:text-blue-400 gap-2"
               >
                 <Clock className="h-4 w-4" />
                 Pending Interviews
@@ -182,7 +182,7 @@ export default function JobInterviewsPage() {
               </TabsTrigger>
               <TabsTrigger
                 value="completed"
-                className="relative inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-green-600 data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-700 dark:data-[state=active]:text-green-400 gap-2"
+                className="relative inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-green-600 data-[state=active]:shadow-xs dark:data-[state=active]:bg-slate-700 dark:data-[state=active]:text-green-400 gap-2"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Completed Interviews
@@ -250,10 +250,10 @@ export default function JobInterviewsPage() {
                 className="flex flex-col items-center justify-center py-20 text-center"
               >
                 <div className="relative mb-6">
-                  <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-full flex items-center justify-center">
+                  <div className="w-24 h-24 bg-linear-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-full flex items-center justify-center">
                     <Clock className="w-12 h-12 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-800/30 rounded-full flex items-center justify-center">
+                  <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-linear-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-800/30 rounded-full flex items-center justify-center">
                     <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                   </div>
                 </div>
@@ -275,16 +275,16 @@ export default function JobInterviewsPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                   >
-                    <Card className="group relative overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer bg-gradient-to-br from-white to-blue-50/30 dark:from-slate-800 dark:to-blue-950/20 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700">
+                    <Card className="group relative overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer bg-linear-to-br from-white to-blue-50/30 dark:from-slate-800 dark:to-blue-950/20 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700">
                       {/* Accent gradient */}
-                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500"></div>
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-blue-500 via-blue-600 to-blue-500"></div>
 
                       <CardContent className="p-6">
                         <div className="flex gap-6">
                           {/* Company Logo */}
-                          <div className="flex-shrink-0">
+                          <div className="shrink-0">
                             <div className="relative">
-                              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                              <div className="w-20 h-20 bg-linear-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow duration-300">
                                 <Building className="w-10 h-10 text-white" />
                               </div>
                               <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-100 dark:bg-blue-900 border-2 border-white dark:border-slate-800 rounded-full flex items-center justify-center">
@@ -301,7 +301,7 @@ export default function JobInterviewsPage() {
                                   <h3 className="font-bold text-xl text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
                                     {job.jobTitle}
                                   </h3>
-                                  <Badge className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 border-blue-200 dark:border-blue-800 flex-shrink-0">
+                                  <Badge className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 border-blue-200 dark:border-blue-800 shrink-0">
                                     <Clock className="w-3 h-3 mr-1" />
                                     Pending
                                   </Badge>
@@ -345,7 +345,7 @@ export default function JobInterviewsPage() {
                             <div className="flex flex-wrap items-center gap-3">
                               <Button
                                 onClick={() => handleStartInterviewClick(job)}
-                                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200"
+                                className="bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200"
                                 size="sm"
                               >
                                 <Play className="h-4 w-4 mr-2" />
@@ -405,10 +405,10 @@ export default function JobInterviewsPage() {
                 className="flex flex-col items-center justify-center py-20 text-center"
               >
                 <div className="relative mb-6">
-                  <div className="w-24 h-24 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 rounded-full flex items-center justify-center">
+                  <div className="w-24 h-24 bg-linear-to-br from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 rounded-full flex items-center justify-center">
                     <CheckCircle2 className="w-12 h-12 text-green-600 dark:text-green-400" />
                   </div>
-                  <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-900/30 dark:to-yellow-800/30 rounded-full flex items-center justify-center">
+                  <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-linear-to-br from-yellow-100 to-yellow-200 dark:from-yellow-900/30 dark:to-yellow-800/30 rounded-full flex items-center justify-center">
                     <Award className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                   </div>
                 </div>
@@ -439,16 +439,16 @@ export default function JobInterviewsPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: index * 0.05 }}
                     >
-                      <Card className="group relative overflow-hidden hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white to-green-50/30 dark:from-slate-800 dark:to-green-950/20 border-slate-200 dark:border-slate-700 hover:border-green-300 dark:hover:border-green-700">
+                      <Card className="group relative overflow-hidden hover:shadow-xl transition-all duration-300 bg-linear-to-br from-white to-green-50/30 dark:from-slate-800 dark:to-green-950/20 border-slate-200 dark:border-slate-700 hover:border-green-300 dark:hover:border-green-700">
                         {/* Accent gradient */}
-                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 via-emerald-500 to-green-500"></div>
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-green-500 via-emerald-500 to-green-500"></div>
 
                         <CardContent className="p-6">
                           <div className="flex gap-6">
                             {/* Company Logo with Score Badge */}
-                            <div className="flex-shrink-0">
+                            <div className="shrink-0">
                               <div className="relative">
-                                <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                                <div className="w-20 h-20 bg-linear-to-br from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow duration-300">
                                   <Building className="w-10 h-10 text-white" />
                                 </div>
                                 <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-100 dark:bg-green-900 border-2 border-white dark:border-slate-800 rounded-full flex items-center justify-center">
@@ -465,7 +465,7 @@ export default function JobInterviewsPage() {
                                     <h3 className="font-bold text-xl text-slate-900 dark:text-slate-100 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors truncate">
                                       {job.jobTitle}
                                     </h3>
-                                    <Badge className="bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800 border-green-200 dark:border-green-800 flex-shrink-0">
+                                    <Badge className="bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800 border-green-200 dark:border-green-800 shrink-0">
                                       <CheckCircle2 className="w-3 h-3 mr-1" />
                                       Completed
                                     </Badge>
@@ -491,7 +491,7 @@ export default function JobInterviewsPage() {
 
                               {/* Score Display */}
                               {score !== null && scoreColor && (
-                                <div className="mb-4 p-4 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-700/50 border border-slate-200 dark:border-slate-600">
+                                <div className="mb-4 p-4 rounded-xl bg-linear-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-700/50 border border-slate-200 dark:border-slate-600">
                                   <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
                                       <Award className={`h-5 w-5 ${scoreColor.text}`} />
@@ -562,7 +562,7 @@ export default function JobInterviewsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex z-40"
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs flex z-40"
               onClick={() => setSelectedJob(null)}
             >
               <motion.div
@@ -574,12 +574,12 @@ export default function JobInterviewsPage() {
                 className="ml-auto w-full sm:w-2/3 max-w-3xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col"
               >
                 {/* Header */}
-                <div className="relative bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-b border-slate-200 dark:border-slate-700">
+                <div className="relative bg-linear-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-b border-slate-200 dark:border-slate-700">
                   {/* Status accent bar */}
                   <div className={`absolute top-0 left-0 right-0 h-1.5 ${
                     selectedJob.status === 'completed'
-                      ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-green-500'
-                      : 'bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500'
+                      ? 'bg-linear-to-r from-green-500 via-emerald-500 to-green-500'
+                      : 'bg-linear-to-r from-blue-500 via-blue-600 to-blue-500'
                   }`}></div>
 
                   <div className="p-6">
@@ -589,7 +589,7 @@ export default function JobInterviewsPage() {
                           <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 truncate">
                             {selectedJob.jobTitle}
                           </h2>
-                          <Badge className={`flex-shrink-0 ${
+                          <Badge className={`shrink-0 ${
                             selectedJob.status === 'completed'
                               ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800'
                               : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
@@ -617,7 +617,7 @@ export default function JobInterviewsPage() {
                         variant="ghost"
                         size="icon"
                         onClick={() => setSelectedJob(null)}
-                        className="hover:bg-slate-200 dark:hover:bg-slate-800 flex-shrink-0"
+                        className="hover:bg-slate-200 dark:hover:bg-slate-800 shrink-0"
                       >
                         <X className="h-5 w-5" />
                       </Button>
@@ -629,7 +629,7 @@ export default function JobInterviewsPage() {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="p-4 rounded-xl bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-700 border border-slate-200 dark:border-slate-600"
+                        className="p-4 rounded-xl bg-linear-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-700 border border-slate-200 dark:border-slate-600"
                       >
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
@@ -720,7 +720,7 @@ export default function JobInterviewsPage() {
                             >
                               <Badge
                                 variant="outline"
-                                className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 text-sm py-1.5"
+                                className="bg-linear-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 text-sm py-1.5"
                               >
                                 {skill}
                               </Badge>
@@ -741,7 +741,7 @@ export default function JobInterviewsPage() {
                           <Star className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Feedback</h3>
                         </div>
-                        <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
+                        <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed bg-linear-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
                           <ReactMarkdown>{selectedJob.interviewComments}</ReactMarkdown>
                         </div>
                       </motion.div>
@@ -764,7 +764,7 @@ export default function JobInterviewsPage() {
                     {selectedJob.status !== 'completed' && (
                       <Button
                         onClick={() => handleStartInterviewClick(selectedJob)}
-                        className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200"
+                        className="bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200"
                       >
                         <Play className="h-4 w-4 mr-2" />
                         {needsAssessment(selectedJob) ? 'Start Assessment' : 'Start Interview'}

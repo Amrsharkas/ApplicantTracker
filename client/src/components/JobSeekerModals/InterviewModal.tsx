@@ -1170,7 +1170,7 @@ const startVoiceInterview = async () => {
 
     window.addEventListener('blur', handleBlur);
     return () => {
-      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('blur-sm', handleBlur);
     };
   }, [isOpen, mode, windowBlurCount, sessionTerminated, toast, realtimeAPI]);
 

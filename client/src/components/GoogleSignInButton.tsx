@@ -39,7 +39,7 @@ export default function GoogleSignInButton({
         dark:text-slate-300
         font-medium
         rounded-lg
-        shadow-sm
+        shadow-xs
         hover:shadow-md
         transition-all
         duration-300

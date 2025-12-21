@@ -14,7 +14,7 @@ interface QuickActionCardProps {
   onClick?: () => void;
   badge?: {
     text: string;
-    variant?: "default" | "secondary" | "destructive" | "outline";
+    variant?: "default" | "secondary" | "destructive" | "outline-solid";
   };
   className?: string;
 }
@@ -39,7 +39,7 @@ export function QuickActionCard({
       transition={{ duration: 0.3 }}
     >
       <Card className={cn(
-        "relative overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-gradient-to-br",
+        "relative overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-linear-to-br",
         gradient
       )}>
         {/* Animated shimmer effect overlay */}
@@ -48,7 +48,7 @@ export function QuickActionCard({
           initial={false}
         >
           <motion.div
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+            className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent"
             animate={{
               x: ["-100%", "100%"],
             }}
@@ -112,7 +112,7 @@ export function QuickActionCard({
                     >
                       <Badge
                         variant={badge.variant || "secondary"}
-                        className="bg-white/30 text-white border border-white/40 text-xs font-semibold backdrop-blur-sm shadow-lg hover:bg-white/40 transition-colors duration-200"
+                        className="bg-white/30 text-white border border-white/40 text-xs font-semibold backdrop-blur-xs shadow-lg hover:bg-white/40 transition-colors duration-200"
                       >
                         {badge.text}
                       </Badge>
@@ -120,7 +120,7 @@ export function QuickActionCard({
                   )}
                 </div>
                 <motion.p
-                  className="text-sm text-white/90 mt-1 font-medium drop-shadow"
+                  className="text-sm text-white/90 mt-1 font-medium drop-shadow-sm"
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 }}
@@ -132,7 +132,7 @@ export function QuickActionCard({
 
             {/* Animated arrow with enhanced effects */}
             <motion.div
-              className="flex-shrink-0 ml-4"
+              className="shrink-0 ml-4"
               animate={{
                 x: [0, 4, 0],
               }}
@@ -142,7 +142,7 @@ export function QuickActionCard({
                 repeatType: "reverse",
               }}
             >
-              <div className="relative p-2 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 shadow-lg group-hover:bg-white/30 transition-colors duration-300">
+              <div className="relative p-2 rounded-lg bg-white/20 backdrop-blur-xs border border-white/30 shadow-lg group-hover:bg-white/30 transition-colors duration-300">
                 <ArrowRight className="w-5 h-5 text-white drop-shadow-md" strokeWidth={2.5} />
               </div>
             </motion.div>
@@ -151,7 +151,7 @@ export function QuickActionCard({
 
         {/* Animated bottom accent line */}
         <motion.div
-          className="h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+          className="h-1 bg-linear-to-r from-transparent via-white/50 to-transparent"
           initial={{ scaleX: 0 }}
           whileHover={{ scaleX: 1 }}
           transition={{ duration: 0.3 }}

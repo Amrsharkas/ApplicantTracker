@@ -328,7 +328,7 @@ export default function Dashboard() {
                 className="flex items-center space-x-1 sm:space-x-2 rtl:space-x-reverse hover:bg-gray-50 rounded-lg p-1.5 sm:p-2 transition-colors min-w-0"
                 title="Edit user profile"
               >
-                <div className="w-6 h-6 sm:w-7 sm:h-7 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <div className="w-6 h-6 sm:w-7 sm:h-7 bg-blue-600 rounded-full flex items-center justify-center shrink-0">
                   <User className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                 </div>
                 <span className="text-xs sm:text-sm font-medium text-gray-900 truncate max-w-[80px] sm:max-w-none">
@@ -373,7 +373,7 @@ export default function Dashboard() {
                 }`}>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-start space-x-3 sm:space-x-4 rtl:space-x-reverse">
-                      <div className={`min-w-8 min-h-8 sm:min-w-10 sm:min-h-10 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-lg flex-shrink-0 ${
+                      <div className={`min-w-8 min-h-8 sm:min-w-10 sm:min-h-10 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-lg shrink-0 ${
                         hasCompleteProfile ? 'bg-green-600' : 'bg-blue-600'
                       }`}>
                         {hasCompleteProfile ? '✓' : '1'}
@@ -441,10 +441,10 @@ export default function Dashboard() {
         {/* Pending Job Application Banner */}
         {showFullDashboard && pendingJobApplication && (
           <div className="mb-6 sm:mb-8 animate-in fade-in slide-in-from-top duration-500">
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-4 sm:p-6 shadow-lg">
+            <div className="bg-linear-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-4 sm:p-6 shadow-lg">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div className="flex items-start gap-3 sm:gap-4 flex-1">
-                  <div className="bg-blue-600 rounded-full p-2 sm:p-3 mt-1 flex-shrink-0">
+                  <div className="bg-blue-600 rounded-full p-2 sm:p-3 mt-1 shrink-0">
                     <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -469,7 +469,7 @@ export default function Dashboard() {
                     setPendingJobApplication(null);
                     localStorage.removeItem('pendingJobApplication');
                   }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors self-start sm:self-center flex-shrink-0"
+                  className="text-gray-400 hover:text-gray-600 transition-colors self-start sm:self-center shrink-0"
                   title="Dismiss"
                 >
                   <X className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -482,10 +482,10 @@ export default function Dashboard() {
         {/* Invited Jobs Alert */}
         {showFullDashboard && invitedJobsTotal > 0 && (
           <div className="mb-6 sm:mb-8 animate-in fade-in slide-in-from-top duration-500">
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 shadow-lg">
+            <div className="bg-linear-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 shadow-lg">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div className="flex items-start gap-3 sm:gap-4 flex-1">
-                  <div className="bg-green-600 rounded-full p-2 sm:p-3 mt-1 flex-shrink-0">
+                  <div className="bg-green-600 rounded-full p-2 sm:p-3 mt-1 shrink-0">
                     <Briefcase className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -520,7 +520,7 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 <button
                   onClick={() => openModal('matches')}
-                  className="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
+                  className="bg-linear-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
                 >
                   <div className="flex items-center space-x-3 sm:space-x-4 rtl:space-x-reverse mb-3 sm:mb-4">
                     <div className="bg-white bg-opacity-20 rounded-lg p-2 sm:p-3">
@@ -538,7 +538,7 @@ export default function Dashboard() {
 
                 <button
                   onClick={() => openModal('jobPostings')}
-                  className="bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
+                  className="bg-linear-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
                 >
                   <div className="flex items-center space-x-3 sm:space-x-4 rtl:space-x-reverse mb-3 sm:mb-4">
                     <div className="bg-white bg-opacity-20 rounded-lg p-2 sm:p-3">
@@ -556,7 +556,7 @@ export default function Dashboard() {
 
                 <button
                   onClick={() => openModal('careerSuggestions')}
-                  className="bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
+                  className="bg-linear-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
                 >
                   <div className="flex items-center space-x-3 sm:space-x-4 rtl:space-x-reverse mb-3 sm:mb-4">
                     <div className="bg-white bg-opacity-20 rounded-lg p-2 sm:p-3">
@@ -574,7 +574,7 @@ export default function Dashboard() {
 
                 <button
                   onClick={() => openModal('practiceInterview')}
-                  className="bg-gradient-to-br from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
+                  className="bg-linear-to-br from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-start group transform hover:scale-105"
                 >
                   <div className="flex items-center space-x-3 sm:space-x-4 rtl:space-x-reverse mb-3 sm:mb-4">
                     <div className="bg-white bg-opacity-20 rounded-lg p-2 sm:p-3">
@@ -596,8 +596,8 @@ export default function Dashboard() {
                 onClick={() => openModal('jobSpecificAI')}
                 className={`w-full rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-6 ${
                   hasCompletedAllInterviews
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white'
-                    : 'bg-gradient-to-r from-gray-400 to-gray-500 text-gray-200 cursor-not-allowed opacity-70'
+                    ? 'bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white'
+                    : 'bg-linear-to-r from-gray-400 to-gray-500 text-gray-200 cursor-not-allowed opacity-70'
                 }`}
                 disabled={!hasCompletedAllInterviews}
               >
@@ -634,7 +634,7 @@ export default function Dashboard() {
               {/* Upcoming Interview - Always show */}
               <button
                 onClick={() => openModal('upcomingInterview')}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-6"
+                className="w-full bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-6"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4 rtl:space-x-reverse">
@@ -658,7 +658,7 @@ export default function Dashboard() {
               {/* Applications Button - Full Width */}
               <button
                 onClick={() => openModal('applications')}
-                className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                className="w-full bg-linear-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4 rtl:space-x-reverse">
@@ -677,7 +677,7 @@ export default function Dashboard() {
               {/* Invited Jobs - Full Width */}
               {/* <button
                 onClick={() => openModal('invitedJobs')}
-                className="w-full mt-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                className="w-full mt-4 bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4 rtl:space-x-reverse">
@@ -698,17 +698,17 @@ export default function Dashboard() {
                 <h4 className="text-sm font-medium text-gray-500 mb-3">{t('quickStats')}</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-sm">
                   <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                    <Target className="h-3 w-3 text-green-600 flex-shrink-0" />
+                    <Target className="h-3 w-3 text-green-600 shrink-0" />
                     <span className="text-gray-600">{t('jobMatchesLabel')}:</span>
                     <span className="font-medium text-gray-900">{(matches as any[]).length}</span>
                   </div>
                   <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                    <FileText className="h-3 w-3 text-purple-600 flex-shrink-0" />
+                    <FileText className="h-3 w-3 text-purple-600 shrink-0" />
                     <span className="text-gray-600">{t('applicationsLabel')}:</span>
                     <span className="font-medium text-gray-900">{(applications as any[]).length}</span>
                   </div>
                   <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                    <User className="h-3 w-3 text-blue-600 flex-shrink-0" />
+                    <User className="h-3 w-3 text-blue-600 shrink-0" />
                     <span className="text-gray-600">{t('profileCompletionLabel')}:</span>
                     <span className="font-medium text-gray-900">{profileProgress}%</span>
                   </div>

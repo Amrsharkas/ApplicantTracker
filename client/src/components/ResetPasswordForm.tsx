@@ -224,7 +224,7 @@ export function ResetPasswordForm({ token, onSuccess }: ResetPasswordFormProps) 
               <div className="space-y-3">
                 <Button
                   onClick={() => window.location.href = '/auth'}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
                   {t("auth.resetPassword.goToLogin")}
                 </Button>
@@ -248,7 +248,7 @@ export function ResetPasswordForm({ token, onSuccess }: ResetPasswordFormProps) 
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto bg-gradient-to-r from-blue-600 to-purple-600 p-3 rounded-full w-fit">
+          <div className="mx-auto bg-linear-to-r from-blue-600 to-purple-600 p-3 rounded-full w-fit">
             <Key className="h-6 w-6 text-white" />
           </div>
           <CardTitle className="text-2xl font-bold">{t("auth.resetPassword.title")}</CardTitle>
@@ -357,7 +357,7 @@ export function ResetPasswordForm({ token, onSuccess }: ResetPasswordFormProps) 
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               disabled={form.formState.isSubmitting}
             >
               {form.formState.isSubmitting ? t("auth.resetPassword.resetting") : t("auth.resetPassword.submit")}

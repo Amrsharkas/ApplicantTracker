@@ -248,7 +248,7 @@ export function AssessmentFormModal({ isOpen, onClose, onComplete, job }: Assess
     return (
       <div key={question.id} className="space-y-3 p-4 border rounded-lg bg-slate-50 dark:bg-slate-800/50">
         <div className="flex items-start gap-2">
-          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm font-medium flex items-center justify-center">
+          <span className="shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm font-medium flex items-center justify-center">
             {index + 1}
           </span>
           <div className="flex-1">
@@ -411,7 +411,7 @@ export function AssessmentFormModal({ isOpen, onClose, onComplete, job }: Assess
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-blue-600" />
             Pre-Interview Assessment
@@ -421,7 +421,7 @@ export function AssessmentFormModal({ isOpen, onClose, onComplete, job }: Assess
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-shrink-0 space-y-2 pb-4 border-b">
+        <div className="shrink-0 space-y-2 pb-4 border-b">
           <div className="flex items-center justify-between text-sm">
             <span className="text-slate-600">
               Progress: {answeredCount} of {totalQuestions} questions
@@ -439,7 +439,7 @@ export function AssessmentFormModal({ isOpen, onClose, onComplete, job }: Assess
             .map((question, index) => renderQuestion(question, index))}
         </div>
 
-        <div className="flex-shrink-0 flex items-center justify-between pt-4 border-t">
+        <div className="shrink-0 flex items-center justify-between pt-4 border-t">
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>

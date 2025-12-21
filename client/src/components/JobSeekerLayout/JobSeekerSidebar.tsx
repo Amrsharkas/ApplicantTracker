@@ -101,12 +101,12 @@ export function JobSeekerSidebar({ activePage, isOpen, onClose }: JobSeekerSideb
       )}
     >
       {/* Logo & Header */}
-      <div className="h-16 px-4 flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 flex-shrink-0">
+      <div className="h-16 px-4 flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 shrink-0">
         <div
           className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
           onClick={() => handleNavigation("/dashboard")}
         >
-          <img src={logo} alt="Logo" className="h-8 w-auto flex-shrink-0" />
+          <img src={logo} alt="Logo" className="h-8 w-auto shrink-0" />
           <div className="min-w-0 flex-1">
             <h1 className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
               Job Seeker
@@ -139,7 +139,7 @@ export function JobSeekerSidebar({ activePage, isOpen, onClose }: JobSeekerSideb
                   className={cn(
                     "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200",
                     isActive(item.id)
-                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25"
+                      ? "bg-linear-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25"
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                   )}
                 >
@@ -153,7 +153,7 @@ export function JobSeekerSidebar({ activePage, isOpen, onClose }: JobSeekerSideb
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-slate-200/60 dark:border-slate-700/60 flex-shrink-0">
+      <div className="p-4 border-t border-slate-200/60 dark:border-slate-700/60 shrink-0">
         <p className="text-xs text-slate-400 dark:text-slate-500 text-center">
           Job Seeker Portal
         </p>

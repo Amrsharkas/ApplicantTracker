@@ -215,7 +215,7 @@ export function PracticeFeedbackView({
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <Button
             onClick={onPracticeAgain}
-            className="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
+            className="flex-1 bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
           >
             <RefreshCw className="mr-2 h-4 w-4" />
             {uiLanguage === 'ar' ? 'تدرب مرة أخرى' : 'Practice Again'}

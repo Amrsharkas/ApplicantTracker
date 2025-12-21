@@ -62,13 +62,13 @@ export function StatCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card className="relative overflow-hidden bg-gradient-to-br from-white via-white to-slate-50/50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-900/50 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 hover:border-slate-300/80 dark:hover:border-slate-600/80 shadow-md hover:shadow-2xl transition-all duration-300">
+      <Card className="relative overflow-hidden bg-linear-to-br from-white via-white to-slate-50/50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-900/50 backdrop-blur-xs border-slate-200/60 dark:border-slate-700/60 hover:border-slate-300/80 dark:hover:border-slate-600/80 shadow-md hover:shadow-2xl transition-all duration-300">
         {/* Subtle texture overlay */}
         <div className="absolute inset-0 opacity-[0.015] dark:opacity-[0.025] pointer-events-none bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
 
         {/* Animated border glow effect */}
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-          <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-transparent via-slate-200/20 dark:via-slate-600/20 to-transparent blur-sm" />
+          <div className="absolute inset-0 rounded-lg bg-linear-to-r from-transparent via-slate-200/20 dark:via-slate-600/20 to-transparent blur-xs" />
         </div>
 
         <CardContent className="p-6 relative z-10">
@@ -83,7 +83,7 @@ export function StatCard({
                 {title}
               </motion.p>
               <motion.p
-                className="text-4xl font-bold bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 dark:from-slate-100 dark:via-slate-200 dark:to-slate-300 bg-clip-text text-transparent mt-2"
+                className="text-4xl font-bold bg-linear-to-br from-slate-900 via-slate-800 to-slate-700 dark:from-slate-100 dark:via-slate-200 dark:to-slate-300 bg-clip-text text-transparent mt-2"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
@@ -118,7 +118,7 @@ export function StatCard({
             {/* Icon with gradient background and glow */}
             <motion.div
               className={cn(
-                "relative p-4 rounded-2xl bg-gradient-to-br shadow-lg group-hover:shadow-xl transition-all duration-300",
+                "relative p-4 rounded-2xl bg-linear-to-br shadow-lg group-hover:shadow-xl transition-all duration-300",
                 gradient,
                 glow
               )}
@@ -127,7 +127,7 @@ export function StatCard({
             >
               {/* Icon glow effect */}
               <div className={cn(
-                "absolute inset-0 rounded-2xl blur-md opacity-50 group-hover:opacity-75 transition-opacity duration-300 bg-gradient-to-br",
+                "absolute inset-0 rounded-2xl blur-md opacity-50 group-hover:opacity-75 transition-opacity duration-300 bg-linear-to-br",
                 gradient
               )} />
               <Icon className="w-7 h-7 text-white relative z-10 drop-shadow-lg" strokeWidth={2.5} />
@@ -137,7 +137,7 @@ export function StatCard({
 
         {/* Bottom gradient accent line */}
         <div className={cn(
-          "h-1 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300",
+          "h-1 bg-linear-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300",
           gradient
         )} />
       </Card>
