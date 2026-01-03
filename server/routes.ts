@@ -5626,10 +5626,18 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
         };
 
         // Store the comprehensive profile (includes brutallyHonestProfile nested inside)
+        // Store comprehensiveProfile inside aiProfile since it's a jsonb field that can accept it
+        const existingProfile = await storage.getApplicantProfile(userId);
+        const existingAiProfile = (existingProfile?.aiProfile as any) || {};
+
         await storage.updateApplicantProfile(userId, {
           honestProfileGenerated: true,
           honestProfile: honestProfile as any, // Keep for backward compatibility
-          comprehensiveProfile: comprehensiveProfile as any, // New: store comprehensive profile with all updates
+          aiProfile: {
+            ...existingAiProfile,
+            comprehensiveProfile: comprehensiveProfile, // Store inside aiProfile
+            brutallyHonestProfile: comprehensiveProfile?.brutallyHonestProfile || existingAiProfile.brutallyHonestProfile
+          } as any,
           profileGeneratedAt: new Date()
         });
 
