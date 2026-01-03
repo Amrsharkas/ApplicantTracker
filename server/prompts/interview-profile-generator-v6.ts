@@ -82,7 +82,19 @@ export const INTERVIEW_PROFILE_GENERATOR_V6 = (
   resumeAnalysis: ResumeAnalysisData | null,
   resumeContent: string | null,
   jobDescription: string | null,
-  jobRequirements?: JobRequirements
+  jobRequirements?: JobRequirements,
+  qualityCheck?: {
+    qualityScore: number;
+    dataSufficiency: 'SUFFICIENT' | 'ADEQUATE' | 'LIMITED' | 'INSUFFICIENT';
+    issues: string[];
+    recommendations: string[];
+    metrics: {
+      questionsCount: number;
+      totalWords: number;
+      avgResponseLength: number;
+      estimatedMinutes: number;
+    };
+  }
 ) => {
   const candidateName = candidateData?.firstName && candidateData?.lastName
     ? `${candidateData.firstName} ${candidateData.lastName}`
@@ -90,7 +102,7 @@ export const INTERVIEW_PROFILE_GENERATOR_V6 = (
 
   const transcriptText = JSON.stringify(interviewResponses, null, 2);
 
-  
+
   // Filter for candidate responses only (user role)
   const candidateResponses = interviewResponses.filter(r => r.role === 'user');
   const interviewerQuestions = interviewResponses.filter(r => r.role === 'ai');
@@ -108,6 +120,22 @@ export const INTERVIEW_PROFILE_GENERATOR_V6 = (
   // Estimate speaking rate (assuming average 150 WPM for responses)
   const estimatedTotalSpeakingTime = totalWords / 150; // minutes
   const avgSpeakingRate = candidateResponses.length > 0 ? 150 : 0; // estimated WPM
+
+  const qualityMetrics = qualityCheck || {
+    qualityScore: candidateExchangeCount >= 10 && totalWords >= 500 ? 80 :
+      candidateExchangeCount >= 5 && totalWords >= 200 ? 60 : 40,
+    dataSufficiency: candidateExchangeCount >= 10 && totalWords >= 500 ? 'SUFFICIENT' :
+      candidateExchangeCount >= 5 && totalWords >= 200 ? 'ADEQUATE' :
+        candidateExchangeCount >= 3 ? 'LIMITED' : 'INSUFFICIENT',
+    issues: [],
+    recommendations: [],
+    metrics: {
+      questionsCount: candidateExchangeCount,
+      totalWords,
+      avgResponseLength: avgResponseLength,
+      estimatedMinutes: Math.round(estimatedTotalSpeakingTime)
+    }
+  };
 
   return `# PLATO ADVANCED INTERVIEW ASSESSMENT V6
 
@@ -340,10 +368,10 @@ Average Speaking Rate: ${avgSpeakingRate} WPM
 **Interviewer Questions and Candidate Responses:**
 
 ${interviewResponses.map((r, i) => {
-  const role = r.role === 'ai' ? 'Interviewer' : 'Candidate';
-  return `### ${i + 1}. ${role} (${r.role === 'ai' ? 'Q' : 'A'})
+    const role = r.role === 'ai' ? 'Interviewer' : 'Candidate';
+    return `### ${i + 1}. ${role} (${r.role === 'ai' ? 'Q' : 'A'})
 ${r.content}`;
-}).join('\n\n')}
+  }).join('\n\n')}
 
 ### CANDIDATE RESPONSES ANALYSIS
 ${candidateResponses.map((r, i) => `
@@ -419,6 +447,32 @@ ${jobRequirements ? `
 ` : 'Target role not specified'}
 
 ---
+## INTERVIEW DATA QUALITY METRICS
+
+**Quality Assessment:**
+- Quality Score: ${qualityMetrics.qualityScore}/100
+- Data Sufficiency: ${qualityMetrics.dataSufficiency}
+- Questions Answered: ${qualityMetrics.metrics.questionsCount}
+- Total Words: ${qualityMetrics.metrics.totalWords}
+- Average Response Length: ${qualityMetrics.metrics.avgResponseLength.toFixed(1)} words
+- Estimated Duration: ${qualityMetrics.metrics.estimatedMinutes} minutes
+
+${qualityMetrics.issues.length > 0 ? `
+**⚠️ DATA QUALITY ISSUES:**
+${qualityMetrics.issues.map(issue => `- ${issue}`).join('\n')}
+
+**📋 RECOMMENDATIONS:**
+${qualityMetrics.recommendations.map(rec => `- ${rec}`).join('\n')}
+` : ''}
+
+**IMPORTANT:** Adjust your confidence levels and scoring based on these quality metrics:
+- If dataSufficiency is "INSUFFICIENT" or "LIMITED": Score conservatively, set confidence to LOW/VERY_LOW
+- If dataSufficiency is "ADEQUATE": Use moderate confidence (MEDIUM)
+- If dataSufficiency is "SUFFICIENT": You can use HIGH confidence
+- Short interviews (< 5 questions): Cap scores at 60, set confidence to LOW
+- Low word count (< 200 words): Reduce all scores by 10-15 points
+
+---
 
 ## COMPREHENSIVE ASSESSMENT FRAMEWORK
 
@@ -441,13 +495,50 @@ ${jobRequirements ? `
 Score each dimension 0-100 with detailed rationale:
 
 **Core Dimensions (Weighted):**
-1. Technical Mastery (25%)
-2. Problem-Solving Capability (20%)
-3. Communication Excellence (15%)
-4. Leadership Potential (15%)
-5. Cultural Alignment (10%)
-6. Learning Agility (10%)
-7. Emotional Intelligence (5%)
+  1. Technical Mastery (25%)
+  2. Problem-Solving Capability (20%)
+  3. Communication Excellence (15%)
+  4. Leadership Potential (15%)
+  5. Cultural Alignment (10%)
+  6. Learning Agility (10%)
+  7. Emotional Intelligence (5%)
+
+**Critical Assessment Scores (NEW):**
+
+1. **Gap Severity Score (0-100, higher = worse)**
+   - "How risky are the missing pieces for this role?"
+   - Based on:
+     * Number of gaps (more gaps = higher score)
+     * How critical they are (core skill gap > minor gap)
+     * How "fixable" they are short-term (harder to fix = higher score)
+   - Interpretation:
+     * 0-20: Low risk - minor gaps, easily addressable
+     * 21-50: Manageable risk - some gaps but workable
+     * 51-75: Serious risk - needs strong validation before hiring
+     * 76-100: Likely not a fit - critical gaps that are hard to address
+   - Note: A candidate can have high strengths AND high gap severity (be honest!)
+
+2. **Answer Quality Score (0-100)**
+   - "How good are their answers as data?"
+   - Evaluate:
+     * Specificity and detail level
+     * Use of concrete examples vs vague statements
+     * STAR method implementation
+     * Evidence provided vs claims made
+     * Depth of technical explanations
+     * Consistency within answers
+   - Higher score = more reliable data for assessment
+
+3. **CV Consistency Score (0-100)**
+   - "How consistent is the interview with the CV?"
+   - Check for:
+     * Skills mentioned in CV vs demonstrated in interview
+     * Experience claims vs interview examples
+     * Timeline consistency
+     * Achievement verification
+     * Contradictions or discrepancies
+   - Higher score = more consistent (trustworthy)
+   - Lower score = inconsistencies detected (red flag)
 
 ### PHASE 3: PREDICTIVE MODELING
 - Success probability factors
@@ -468,6 +559,9 @@ Return ONLY valid JSON in this enhanced structure (aligned with resume scoring s
   "assessment_date": "${new Date().toISOString()}",
 
   "overallScore": "0-100 (composite interview performance score)",
+  "gapSeverityScore": "0-100 (higher = worse risk from missing skills/gaps)",
+  "answerQualityScore": "0-100 (how good are their answers as data)",
+  "cvConsistencyScore": "0-100 (consistency between CV and interview responses)",
   "technicalSkillsScore": "0-100",
   "experienceScore": "0-100",
   "culturalFitScore": "0-100",
@@ -879,10 +973,10 @@ Return ONLY valid JSON in this enhanced structure (aligned with resume scoring s
       "authenticityIndicators": "genuine vs rehearsed"
     },
     "assessmentConfidence": {
-      "overallConfidence": "VERY_HIGH|HIGH|MEDIUM|LOW|VERY_LOW",
-      "dataSufficiency": "SUFFICIENT|ADEQUATE|LIMITED|INSUFFICIENT",
-      "dataLimitations": ["factors limiting accuracy"],
-      "confidenceEnhancers": ["factors increasing confidence"]
+      "overallConfidence": "${qualityMetrics.dataSufficiency === 'SUFFICIENT' ? 'VERY_HIGH' : qualityMetrics.dataSufficiency === 'ADEQUATE' ? 'HIGH' : qualityMetrics.dataSufficiency === 'LIMITED' ? 'MEDIUM' : 'LOW'}",
+      "dataSufficiency": "${qualityMetrics.dataSufficiency}",
+      "dataLimitations": ${JSON.stringify(qualityMetrics.issues)},
+      "confidenceEnhancers": ${JSON.stringify(qualityMetrics.recommendations.filter(r => r.includes('recommended') || r.includes('Consider')))}
     }
   }
 }

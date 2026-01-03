@@ -60,6 +60,21 @@ export interface GeneratedProfile {
   brutallyHonestProfile?: any;
 }
 
+// profile issue 1/1/2026 - New interface for interview quality check
+export interface InterviewQualityCheck {
+  isValid: boolean;
+  qualityScore: number; // 0-100
+  dataSufficiency: 'SUFFICIENT' | 'ADEQUATE' | 'LIMITED' | 'INSUFFICIENT';
+  issues: string[];
+  recommendations: string[];
+  metrics: {
+    questionsCount: number;
+    totalWords: number;
+    avgResponseLength: number;
+    estimatedMinutes: number;
+  };
+}
+
 // AI Agent 1: Interview Conductor - analyzes resume/profile and conducts personalized interviews
 export class AIInterviewAgent {
   public openai = openai;
@@ -68,13 +83,13 @@ export class AIInterviewAgent {
     const prompt = `You are an AI interviewer for Plato, an AI-powered job matching platform. Generate a professional but natural-sounding welcome message for a candidate starting their comprehensive interview process. This welcome message must sound human, flow smoothly, and include the rules in a casual conversational style (not numbered).
 
 ${language === 'arabic'
-  ? `LANGUAGE INSTRUCTION (EGYPTIAN ARABIC ONLY):
+        ? `LANGUAGE INSTRUCTION (EGYPTIAN ARABIC ONLY):
 - Write ONLY in Egyptian Arabic slang (اللهجة المصرية العامية).
 - Talk like a friendly but serious Egyptian explaining something clearly. Imagine chatting in a Cairo ahwa (café) but keeping it professional.
 - Examples of words/phrases to use naturally: "إزيك"، "عامل إيه"، "تمام"، "ماشي"، "خلاص"، "كدا"، "دلوقتي"، "يلا نبدأ"، "معلش"، "براحتك"، "خلي بالك"، "واخد بالك"، "على مهلك"، "إحنا هنا"، "من غير لف ودوران"، "ده الطبيعي"، "هو ده"، "بالظبط"، "بص"، "بلاش"، "أيوه"، "لأ"، "ليه"، "فين"، "لسه"، "برضه"، "قوي"، "طبعًا"، "مش مشكلة"، "من غير كتر كلام".
 - Use informal pronouns: "انت" / "انتي". Use "دي" not "هذه"، "كدا" not "هكذا"، "ليه" not "لماذا"، "فين" not "أين"، "علشان" not "لكي".
 - Absolutely forbidden: فصحى (formal Arabic). Must sound relaxed, local, and natural.`
-  : `LANGUAGE INSTRUCTION (ENGLISH ONLY):
+        : `LANGUAGE INSTRUCTION (ENGLISH ONLY):
 - Write ONLY in neutral, professional English.
 - Keep the tone calm, direct, and natural — not robotic, not overly formal.`}
 
@@ -113,8 +128,8 @@ ROBUSTNESS / SAFETY:
 
     try {
       const messages = language === 'arabic' ? [
-        { 
-          role: "system" as const, 
+        {
+          role: "system" as const,
           content: "انت مصري من القاهرة وبتتكلم عامية مصرية بس. استخدم كلمات زي 'إزيك' و 'عامل إيه' و 'يلا' و 'معلش' و 'ماشي' و 'كدا' و 'دي'. ممنوع تستخدم فصحى خالص. اتكلم كإنك قاعد في قهوة في وسط البلد."
         },
         { role: "user" as const, content: prompt }
@@ -298,8 +313,8 @@ Return ONLY JSON:
 
     try {
       const messages = language === 'arabic' ? [
-        { 
-          role: "system" as const, 
+        {
+          role: "system" as const,
           content: "انت مصري من القاهرة وبتتكلم عامية مصرية بس. استخدم كلمات زي 'إزيك' و 'عامل إيه' و 'يلا' و 'معلش' و 'ماشي' و 'كدا' و 'دي'. ممنوع تستخدم فصحى خالص. اتكلم كإنك قاعد في قهوة في وسط البلد."
         },
         { role: "user" as const, content: prompt }
@@ -487,8 +502,8 @@ Return ONLY JSON:
 
     try {
       const messages = language === 'arabic' ? [
-        { 
-          role: "system" as const, 
+        {
+          role: "system" as const,
           content: "انت مصري من القاهرة وبتتكلم عامية مصرية بس. استخدم كلمات زي 'إزيك' و 'عامل إيه' و 'يلا' و 'معلش' و 'ماشي' و 'كدا' و 'دي'. ممنوع تستخدم فصحى خالص. اتكلم كإنك قاعد في قهوة في وسط البلد."
         },
         { role: "user" as const, content: prompt }
@@ -531,7 +546,7 @@ Return ONLY JSON:
   async generateTechnicalInterview(userData: any, resumeContent?: string, language: string = 'english'): Promise<InterviewSet> {
     const userRole = userData?.currentRole || 'professional';
     const userField = this.determineUserField(userData, resumeContent);
-    
+
     const prompt = `You are completing the final interview phase as the same AI interviewer. You have comprehensive knowledge of this candidate's full profile AND all previous interview answers.
 
 ${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Conduct this interview ONLY in Egyptian Arabic dialect (اللهجة المصرية العامية). You MUST use casual Egyptian slang like "إزيك" (how are you), "عامل إيه" (how are you doing), "يلا" (come on), "معلش" (never mind), "ماشي" (okay), "ربنا يوفقك" (good luck), "هو ده" (that\'s it), "خلاص" (done), "كدا" (like this), "دي" (this). Use informal pronouns like "انت" not "أنت". Replace formal words: say "دي" not "هذه", "كدا" not "هكذا", "ليه" not "لماذا", "فين" not "أين". Talk like you\'re in a Cairo coffee shop having a friendly chat. ABSOLUTELY FORBIDDEN: formal Arabic (فصحى). Think as an Egyptian having a relaxed conversation.' : 'LANGUAGE INSTRUCTION: Conduct this interview entirely in English.'}
@@ -594,8 +609,8 @@ Return ONLY JSON:
 
     try {
       const messages = language === 'arabic' ? [
-        { 
-          role: "system" as const, 
+        {
+          role: "system" as const,
           content: "انت مصري من القاهرة وبتتكلم عامية مصرية بس. استخدم كلمات زي 'إزيك' و 'عامل إيه' و 'يلا' و 'معلش' و 'ماشي' و 'كدا' و 'دي'. ممنوع تستخدم فصحى خالص. اتكلم كإنك قاعد في قهوة في وسط البلد."
         },
         { role: "user" as const, content: prompt }
@@ -909,7 +924,7 @@ Return JSON with:
       );
 
       const analysis = JSON.parse(response.choices[0].message.content || '{}');
-      
+
       return {
         score: analysis.score || 0,
         message: analysis.score >= 50 ? analysis.goodFitMessage : analysis.poorFitMessage,
@@ -1045,6 +1060,112 @@ export class AIProfileAnalysisAgent {
     }
   }
 
+  // 1/1/2026 - New method for generating comprehensive profile
+
+
+  validateInterviewQuality(interviewResponses: InterviewResponse[]): InterviewQualityCheck {
+    const issues: string[] = [];
+    const recommendations: string[] = [];
+
+    // Validate input
+    if (!Array.isArray(interviewResponses) || interviewResponses.length === 0) {
+      return {
+        isValid: false,
+        qualityScore: 0,
+        dataSufficiency: 'INSUFFICIENT',
+        issues: ['No interview responses provided'],
+        recommendations: ['Complete at least one interview with responses'],
+        metrics: {
+          questionsCount: 0,
+          totalWords: 0,
+          avgResponseLength: 0,
+          estimatedMinutes: 0
+        }
+      };
+    }
+
+    // Filter only user responses for quality check
+    const userResponses = interviewResponses.filter(r => r.role === 'user' && r.content);
+
+    // Calculate metrics
+    const questionsCount = userResponses.length;
+    const totalWords = userResponses.reduce((sum, r) => {
+      return sum + (r.content?.split(/\s+/).filter(w => w.length > 0).length || 0);
+    }, 0);
+    const avgResponseLength = questionsCount > 0 ? totalWords / questionsCount : 0;
+    const estimatedMinutes = Math.round(totalWords / 150); // ~150 words per minute
+
+    // Check minimum requirements
+    if (questionsCount < 5) {
+      issues.push(`Only ${questionsCount} questions answered (minimum 5 required, 10+ recommended)`);
+      recommendations.push('Continue interview to reach at least 10 questions for accurate assessment');
+    } else if (questionsCount < 10) {
+      issues.push(`Only ${questionsCount} questions answered (10+ recommended for high confidence)`);
+      recommendations.push('Consider adding more questions for better assessment accuracy');
+    }
+
+    if (totalWords < 200) {
+      issues.push(`Only ${totalWords} words total (minimum 200 required, 500+ recommended)`);
+      recommendations.push('Encourage more detailed responses (target 50+ words per answer)');
+    } else if (totalWords < 500) {
+      issues.push(`Only ${totalWords} words total (500+ recommended for high confidence)`);
+      recommendations.push('Encourage candidates to provide more detailed examples');
+    }
+
+    if (avgResponseLength < 20) {
+      issues.push(`Average response length only ${avgResponseLength.toFixed(1)} words (30+ recommended)`);
+      recommendations.push('Request more detailed answers with specific examples');
+    }
+
+    if (estimatedMinutes < 5) {
+      issues.push(`Estimated interview duration only ${estimatedMinutes} minutes (15+ recommended)`);
+      recommendations.push('Extend interview duration for comprehensive assessment');
+    }
+
+    // Calculate quality score (0-100)
+    let qualityScore = 100;
+    if (questionsCount < 5) qualityScore -= 40;
+    else if (questionsCount < 10) qualityScore -= 20;
+
+    if (totalWords < 200) qualityScore -= 30;
+    else if (totalWords < 500) qualityScore -= 15;
+
+    if (avgResponseLength < 20) qualityScore -= 20;
+    else if (avgResponseLength < 30) qualityScore -= 10;
+
+    if (estimatedMinutes < 5) qualityScore -= 10;
+
+    qualityScore = Math.max(0, qualityScore);
+
+    // Determine data sufficiency
+    let dataSufficiency: 'SUFFICIENT' | 'ADEQUATE' | 'LIMITED' | 'INSUFFICIENT';
+    if (qualityScore >= 80 && questionsCount >= 10 && totalWords >= 500) {
+      dataSufficiency = 'SUFFICIENT';
+    } else if (qualityScore >= 60 && questionsCount >= 5 && totalWords >= 200) {
+      dataSufficiency = 'ADEQUATE';
+    } else if (qualityScore >= 40 && questionsCount >= 3) {
+      dataSufficiency = 'LIMITED';
+    } else {
+      dataSufficiency = 'INSUFFICIENT';
+    }
+
+    const isValid = dataSufficiency !== 'INSUFFICIENT' && questionsCount >= 3;
+
+    return {
+      isValid,
+      qualityScore,
+      dataSufficiency,
+      issues,
+      recommendations,
+      metrics: {
+        questionsCount,
+        totalWords,
+        avgResponseLength: Math.round(avgResponseLength * 10) / 10,
+        estimatedMinutes
+      }
+    };
+  }
+
   async generateComprehensiveProfile(
     userData: any,
     resumeContent: string | null,
@@ -1052,6 +1173,24 @@ export class AIProfileAnalysisAgent {
     resumeAnalysis?: any,
     jobDescription?: string
   ): Promise<GeneratedProfile> {
+
+    // Validate interview quality FIRST
+    const qualityCheck = this.validateInterviewQuality(interviewResponses);
+
+    console.log('📊 Interview Quality Check:', {
+      qualityScore: qualityCheck.qualityScore,
+      dataSufficiency: qualityCheck.dataSufficiency,
+      metrics: qualityCheck.metrics,
+      issues: qualityCheck.issues.length,
+      isValid: qualityCheck.isValid
+    });
+
+    // Warn if quality is low but don't block (allow assessment with warnings)
+    if (!qualityCheck.isValid) {
+      console.warn('⚠️ Low interview quality detected:', qualityCheck.issues);
+    }
+
+
     // Prepare resume analysis data for V4 prompt
     const resumeAnalysisForPrompt = resumeAnalysis ? {
       skills: resumeAnalysis.skills || [],
@@ -1080,7 +1219,9 @@ export class AIProfileAnalysisAgent {
       interviewResponses,
       resumeAnalysisForPrompt,
       resumeContent,
-      jobDescription || null
+      jobDescription || null,
+      undefined, // jobRequirements (if exists)
+      qualityCheck // ADD THIS - pass quality check to prompt
     );
 
     // Log the prompt to /tmp for debugging/auditing.
@@ -1139,8 +1280,8 @@ export class AIProfileAnalysisAgent {
 
       // Extract basic info for backward compatibility using V5 structure
       const legacySkills = comprehensiveProfile.detailed_profile?.skills_demonstrated?.technical_skills?.map((s: any) => s.skill) ||
-                          comprehensiveProfile.skills_and_capabilities?.core_hard_skills ||
-                          comprehensiveProfile.skills_and_capabilities?.tools_and_technologies || [];
+        comprehensiveProfile.skills_and_capabilities?.core_hard_skills ||
+        comprehensiveProfile.skills_and_capabilities?.tools_and_technologies || [];
 
       // Extract scores from V5 structure (V5 uses final_score, V4 uses score - support both)
       const profileScores = comprehensiveProfile.scores || {};
@@ -1202,41 +1343,41 @@ export class AIProfileAnalysisAgent {
 
       // Check if this is an insufficient data case
       const isInsufficientData = comprehensiveProfile.executive_summary?.fit_verdict === 'INSUFFICIENT_DATA' ||
-                                totalWordCount < 50 ||
-                                comprehensiveProfile.interview_metadata?.exchange_count === 0 ||
-                                (comprehensiveProfile.interview_metadata?.avg_response_length_chars || 0) < 10;
+        totalWordCount < 50 ||
+        comprehensiveProfile.interview_metadata?.exchange_count === 0 ||
+        (comprehensiveProfile.interview_metadata?.avg_response_length_chars || 0) < 10;
 
       // Return legacy format for backward compatibility with V4 comprehensive data
       return {
         summary: isInsufficientData ?
-                "Candidate provided insufficient responses for evaluation." :
-                comprehensiveProfile.executive_summary?.one_sentence ||
-                comprehensiveProfile.executive_summary?.key_impression ||
-                comprehensiveProfile.detailed_profile?.professional_identity?.identity_summary ||
-                "Candidate assessment completed.",
+          "Candidate provided insufficient responses for evaluation." :
+          comprehensiveProfile.executive_summary?.one_sentence ||
+          comprehensiveProfile.executive_summary?.key_impression ||
+          comprehensiveProfile.detailed_profile?.professional_identity?.identity_summary ||
+          "Candidate assessment completed.",
         skills: isInsufficientData ? [] : legacySkills,
         personality: isInsufficientData ?
-                    "Cannot assess - insufficient interview responses provided." :
-                    comprehensiveProfile.detailed_profile?.personality_indicators?.communication_style ||
-                    comprehensiveProfile.personality_and_values?.personality_summary ||
-                    "Not assessed",
+          "Cannot assess - insufficient interview responses provided." :
+          comprehensiveProfile.detailed_profile?.personality_indicators?.communication_style ||
+          comprehensiveProfile.personality_and_values?.personality_summary ||
+          "Not assessed",
         experience: [], // Will be populated from existing profile data
         strengths: isInsufficientData ?
-                   [] :
-                   [
-                     comprehensiveProfile.executive_summary?.standout_positive,
-                     ...(comprehensiveProfile.transcript_analysis?.green_flags_detected?.map((f: any) => f.description) || [])
-                   ].filter(Boolean).slice(0, 5),
+          [] :
+          [
+            comprehensiveProfile.executive_summary?.standout_positive,
+            ...(comprehensiveProfile.transcript_analysis?.green_flags_detected?.map((f: any) => f.description) || [])
+          ].filter(Boolean).slice(0, 5),
         careerGoals: isInsufficientData ?
-                     "No career goals expressed - insufficient interview responses." :
-                     comprehensiveProfile.detailed_profile?.career_trajectory?.stated_goals ||
-                     comprehensiveProfile.motivation_and_career_direction?.short_term_goals_1_2_years ||
-                     "Career goals extracted from interview responses.",
+          "No career goals expressed - insufficient interview responses." :
+          comprehensiveProfile.detailed_profile?.career_trajectory?.stated_goals ||
+          comprehensiveProfile.motivation_and_career_direction?.short_term_goals_1_2_years ||
+          "Career goals extracted from interview responses.",
         workStyle: isInsufficientData ?
-                   "Cannot determine work style - insufficient responses provided." :
-                   comprehensiveProfile.detailed_profile?.work_preferences?.stated_preferences?.join('; ') ||
-                   comprehensiveProfile.work_style_and_collaboration?.day_to_day_work_style ||
-                   "Not assessed",
+          "Cannot determine work style - insufficient responses provided." :
+          comprehensiveProfile.detailed_profile?.work_preferences?.stated_preferences?.join('; ') ||
+          comprehensiveProfile.work_style_and_collaboration?.day_to_day_work_style ||
+          "Not assessed",
         matchScorePercentage: isInsufficientData ? 0 : overallScore,
         experiencePercentage: isInsufficientData ? 0 : experienceScore,
         techSkillsPercentage: isInsufficientData ? 0 : technicalScore,
@@ -1244,11 +1385,11 @@ export class AIProfileAnalysisAgent {
         // Job-specific match data (only populated if job description was provided)
         jobMatch,
         hireRecommendation: isInsufficientData ?
-                          "DO_NOT_RECOMMEND" :
-                          hiringGuidance?.proceed_to_next_round ||
-                          jobMatchAnalysis?.recommendation ||
-                          verdict?.fit_verdict ||
-                          null,
+          "DO_NOT_RECOMMEND" :
+          hiringGuidance?.proceed_to_next_round ||
+          jobMatchAnalysis?.recommendation ||
+          verdict?.fit_verdict ||
+          null,
         // Store the full comprehensive profile for employer access
         brutallyHonestProfile: comprehensiveProfile
       };
@@ -1701,13 +1842,13 @@ ${language === 'arabic' ? 'LANGUAGE INSTRUCTION: Provide ALL responses in Egypti
 │ DETAILED WORK HISTORY                                           │
 ├─────────────────────────────────────────────────────────────────┤
 ${profileData?.workExperiences?.length ?
-  profileData.workExperiences.map((exp: any, index: number) =>
-    `│ [${index + 1}] ${exp.position || 'N/A'} @ ${exp.company || 'N/A'}
+        profileData.workExperiences.map((exp: any, index: number) =>
+          `│ [${index + 1}] ${exp.position || 'N/A'} @ ${exp.company || 'N/A'}
 │     Period: ${exp.startDate || 'N/A'} → ${exp.endDate || 'Present'} (${exp.yearsAtPosition || 'N/A'})
 │     Key Responsibilities: ${exp.responsibilities?.substring(0, 200) || 'N/A'}${exp.responsibilities?.length > 200 ? '...' : ''}`
-  ).join('\n│\n')
-  : '│ No work experience on record'
-}
+        ).join('\n│\n')
+        : '│ No work experience on record'
+      }
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
@@ -1715,12 +1856,12 @@ ${profileData?.workExperiences?.length ?
 ├─────────────────────────────────────────────────────────────────┤
 │ Highest Level: ${profileData?.currentEducationLevel || 'Not specified'}
 ${profileData?.degrees?.length ?
-  profileData.degrees.map((deg: any) =>
-    `│ • ${deg.degree || 'N/A'} in ${deg.field || 'N/A'}
+        profileData.degrees.map((deg: any) =>
+          `│ • ${deg.degree || 'N/A'} in ${deg.field || 'N/A'}
 │   Institution: ${deg.institution || 'N/A'} (${deg.startDate || 'N/A'} - ${deg.endDate || 'N/A'})${deg.gpa ? `\n│   GPA: ${deg.gpa}` : ''}`
-  ).join('\n')
-  : '│ No formal degrees listed'
-}
+        ).join('\n')
+        : '│ No formal degrees listed'
+      }
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
@@ -1740,12 +1881,12 @@ ${profileData?.degrees?.length ?
 │ LANGUAGES & CERTIFICATIONS                                      │
 ├─────────────────────────────────────────────────────────────────┤
 │ Languages: ${profileData?.languages?.length ?
-  profileData.languages.map((lang: any) => `${lang.language} (${lang.proficiency})${lang.certification ? ` [${lang.certification}]` : ''}`).join(', ')
-  : 'Not specified'}
+        profileData.languages.map((lang: any) => `${lang.language} (${lang.proficiency})${lang.certification ? ` [${lang.certification}]` : ''}`).join(', ')
+        : 'Not specified'}
 │
 │ Certifications: ${profileData?.certifications?.length ?
-  profileData.certifications.map((cert: any) => `${cert.name} - ${cert.issuer || 'N/A'} (${cert.issueDate || 'N/A'})`).join('; ')
-  : 'None listed'}
+        profileData.certifications.map((cert: any) => `${cert.name} - ${cert.issuer || 'N/A'} (${cert.issueDate || 'N/A'})`).join('; ')
+        : 'None listed'}
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
@@ -2013,9 +2154,9 @@ export const aiInterviewService = {
           });
         }
       });
-      const stopWords = new Set(['and','or','with','in','of','the','to','for','on','a','an']);
+      const stopWords = new Set(['and', 'or', 'with', 'in', 'of', 'the', 'to', 'for', 'on', 'a', 'an']);
       extractedSkills = Array.from(new Set(extractedSkills)).filter((s) => !stopWords.has(s));
-    } catch {}
+    } catch { }
 
     const combinedSkills = Array.from(new Set([
       ...providedSkills.map((s: string) => s.trim()),
@@ -2032,28 +2173,28 @@ export const aiInterviewService = {
     const safeJoin = (arr: unknown, sep: string = ', '): string => Array.isArray(arr) ? (arr.filter(Boolean) as string[]).join(sep) : '';
     const experienceLines: string[] = Array.isArray((userData as any)?.workExperiences)
       ? ((userData as any).workExperiences as any[]).map((exp: any) => {
-          const position: string = typeof exp?.position === 'string' ? exp.position : '';
-          const company: string = typeof exp?.company === 'string' ? exp.company : '';
-          const dateRange: string = [exp?.startDate, exp?.endDate].filter(Boolean).join(' - ');
-          const responsibilitiesText: string = typeof exp?.responsibilities === 'string' ? exp.responsibilities : '';
-          return `• ${position}${company ? ` at ${company}` : ''}${dateRange ? ` (${dateRange})` : ''}${responsibilitiesText ? `\n  Responsibilities: ${responsibilitiesText}` : ''}`.trim();
-        })
+        const position: string = typeof exp?.position === 'string' ? exp.position : '';
+        const company: string = typeof exp?.company === 'string' ? exp.company : '';
+        const dateRange: string = [exp?.startDate, exp?.endDate].filter(Boolean).join(' - ');
+        const responsibilitiesText: string = typeof exp?.responsibilities === 'string' ? exp.responsibilities : '';
+        return `• ${position}${company ? ` at ${company}` : ''}${dateRange ? ` (${dateRange})` : ''}${responsibilitiesText ? `\n  Responsibilities: ${responsibilitiesText}` : ''}`.trim();
+      })
       : [];
     const educationLines: string[] = Array.isArray((userData as any)?.degrees)
       ? ((userData as any).degrees as any[]).map((deg: any) => {
-          const degree: string = typeof deg?.degree === 'string' ? deg.degree : '';
-          const field: string = typeof deg?.field === 'string' ? deg.field : '';
-          const institution: string = typeof deg?.institution === 'string' ? deg.institution : '';
-          const dateRange: string = [deg?.startDate, deg?.endDate].filter(Boolean).join(' - ');
-          return `• ${degree}${field ? ` in ${field}` : ''}${institution ? ` from ${institution}` : ''}${dateRange ? ` (${dateRange})` : ''}`.trim();
-        })
+        const degree: string = typeof deg?.degree === 'string' ? deg.degree : '';
+        const field: string = typeof deg?.field === 'string' ? deg.field : '';
+        const institution: string = typeof deg?.institution === 'string' ? deg.institution : '';
+        const dateRange: string = [deg?.startDate, deg?.endDate].filter(Boolean).join(' - ');
+        return `• ${degree}${field ? ` in ${field}` : ''}${institution ? ` from ${institution}` : ''}${dateRange ? ` (${dateRange})` : ''}`.trim();
+      })
       : [];
     const languageLines: string[] = Array.isArray((userData as any)?.languages)
       ? ((userData as any).languages as any[]).map((lang: any) => {
-          const language: string = typeof lang?.language === 'string' ? lang.language : '';
-          const proficiency: string = typeof lang?.proficiency === 'string' ? lang.proficiency : '';
-          return `• ${language}${proficiency ? `: ${proficiency}` : ''}`;
-        })
+        const language: string = typeof lang?.language === 'string' ? lang.language : '';
+        const proficiency: string = typeof lang?.proficiency === 'string' ? lang.proficiency : '';
+        return `• ${language}${proficiency ? `: ${proficiency}` : ''}`;
+      })
       : [];
     const portfolioLines: string[] = [
       (userData as any)?.linkedinUrl,
@@ -2339,21 +2480,21 @@ ${formattedTranscript}`;
     const safeJoin = (arr: unknown, sep: string = ', '): string => Array.isArray(arr) ? (arr.filter(Boolean) as string[]).join(sep) : '';
     const experienceLines: string[] = Array.isArray((userData as any)?.workExperiences)
       ? ((userData as any).workExperiences as any[]).map((exp: any) => {
-          const position: string = typeof exp?.position === 'string' ? exp.position : '';
-          const company: string = typeof exp?.company === 'string' ? exp.company : '';
-          const dateRange: string = [exp?.startDate, exp?.endDate].filter(Boolean).join(' - ');
-          const responsibilitiesText: string = typeof exp?.responsibilities === 'string' ? exp.responsibilities : '';
-          return `• ${position}${company ? ` at ${company}` : ''}${dateRange ? ` (${dateRange})` : ''}${responsibilitiesText ? `\n  Responsibilities: ${responsibilitiesText}` : ''}`.trim();
-        })
+        const position: string = typeof exp?.position === 'string' ? exp.position : '';
+        const company: string = typeof exp?.company === 'string' ? exp.company : '';
+        const dateRange: string = [exp?.startDate, exp?.endDate].filter(Boolean).join(' - ');
+        const responsibilitiesText: string = typeof exp?.responsibilities === 'string' ? exp.responsibilities : '';
+        return `• ${position}${company ? ` at ${company}` : ''}${dateRange ? ` (${dateRange})` : ''}${responsibilitiesText ? `\n  Responsibilities: ${responsibilitiesText}` : ''}`.trim();
+      })
       : [];
     const educationLines: string[] = Array.isArray((userData as any)?.degrees)
       ? ((userData as any).degrees as any[]).map((deg: any) => {
-          const degree: string = typeof deg?.degree === 'string' ? deg.degree : '';
-          const field: string = typeof deg?.field === 'string' ? deg.field : '';
-          const institution: string = typeof deg?.institution === 'string' ? deg.institution : '';
-          const dateRange: string = [deg?.startDate, deg?.endDate].filter(Boolean).join(' - ');
-          return `• ${degree}${field ? ` in ${field}` : ''}${institution ? ` from ${institution}` : ''}${dateRange ? ` (${dateRange})` : ''}`.trim();
-        })
+        const degree: string = typeof deg?.degree === 'string' ? deg.degree : '';
+        const field: string = typeof deg?.field === 'string' ? deg.field : '';
+        const institution: string = typeof deg?.institution === 'string' ? deg.institution : '';
+        const dateRange: string = [deg?.startDate, deg?.endDate].filter(Boolean).join(' - ');
+        return `• ${degree}${field ? ` in ${field}` : ''}${institution ? ` from ${institution}` : ''}${dateRange ? ` (${dateRange})` : ''}`.trim();
+      })
       : [];
     const skillsList: string = safeJoin((userData as any)?.skillsList, ', ');
     const targetJobTitles: string = safeJoin((userData as any)?.jobTitles, ', ');

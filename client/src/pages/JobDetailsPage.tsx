@@ -60,7 +60,7 @@ export default function JobDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const jobId = params.id;
+  const jobId = params.id || params.jobId;
 
   useEffect(() => {
     let isMounted = true;

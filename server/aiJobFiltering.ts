@@ -180,13 +180,12 @@ export class AIJobFilteringService {
     }
     
     // Check search query (soft - keyword matching)
-    if (filters.searchQuery) {
+    if (filters.searchQuery && filters.searchQuery.trim()) {
       const jobText = (job.jobTitle + ' ' + job.jobDescription + ' ' + job.companyName).toLowerCase();
-      const queryTerms = filters.searchQuery.toLowerCase().split(' ').filter(term => term.length > 2);
+      const searchQueryLower = filters.searchQuery.toLowerCase().trim();
       
-      const hasMatch = queryTerms.some(term => 
-        jobText.includes(term)
-      );
+      // Check if the search query appears anywhere in the job text
+      const hasMatch = jobText.includes(searchQueryLower);
       
       if (!hasMatch) {
         return false;
@@ -515,14 +514,13 @@ Respond in JSON format:
       }
       
       // Check search query filter (only if specified)
-      if (filters.searchQuery) {
+      if (filters.searchQuery && filters.searchQuery.trim()) {
         console.log(`  📋 Checking search query filter: "${filters.searchQuery}"`);
         const jobText = (job.jobTitle + ' ' + job.jobDescription + ' ' + job.companyName).toLowerCase();
-        const queryTerms = filters.searchQuery.toLowerCase().split(' ').filter(term => term.length > 2);
+        const searchQueryLower = filters.searchQuery.toLowerCase().trim();
         
-        const hasMatch = queryTerms.some(term => 
-          jobText.includes(term)
-        );
+        // Check if the search query appears anywhere in the job text
+        const hasMatch = jobText.includes(searchQueryLower);
         
         if (!hasMatch) {
           console.log(`  ❌ Search query mismatch: looking for "${filters.searchQuery}" but not found in job`);

@@ -108,6 +108,7 @@ export default function JobsPage() {
   const { t } = useLanguage();
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [viewedJobDetails, setViewedJobDetails] = useState<Set<string>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filters, setFilters] = useState({
@@ -128,6 +129,15 @@ export default function JobsPage() {
   const [pendingJobValidated, setPendingJobValidated] = useState(false);
   const { toast } = useToast();
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const workplaceOptions = [
     { value: "On-site", label: t("dashboard.onsite") },
     { value: "Remote", label: t("dashboard.remote") },
@@ -136,9 +146,9 @@ export default function JobsPage() {
 
   // AI-powered filtering mutation
   const aiFilterMutation = useMutation({
-    mutationFn: async (filters: any) => {
+    mutationFn: async ({ filters, searchQuery }: { filters: any; searchQuery: string }) => {
       setIsFilteringInProgress(true);
-      console.log('🤖 Requesting AI-powered job filtering with filters:', filters);
+      console.log('🤖 Requesting AI-powered job filtering with filters:', filters, 'searchQuery:', searchQuery);
       const response = await apiRequest("/api/job-postings/filter", {
         method: "POST",
         body: JSON.stringify({ filters: { ...filters, searchQuery } }),
@@ -237,7 +247,7 @@ export default function JobsPage() {
     setPendingJobId(null);
   };
 
-  // Trigger AI filtering when filters or search query change
+  // Trigger AI filtering when filters or debounced search query change
   useEffect(() => {
     if (jobPostings.length > 0) {
       const hasActiveFilters = (
@@ -248,23 +258,23 @@ export default function JobsPage() {
         filters.jobCategory !== "" ||
         filters.jobType !== "" ||
         filters.datePosted !== "" ||
-        searchQuery !== ""
+        debouncedSearchQuery !== ""
       );
 
       if (hasActiveFilters) {
-        aiFilterMutation.mutate(filters);
+        aiFilterMutation.mutate({ filters, searchQuery: debouncedSearchQuery });
       } else {
         setFilteredJobs([]);
         setFilterMessage("");
         setHasExpandedSearch(false);
       }
     }
-  }, [filters, searchQuery, jobPostings]);
+  }, [filters, debouncedSearchQuery, jobPostings]);
 
-  // Calculate active filters count
+  // Calculate active filters count (including searchQuery)
   const activeFiltersCount = Object.values(filters).filter(value =>
     Array.isArray(value) ? value.length > 0 : value !== ""
-  ).length;
+  ).length + (debouncedSearchQuery ? 1 : 0);
 
   // AI Match Score calculation
   const calculateAIMatchScore = (job: JobPosting): number => {
@@ -315,7 +325,7 @@ export default function JobsPage() {
       const descriptionLower = job.description.toLowerCase();
       const goalsLower = profile.careerGoals.toLowerCase();
       if (descriptionLower.includes(goalsLower.split(' ')[0]) ||
-          goalsLower.includes(job.title.toLowerCase().split(' ')[0])) {
+        goalsLower.includes(job.title.toLowerCase().split(' ')[0])) {
         score += 10;
       }
     }
@@ -333,7 +343,7 @@ export default function JobsPage() {
     filters.careerLevel ||
     filters.jobCategory ||
     filters.datePosted ||
-    searchQuery
+    debouncedSearchQuery
   );
 
   let displayedJobs = hasActiveFilters ? filteredJobs : jobPostings;

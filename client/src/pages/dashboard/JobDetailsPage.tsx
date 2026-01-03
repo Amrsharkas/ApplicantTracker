@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, useRoute } from "wouter";
+import { useLocation, useParams, useRoute } from "wouter";
 import ReactMarkdown from 'react-markdown';
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -65,7 +65,7 @@ const AI_LOADING_MESSAGE_KEYS = [
 export default function JobDetailsPage() {
   const { t } = useLanguage();
   const [, setLocation] = useLocation();
-  const [, params] = useRoute("/dashboard/jobs/:jobId");
+  const params = useParams();
   const jobId = params?.jobId;
   const { toast } = useToast();
 
@@ -206,7 +206,7 @@ export default function JobDetailsPage() {
       const descriptionLower = job.description.toLowerCase();
       const goalsLower = profile.careerGoals.toLowerCase();
       if (descriptionLower.includes(goalsLower.split(' ')[0]) ||
-          goalsLower.includes(job.title.toLowerCase().split(' ')[0])) {
+        goalsLower.includes(job.title.toLowerCase().split(' ')[0])) {
         score += 10;
       }
     }
@@ -600,11 +600,10 @@ export default function JobDetailsPage() {
                     {aiLoadingResult.type === 'success' ? '✅' : '❌'}
                   </div>
                   <div>
-                    <h3 className={`text-xl font-bold mb-2 ${
-                      aiLoadingResult.type === 'success'
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-red-600 dark:text-red-400'
-                    }`}>
+                    <h3 className={`text-xl font-bold mb-2 ${aiLoadingResult.type === 'success'
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-red-600 dark:text-red-400'
+                      }`}>
                       {aiLoadingResult.type === 'success'
                         ? t("jobPostingsModal.aiAssistant.successTitle")
                         : t("jobPostingsModal.aiAssistant.errorTitle")}

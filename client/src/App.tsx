@@ -27,13 +27,13 @@ function Router() {
   // Only show loading state if we're actually loading (not during logout)
   // Add timeout to prevent infinite loading - after 10 seconds, show the landing page
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
-  
+
   useEffect(() => {
     if (isLoading) {
       const timeout = setTimeout(() => {
         setShowTimeoutMessage(true);
       }, 10000); // 10 second timeout
-      
+
       return () => clearTimeout(timeout);
     } else {
       setShowTimeoutMessage(false);
@@ -87,7 +87,7 @@ function Router() {
         )}
       </Route>
 
-      <Route path="/dashboard/:rest*">
+      <Route path="/dashboard/*">
         {isAuthenticated ? (
           isEmailVerified ? (
             <JobSeekerDashboard />
@@ -103,7 +103,7 @@ function Router() {
         <AIInterviewInitiation />
       </Route>
 
-      <Route component={NotFound} />
+      {/* <Route component={NotFound} /> */}
     </Switch>
   );
 }
