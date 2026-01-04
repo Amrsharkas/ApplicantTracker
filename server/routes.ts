@@ -3193,6 +3193,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log('✅ Resume content found, length:', resumeContent.length);
 
+        // Prepare user profile data for the application
+        const userName = applicantProfile?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Applicant';
+        const profileData = {
+          name: userName,
+          email: user?.email || '',
+          phone: applicantProfile?.phone || '',
+          professionalSummary: applicantProfile?.summary || '',
+          workExperience: applicantProfile?.workExperiences || [],
+          education: applicantProfile?.degrees || [],
+          skills: applicantProfile?.skillsData?.skills || [],
+          location: applicantProfile?.country ? `${applicantProfile?.city || ''}, ${applicantProfile.country}`.replace(/^, |, $/g, '') : '',
+          experienceLevel: applicantProfile?.careerLevel || '',
+        };
+
+        // Create job application record in airtable_job_applications
+        let createdApplicationId: string | null = null;
+        try {
+          const jobApplicationData = {
+            applicantName: userName,
+            applicantUserId: userId,
+            applicantEmail: user?.email || '',
+            jobTitle: job.jobTitle || job.title || '',
+            jobId: job.id?.toString() || job.recordId || '',
+            company: job.companyName || job.company || '',
+            userProfile: profileData,
+            notes: employerQuestionAnswers || `Application submitted for ${job.jobTitle || job.title}`,
+            status: 'applied',
+            jobDescription: job.jobDescription || job.description || '',
+            applicantProfileId: applicantProfile?.id || null,
+          };
+
+          const createdApplication = await localDatabaseService.createJobApplication(jobApplicationData);
+          createdApplicationId = createdApplication.id;
+          console.log('✅ Created job application record:', createdApplicationId, 'for job:', job.jobTitle || job.title);
+        } catch (applicationError) {
+          console.error('❌ Error creating job application record:', applicationError);
+          // Continue with flow even if application creation fails
+        }
+
         // Call HiringIntelligence resume processing endpoint
         console.log('🤖 Calling HiringIntelligence resume processing...');
         const HIRING_INTELLIGENCE_URL = process.env.HIRING_INTELLIGENCE_URL || 'http://localhost:5000';
@@ -3241,6 +3280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json({
           message: 'Application submitted successfully',
+          applicationId: createdApplicationId
         })
 
       } catch (error) {
@@ -3613,6 +3653,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('❌ Error generating comprehensive profile for voice interviews:', profileError);
         // Don't fail the interview completion - profile can be generated later
         // Continue with flow but without profile
+      }
+
+      // Save the generated profile to the interview session
+      if (generatedProfile && session?.id) {
+        try {
+          await storage.updateInterviewSession(session.id, {
+            generatedProfile: generatedProfile
+          });
+          console.log(`✅ Saved generated profile to interview session ${session.id}`);
+        } catch (sessionUpdateError) {
+          console.error('❌ Error saving generated profile to interview session:', sessionUpdateError);
+          // Continue with flow even if session update fails
+        }
       }
 
       // Save the generated profile to the job application
@@ -5671,11 +5724,43 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       const user = await storage.getUser(userId);
       const profile = await storage.getApplicantProfile(userId);
 
-      if (!user || !profile) {
+      console.log('📊 Debug info:', {
+        userId,
+        userExists: !!user,
+        userEmail: user?.email,
+        profileExists: !!profile
+      });
+
+      if (!user) {
         return res.status(404).json({
-          message: "User or profile not found",
-          userId: userId
+          message: "User not found",
+          userId: userId,
+          suggestion: "Make sure the userId is correct"
         });
+      }
+
+      // Get or create profile
+      let finalProfile = profile;
+      if (!finalProfile) {
+        // Try to create a basic profile if user exists but profile is missing
+        console.log('⚠️ Profile not found, creating basic profile...');
+        try {
+          const newProfile = await storage.upsertApplicantProfile({
+            userId: user.id,
+            name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+            email: user.email,
+          });
+          console.log('✅ Created basic profile:', newProfile.id);
+          finalProfile = newProfile;
+        } catch (profileError) {
+          console.error('❌ Failed to create profile:', profileError);
+          return res.status(500).json({
+            message: "Applicant profile not found and failed to create one",
+            userId: userId,
+            userEmail: user.email,
+            error: profileError instanceof Error ? profileError.message : "Unknown error"
+          });
+        }
       }
 
       // Get completed interviews
@@ -5777,7 +5862,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       // Also generate brutally honest profile
       console.log('🤖 Generating brutally honest profile...');
       const honestProfile = await aiInterviewAgent.generateBrutallyHonestProfile(
-        { ...user, ...profile },
+        { ...user, ...finalProfile },
         allInterviewResponses,
         resumeAnalysis
       );
@@ -5791,36 +5876,100 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
 
       // Extract key metrics for easy verification
       // Check both comprehensiveProfile and brutallyHonestProfile (nested structure)
-      const profileData = generatedProfile?.brutallyHonestProfile || generatedProfile;
+      const brutallyHonest = (generatedProfile as any)?.brutallyHonestProfile;
+      const profileData = brutallyHonest || (generatedProfile as any);
+
+      // Extract scores from multiple locations (V6 structure has scores at root level)
+      const overallScore = typeof profileData?.overallScore === 'number' ? profileData.overallScore :
+        typeof generatedProfile?.matchScorePercentage === 'number' ? generatedProfile.matchScorePercentage :
+          typeof (generatedProfile as any)?.overallScore === 'number' ? (generatedProfile as any).overallScore : null;
+
+      const technicalScore = typeof profileData?.technicalSkillsScore === 'number' ? profileData.technicalSkillsScore :
+        typeof generatedProfile?.techSkillsPercentage === 'number' ? generatedProfile.techSkillsPercentage :
+          typeof (generatedProfile as any)?.technicalSkillsScore === 'number' ? (generatedProfile as any).technicalSkillsScore : null;
+
+      const experienceScore = typeof profileData?.experienceScore === 'number' ? profileData.experienceScore :
+        typeof generatedProfile?.experiencePercentage === 'number' ? generatedProfile.experiencePercentage :
+          typeof (generatedProfile as any)?.experienceScore === 'number' ? (generatedProfile as any).experienceScore : null;
+
+      const culturalFitScore = typeof profileData?.culturalFitScore === 'number' ? profileData.culturalFitScore :
+        typeof generatedProfile?.culturalFitPercentage === 'number' ? generatedProfile.culturalFitPercentage :
+          typeof (generatedProfile as any)?.culturalFitScore === 'number' ? (generatedProfile as any).culturalFitScore : null;
+
+      const gapSeverityScore = typeof profileData?.gapSeverityScore === 'number' ? profileData.gapSeverityScore :
+        typeof (generatedProfile as any)?.gapSeverityScore === 'number' ? (generatedProfile as any).gapSeverityScore : null;
+
+      const answerQualityScore = typeof profileData?.answerQualityScore === 'number' ? profileData.answerQualityScore :
+        typeof (generatedProfile as any)?.answerQualityScore === 'number' ? (generatedProfile as any).answerQualityScore : null;
+
+      const cvConsistencyScore = typeof profileData?.cvConsistencyScore === 'number' ? profileData.cvConsistencyScore :
+        typeof (generatedProfile as any)?.cvConsistencyScore === 'number' ? (generatedProfile as any).cvConsistencyScore : null;
+
+      // Extract confidence and data sufficiency from multiple locations
+      const confidence = profileData?.assessmentConfidence?.overallConfidence ||
+        (generatedProfile as any)?.assessmentConfidence?.overallConfidence ||
+        profileData?.verdict?.confidence ||
+        null;
+
+      const dataSufficiency = profileData?.assessmentConfidence?.dataSufficiency ||
+        (generatedProfile as any)?.assessmentConfidence?.dataSufficiency ||
+        null;
 
       // Get next steps from multiple sources
       const nextSteps = profileData?.hiringRecommendation?.nextSteps ||
-        generatedProfile?.hiringRecommendation?.nextSteps ||
+        (generatedProfile as any)?.hiringRecommendation?.nextSteps ||
         profileData?.interviewRecommendations?.mustExplore ||
         [];
 
+      // Extract counts from multiple locations
+      const strengthsCount = profileData?.strengthsHighlights?.length ||
+        generatedProfile?.strengths?.length ||
+        brutallyHonest?.strengthsHighlights?.length ||
+        0;
+
+      const gapsCount = profileData?.improvementAreas?.length ||
+        (generatedProfile as any)?.improvementAreas?.length ||
+        brutallyHonest?.improvementAreas?.length ||
+        0;
+
+      const contradictionsCount = profileData?.psycholinguisticAnalysis?.authenticity?.contradictions?.length ||
+        (generatedProfile as any)?.psycholinguisticAnalysis?.authenticity?.contradictions?.length ||
+        0;
+
       const keyMetrics = {
-        overallScore: profileData?.overallScore || generatedProfile?.overallScore,
-        gapSeverityScore: profileData?.gapSeverityScore,
-        answerQualityScore: profileData?.answerQualityScore,
-        cvConsistencyScore: profileData?.cvConsistencyScore,
-        confidence: profileData?.assessmentConfidence?.overallConfidence || generatedProfile?.assessmentConfidence?.overallConfidence,
-        dataSufficiency: profileData?.assessmentConfidence?.dataSufficiency || generatedProfile?.assessmentConfidence?.dataSufficiency,
-        strengthsCount: profileData?.strengthsHighlights?.length || generatedProfile?.strengthsHighlights?.length || 0,
-        gapsCount: profileData?.improvementAreas?.length || generatedProfile?.improvementAreas?.length || 0,
-        contradictionsCount: profileData?.psycholinguisticAnalysis?.authenticity?.contradictions?.length || generatedProfile?.psycholinguisticAnalysis?.authenticity?.contradictions?.length || 0,
+        // Scores - use extracted values
+        overallScore,
+        technicalScore,
+        experienceScore,
+        culturalFitScore,
+        gapSeverityScore,
+        answerQualityScore,
+        cvConsistencyScore,
+        confidence,
+        dataSufficiency,
+        // Counts
+        strengthsCount,
+        gapsCount,
+        contradictionsCount,
         nextStepsCount: Array.isArray(nextSteps) ? nextSteps.length : 0,
-        followUpQuestionsCount: Object.values(profileData?.followUpQuestions || generatedProfile?.followUpQuestions || {}).flat().length,
+        followUpQuestionsCount: Object.values(profileData?.followUpQuestions || (generatedProfile as any)?.followUpQuestions || {}).flat().length,
         // Additional verification - check if value exists (even if 0)
-        hasGapSeverityScore: profileData?.gapSeverityScore !== undefined && profileData?.gapSeverityScore !== null,
-        hasAnswerQualityScore: profileData?.answerQualityScore !== undefined && profileData?.answerQualityScore !== null,
-        hasCvConsistencyScore: profileData?.cvConsistencyScore !== undefined && profileData?.cvConsistencyScore !== null,
+        hasGapSeverityScore: gapSeverityScore !== undefined && gapSeverityScore !== null,
+        hasAnswerQualityScore: answerQualityScore !== undefined && answerQualityScore !== null,
+        hasCvConsistencyScore: cvConsistencyScore !== undefined && cvConsistencyScore !== null,
+        hasOverallScore: overallScore !== undefined && overallScore !== null,
+        hasTechnicalScore: technicalScore !== undefined && technicalScore !== null,
+        hasExperienceScore: experienceScore !== undefined && experienceScore !== null,
+        hasCulturalFitScore: culturalFitScore !== undefined && culturalFitScore !== null,
         // Show actual values for verification
         scores: {
-          gapSeverityScore: profileData?.gapSeverityScore,
-          answerQualityScore: profileData?.answerQualityScore,
-          cvConsistencyScore: profileData?.cvConsistencyScore,
-          overallScore: profileData?.overallScore || generatedProfile?.overallScore
+          overallScore,
+          technicalScore,
+          experienceScore,
+          culturalFitScore,
+          gapSeverityScore,
+          answerQualityScore,
+          cvConsistencyScore
         }
       };
 

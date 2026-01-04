@@ -274,29 +274,41 @@ QUESTION QUALITY STANDARDS:
 - Explore discipline, consistency, resilience, teamwork, and personal growth
 - Invite reflection about their values, routines, and approach to solving problems
 
-Create 11 personal background questions that demonstrate you've analyzed their profile:
-1. Reference their educational background or career path in context – ask why they made certain key transitions and what they learned from them.
-2. Build on their stated career goals or work style – explore the reasoning behind their long-term choices and whether they have clear systems for personal growth.
-3. Connect their current role to their personal values – ask what gives them a sense of purpose, fulfillment, and alignment.
-4. Explore motivations behind their career and life choices – ask about sacrifices, trade-offs, and moments that shaped them.
-5. Understand what drives them beyond what's already stated – focus on decision-making, mental frameworks, and real-life examples.
-6. Ask about habits, routines, and systems of discipline – learn how they structure their day, manage focus, and keep promises to themselves.
-7. Ask about moments of adversity – how they react under pressure, recover from setbacks, and maintain consistency.
-8. Explore interpersonal dynamics – how they work with others, manage conflicts, and motivate people around them.
-9. Dig into long-term vision – where they see themselves in 5–10 years, what they're building toward, and why.
-10. Ask about personal inspirations – mentors, books, philosophies, or experiences that shaped their worldview.
+Create 11 personal background questions that demonstrate you've analyzed their profile. IMPORTANT: Include questions that directly reference their CV/resume details:
+1. Reference their educational background or career path from their resume in context – ask why they made certain key transitions and what they learned from them. Example: "I see you studied [Field] at [Institution]. How did that lead you to [their career path]?"
+2. Ask about specific work experiences from their resume – reference company names or positions. Example: "Your experience at [Company] as [Position] – what was the biggest challenge you faced there?"
+3. Build on their stated career goals or work style – explore the reasoning behind their long-term choices and whether they have clear systems for personal growth.
+4. Connect their current role to their personal values – ask what gives them a sense of purpose, fulfillment, and alignment.
+5. Explore motivations behind their career and life choices – ask about sacrifices, trade-offs, and moments that shaped them.
+6. Ask about specific skills or projects mentioned in their resume – request personal reflections on how these shaped them.
+7. Ask about habits, routines, and systems of discipline – learn how they structure their day, manage focus, and keep promises to themselves.
+8. Ask about moments of adversity – how they react under pressure, recover from setbacks, and maintain consistency.
+9. Explore interpersonal dynamics – how they work with others, manage conflicts, and motivate people around them.
+10. Dig into long-term vision – where they see themselves in 5–10 years, what they're building toward, and why.
 11. Invite them to share a story that reveals who they are as a person – something outside of work that taught them a life lesson.
 
-RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
-- Respond professionally - never overly positive or flattering
-- Use real interviewer language - neutral, grounded, professionally curious
-- Never provide emotional reactions or value judgments
-- Don't evaluate how "good" an answer was - ask the next smart question
-- Maintain a calm, consistent tone - focused, observant, and neutral
-- Examples of good responses: "Thank you. Could you clarify how you prioritized tasks in that situation?" or "Got it. What was the biggest trade-off you had to make?"
-- Avoid: "That's amazing!" "Fantastic answer!" "Wow, that really shows how great you are!"
+RESPONSE STANDARDS FOR CANDIDATE ANSWERS - BE HUMANIZED AND VARIED:
+You are a real human interviewer. Vary your responses naturally - don't always be positive or neutral. Act like a real person:
 
-IMPORTANT: Every question must show you've reviewed their profile. Never ask blindly. Focus on WHY they made specific choices, not just WHAT they did.
+- Mix your responses: Sometimes acknowledge good points briefly, sometimes be neutral, sometimes probe deeper, sometimes offer constructive observations
+- Be natural and conversational - respond like a real interviewer would, not a robot
+- Examples of varied, human responses:
+  * "I see. Can you give me a specific example of that?"
+  * "That's interesting. How did that experience shape you?"
+  * "Okay, tell me more about [specific detail from their answer]."
+  * "Right. What did you learn from that?"
+  * "Hmm, that's a common experience. How did you handle it differently?"
+  * "Got it. And how did that impact your decisions going forward?"
+  * "Interesting. Walk me through what happened next."
+  * "I understand. How did that change your perspective?"
+  
+- Vary your tone: Sometimes brief and direct, sometimes curious and probing, sometimes acknowledging, sometimes challenging gently
+- Show you're listening: Reference specific details from their answers, not just generic responses
+- Avoid patterns: Don't always say "Thank you" or "That's interesting" - mix it up naturally
+- Be authentic: Act like a real person conducting an interview, not an AI following a script
+- If an answer is vague: Probe deeper. If it's good: Acknowledge briefly then move on. If it's excellent: Note it naturally, don't overdo it.
+
+IMPORTANT: Every question must show you've reviewed their profile. Never ask blindly. Focus on WHY they made specific choices, not just WHAT they did. Reference specific details from their CV/resume (work experience, skills, education, projects).
 
 Return ONLY JSON:
 {
@@ -466,26 +478,39 @@ QUESTION QUALITY STANDARDS:
 - Explore how they collaborate, communicate, and lead – especially in high-stakes situations
 - Sequence questions logically to feel like a natural, evolving conversation
 
-Create 7–10 professional questions that demonstrate full knowledge and go beyond surface-level:
-1. Reference their career progression from profile – ask how they adapted to challenges, overcame resistance, or redefined their role.
-2. Build on their stated career goals – ask about the systems and strategies they've used to stay on track or pivot when necessary.
-3. Connect their current role to their decision-making – explore a specific project or task where their judgment significantly influenced results.
-4. Explore leadership and collaboration – ask about moments they had to align conflicting stakeholders, motivate teams, or resolve tensions.
-5. Ask about mistakes, failures, or missed opportunities – focus on what they learned and how they've applied it since.
-6. Explore how they handle pressure – deadlines, resource constraints, or conflicting priorities – and how they keep quality high.
-7. Connect their educational or technical background to their problem-solving ability – ask how it shaped their approach to real-world situations.
-8. Explore their growth mindset – how they measure progress, seek feedback, and continuously improve professionally.
-9. Understand how they evaluate opportunities – what criteria they use to accept projects, roles, or responsibilities.
-10. Ask how they'd bring value to the target role specifically – what unique contribution they'd make in the first 90 days.
+Create 7–10 professional questions that demonstrate full knowledge and go beyond surface-level. IMPORTANT: Include questions that directly reference their CV/resume details:
 
-RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
-- Respond professionally - never overly positive or flattering
-- Use real interviewer language - neutral, grounded, professionally curious
-- Never provide emotional reactions or value judgments
-- Don't evaluate how "good" an answer was - ask the next smart question
-- Maintain a calm, consistent tone - focused, observant, and neutral
-- Examples of good responses: "Thank you. Could you clarify how you prioritized tasks in that situation?" or "Got it. What was the biggest trade-off you had to make?"
-- Avoid: "That's amazing!" "Fantastic answer!" "Wow, that really shows how great you are!"
+1. Ask about specific work experiences from their resume – reference company names, positions, or projects mentioned. Example: "I see you worked at [Company] as [Position]. Can you tell me about a specific challenge you faced there?"
+2. Probe into their listed skills – ask for concrete examples of how they've used key skills from their resume. Example: "You've listed [Skill] on your resume. Walk me through a project where you applied this skill."
+3. Explore their work experience details – ask about responsibilities, achievements, or projects mentioned in their resume.
+4. Reference their education background – connect their degree/field to real-world applications. Example: "Your background in [Field] – how has that shaped your approach to [relevant work situation]?"
+5. Ask about projects mentioned in their resume – if projects are listed, ask for details about their role, challenges, and outcomes.
+6. Explore career progression from their resume – ask how they moved between roles or companies, and what they learned.
+7. Validate specific achievements or responsibilities listed – ask for more context or examples.
+8. Connect their background to decision-making – explore a specific project or situation where their judgment influenced results.
+9. Ask about mistakes, failures, or missed opportunities – focus on what they learned and how they've applied it since.
+10. Explore how they handle pressure – deadlines, resource constraints, or conflicting priorities – and how they keep quality high.
+
+RESPONSE STANDARDS FOR CANDIDATE ANSWERS - BE HUMANIZED AND VARIED:
+You are a real human interviewer. Vary your responses naturally - don't always be positive or neutral. Act like a real person:
+
+- Mix your responses: Sometimes acknowledge good points briefly, sometimes be neutral, sometimes probe deeper, sometimes offer constructive observations
+- Be natural and conversational - respond like a real interviewer would, not a robot
+- Examples of varied, human responses:
+  * "I see. Can you give me a specific example of that?"
+  * "That's interesting. How did you handle the technical challenges?"
+  * "Okay, tell me more about [specific detail from their answer]."
+  * "Right. What was the outcome?"
+  * "Hmm, that's a common approach. Did you consider alternatives?"
+  * "Got it. And what did you learn from that experience?"
+  * "Interesting. Walk me through the timeline on that project."
+  * "I understand. How did that impact your team?"
+  
+- Vary your tone: Sometimes brief and direct, sometimes curious and probing, sometimes acknowledging, sometimes challenging gently
+- Show you're listening: Reference specific details from their answers, not just generic responses
+- Avoid patterns: Don't always say "Thank you" or "That's interesting" - mix it up naturally
+- Be authentic: Act like a real person conducting an interview, not an AI following a script
+- If an answer is vague: Probe deeper. If it's good: Acknowledge briefly then move on. If it's excellent: Note it naturally, don't overdo it.
 
 Return ONLY JSON:
 {
@@ -574,27 +599,39 @@ QUESTION QUALITY STANDARDS:
 - Push for code examples, architectural diagrams, or step-by-step problem-solving logic
 - Include opportunities to test their ability to simplify complex ideas for non-technical people
 
-Create 11 technical questions that assess deep expertise for a ${userRole} in ${userField}:
-1. Ask a deep-dive question about a core technology or methodology they claim expertise in – focus on an advanced or non-obvious aspect.
-2. Present a realistic, complex problem scenario related to their past projects and ask them to design or debug a solution step-by-step.
-3. Ask about a critical technical trade-off they had to make – explore what constraints existed, what options they considered, and how they measured success.
-4. Challenge them with a relevant system design or architecture question – test scalability, fault-tolerance, and performance considerations.
-5. Explore their debugging process – give them a subtle bug or performance issue and ask how they'd isolate and resolve it.
-6. Ask about security, reliability, or compliance considerations – how they ensure robustness in production environments.
-7. Explore optimization thinking – ask how they would improve efficiency or reduce cost in one of their previous solutions.
-8. Ask them to compare multiple technical approaches – explain when they'd use one over the other and why.
-9. Test their ability to work in constraints – limited time, legacy systems, or cross-team dependencies – and still deliver.
-10. Explore how they review and write code – what standards, documentation, and testing practices they follow.
-11. Ask them to explain a very complex technical concept from their work to a non-technical stakeholder, testing clarity and communication.
+Create 11 technical questions that assess deep expertise for a ${userRole} in ${userField}. IMPORTANT: Include questions that directly reference their CV/resume details:
+1. Ask about specific technologies or skills listed on their resume – request a deep-dive on a core technology they claim expertise in. Example: "You've listed [Technology] on your resume. Walk me through how you've used it in a project."
+2. Reference specific projects or work experiences from their resume – present a realistic, complex problem scenario related to their past projects and ask them to design or debug a solution step-by-step. Example: "In your role at [Company], you mentioned working on [Project]. Describe a technical challenge you faced there."
+3. Ask about a critical technical trade-off they had to make in a project from their resume – explore what constraints existed, what options they considered, and how they measured success.
+4. Challenge them with a relevant system design or architecture question related to their experience – test scalability, fault-tolerance, and performance considerations.
+5. Explore their debugging process on a specific technology from their resume – give them a subtle bug or performance issue and ask how they'd isolate and resolve it.
+6. Ask about security, reliability, or compliance considerations in projects they've worked on – how they ensure robustness in production environments.
+7. Reference a specific solution or project from their resume – ask how they would improve efficiency or reduce cost. Example: "Looking at your experience with [Technology/Project] at [Company], how would you optimize it?"
+8. Ask them to compare multiple technical approaches they've used based on their resume – explain when they'd use one over the other and why.
+9. Test their ability to work in constraints – reference their past work experiences and ask about limited time, legacy systems, or cross-team dependencies.
+10. Explore how they review and write code based on their work experience – what standards, documentation, and testing practices they follow.
+11. Ask them to explain a complex technical concept from their work experience to a non-technical stakeholder, testing clarity and communication.
 
-RESPONSE STANDARDS FOR CANDIDATE ANSWERS:
-- Respond professionally - never overly positive or flattering
-- Use real interviewer language - neutral, grounded, professionally curious
-- Never provide emotional reactions or value judgments
-- Don't evaluate how "good" an answer was - ask the next smart question
-- Maintain a calm, consistent tone - focused, observant, and neutral
-- Examples of good responses: "Thank you. Could you walk me through the data model for that solution?" or "Interesting. What were the performance implications of that approach?"
-- Avoid: "That's brilliant!" "Perfect answer!" "Wow, you're a real expert!"
+RESPONSE STANDARDS FOR CANDIDATE ANSWERS - BE HUMANIZED AND VARIED:
+You are a real human interviewer. Vary your responses naturally - don't always be positive or neutral. Act like a real person:
+
+- Mix your responses: Sometimes acknowledge good points briefly, sometimes be neutral, sometimes probe deeper, sometimes offer constructive observations
+- Be natural and conversational - respond like a real interviewer would, not a robot
+- Examples of varied, human responses:
+  * "I see. Can you walk me through the technical details of that?"
+  * "That's interesting. How did you handle the performance implications?"
+  * "Okay, tell me more about [specific technical detail from their answer]."
+  * "Right. What was the outcome?"
+  * "Hmm, that's a common approach. Did you consider alternatives?"
+  * "Got it. And how did you debug that?"
+  * "Interesting. What were the trade-offs you considered?"
+  * "I understand. How did you optimize that?"
+  
+- Vary your tone: Sometimes brief and direct, sometimes curious and probing, sometimes acknowledging, sometimes challenging gently
+- Show you're listening: Reference specific details from their answers, not just generic responses
+- Avoid patterns: Don't always say "Thank you" or "That's interesting" - mix it up naturally
+- Be authentic: Act like a real person conducting an interview, not an AI following a script
+- If an answer is vague: Probe deeper. If it's good: Acknowledge briefly then move on. If it's excellent: Note it naturally, don't overdo it.
 
 Return ONLY JSON:
 {
@@ -1341,47 +1378,80 @@ export class AIProfileAnalysisAgent {
       const verdict = comprehensiveProfile.executive_summary || null;
       const hiringGuidance = comprehensiveProfile.hiring_guidance || null;
 
-      // Check if this is an insufficient data case
-      const isInsufficientData = comprehensiveProfile.executive_summary?.fit_verdict === 'INSUFFICIENT_DATA' ||
-        totalWordCount < 50 ||
+      // Check if this is a truly insufficient data case (very strict criteria)
+      // Only mark as insufficient if we have almost no data AND the profile itself indicates insufficient data
+      const hasMinimalData = totalWordCount < 30 ||
         comprehensiveProfile.interview_metadata?.exchange_count === 0 ||
-        (comprehensiveProfile.interview_metadata?.avg_response_length_chars || 0) < 10;
+        (comprehensiveProfile.interview_metadata?.avg_response_length_chars || 0) < 5;
+
+      const profileIndicatesInsufficient = comprehensiveProfile.executive_summary?.fit_verdict === 'INSUFFICIENT_DATA' ||
+        comprehensiveProfile.verdict?.decision === 'NOT_PASS' && comprehensiveProfile.verdict?.summary?.toLowerCase().includes('insufficient');
+
+      // Only mark as insufficient if BOTH conditions are true (very strict)
+      const isInsufficientData = hasMinimalData && profileIndicatesInsufficient;
+
+      // Extract skills from multiple possible locations in the profile
+      const extractedSkills = legacySkills.length > 0 ? legacySkills :
+        comprehensiveProfile.skillAnalysis?.matchedSkills?.map((s: any) => s.skill) ||
+        comprehensiveProfile.skills_and_capabilities?.core_hard_skills ||
+        comprehensiveProfile.skills_and_capabilities?.tools_and_technologies ||
+        [];
+
+      // Extract summary from multiple locations
+      const extractedSummary = comprehensiveProfile.executive_summary?.oneLiner ||
+        comprehensiveProfile.executive_summary?.one_sentence ||
+        comprehensiveProfile.executive_summary?.key_impression ||
+        comprehensiveProfile.matchSummary ||
+        comprehensiveProfile.detailed_profile?.professional_identity?.identity_summary ||
+        (isInsufficientData ? "Candidate provided insufficient responses for evaluation." : "Candidate assessment completed.");
+
+      // Extract personality from multiple locations
+      const extractedPersonality = comprehensiveProfile.personality_and_values?.personality_summary ||
+        comprehensiveProfile.behavioralIndicators?.emotionalIntelligence?.selfAwareness ||
+        comprehensiveProfile.detailed_profile?.personality_indicators?.communication_style ||
+        (isInsufficientData ? "Cannot assess - insufficient interview responses provided." : "Not assessed");
+
+      // Extract strengths from multiple locations
+      const extractedStrengths = isInsufficientData ? [] :
+        [
+          comprehensiveProfile.executive_summary?.uniqueValueProposition,
+          ...(comprehensiveProfile.strengthsHighlights?.map((s: any) => s.strength) || []),
+          comprehensiveProfile.executive_summary?.standout_positive,
+          ...(comprehensiveProfile.transcript_analysis?.green_flags_detected?.map((f: any) => f.description) || [])
+        ].filter(Boolean).slice(0, 5);
+
+      // Extract career goals
+      const extractedCareerGoals = comprehensiveProfile.motivation_and_career_direction?.short_term_goals_1_2_years ||
+        comprehensiveProfile.motivation_and_career_direction?.long_term_direction_3_5_years ||
+        comprehensiveProfile.detailed_profile?.career_trajectory?.stated_goals ||
+        (isInsufficientData ? "No career goals expressed - insufficient interview responses." : "Career goals extracted from interview responses.");
+
+      // Extract work style
+      const extractedWorkStyle = comprehensiveProfile.work_style_and_collaboration?.day_to_day_work_style ||
+        comprehensiveProfile.behavioralIndicators?.workStyle?.collaborationStyle ||
+        comprehensiveProfile.detailed_profile?.work_preferences?.stated_preferences?.join('; ') ||
+        (isInsufficientData ? "Cannot determine work style - insufficient responses provided." : "Not assessed");
+
+      // Use scores from brutallyHonestProfile directly (V6 structure has scores at root level)
+      // Fallback to calculated scores if not available
+      const finalOverallScore = typeof comprehensiveProfile.overallScore === 'number' ? comprehensiveProfile.overallScore : overallScore;
+      const finalExperienceScore = typeof comprehensiveProfile.experienceScore === 'number' ? comprehensiveProfile.experienceScore : experienceScore;
+      const finalTechnicalScore = typeof comprehensiveProfile.technicalSkillsScore === 'number' ? comprehensiveProfile.technicalSkillsScore : technicalScore;
+      const finalCulturalFitScore = typeof comprehensiveProfile.culturalFitScore === 'number' ? comprehensiveProfile.culturalFitScore : culturalFitScore;
 
       // Return legacy format for backward compatibility with V4 comprehensive data
       return {
-        summary: isInsufficientData ?
-          "Candidate provided insufficient responses for evaluation." :
-          comprehensiveProfile.executive_summary?.one_sentence ||
-          comprehensiveProfile.executive_summary?.key_impression ||
-          comprehensiveProfile.detailed_profile?.professional_identity?.identity_summary ||
-          "Candidate assessment completed.",
-        skills: isInsufficientData ? [] : legacySkills,
-        personality: isInsufficientData ?
-          "Cannot assess - insufficient interview responses provided." :
-          comprehensiveProfile.detailed_profile?.personality_indicators?.communication_style ||
-          comprehensiveProfile.personality_and_values?.personality_summary ||
-          "Not assessed",
+        summary: extractedSummary,
+        skills: extractedSkills,
+        personality: extractedPersonality,
         experience: [], // Will be populated from existing profile data
-        strengths: isInsufficientData ?
-          [] :
-          [
-            comprehensiveProfile.executive_summary?.standout_positive,
-            ...(comprehensiveProfile.transcript_analysis?.green_flags_detected?.map((f: any) => f.description) || [])
-          ].filter(Boolean).slice(0, 5),
-        careerGoals: isInsufficientData ?
-          "No career goals expressed - insufficient interview responses." :
-          comprehensiveProfile.detailed_profile?.career_trajectory?.stated_goals ||
-          comprehensiveProfile.motivation_and_career_direction?.short_term_goals_1_2_years ||
-          "Career goals extracted from interview responses.",
-        workStyle: isInsufficientData ?
-          "Cannot determine work style - insufficient responses provided." :
-          comprehensiveProfile.detailed_profile?.work_preferences?.stated_preferences?.join('; ') ||
-          comprehensiveProfile.work_style_and_collaboration?.day_to_day_work_style ||
-          "Not assessed",
-        matchScorePercentage: isInsufficientData ? 0 : overallScore,
-        experiencePercentage: isInsufficientData ? 0 : experienceScore,
-        techSkillsPercentage: isInsufficientData ? 0 : technicalScore,
-        culturalFitPercentage: isInsufficientData ? 0 : culturalFitScore,
+        strengths: extractedStrengths,
+        careerGoals: extractedCareerGoals,
+        workStyle: extractedWorkStyle,
+        matchScorePercentage: isInsufficientData && finalOverallScore === 0 ? 0 : finalOverallScore,
+        experiencePercentage: isInsufficientData && finalExperienceScore === 0 ? 0 : finalExperienceScore,
+        techSkillsPercentage: isInsufficientData && finalTechnicalScore === 0 ? 0 : finalTechnicalScore,
+        culturalFitPercentage: isInsufficientData && finalCulturalFitScore === 0 ? 0 : finalCulturalFitScore,
         // Job-specific match data (only populated if job description was provided)
         jobMatch,
         hireRecommendation: isInsufficientData ?
@@ -2231,6 +2301,11 @@ Based on these job details and the candidate's profile (assume you know it), cre
 - Avoid generic prompts; be targeted to the described role
 - Sequence questions progressively (from calibration to deep dives)
 - Explicitly reference at least one listed skill or responsibility in each question
+- IMPORTANT: Ask questions that directly reference the candidate's CV/resume details:
+  * Reference specific work experiences from their resume (company names, positions, projects)
+  * Ask about specific skills listed on their resume - request concrete examples
+  * Probe into projects, achievements, or responsibilities mentioned in their experience
+  * Connect their background to the job requirements - e.g., "I see you worked at [Company] as [Position]. How does that experience relate to [job requirement]?"
 - Personalize using the candidate's background above; if a listed skill is missing in their profile, create a bridging/hypothetical relevant to their experience
 
 ${aiPromptContext}
@@ -2371,7 +2446,7 @@ ${formattedTranscript}`;
         {
           requestType: "parseInterviewTranscription",
           model: process.env.OPENAI_MODEL_PARSE_TRANSCRIPTION || "gpt-4o-mini",
-          userId: userId || null,
+          userId: userId || undefined,
         }
       );
 
@@ -2703,7 +2778,7 @@ Return ONLY JSON:
         {
           requestType: "generatePracticeInterviewFeedback",
           model: process.env.OPENAI_MODEL_PRACTICE_FEEDBACK || "gpt-4o",
-          userId: null,
+          userId: undefined,
         }
       );
       const result = JSON.parse(response.choices[0].message.content || '{}');
