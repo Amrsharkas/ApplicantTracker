@@ -181,24 +181,21 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
       // Get user data for comprehensive analysis
       const user = await storage.getUser(userId);
 
-      // Get all completed interview sessions
-      let completedInterviews: any[] = [];
-      if (sessionId) {
-        const sessionRecord = await storage.getInterviewSessionById(sessionId);
-        if (sessionRecord && sessionRecord.isCompleted) {
-          completedInterviews = [sessionRecord];
-        }
-      } else {
-        // Get all completed interview sessions
-        completedInterviews = await db
-          .select()
-          .from(interviewSessions)
-          .where(and(
-            eq(interviewSessions.userId, userId),
-            eq(interviewSessions.isCompleted, true)
-          ))
-          .orderBy(interviewSessions.createdAt);
-      }
+      // Get all completed interview sessions (ALWAYS get all, not just one session)
+      // This ensures we have all interview data for comprehensive profile generation
+      const completedInterviews = await db
+        .select()
+        .from(interviewSessions)
+        .where(and(
+          eq(interviewSessions.userId, userId),
+          eq(interviewSessions.isCompleted, true)
+        ))
+        .orderBy(interviewSessions.createdAt);
+
+      console.log(`📊 Found ${completedInterviews.length} completed interview(s) for user ${userId}`, {
+        interviewTypes: completedInterviews.map((i: any) => i.interviewType),
+        sessionIds: completedInterviews.map((i: any) => i.id)
+      });
 
       if (completedInterviews.length === 0) {
         const error = new Error("No completed interviews found");
@@ -273,11 +270,51 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
         dataSufficiency: generatedProfile?.assessmentConfidence?.dataSufficiency
       });
 
+      // Also generate brutally honest profile (same as test route)
+      console.log('🤖 Generating brutally honest profile...');
+      const honestProfile = await aiInterviewService.generateBrutallyHonestProfile(
+        { ...user, ...updatedProfile },
+        allInterviewResponses,
+        resumeAnalysis
+      );
+
+      console.log('✅ Brutally honest profile generated:', {
+        hirabilityScore: honestProfile?.hirabilityScore,
+        strengthsCount: honestProfile?.strengths?.length || 0,
+        weaknessesCount: honestProfile?.criticalWeaknesses?.length || 0,
+        redFlagsCount: honestProfile?.redFlags?.length || 0
+      });
+
+      // Combine both profiles into fullResponse structure (same as test route)
+      // Structure: { ...generatedProfile, honestProfile: {...}, generatedProfile: { ...generatedProfile, brutallyHonestProfile: {...} } }
+      const fullResponse = {
+        ...generatedProfile,
+        honestProfile: honestProfile,
+        generatedProfile: {
+          ...generatedProfile,
+          brutallyHonestProfile: generatedProfile?.brutallyHonestProfile || generatedProfile
+        }
+      };
+
+      // Also add honestProfile to generatedProfile for airtable_job_applications
+      // This ensures honestProfile is available when reading from airtable_job_applications.generatedProfile
+      const generatedProfileWithHonest = {
+        ...generatedProfile,
+        honestProfile: honestProfile,
+        comprehensiveProfile: {
+          ...generatedProfile,
+          brutallyHonestProfile: generatedProfile?.brutallyHonestProfile || generatedProfile
+        }
+      };
+
       // Update profile with AI data - mark as generated to prevent duplicates
+      // Save both aiProfile (with fullResponse structure) and honestProfile (separate field for backward compatibility)
       await storage.upsertApplicantProfile({
         userId,
         ...updatedProfile,
-        aiProfile: generatedProfile,
+        aiProfile: fullResponse, // Save fullResponse with both profiles (same structure as test route)
+        honestProfile: honestProfile, // Also save separately for backward compatibility
+        honestProfileGenerated: true,
         aiProfileGenerated: true,
         summary: generatedProfile.summary,
         skillsList: generatedProfile.skills,
@@ -2093,6 +2130,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? (typeof currentSet.questions[0] === 'string' ? currentSet.questions[0] : currentSet.questions[0]?.question || '')
           : '';
 
+        // Get additional profile data from applicant_profiles table
+        const summary = profile?.summary || null;
+        const skillsList = profile?.skillsList || null;
+        const aiProfile = profile?.aiProfile || null;
+
+
         res.json({
           sessionId: session.id,
           interviewType,
@@ -2103,7 +2146,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userProfile: {
             ...user,
             ...profile
-          }
+          },
+          resumeContent: resumeContent || null,
+          summary: summary || null,
+          skillsList: skillsList || null,
+          aiProfile: aiProfile || null,
+          jobDescription: null // Not available for general interviews
         });
       } catch (error) {
         console.error("Error starting voice interview:", error);
@@ -2172,11 +2220,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Build interview context with job data and AI profile for realtime interview
-        let interviewContext: any = null;
-        try {
-          // Get full job data if we have a jobId
-          let fullJobData = job;
-          if (job.jobId) {
+        // Get full job data if we have a jobId (define outside try block for use later)
+        let fullJobData = job;
+        if (job.jobId) {
+          try {
             const fullJobRecord = await db
               .select()
               .from(jobs)
@@ -2196,7 +2243,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 employerQuestions: fullJobRecord[0].employerQuestions
               };
             }
+          } catch (dbError) {
+            console.error('⚠️ Failed to fetch full job data from DB:', dbError);
+            // Continue with job data from request
           }
+        }
+
+        let interviewContext: any = null;
+        try {
 
           // Extract AI profile data (prefer newAiProfile, fallback to aiProfile)
           const aiProfile = (profile as any)?.newAiProfile || (profile as any)?.aiProfile;
@@ -2269,6 +2323,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? (typeof practiceSet.questions[0] === 'string' ? practiceSet.questions[0] : practiceSet.questions[0]?.question || '')
           : '';
 
+        // Get resume content and other profile data from applicant_profiles table
+        let resumeContent = profile?.resumeContent || null;
+        let summary = profile?.summary || null;
+        let skillsList = profile?.skillsList || null;
+        let aiProfile = profile?.aiProfile || null;
+
+        // Try to get from active resume if not in profile
+        try {
+          const activeResume = await storage.getActiveResume(userId);
+          if (activeResume?.extractedText && !resumeContent) {
+            resumeContent = activeResume.extractedText;
+          }
+        } catch (error) {
+          console.log("No active resume found for job practice interview");
+        }
+
         res.json({
           sessionId: session.id,
           interviewType: 'job-practice',
@@ -2277,7 +2347,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           firstQuestion,
           welcomeMessage,
           userProfile: { ...user, ...profile },
-          interviewContext
+          interviewContext,
+          resumeContent: resumeContent || null,
+          summary: summary || null,
+          skillsList: skillsList || null,
+          aiProfile: aiProfile || null,
+          jobDescription: fullJobData.description || fullJobData.jobDescription || null
         });
       } catch (error) {
         console.error('Error starting job practice voice interview:', error);
@@ -3751,7 +3826,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const session = await storage.getInterviewSession(userId);
-      res.json(session);
+
+      if (!session) {
+        return res.json(null);
+      }
+
+      // Get profile data to include in response
+      const profile = await storage.getApplicantProfile(userId);
+      const resumeContent = profile?.resumeContent || null;
+      const summary = profile?.summary || null;
+      const skillsList = profile?.skillsList || null;
+      const aiProfile = profile?.aiProfile || null;
+
+      // Get job description from session context if available
+      const sessionData = session.sessionData as any;
+      const jobDescription = sessionData?.context?.job?.jobDescription
+        || sessionData?.context?.job?.description
+        || null;
+
+      // Return session with additional profile data
+      res.json({
+        ...session,
+        resumeContent,
+        summary,
+        skillsList,
+        aiProfile,
+        jobDescription
+      });
     } catch (error) {
       console.error("Error fetching interview session:", error);
       res.status(500).json({ message: "Failed to fetch interview session" });
@@ -3784,7 +3885,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized" });
       }
 
-      res.json(session);
+      // Get profile data to include in response
+      const profile = await storage.getApplicantProfile(userId);
+      const resumeContent = profile?.resumeContent || null;
+      const summary = profile?.summary || null;
+      const skillsList = profile?.skillsList || null;
+      const aiProfile = profile?.aiProfile || null;
+
+      // Get job description from session context if available
+      const sessionData = session.sessionData as any;
+      const jobDescription = sessionData?.context?.job?.jobDescription
+        || sessionData?.context?.job?.description
+        || null;
+
+      // Return session with additional profile data
+      res.json({
+        ...session,
+        resumeContent,
+        summary,
+        skillsList,
+        aiProfile,
+        jobDescription
+      });
     } catch (error) {
       console.error("Error fetching interview session:", error);
       res.status(500).json({ message: "Failed to fetch interview session" });
@@ -5990,6 +6112,185 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
       console.error("❌ Test error:", error);
       res.status(500).json({
         message: "Failed to generate profiles",
+        error: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined
+      });
+    }
+  });
+
+  // =============================================
+  // PROFILE REGENERATION - Fix existing profiles without redoing interviews
+  // =============================================
+
+  // Regenerate profile from existing completed interviews (no need to redo interviews!)
+  app.post('/api/profile/regenerate-from-existing', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "User authentication required" });
+      }
+
+      console.log('🔄 Regenerating profile from existing interviews for user:', userId);
+
+      // Get user and profile
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found",
+          userId: userId
+        });
+      }
+
+      // Get all completed interviews (same as test route)
+      const completedInterviews = await db
+        .select()
+        .from(interviewSessions)
+        .where(and(
+          eq(interviewSessions.userId, userId),
+          eq(interviewSessions.isCompleted, true)
+        ))
+        .orderBy(interviewSessions.createdAt);
+
+      console.log(`📊 Found ${completedInterviews.length} completed interview(s) for regeneration`);
+
+      if (completedInterviews.length === 0) {
+        return res.status(400).json({
+          message: "No completed interviews found",
+          userId: userId,
+          suggestion: "Complete at least one interview first"
+        });
+      }
+
+      // Get resume analysis
+      const resumeUpload = await storage.getActiveResume(userId);
+      const resumeAnalysis = resumeUpload?.aiAnalysis;
+
+      if (!resumeAnalysis) {
+        return res.status(400).json({
+          message: "Resume analysis not found",
+          userId: userId,
+          suggestion: "Upload and analyze a resume first"
+        });
+      }
+
+      // Format interview responses (same as test route)
+      const allInterviewResponses = completedInterviews.map((session: any) => ({
+        type: session.interviewType,
+        responses: session.sessionData?.responses || [],
+        questions: session.sessionData?.questions || [],
+        completedAt: session.completedAt
+      }));
+
+      // Flatten responses (same as test route)
+      const flatResponses = allInterviewResponses.flatMap((ir: any) => {
+        const responses = Array.isArray(ir.responses) ? ir.responses : [];
+        return responses
+          .filter((r: any) => r && r.role && r.content)
+          .map((r: any) => ({
+            role: r.role,
+            content: r.content,
+            timestamp: r.timestamp || Date.now()
+          }));
+      });
+
+      if (flatResponses.length === 0) {
+        return res.status(400).json({
+          message: "No valid interview responses found",
+          userId: userId,
+          details: {
+            interviewCount: completedInterviews.length,
+            responsesFound: flatResponses.length,
+            suggestion: "Ensure interviews have responses in sessionData.responses"
+          }
+        });
+      }
+
+      // Get resume content
+      const resumeContent = resumeUpload?.extractedData
+        ? (typeof resumeUpload.extractedData === 'string'
+          ? resumeUpload.extractedData
+          : JSON.stringify(resumeUpload.extractedData))
+        : null;
+
+      // Generate comprehensive profile (same as test route)
+      console.log('🤖 Generating comprehensive profile with quality checks...');
+      console.log(`   Total responses: ${flatResponses.length}`);
+      console.log(`   User responses: ${flatResponses.filter((r: any) => r.role === 'user').length}`);
+
+      const generatedProfile = await aiProfileAnalysisAgent.generateComprehensiveProfile(
+        { ...user, ...profile },
+        resumeContent,
+        flatResponses,
+        resumeAnalysis,
+        null // jobDescription
+      );
+
+      console.log('✅ Comprehensive profile generated:', {
+        overallScore: (generatedProfile as any)?.overallScore,
+        gapSeverityScore: (generatedProfile as any)?.gapSeverityScore,
+        answerQualityScore: (generatedProfile as any)?.answerQualityScore,
+        cvConsistencyScore: (generatedProfile as any)?.cvConsistencyScore,
+        confidence: (generatedProfile as any)?.assessmentConfidence?.overallConfidence,
+        dataSufficiency: (generatedProfile as any)?.assessmentConfidence?.dataSufficiency
+      });
+
+      // Also generate brutally honest profile (same as test route)
+      console.log('🤖 Generating brutally honest profile...');
+      const honestProfile = await aiInterviewAgent.generateBrutallyHonestProfile(
+        { ...user, ...profile },
+        allInterviewResponses,
+        resumeAnalysis
+      );
+
+      console.log('✅ Brutally honest profile generated:', {
+        hirabilityScore: honestProfile?.hirabilityScore,
+        strengthsCount: honestProfile?.strengths?.length || 0,
+        weaknessesCount: honestProfile?.criticalWeaknesses?.length || 0,
+        redFlagsCount: honestProfile?.redFlags?.length || 0
+      });
+
+      // Combine both profiles into fullResponse structure (same as test route)
+      const fullResponse = {
+        ...generatedProfile,
+        honestProfile: honestProfile,
+        generatedProfile: {
+          ...generatedProfile,
+          brutallyHonestProfile: (generatedProfile as any)?.brutallyHonestProfile || generatedProfile
+        }
+      };
+
+      // Update profile with new data (same as production flow)
+      await storage.upsertApplicantProfile({
+        userId,
+        ...profile,
+        aiProfile: fullResponse,
+        honestProfile: honestProfile,
+        honestProfileGenerated: true,
+        aiProfileGenerated: true,
+        summary: generatedProfile.summary,
+        skillsList: generatedProfile.skills,
+      });
+
+      // Calculate job matches
+      await storage.calculateJobMatches(userId);
+
+      console.log('✅ Profile regenerated successfully from existing interviews');
+
+      res.json({
+        message: "✅ Profile regenerated successfully from existing interviews",
+        userId: userId,
+        interviewCount: completedInterviews.length,
+        interviewTypes: completedInterviews.map((i: any) => i.interviewType),
+        profileUpdated: true,
+        note: "Profile has been regenerated using all existing completed interviews. No need to redo interviews!"
+      });
+
+    } catch (error) {
+      console.error("❌ Profile regeneration error:", error);
+      res.status(500).json({
+        message: "Failed to regenerate profile",
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined
       });

@@ -117,7 +117,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       setIsInterviewComplete(true);
     },
     onMessage: (event) => {
-  
+
       if (event.type === 'response.audio_transcript.done') {
         const aiText = event.transcript;
         if (aiText) {
@@ -168,7 +168,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         // Fetch current session – job-practice already started by options modal
         const res = await fetch('/api/interview/session', { credentials: 'include' });
         const data = await res.json();
-          if (!data || data.interviewType !== 'job-practice') {
+        if (!data || data.interviewType !== 'job-practice') {
           toast({ title: 'Interview not found', description: 'Please start the job-specific interview again.', variant: 'destructive' });
           setLoading(false);
           return;
@@ -204,6 +204,11 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
             questions: data.sessionData.questions,
             language: interviewLanguage,
             aiPrompt: job?.aiPrompt,
+            resumeContent: data.resumeContent || null,
+            summary: data.summary || null,
+            skillsList: data.skillsList || null,
+            aiProfile: data.aiProfile || null,
+            jobDescription: data.jobDescription || job?.jobDescription || job?.description || null,
             interviewContext
           });
         }
@@ -238,7 +243,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
 
       console.log('✅ Cleanup complete');
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Centralized cleanup function
@@ -414,226 +419,431 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   if (mode === 'voice') {
     return (
       <>
-      <div className="fixed inset-0 w-full h-screen bg-white dark:bg-gray-950 flex flex-col z-50">
-        {/* Header with enhanced controls */}
-        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-border px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2">
-              <div className={`h-3 w-3 rounded-full ${realtimeAPI.isConnected ? 'bg-green-500' : 'bg-yellow-500'} animate-pulse`} />
-              <span className="text-foreground font-medium">
-                {realtimeAPI.isConnected ? 'Live Interview' : 'Connecting...'}
-              </span>
+        <div className="fixed inset-0 w-full h-screen bg-white dark:bg-gray-950 flex flex-col z-50">
+          {/* Header with enhanced controls */}
+          <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-border px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
+                <div className={`h-3 w-3 rounded-full ${realtimeAPI.isConnected ? 'bg-green-500' : 'bg-yellow-500'} animate-pulse`} />
+                <span className="text-foreground font-medium">
+                  {realtimeAPI.isConnected ? 'Live Interview' : 'Connecting...'}
+                </span>
+              </div>
+              <div className="text-muted-foreground text-sm">
+                Job Interview • {job?.jobTitle} • {getLanguageDisplayName(getInterviewLanguage(job, language))}
+              </div>
             </div>
-            <div className="text-muted-foreground text-sm">
-              Job Interview • {job?.jobTitle} • {getLanguageDisplayName(getInterviewLanguage(job, language))}
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowTranscription(!showTranscription)}
+                className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
+                title={showTranscription ? "Hide transcription" : "Show transcription"}
+              >
+                <MessageSquare className="h-4 w-4 text-foreground" />
+                <span className="text-sm font-medium text-foreground">
+                  {showTranscription ? "Hide" : "Show"} Transcription
+                </span>
+              </button>
+
+              <button
+                onClick={() => {
+                  console.log('❌ Close button clicked');
+                  performCleanup();
+                  onClose();
+                }}
+                className="text-muted-foreground hover:text-foreground p-2 rounded-lg hover:bg-accent transition-colors"
+                disabled={processing}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowTranscription(!showTranscription)}
-              className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
-              title={showTranscription ? "Hide transcription" : "Show transcription"}
-            >
-              <MessageSquare className="h-4 w-4 text-foreground" />
-              <span className="text-sm font-medium text-foreground">
-                {showTranscription ? "Hide" : "Show"} Transcription
-              </span>
-            </button>
-
-            <button
-              onClick={() => {
-                console.log('❌ Close button clicked');
-                performCleanup();
-                onClose();
-              }}
-              className="text-muted-foreground hover:text-foreground p-2 rounded-lg hover:bg-accent transition-colors"
-              disabled={processing}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Main video meeting area */}
-        <div className="flex-1 flex flex-col h-full overflow-hidden">
-          {/* Video grid with responsive layout */}
-          <div className={`flex-1 grid gap-4 p-4 min-h-0 ${
-            showTranscription
+          {/* Main video meeting area */}
+          <div className="flex-1 flex flex-col h-full overflow-hidden">
+            {/* Video grid with responsive layout */}
+            <div className={`flex-1 grid gap-4 p-4 min-h-0 ${showTranscription
               ? 'grid-cols-1 lg:grid-cols-2'
               : 'grid-cols-1'
-          }`}>
-            {/* User camera - takes full width when transcription is hidden */}
-            <div className={`relative bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden min-h-0 ${
-              showTranscription ? '' : 'lg:col-span-1'
-            }`}>
-              <CameraPreview
-                stream={cameraStream}
-                isActive={realtimeAPI.isConnected}
-                isRecording={isRecording}
-                error={realtimeAPI.cameraError}
-                connecting={loading}
-                className="h-full"
-              />
-              <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-xs text-white px-3 py-1.5 rounded-full text-sm font-medium">
-                You
+              }`}>
+              {/* User camera - takes full width when transcription is hidden */}
+              <div className={`relative bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden min-h-0 ${showTranscription ? '' : 'lg:col-span-1'
+                }`}>
+                <CameraPreview
+                  stream={cameraStream}
+                  isActive={realtimeAPI.isConnected}
+                  isRecording={isRecording}
+                  error={realtimeAPI.cameraError}
+                  connecting={loading}
+                  className="h-full"
+                />
+                <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-xs text-white px-3 py-1.5 rounded-full text-sm font-medium">
+                  You
+                </div>
+                {realtimeAPI.isConnected && (
+                  <div className="absolute bottom-4 left-4 flex items-center space-x-2 bg-black/70 backdrop-blur-xs px-3 py-1.5 rounded-full">
+                    <div className="h-3 w-3 bg-green-500 rounded-full animate-pulse" />
+                    <span className="text-white text-sm font-medium">Connected</span>
+                  </div>
+                )}
               </div>
-              {realtimeAPI.isConnected && (
-                <div className="absolute bottom-4 left-4 flex items-center space-x-2 bg-black/70 backdrop-blur-xs px-3 py-1.5 rounded-full">
-                  <div className="h-3 w-3 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-white text-sm font-medium">Connected</span>
+
+              {/* Transcription panel - only shown when enabled */}
+              {showTranscription && (
+                <div className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden flex flex-col border border-gray-200 dark:border-border min-h-0 h-full">
+                  {/* Transcription header */}
+                  <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-border">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-foreground font-medium flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4" />
+                        Live Transcription
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <div className={`h-2 w-2 rounded-full ${realtimeAPI.isListening ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'
+                          }`} />
+                        <span className="text-xs text-muted-foreground">
+                          {realtimeAPI.isListening ? 'Listening' : 'Idle'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Transcription content */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+                    {conversationHistory.length > 0 ? (
+                      conversationHistory.map((item, index) => (
+                        <div key={`${item.role}-${index}`} className={`flex ${item.role === 'assistant' ? 'justify-start' : 'justify-end'
+                          }`}>
+                          <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${item.role === 'assistant'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground'
+                            }`}>
+                            <div className="flex items-center gap-1 mb-1">
+                              <span className="text-xs font-medium opacity-75">
+                                {item.role === 'assistant' ? 'PLATO Interviewer' : 'You'}
+                              </span>
+                            </div>
+                            <p className="text-sm leading-relaxed">{item.content}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center text-muted-foreground py-8">
+                        <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Conversation will appear here...</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Transcription panel - only shown when enabled */}
-            {showTranscription && (
-              <div className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden flex flex-col border border-gray-200 dark:border-border min-h-0 h-full">
-                {/* Transcription header */}
-                <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-border">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-foreground font-medium flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4" />
-                      Live Transcription
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      <div className={`h-2 w-2 rounded-full ${
-                        realtimeAPI.isListening ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'
-                      }`} />
-                      <span className="text-xs text-muted-foreground">
-                        {realtimeAPI.isListening ? 'Listening' : 'Idle'}
-                      </span>
+            {/* Meeting controls bar */}
+            <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-border px-6 py-4 shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  {/* Recording status indicator */}
+                  {isRecording && (
+                    <div className="flex items-center space-x-2 bg-destructive text-destructive-foreground px-3 py-1.5 rounded-full shadow-lg">
+                      <Video className="h-4 w-4" />
+                      <span className="text-xs font-medium">Recording</span>
+                      <Circle className="h-2 w-2 bg-destructive-foreground/50 rounded-full animate-pulse" />
+                    </div>
+                  )}
+
+                  <div className="flex items-center space-x-2">
+                    <div className={`h-3 w-3 rounded-full ${realtimeAPI.isConnected ? 'bg-green-500' : 'bg-yellow-500'
+                      } animate-pulse shadow-lg`} />
+                    <span className="text-muted-foreground text-sm font-medium">
+                      {realtimeAPI.isConnected ? (isRecording ? 'Recording' : 'Live') : 'Connecting...'}
+                    </span>
+                  </div>
+
+                  <div className="text-sm text-muted-foreground">
+                    {job?.jobTitle} • {getLanguageDisplayName(getInterviewLanguage(job, language))}
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={async () => {
+                      if (processing || isUploading) {
+                        return;
+                      }
+
+                      console.log('🚪 Exiting interview...');
+                      setIsUploading(true);
+
+                      try {
+                        // Stop recording and finalize (uploads chunks + generates HLS)
+                        console.log('Stopping recording and finalizing on exit...');
+                        const result = await stopRecording();
+
+                        if (result.success) {
+                          console.log('✅ Recording saved on exit:', result.playlistUrl);
+                        } else {
+                          console.warn('⚠️ Recording finalization had issues on exit:', result.error);
+                        }
+                      } catch (error) {
+                        console.error('Error saving recording on exit:', error);
+                      } finally {
+                        // Always cleanup and exit
+                        setIsUploading(false);
+                        performCleanup();
+                        onClose();
+                      }
+                    }}
+                    className="text-muted-foreground hover:text-foreground px-4 py-2 rounded-lg hover:bg-accent transition-colors text-sm font-medium border border-border"
+                    disabled={processing || isUploading}
+                  >
+                    {isUploading ? '⏳ Saving...' : '← Exit Interview'}
+                  </button>
+
+                  <button
+                    onClick={submitVoiceInterview}
+                    disabled={processing || !realtimeAPI.isConnected || isUploading}
+                    className={`${realtimeAPI.isInterviewComplete || isInterviewComplete
+                      ? 'bg-green-600 hover:bg-green-700'
+                      : 'bg-destructive hover:bg-destructive/90'
+                      } disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg font-medium transition-all flex items-center space-x-2 shadow-lg`}
+                  >
+                    {processing || isUploading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        <span>{isUploading ? 'Uploading...' : 'Processing...'}</span>
+                      </>
+                    ) : realtimeAPI.isInterviewComplete || isInterviewComplete ? (
+                      <>
+                        <CheckCircle className="h-4 w-4" />
+                        <span>Submit Interview</span>
+                      </>
+                    ) : (
+                      <>
+                        <PhoneOff className="h-4 w-4" />
+                        <span>End Interview</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Show transcription dialog after interview completion */}
+        {showTranscriptionDialog && completedSessionId && (
+          <InterviewTranscriptionDialog
+            isOpen={showTranscriptionDialog}
+            onClose={() => {
+              setShowTranscriptionDialog(false);
+              setCompletedSessionId(null);
+              onClose(); // Close the main interview modal as well
+            }}
+            sessionId={completedSessionId}
+            initialTranscription={conversationHistory}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Regular dialog for text mode
+  return (
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!open) {
+          // Dialog is closing - perform cleanup
+          console.log('📋 Dialog closing via onOpenChange');
+          performCleanup();
+          onClose();
+        }
+      }}>
+        <DialogContent className="w-screen h-screen max-w-none max-h-none p-0">
+          <DialogHeader className="px-6 py-4 border-b border-border">
+            <DialogTitle>Job-specific Interview</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-auto px-6 py-4">
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="h-10 w-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : !session ? (
+              <div className="text-center text-muted-foreground h-full flex items-center justify-center">No active job-specific interview session.</div>
+            ) : (enableTextInterviews === 'true' && mode === 'text') ? (
+              <div className="max-w-4xl mx-auto space-y-6 h-full flex flex-col">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Text mode • {getLanguageDisplayName(getInterviewLanguage(job, language))}</div>
+                    <h3 className="text-lg font-semibold text-foreground">{job?.jobTitle}</h3>
+                    {job?.jobDescription && (
+                      <div className="mt-2 text-sm text-muted-foreground prose prose-sm max-w-none">
+                        <ReactMarkdown>{job.jobDescription}</ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
+                  <Badge variant="outline">Question {(session.sessionData.responses?.length || 0) + 1} of {session.sessionData.questions?.length || 5}</Badge>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-4">
+
+                  {/* Display previous Q&A pairs */}
+                  {session.sessionData.responses?.map((response, index) => (
+                    <div key={index} className="space-y-3">
+                      <div className="p-4 rounded-lg bg-primary/10 border-l-4 border-primary">
+                        <div className="flex items-start space-x-2 rtl:space-x-reverse">
+                          <User className="h-4 w-4 mt-1 text-primary" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-foreground">Question {index + 1}</p>
+                            <p className="text-sm text-foreground/80">{response.question}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-4 rounded-lg bg-secondary border-l-4 border-secondary-foreground/20 ml-8">
+                        <div className="flex items-start space-x-2 rtl:space-x-reverse">
+                          <MessageCircle className="h-4 w-4 mt-1 text-secondary-foreground" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-secondary-foreground">Your Answer</p>
+                            <p className="text-sm text-secondary-foreground/80">{response.answer}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Current question */}
+                  <div className="p-4 rounded-lg bg-primary/10 border-l-4 border-primary">
+                    <div className="flex items-start space-x-2 rtl:space-x-reverse">
+                      <User className="h-4 w-4 mt-1 text-primary" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground">Question {(session.sessionData.responses?.length || 0) + 1}</p>
+                        <p className="text-sm text-foreground/80">{currentQuestion}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Transcription content */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+                <div className="border-t border-border pt-4 space-y-4">
+                  <Textarea value={currentAnswer} onChange={(e) => setCurrentAnswer(e.target.value)} placeholder="Type your answer here" rows={4} />
+
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={onClose} disabled={submitting}>Close</Button>
+                    <Button onClick={submitTextAnswer} disabled={!currentAnswer.trim() || submitting}>
+                      {submitting ? 'Submitting...' : 'Submit Answer'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Voice mode • {getLanguageDisplayName(getInterviewLanguage(job, language))}</div>
+                    <h3 className="text-lg font-semibold text-foreground">{job?.jobTitle}</h3>
+                    {job?.jobDescription && (
+                      <div className="mt-2 text-sm text-muted-foreground prose prose-sm max-w-none">
+                        <ReactMarkdown>{job.jobDescription}</ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
+                  <Badge variant="outline">Live</Badge>
+                </div>
+
+                {/* Camera Preview */}
+                <CameraPreview
+                  stream={cameraStream}
+                  isActive={realtimeAPI.isConnected}
+                  isRecording={isRecording}
+                  error={realtimeAPI.cameraError}
+                  connecting={loading}
+                  className="h-48 w-full max-w-md mx-auto"
+                />
+
+                <div className="p-3 rounded-md border border-border bg-muted text-sm text-muted-foreground">
+                  {realtimeAPI.isConnected ? 'You are connected. Speak naturally to answer questions.' : 'Connecting to voice interview...'}
+                </div>
+
+                {/* Conversation history for voice mode */}
+                <div className="h-48 overflow-y-auto space-y-2 p-2 border border-border rounded-lg bg-muted/50">
                   {conversationHistory.length > 0 ? (
                     conversationHistory.map((item, index) => (
-                      <div key={`${item.role}-${index}`} className={`flex ${
-                        item.role === 'assistant' ? 'justify-start' : 'justify-end'
-                      }`}>
-                        <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${
-                          item.role === 'assistant'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-secondary text-secondary-foreground'
+                      <div key={`${item.role}-${index}`} className={`p-3 rounded-lg ${item.role === 'assistant'
+                        ? 'bg-primary/10 border border-primary/20'
+                        : 'bg-secondary border border-secondary-foreground/20 ml-8'
                         }`}>
-                          <div className="flex items-center gap-1 mb-1">
-                            <span className="text-xs font-medium opacity-75">
+                        <div className="flex items-start space-x-2 rtl:space-x-reverse">
+                          {item.role === 'assistant' ? (
+                            <User className="h-4 w-4 mt-1 text-primary" />
+                          ) : (
+                            <MessageCircle className="h-4 w-4 mt-1 text-secondary-foreground" />
+                          )}
+                          <div className="flex-1">
+                            <p className={`text-sm font-medium ${item.role === 'assistant' ? 'text-primary' : 'text-secondary-foreground'
+                              }`}>
                               {item.role === 'assistant' ? 'PLATO Interviewer' : 'You'}
-                            </span>
+                            </p>
+                            <p className={`text-sm ${item.role === 'assistant' ? 'text-foreground/80' : 'text-secondary-foreground/80'
+                              }`}>
+                              {item.content}
+                            </p>
                           </div>
-                          <p className="text-sm leading-relaxed">{item.content}</p>
                         </div>
                       </div>
                     ))
                   ) : (
                     <div className="text-center text-muted-foreground py-8">
-                      <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Conversation will appear here...</p>
+                      <p className="text-sm">No conversation yet. Start speaking when connected...</p>
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-          </div>
 
-          {/* Meeting controls bar */}
-          <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-border px-6 py-4 shrink-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                {/* Recording status indicator */}
-                {isRecording && (
-                  <div className="flex items-center space-x-2 bg-destructive text-destructive-foreground px-3 py-1.5 rounded-full shadow-lg">
-                    <Video className="h-4 w-4" />
-                    <span className="text-xs font-medium">Recording</span>
-                    <Circle className="h-2 w-2 bg-destructive-foreground/50 rounded-full animate-pulse" />
-                  </div>
-                )}
-
-                <div className="flex items-center space-x-2">
-                  <div className={`h-3 w-3 rounded-full ${
-                    realtimeAPI.isConnected ? 'bg-green-500' : 'bg-yellow-500'
-                  } animate-pulse shadow-lg`} />
-                  <span className="text-muted-foreground text-sm font-medium">
-                    {realtimeAPI.isConnected ? (isRecording ? 'Recording' : 'Live') : 'Connecting...'}
-                  </span>
-                </div>
-
-                <div className="text-sm text-muted-foreground">
-                  {job?.jobTitle} • {getLanguageDisplayName(getInterviewLanguage(job, language))}
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={async () => {
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={async () => {
                     if (processing || isUploading) {
                       return;
                     }
 
-                    console.log('🚪 Exiting interview...');
-                    setIsUploading(true);
+                    console.log('🚪 Exiting interview from dialog mode...');
 
                     try {
-                      // Stop recording and finalize (uploads chunks + generates HLS)
-                      console.log('Stopping recording and finalizing on exit...');
-                      const result = await stopRecording();
+                      // Stop recording and get the blob
+                      const recordedBlob = await stopRecording();
 
-                      if (result.success) {
-                        console.log('✅ Recording saved on exit:', result.playlistUrl);
+                      // Upload the recording if we have data
+                      if (recordedBlob && recordedBlob.size > 0) {
+                        console.log('Uploading recorded blob...');
+                        await uploadRecording(recordedBlob);
                       } else {
-                        console.warn('⚠️ Recording finalization had issues on exit:', result.error);
+                        console.log('No recording data to upload');
                       }
                     } catch (error) {
                       console.error('Error saving recording on exit:', error);
                     } finally {
                       // Always cleanup and exit
-                      setIsUploading(false);
                       performCleanup();
                       onClose();
                     }
-                  }}
-                  className="text-muted-foreground hover:text-foreground px-4 py-2 rounded-lg hover:bg-accent transition-colors text-sm font-medium border border-border"
-                  disabled={processing || isUploading}
-                >
-                  {isUploading ? '⏳ Saving...' : '← Exit Interview'}
-                </button>
-
-                <button
-                  onClick={submitVoiceInterview}
-                  disabled={processing || !realtimeAPI.isConnected || isUploading}
-                  className={`${
-                    realtimeAPI.isInterviewComplete || isInterviewComplete
-                      ? 'bg-green-600 hover:bg-green-700'
-                      : 'bg-destructive hover:bg-destructive/90'
-                  } disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg font-medium transition-all flex items-center space-x-2 shadow-lg`}
-                >
-                  {processing || isUploading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                      <span>{isUploading ? 'Uploading...' : 'Processing...'}</span>
-                    </>
-                  ) : realtimeAPI.isInterviewComplete || isInterviewComplete ? (
-                    <>
-                      <CheckCircle className="h-4 w-4" />
-                      <span>Submit Interview</span>
-                    </>
-                  ) : (
-                    <>
-                      <PhoneOff className="h-4 w-4" />
-                      <span>End Interview</span>
-                    </>
-                  )}
-                </button>
+                  }} disabled={processing || isUploading}>
+                    <PhoneOff className="h-4 w-4 mr-1" /> End
+                  </Button>
+                  <Button
+                    onClick={submitVoiceInterview}
+                    disabled={processing || !realtimeAPI.isConnected || isUploading}
+                    className={realtimeAPI.isInterviewComplete || isInterviewComplete ? 'bg-green-600 hover:bg-green-700' : ''}
+                  >
+                    {processing || isUploading ? (isUploading ? 'Uploading...' : 'Submitting...') : (
+                      realtimeAPI.isInterviewComplete || isInterviewComplete ? 'Submit Interview' : 'End & Submit'
+                    )}
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Show transcription dialog after interview completion */}
       {showTranscriptionDialog && completedSessionId && (
@@ -648,221 +858,6 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           initialTranscription={conversationHistory}
         />
       )}
-      </>
-    );
-  }
-
-  // Regular dialog for text mode
-  return (
-    <>
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        // Dialog is closing - perform cleanup
-        console.log('📋 Dialog closing via onOpenChange');
-        performCleanup();
-        onClose();
-      }
-    }}>
-      <DialogContent className="w-screen h-screen max-w-none max-h-none p-0">
-        <DialogHeader className="px-6 py-4 border-b border-border">
-          <DialogTitle>Job-specific Interview</DialogTitle>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-auto px-6 py-4">
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="h-10 w-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : !session ? (
-            <div className="text-center text-muted-foreground h-full flex items-center justify-center">No active job-specific interview session.</div>
-          ) : (enableTextInterviews === 'true' && mode === 'text') ? (
-            <div className="max-w-4xl mx-auto space-y-6 h-full flex flex-col">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-muted-foreground">Text mode • {getLanguageDisplayName(getInterviewLanguage(job, language))}</div>
-                <h3 className="text-lg font-semibold text-foreground">{job?.jobTitle}</h3>
-                {job?.jobDescription && (
-                  <div className="mt-2 text-sm text-muted-foreground prose prose-sm max-w-none">
-                    <ReactMarkdown>{job.jobDescription}</ReactMarkdown>
-                  </div>
-                )}
-              </div>
-              <Badge variant="outline">Question {(session.sessionData.responses?.length || 0) + 1} of {session.sessionData.questions?.length || 5}</Badge>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-4">
-
-              {/* Display previous Q&A pairs */}
-              {session.sessionData.responses?.map((response, index) => (
-                <div key={index} className="space-y-3">
-                  <div className="p-4 rounded-lg bg-primary/10 border-l-4 border-primary">
-                    <div className="flex items-start space-x-2 rtl:space-x-reverse">
-                      <User className="h-4 w-4 mt-1 text-primary" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground">Question {index + 1}</p>
-                        <p className="text-sm text-foreground/80">{response.question}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4 rounded-lg bg-secondary border-l-4 border-secondary-foreground/20 ml-8">
-                    <div className="flex items-start space-x-2 rtl:space-x-reverse">
-                      <MessageCircle className="h-4 w-4 mt-1 text-secondary-foreground" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-secondary-foreground">Your Answer</p>
-                        <p className="text-sm text-secondary-foreground/80">{response.answer}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {/* Current question */}
-              <div className="p-4 rounded-lg bg-primary/10 border-l-4 border-primary">
-                <div className="flex items-start space-x-2 rtl:space-x-reverse">
-                  <User className="h-4 w-4 mt-1 text-primary" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">Question {(session.sessionData.responses?.length || 0) + 1}</p>
-                    <p className="text-sm text-foreground/80">{currentQuestion}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-border pt-4 space-y-4">
-              <Textarea value={currentAnswer} onChange={(e) => setCurrentAnswer(e.target.value)} placeholder="Type your answer here" rows={4} />
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={onClose} disabled={submitting}>Close</Button>
-                <Button onClick={submitTextAnswer} disabled={!currentAnswer.trim() || submitting}>
-                  {submitting ? 'Submitting...' : 'Submit Answer'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-muted-foreground">Voice mode • {getLanguageDisplayName(getInterviewLanguage(job, language))}</div>
-                <h3 className="text-lg font-semibold text-foreground">{job?.jobTitle}</h3>
-                {job?.jobDescription && (
-                  <div className="mt-2 text-sm text-muted-foreground prose prose-sm max-w-none">
-                    <ReactMarkdown>{job.jobDescription}</ReactMarkdown>
-                  </div>
-                )}
-              </div>
-              <Badge variant="outline">Live</Badge>
-            </div>
-
-            {/* Camera Preview */}
-            <CameraPreview
-              stream={cameraStream}
-              isActive={realtimeAPI.isConnected}
-              isRecording={isRecording}
-              error={realtimeAPI.cameraError}
-              connecting={loading}
-              className="h-48 w-full max-w-md mx-auto"
-            />
-
-            <div className="p-3 rounded-md border border-border bg-muted text-sm text-muted-foreground">
-              {realtimeAPI.isConnected ? 'You are connected. Speak naturally to answer questions.' : 'Connecting to voice interview...'}
-            </div>
-
-            {/* Conversation history for voice mode */}
-            <div className="h-48 overflow-y-auto space-y-2 p-2 border border-border rounded-lg bg-muted/50">
-              {conversationHistory.length > 0 ? (
-                conversationHistory.map((item, index) => (
-                  <div key={`${item.role}-${index}`} className={`p-3 rounded-lg ${
-                    item.role === 'assistant'
-                      ? 'bg-primary/10 border border-primary/20'
-                      : 'bg-secondary border border-secondary-foreground/20 ml-8'
-                  }`}>
-                    <div className="flex items-start space-x-2 rtl:space-x-reverse">
-                      {item.role === 'assistant' ? (
-                        <User className="h-4 w-4 mt-1 text-primary" />
-                      ) : (
-                        <MessageCircle className="h-4 w-4 mt-1 text-secondary-foreground" />
-                      )}
-                      <div className="flex-1">
-                        <p className={`text-sm font-medium ${
-                          item.role === 'assistant' ? 'text-primary' : 'text-secondary-foreground'
-                        }`}>
-                          {item.role === 'assistant' ? 'PLATO Interviewer' : 'You'}
-                        </p>
-                        <p className={`text-sm ${
-                          item.role === 'assistant' ? 'text-foreground/80' : 'text-secondary-foreground/80'
-                        }`}>
-                          {item.content}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center text-muted-foreground py-8">
-                  <p className="text-sm">No conversation yet. Start speaking when connected...</p>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={async () => {
-                if (processing || isUploading) {
-                  return;
-                }
-
-                console.log('🚪 Exiting interview from dialog mode...');
-
-                try {
-                  // Stop recording and get the blob
-                  const recordedBlob = await stopRecording();
-
-                  // Upload the recording if we have data
-                  if (recordedBlob && recordedBlob.size > 0) {
-                    console.log('Uploading recorded blob...');
-                    await uploadRecording(recordedBlob);
-                  } else {
-                    console.log('No recording data to upload');
-                  }
-                } catch (error) {
-                  console.error('Error saving recording on exit:', error);
-                } finally {
-                  // Always cleanup and exit
-                  performCleanup();
-                  onClose();
-                }
-              }} disabled={processing || isUploading}>
-                <PhoneOff className="h-4 w-4 mr-1" /> End
-              </Button>
-              <Button
-                onClick={submitVoiceInterview}
-                disabled={processing || !realtimeAPI.isConnected || isUploading}
-                className={realtimeAPI.isInterviewComplete || isInterviewComplete ? 'bg-green-600 hover:bg-green-700' : ''}
-              >
-                {processing || isUploading ? (isUploading ? 'Uploading...' : 'Submitting...') : (
-                  realtimeAPI.isInterviewComplete || isInterviewComplete ? 'Submit Interview' : 'End & Submit'
-                )}
-              </Button>
-            </div>
-          </div>
-        )}
-        </div>
-      </DialogContent>
-    </Dialog>
-
-    {/* Show transcription dialog after interview completion */}
-    {showTranscriptionDialog && completedSessionId && (
-      <InterviewTranscriptionDialog
-        isOpen={showTranscriptionDialog}
-        onClose={() => {
-          setShowTranscriptionDialog(false);
-          setCompletedSessionId(null);
-          onClose(); // Close the main interview modal as well
-        }}
-        sessionId={completedSessionId}
-        initialTranscription={conversationHistory}
-      />
-    )}
     </>
   );
 }

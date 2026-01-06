@@ -31,7 +31,7 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const videoStreamRef = useRef<MediaStream | null>(null);
   const aiAudioStreamRef = useRef<MediaStream | null>(null);
-  
+
   const { toast } = useToast();
 
   const connect = useCallback(async (interviewParams?: {
@@ -40,6 +40,11 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
     interviewSet?: any;
     language?: string;
     aiPrompt?: string;
+    resumeContent?: string;
+    summary?: string;
+    skillsList?: string[];
+    aiProfile?: any;
+    jobDescription?: string;
     interviewContext?: {
       jobContext?: {
         title?: string;
@@ -68,9 +73,9 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
     } | null;
   }) => {
     if (isConnecting || isConnected) return;
-    
+
     setIsConnecting(true);
-    
+
     try {
       const model = 'gpt-realtime';
       const voice = 'marin';
@@ -82,37 +87,37 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
         credentials: 'include',
         body: JSON.stringify({ model, voice })
       });
-      
+
       if (!tokenResponse.ok) {
         throw new Error('Failed to get ephemeral token');
       }
-      
+
       const data = await tokenResponse.json();
       console.log('Ephemeral token response:', data);
       const ephemeralKey = data.client_secret?.value || data.client_secret;
-      
+
       if (!ephemeralKey) {
         console.error('No ephemeral key found in response:', data);
         throw new Error('Invalid ephemeral token response');
       }
-      
+
       // Create peer connection
       const pc = new RTCPeerConnection();
       peerConnectionRef.current = pc;
-      
+
       // Set up audio element for model output
       const audioEl = document.createElement('audio');
       audioEl.autoplay = true;
       audioEl.controls = false;
       audioElementRef.current = audioEl;
-      
+
       pc.ontrack = (e) => {
         audioEl.srcObject = e.streams[0];
         aiAudioStreamRef.current = e.streams[0]; // Store AI audio stream for mixing
         setIsSpeaking(true);
         options.onAudioStart?.();
       };
-      
+
       // Get user media for microphone input
       const constraints: MediaStreamConstraints = {
         audio: {
@@ -170,17 +175,17 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
           throw error;
         }
       }
-      
+
       // Add audio track to peer connection
       if (mediaStreamRef.current && mediaStreamRef.current.getAudioTracks().length > 0) {
         pc.addTrack(mediaStreamRef.current.getAudioTracks()[0]);
         setIsListening(true);
       }
-      
+
       // Set up data channel for events
       const dc = pc.createDataChannel('oai-events');
       dataChannelRef.current = dc;
-      
+
       dc.addEventListener('message', (e) => {
         const serverEvent = JSON.parse(e.data);
         console.log('📨 Voice interview event:', serverEvent.type, serverEvent);
@@ -283,12 +288,12 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
 
         options.onMessage?.(serverEvent);
       });
-      
+
       dc.addEventListener('open', () => {
         console.log('🎤 Voice interview connection established - AI ready to talk');
         setIsConnected(true);
         setIsConnecting(false);
-        
+
         // Generate dynamic instructions based on interview parameters
         const buildInstructions = (interviewParams?: {
           interviewType?: string;
@@ -296,6 +301,8 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
           interviewSet?: any;
           language?: string;
           aiPrompt?: string;
+          resumeContent?: string;
+          jobDescription?: string;
           interviewContext?: {
             jobContext?: {
               title?: string;
@@ -338,25 +345,31 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
 
 YOU MUST conduct this ENTIRE interview in: ${language === 'arabic' ? 'ARABIC (العربية الفصحى - Modern Standard Arabic)' : 'ENGLISH'}
 
-CRITICAL RULES:
-1. Your VERY FIRST greeting message MUST be in ${language === 'arabic' ? 'Arabic' : 'English'}
-2. ALL questions MUST be asked in ${language === 'arabic' ? 'Arabic' : 'English'}
-3. ALL responses to the candidate MUST be in ${language === 'arabic' ? 'Arabic' : 'English'}
-4. If the candidate responds in a different language, acknowledge it politely but continue in ${language === 'arabic' ? 'Arabic' : 'English'}
-5. Do NOT switch languages mid-interview under any circumstances
-6. The language parameter has been set to: "${language}"
+ABSOLUTE CRITICAL RULES - NO EXCEPTIONS:
+1. Your VERY FIRST word, sentence, and EVERY word you say MUST be in ${language === 'arabic' ? 'Arabic' : 'English'} - NO MIXING LANGUAGES
+2. Do NOT say "Hey there" or any English words if language is Arabic
+3. Do NOT say "مرحباً" or any Arabic words if language is English
+4. Your VERY FIRST greeting message MUST be 100% in ${language === 'arabic' ? 'Arabic' : 'English'} - start immediately with ${language === 'arabic' ? 'Arabic' : 'English'}
+5. ALL questions MUST be asked in ${language === 'arabic' ? 'Arabic' : 'English'}
+6. ALL responses to the candidate MUST be in ${language === 'arabic' ? 'Arabic' : 'English'}
+7. If the candidate responds in a different language, acknowledge it politely but continue in ${language === 'arabic' ? 'Arabic' : 'English'}
+8. Do NOT switch languages mid-interview under any circumstances
+9. The language parameter has been set to: "${language}"
 
 ${language === 'arabic' ? `
 **For Arabic interviews:**
 - Use Modern Standard Arabic (العربية الفصحى)
 - Use professional, formal Arabic appropriate for business interviews
 - Keep questions clear and grammatically correct
-- Start your first message with an Arabic greeting (e.g., "مرحباً")
+- Start your first message IMMEDIATELY with Arabic - example: "مرحباً، وأهلاً وسهلاً في مقابلة منصة بلاتو"
+- DO NOT use any English words like "Hey", "Hello", "Great", etc. - ONLY Arabic
+- If you use ANY English word in your first message, you have FAILED
 ` : `
 **For English interviews:**
 - Use clear, professional English
 - Maintain a warm and conversational tone
 - Start your first message with an English greeting (e.g., "Hello")
+- DO NOT use any Arabic words - ONLY English
 `}
 
 IF YOU DO NOT FOLLOW THIS LANGUAGE REQUIREMENT FROM YOUR VERY FIRST MESSAGE, YOU HAVE FAILED THE INTERVIEW.
@@ -371,6 +384,138 @@ Speak with warm emotional depth.
 Use empathy, vivid sensory details, gentle pacing,
 and sincere human expression.
 Maintain this emotional tone in every realtime token.
+
+--------------------
+WARMTH WITHOUT PRAISE (STRICT)
+--------------------
+
+Your tone must be warm, calm, and human, but you MUST avoid compliments, hype, approval, or evaluative statements about the candidate.
+
+Core rule:
+- Warmth should come from presence, neutral reflection, and strong follow-up questions — NOT praise.
+
+Response structure (use after every candidate answer):
+1) Give ONE neutral acknowledgment or a neutral reflection (one sentence).
+2) Add ONE smooth transition into the next question (one sentence).
+3) Ask the next question (one question at a time).
+Do not add extra commentary beyond this structure.
+
+Allowed neutral acknowledgments / reflections (examples — invent similar neutral ones):
+- "Got it — thanks for explaining."
+- "Understood. Let me reflect that back: [short paraphrase]."
+- "Okay, that helps. I want to zoom in on one part you mentioned."
+- "I see what you mean. Just to be clear, you're saying [short paraphrase], right?"
+- "Thanks — that gives me useful context."
+
+Allowed smooth transitions (examples — choose what fits, do NOT sound robotic):
+- "With that in mind, I'm curious about…"
+- "To connect that to how you work day-to-day…"
+- "Let's take that one step deeper…"
+- "I want to shift slightly to…"
+- "Now I'd like to explore…"
+- "That gives me context — so here's what I want to ask next…"
+- "Staying on that topic for a second…"
+- "Zooming out a bit…"
+
+HARD BAN (do not use ANY of the following patterns):
+A) Direct praise / hype / approval words:
+- "great", "amazing", "impressive", "excellent", "perfect", "awesome", "brilliant", "fantastic", "outstanding", "incredible", "love that"
+
+B) Indirect praise / trait-labeling (compliments disguised as observations):
+- "This shows you're very [resilient / mature / disciplined / strategic / thoughtful / strong]."
+- "That says a lot about your character."
+- "You clearly have a strong work ethic."
+- "You're the kind of person who…"
+- "This really shows how well you handle challenges / pressure / conflict."
+- "That's a sign of strong leadership."
+- "That demonstrates high emotional intelligence."
+- "That's exactly what top performers do."
+- "You're definitely a high performer."
+
+C) Evaluation + ranking language (even if subtle):
+- "That's the right approach."
+- "That's a very strong answer."
+- "That's what I wanted to hear."
+- "You nailed it."
+- "You're ahead of most candidates."
+- "That puts you in the top tier."
+
+D) Hiring signals / fit claims:
+- "You'd be a great fit here / for this role."
+- "You're a strong candidate."
+- "We'd love to have you."
+- "You're exactly what we're looking for."
+
+E) Motivational / cheerleading statements:
+- "You should be proud of yourself."
+- "Keep it up."
+- "You're doing great."
+
+Empathy rule (when candidate shares something difficult):
+- You MAY acknowledge emotion, but without praise or trait-labeling.
+Use: "Thanks for sharing — that sounds difficult." / "I'm sorry you had to deal with that."
+Then immediately move to grounded follow-ups about actions, learning, and decisions:
+- "What did you do next?"
+- "What was your thinking in that moment?"
+- "What changed in your approach afterward?"
+- "How did you measure whether it worked?"
+
+Replacement behavior (always use this instead of praise):
+- Reflect neutrally + ask one deeper, evidence-based follow-up about actions, trade-offs, metrics, or reasoning.
+Never describe the candidate's personal qualities; only discuss their facts, choices, actions, and outcomes.
+
+--------------------
+CANDIDATE DATA & CONTEXT
+--------------------
+
+${interviewParams?.resumeContent ? `
+## CANDIDATE'S RESUME/CV CONTENT
+Below is the candidate's resume/CV content. Use this to understand their background, experience, skills, and achievements. Reference specific details from their CV when asking questions, but do NOT simply repeat CV information - go deeper into their experiences and decisions.
+
+${interviewParams.resumeContent.length > 5000
+                ? interviewParams.resumeContent.substring(0, 5000) + '\n\n[CV content truncated - showing first 5000 characters]'
+                : interviewParams.resumeContent}
+
+` : ''}
+
+${interviewParams?.summary ? `
+## CANDIDATE'S PROFESSIONAL SUMMARY
+${interviewParams.summary}
+
+` : ''}
+
+${interviewParams?.skillsList && interviewParams.skillsList.length > 0 ? `
+## CANDIDATE'S SKILLS LIST
+${interviewParams.skillsList.join(', ')}
+
+` : ''}
+
+${interviewParams?.aiProfile ? `
+## CANDIDATE'S AI PROFILE ANALYSIS
+Below is the AI-generated profile analysis of this candidate. Use this to understand their assessed strengths, weaknesses, and overall profile. Reference this when asking follow-up questions or validating claims.
+
+${JSON.stringify(interviewParams.aiProfile, null, 2).substring(0, 3000)}${JSON.stringify(interviewParams.aiProfile, null, 2).length > 3000 ? '\n\n[AI Profile truncated - showing first 3000 characters]' : ''}
+
+` : ''}
+
+${interviewParams?.jobDescription || interviewParams?.interviewContext?.jobContext?.description ? `
+## TARGET JOB DESCRIPTION
+${interviewParams.jobDescription || interviewParams.interviewContext?.jobContext?.description || ''}
+
+${interviewParams.interviewContext?.jobContext?.requirements ? `### Additional Requirements:
+${interviewParams.interviewContext.jobContext.requirements}` : ''}
+
+${interviewParams.interviewContext?.jobContext?.technicalSkills && interviewParams.interviewContext.jobContext.technicalSkills.length > 0 ? `### Required Technical Skills:
+${interviewParams.interviewContext.jobContext.technicalSkills.join(', ')}` : ''}
+
+${interviewParams.interviewContext?.jobContext?.softSkills && interviewParams.interviewContext.jobContext.softSkills.length > 0 ? `### Required Soft Skills:
+${interviewParams.interviewContext.jobContext.softSkills.join(', ')}` : ''}
+
+**IMPORTANT:** When asking questions, reference specific requirements from the job description and assess how the candidate's experience and skills align with these requirements. Ask about specific projects or experiences that demonstrate their fit for this role.
+
+` : ''}
+
+--------------------
 
 Your job is to:
 1) Read the candidate's existing data (structured profile + profile analysis + pre-interview questionnaire), and
@@ -905,12 +1050,16 @@ ${customPrompt}`;
           return instructions;
         };
 
+        // Build instructions first
+        const finalInstructions = buildInstructions(interviewParams);
+
+
         // Initialize session with interview-specific settings
         const sessionUpdate = {
           type: 'session.update',
           session: {
             modalities: ['text', 'audio'],
-            instructions: buildInstructions(interviewParams),
+            instructions: finalInstructions,
             voice,
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
@@ -930,30 +1079,29 @@ ${customPrompt}`;
             max_response_output_tokens: 4096
           }
         };
-        
+
         dc.send(JSON.stringify(sessionUpdate));
-        
+
         // Start the conversation
-        console.log('🚀 Sending initial conversation start command to AI');
         const responseCreate = {
           type: 'response.create',
           response: {
             modalities: ['text', 'audio']
           }
         };
-        
+
         dc.send(JSON.stringify(responseCreate));
-        
+
         // Don't send automatic keepalive - let the conversation flow naturally
         // The AI should wait for user responses before continuing
       });
-      
+
       // Create offer and set up connection
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      
+
       const baseUrl = 'https://api.openai.com/v1/realtime';
-      
+
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
         method: 'POST',
         body: offer.sdp,
@@ -962,34 +1110,34 @@ ${customPrompt}`;
           'Content-Type': 'application/sdp'
         }
       });
-      
+
       if (!sdpResponse.ok) {
         throw new Error('Failed to establish WebRTC connection');
       }
-      
+
       const answer = {
         type: 'answer' as const,
         sdp: await sdpResponse.text()
       };
-      
+
       await pc.setRemoteDescription(answer);
-      
+
     } catch (error) {
       console.error('Realtime API connection error:', error);
       setIsConnecting(false);
       setIsConnected(false);
-      
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast({
         title: 'Connection Error',
         description: `Failed to connect to voice interview: ${errorMessage}`,
         variant: 'destructive'
       });
-      
+
       options.onError?.(error instanceof Error ? error : new Error(errorMessage));
     }
   }, [isConnecting, isConnected, options, toast]);
-  
+
   const disconnect = useCallback(() => {
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
@@ -1027,13 +1175,13 @@ ${customPrompt}`;
     setIsInterviewComplete(false);
     setCameraError(null);
   }, []);
-  
+
   const sendMessage = useCallback((message: any) => {
     if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
       dataChannelRef.current.send(JSON.stringify(message));
     }
   }, []);
-  
+
   const toggleMute = useCallback(() => {
     if (mediaStreamRef.current) {
       const audioTrack = mediaStreamRef.current.getAudioTracks()[0];
@@ -1043,14 +1191,14 @@ ${customPrompt}`;
       }
     }
   }, []);
-  
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       disconnect();
     };
   }, [disconnect]);
-  
+
   return {
     connect,
     disconnect,

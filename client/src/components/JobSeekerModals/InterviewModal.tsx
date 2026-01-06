@@ -30,7 +30,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [currentSession, setCurrentSession] = useState<InterviewSession | null>(null);
   const [voiceTranscript, setVoiceTranscript] = useState("");
-  const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
+  const [conversationHistory, setConversationHistory] = useState<Array<{ role: string, content: string }>>([]);
   const [showProfileDetails, setShowProfileDetails] = useState(false);
   const [isInterviewConcluded, setIsInterviewConcluded] = useState(false);
   const [isProcessingInterview, setIsProcessingInterview] = useState(false);
@@ -102,7 +102,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
     retry: false,
   });
 
-  
+
   // Fetch welcome message
   const { data: welcomeMessageData } = useQuery({
     queryKey: ["/api/interview/welcome"],
@@ -130,45 +130,45 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
     },
     onMessage: (event) => {
       console.log('Realtime event:', event);
-      
+
       if (event.type === 'response.audio.delta') {
         // AI started speaking - set speaking state
         setIsAiSpeaking(true);
       }
-      
+
       if (event.type === 'response.audio.done' || event.type === 'response.done') {
         // AI finished speaking - clear speaking state
         setIsAiSpeaking(false);
       }
-      
+
       if (event.type === 'response.audio_transcript.delta') {
         // AI speaking - build transcript
         setVoiceTranscript(prev => prev + (event.delta || ''));
       }
-      
+
       if (event.type === 'response.audio_transcript.done') {
         const aiText = event.transcript;
         setVoiceTranscript("");
-        
+
         // Prevent duplicate responses - only add if different from last response
         if (aiText && aiText !== lastAiResponse) {
           setLastAiResponse(aiText);
-          
+
           // Add unique assistant message to conversation history
           setConversationHistory(prev => {
             // Check if this exact message already exists
-            const isDuplicate = prev.some(msg => 
+            const isDuplicate = prev.some(msg =>
               msg.role === 'assistant' && msg.content === aiText
             );
-            
+
             if (isDuplicate) {
               return prev; // Don't add duplicate
             }
-            
+
             // Add new unique message
             return [...prev, { role: 'assistant', content: aiText }];
           });
-          
+
           // Check if the AI is concluding the interview in English or Arabic
           const conclusionKeywords = [
             'conclude', 'final', 'wrap up', 'end of interview', 'that concludes', 'thank you for', 'this concludes',
@@ -176,19 +176,19 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
             'أتمنى لك', 'شكراً لك', 'انتهت المقابلة', 'نهاية المقابلة', 'هذا كل شيء', 'عفواً', 'تم الانتهاء',
             'بالتوفيق', 'أتمنى لك النجاح', 'هذا يختتم', 'انتهينا من', 'كل التوفيق'
           ];
-          
+
           // Also check for question count completion - if we've reached expected count
           const expectedQuestionCount = getQuestionCount();
           const currentQuestionCount = conversationHistory.filter(msg => msg.role === 'assistant').length;
-          
-          if (conclusionKeywords.some(keyword => aiText.toLowerCase().includes(keyword.toLowerCase())) || 
-              currentQuestionCount >= expectedQuestionCount) {
+
+          if (conclusionKeywords.some(keyword => aiText.toLowerCase().includes(keyword.toLowerCase())) ||
+            currentQuestionCount >= expectedQuestionCount) {
             console.log('🎯 Voice interview concluded - setting submit button state');
             setIsInterviewConcluded(true);
           }
         }
       }
-      
+
       if (event.type === 'input_audio_buffer.speech_started') {
         setVoiceTranscript("");
         // User started speaking - interrupt AI if needed
@@ -196,21 +196,21 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
           setIsAiSpeaking(false);
         }
       }
-      
+
       if (event.type === 'conversation.item.input_audio_transcription.completed') {
         const userText = event.transcript;
-        
+
         // Add user message to conversation history - prevent duplicates
         if (userText) {
           setConversationHistory(prev => {
-            const isDuplicate = prev.some(msg => 
+            const isDuplicate = prev.some(msg =>
               msg.role === 'user' && msg.content === userText
             );
-            
+
             if (isDuplicate) {
               return prev; // Don't add duplicate
             }
-            
+
             return [...prev, { role: 'user', content: userText }];
           });
         }
@@ -258,7 +258,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
     },
     onSuccess: (data) => {
       setIsStartingInterview(false);
-      
+
       // Create session object from the response data
       const session = {
         id: data.sessionId,
@@ -269,13 +269,13 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         },
         isCompleted: false
       };
-      
+
       setCurrentSession(session);
       setCurrentQuestionIndex(0);
-      
+
       // Show welcome message first, then first question
       const messages = [];
-      
+
       if (welcomeMessageData && typeof welcomeMessageData === 'object' && 'welcomeMessage' in welcomeMessageData) {
         messages.push({
           type: 'question' as const,
@@ -283,31 +283,31 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
           timestamp: new Date()
         });
       }
-      
+
       if (data.firstQuestion) {
-        const questionContent = typeof data.firstQuestion === 'string' 
-          ? data.firstQuestion 
+        const questionContent = typeof data.firstQuestion === 'string'
+          ? data.firstQuestion
           : (data.firstQuestion.question || data.firstQuestion.text || JSON.stringify(data.firstQuestion));
-        
+
         messages.push({
           type: 'question' as const,
           content: questionContent,
           timestamp: new Date()
         });
       }
-      
+
       setMessages(messages);
     },
     onError: (error: any) => {
       setIsStartingInterview(false);
       console.error('Start interview error:', error);
-      
+
       // Check if the error is due to missing resume
       if (error?.message?.includes("Resume required") || error?.message?.includes("requiresResume")) {
         setShowResumeModal(true);
         return;
       }
-      
+
       if (isUnauthorizedError(error as Error)) {
         toast({
           title: t('auth.unauthorized') || "Unauthorized",
@@ -319,7 +319,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         }, 500);
         return;
       }
-      
+
       toast({
         title: t('interview.startError') || "Error",
         description: t('interview.startErrorDescription') || "Failed to start interview. Please try again.",
@@ -343,7 +343,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         setCurrentSession(prev => prev ? { ...prev, isCompleted: true, generatedProfile: data.profile } : null);
         queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
         queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
-        
+
         if (data.allInterviewsCompleted) {
           // Final completion - show profile generation success
           toast({
@@ -363,7 +363,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
             title: t('interview.interviewSectionComplete') || "Interview Section Complete",
             description: `${t('interview.movingTo') || 'Moving to'} ${data.nextInterviewType} ${t('interview.interview') || 'interview'}...`,
           });
-          
+
           // Automatically start next interview
           setTimeout(() => {
             setSelectedInterviewType(data.nextInterviewType);
@@ -384,7 +384,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         };
         setMessages(prev => [...prev, nextQuestion]);
         setCurrentQuestionIndex(prev => prev + 1);
-        
+
         // Check if the question contains conclusion keywords in English or Arabic to show submit button
         const conclusionKeywords = [
           'conclude', 'final', 'wrap up', 'end of interview', 'that concludes', 'thank you for', 'this concludes',
@@ -392,11 +392,11 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
           'أتمنى لك', 'شكراً لك', 'انتهت المقابلة', 'نهاية المقابلة', 'هذا كل شيء', 'عفواً', 'تم الانتهاء',
           'بالتوفيق', 'أتمنى لك النجاح', 'هذا يختتم', 'انتهينا من', 'كل التوفيق'
         ];
-        
+
         // Also check if this is the last question in the set
         const questions = currentSession?.sessionData?.questions || [];
         const isLastQuestion = currentQuestionIndex >= questions.length - 1;
-        
+
         if (conclusionKeywords.some(keyword => data.nextQuestion.toLowerCase().includes(keyword.toLowerCase())) || isLastQuestion) {
           console.log('🎯 Text interview concluded - setting submit button state');
           setIsInterviewConcluded(true);
@@ -412,18 +412,18 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
     },
   });
 
-  
+
   const processVoiceInterviewMutation = useMutation({
     mutationFn: async () => {
       setIsProcessingInterview(true);
-      
+
       // Convert conversation history to the format expected by the API
       // Group conversation by pairs of AI question and user response
       const responses = [];
       for (let i = 0; i < conversationHistory.length; i += 2) {
         const aiMessage = conversationHistory[i];
         const userMessage = conversationHistory[i + 1];
-        
+
         if (aiMessage?.role === 'assistant' && userMessage?.role === 'user') {
           responses.push({
             question: aiMessage.content,
@@ -436,7 +436,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
       if (responses.length === 0) {
         const aiMessages = conversationHistory.filter(msg => msg.role === 'assistant');
         const userMessages = conversationHistory.filter(msg => msg.role === 'user');
-        
+
         for (let i = 0; i < Math.min(aiMessages.length, userMessages.length); i++) {
           responses.push({
             question: aiMessages[i]?.content || `Question ${i + 1}`,
@@ -495,7 +495,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         setIsInterviewConcluded(false);
         console.log('Voice interview processing completed');
       }
-      
+
       if (data.allInterviewsCompleted) {
         // Final completion - show profile generation success and close modal
         toast({
@@ -513,7 +513,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
           title: t('interview.interviewSectionComplete') || "Interview Section Complete",
           description: `${t('interview.movingTo') || 'Moving to'} ${data.nextInterviewType} ${t('interview.interview') || 'interview'}...`,
         });
-        
+
         // Automatically start next interview
         setTimeout(() => {
           setSelectedInterviewType(data.nextInterviewType);
@@ -525,7 +525,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
           title: t('interview.voiceInterviewComplete') || "Interview Complete!",
           description: t('interview.voiceInterviewProcessedSuccessfully') || "Your voice interview has been processed successfully.",
         });
-        
+
         // Reset to interview types view
         setMode('select');
         setSelectedInterviewType('');
@@ -534,7 +534,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
     onError: (error) => {
       setIsProcessingInterview(false);
       console.error('Voice interview processing error:', error);
-      
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
         title: t('interview.processingFailed') || "Processing Failed",
@@ -631,7 +631,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
 
   const handleSubmitAnswer = async () => {
     if (!currentAnswer.trim() || !currentSession) return;
-    
+
     // Add user answer to messages
     const userMessage: InterviewMessage = {
       type: 'answer',
@@ -639,46 +639,46 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
       timestamp: new Date()
     };
     setMessages(prev => [...prev, userMessage]);
-    
+
     // Update conversation history for text interviews
     setConversationHistory(prev => [...prev, { role: 'user', content: currentAnswer.trim() }]);
-    
+
     try {
       // For text interviews, process response through the unified system
       const currentQuestionIndex = currentSession.sessionData?.currentQuestionIndex || 0;
       const questions = currentSession.sessionData?.questions || [];
-      
+
       if (currentQuestionIndex < questions.length - 1) {
         // Move to next question
         const nextIndex = currentQuestionIndex + 1;
         const questionObj = questions[nextIndex];
-        const questionContent = typeof questionObj === 'string' 
-          ? questionObj 
+        const questionContent = typeof questionObj === 'string'
+          ? questionObj
           : questionObj?.question || questionObj?.text || JSON.stringify(questionObj);
-          
+
         const nextQuestion: InterviewMessage = {
           type: 'question',
           content: questionContent,
           timestamp: new Date()
         };
-        
+
         setMessages(prev => [...prev, nextQuestion]);
-        
+
         // Update session data
         setCurrentSession(prev => prev ? {
           ...prev,
           sessionData: {
             ...prev.sessionData!,
             currentQuestionIndex: nextIndex,
-            responses: [...(prev.sessionData?.responses || []), { 
-              question: typeof questions[currentQuestionIndex] === 'string' 
-                ? questions[currentQuestionIndex] 
+            responses: [...(prev.sessionData?.responses || []), {
+              question: typeof questions[currentQuestionIndex] === 'string'
+                ? questions[currentQuestionIndex]
                 : questions[currentQuestionIndex]?.question || questions[currentQuestionIndex]?.text || '',
-              answer: currentAnswer.trim() 
+              answer: currentAnswer.trim()
             }]
           }
         } : null);
-        
+
         // Check if this is the last question
         if (nextIndex === questions.length - 1) {
           setIsInterviewConcluded(true);
@@ -695,22 +695,22 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         variant: 'destructive'
       });
     }
-    
+
     setCurrentAnswer("");
   };
 
   const processInterviewCompletion = async () => {
     if (!currentSession) return;
-    
+
     try {
       // Submit final answer and process completion
       const finalAnswer = currentAnswer.trim();
       const allResponses = [...(currentSession.sessionData?.responses || []), finalAnswer];
-      
+
       // Call the interview completion endpoint
       const response = await fetch('/api/interview/complete-voice', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
@@ -728,18 +728,18 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
       }
 
       const completionData = await response.json();
-      
+
       // Mark session as completed
-      setCurrentSession(prev => prev ? { 
-        ...prev, 
+      setCurrentSession(prev => prev ? {
+        ...prev,
         isCompleted: true,
-        generatedProfile: completionData.profile 
+        generatedProfile: completionData.profile
       } : null);
 
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/candidate/profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/interview/types"] });
-      
+
       if (completionData.allInterviewsCompleted) {
         // Final completion - show profile generation success
         toast({
@@ -762,7 +762,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         setMode('select');
         setSelectedInterviewType('');
       }
-      
+
     } catch (error) {
       console.error('Error completing interview:', error);
       toast({
@@ -774,93 +774,93 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
   };;
 
   const startCameraAccess = async () => {
-  try {
-    const videoStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        width: { ideal: 1280, max: 1920 },
-        height: { ideal: 720, max: 1080 },
-        facingMode: 'user'
-      },
-      audio: true,
-    });
-    setCameraStream(videoStream);
-    startRecording(videoStream);
-    return videoStream;
-  } catch (error) {
-    console.error('Camera access error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to access camera';
-    toast({
-      title: 'Camera Access Failed',
-      description: 'Could not access camera. You can continue with audio only.',
-      variant: 'destructive'
-    });
-    return null;
-  }
-};
-
-const enterFullscreen = async () => {
-  try {
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) {
-      await elem.requestFullscreen();
-    } else if ((elem as any).webkitRequestFullscreen) {
-      await (elem as any).webkitRequestFullscreen();
-    } else if ((elem as any).mozRequestFullScreen) {
-      await (elem as any).mozRequestFullScreen();
-    } else if ((elem as any).msRequestFullscreen) {
-      await (elem as any).msRequestFullscreen();
+    try {
+      const videoStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          facingMode: 'user'
+        },
+        audio: true,
+      });
+      setCameraStream(videoStream);
+      startRecording(videoStream);
+      return videoStream;
+    } catch (error) {
+      console.error('Camera access error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to access camera';
+      toast({
+        title: 'Camera Access Failed',
+        description: 'Could not access camera. You can continue with audio only.',
+        variant: 'destructive'
+      });
+      return null;
     }
-    setIsFullscreen(true);
-  } catch (error) {
-    console.error('Fullscreen error:', error);
-  }
-};
-
-const exitFullscreen = async () => {
-  try {
-    if (document.exitFullscreen) {
-      await document.exitFullscreen();
-    } else if ((document as any).webkitExitFullscreen) {
-      await (document as any).webkitExitFullscreen();
-    } else if ((document as any).mozCancelFullScreen) {
-      await (document as any).mozCancelFullScreen();
-    } else if ((document as any).msExitFullscreen) {
-      await (document as any).msExitFullscreen();
-    }
-    setIsFullscreen(false);
-  } catch (error) {
-    console.error('Exit fullscreen error:', error);
-  }
-};
-
-const toggleFullscreen = () => {
-  if (isFullscreen) {
-    exitFullscreen();
-  } else {
-    enterFullscreen();
-  }
-};
-
-// Listen for fullscreen changes
-useEffect(() => {
-  const handleFullscreenChange = () => {
-    setIsFullscreen(!!document.fullscreenElement);
   };
 
-  document.addEventListener('fullscreenchange', handleFullscreenChange);
-  document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-  document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-  document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-
-  return () => {
-    document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
-    document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+  const enterFullscreen = async () => {
+    try {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        await elem.requestFullscreen();
+      } else if ((elem as any).webkitRequestFullscreen) {
+        await (elem as any).webkitRequestFullscreen();
+      } else if ((elem as any).mozRequestFullScreen) {
+        await (elem as any).mozRequestFullScreen();
+      } else if ((elem as any).msRequestFullscreen) {
+        await (elem as any).msRequestFullscreen();
+      }
+      setIsFullscreen(true);
+    } catch (error) {
+      console.error('Fullscreen error:', error);
+    }
   };
-}, []);
 
-const startVoiceInterview = async () => {
+  const exitFullscreen = async () => {
+    try {
+      if (document.exitFullscreen) {
+        await document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        await (document as any).webkitExitFullscreen();
+      } else if ((document as any).mozCancelFullScreen) {
+        await (document as any).mozCancelFullScreen();
+      } else if ((document as any).msExitFullscreen) {
+        await (document as any).msExitFullscreen();
+      }
+      setIsFullscreen(false);
+    } catch (error) {
+      console.error('Exit fullscreen error:', error);
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (isFullscreen) {
+      exitFullscreen();
+    } else {
+      enterFullscreen();
+    }
+  };
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
+
+  const startVoiceInterview = async () => {
 
     // First show violation rules if not accepted yet
     if (!violationRulesAccepted) {
@@ -943,7 +943,11 @@ const startVoiceInterview = async () => {
       await realtimeAPI.connect({
         interviewType: 'professional',
         questions: interviewData.questions,
-        language: selectedInterviewLanguage
+        language: selectedInterviewLanguage,
+        resumeContent: interviewData.resumeContent || null,
+        summary: interviewData.summary || null,
+        skillsList: interviewData.skillsList || null,
+        aiProfile: interviewData.aiProfile || null
       });
 
       setIsStartingInterview(false);
@@ -979,7 +983,7 @@ const startVoiceInterview = async () => {
     setMessages([]);
     setIsInterviewConcluded(false);
     setConversationHistory([]);
-    
+
     // Show loading message immediately
     const loadingMessage: InterviewMessage = {
       type: 'question',
@@ -987,16 +991,16 @@ const startVoiceInterview = async () => {
       timestamp: new Date()
     };
     setMessages([loadingMessage]);
-    
+
     try {
       // Use the same backend system as voice interview
       const response = await fetch('/api/interview/start-voice', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           interviewType: 'professional',
           language: selectedInterviewLanguage
         })
@@ -1010,7 +1014,7 @@ const startVoiceInterview = async () => {
 
       const interviewData = await response.json();
       console.log('Text interview initialized:', interviewData);
-      
+
       // Update current session
       setCurrentSession({
         id: interviewData.sessionId,
@@ -1029,14 +1033,14 @@ const startVoiceInterview = async () => {
           content: interviewData.welcomeMessage,
           timestamp: new Date()
         };
-        
+
         // If there are questions, show the first one after the welcome
         if (interviewData.questions && interviewData.questions.length > 0) {
           const firstQuestionObj = interviewData.questions[0];
-          const firstQuestionText = typeof firstQuestionObj === 'string' 
-            ? firstQuestionObj 
+          const firstQuestionText = typeof firstQuestionObj === 'string'
+            ? firstQuestionObj
             : firstQuestionObj?.question || firstQuestionObj?.text || 'Question content not available';
-            
+
           const firstQuestion: InterviewMessage = {
             type: 'question',
             content: firstQuestionText,
@@ -1049,10 +1053,10 @@ const startVoiceInterview = async () => {
       } else if (interviewData.questions && interviewData.questions.length > 0) {
         // Show first question directly if no welcome message
         const firstQuestionObj = interviewData.questions[0];
-        const firstQuestionText = typeof firstQuestionObj === 'string' 
-          ? firstQuestionObj 
+        const firstQuestionText = typeof firstQuestionObj === 'string'
+          ? firstQuestionObj
           : firstQuestionObj?.question || firstQuestionObj?.text || 'Question content not available';
-          
+
         const firstQuestion: InterviewMessage = {
           type: 'question',
           content: firstQuestionText,
@@ -1060,7 +1064,7 @@ const startVoiceInterview = async () => {
         };
         setMessages([firstQuestion]);
       }
-      
+
       setIsStartingInterview(false);
       toast({
         title: t('interview.textInterviewStarted') || "Text Interview Started",
@@ -1069,9 +1073,9 @@ const startVoiceInterview = async () => {
     } catch (error) {
       setIsStartingInterview(false);
       console.error('Text interview error:', error);
-      
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
+
       toast({
         title: t('interview.failedToStartInterview') || 'Failed to Start Interview',
         description: `${t('interview.couldNotStartTextInterview') || 'Could not start text interview'}: ${errorMessage}. ${t('interview.pleaseTryAgain') || 'Please try again'}.`,
@@ -1217,7 +1221,7 @@ const startVoiceInterview = async () => {
     onClose();
   };
 
-  
+
   useEffect(() => {
     if (existingSession && typeof existingSession === 'object' && !currentSession) {
       const session = existingSession as InterviewSession;
@@ -1234,7 +1238,13 @@ const startVoiceInterview = async () => {
                 await realtimeAPI.connect({
                   interviewType: 'job-practice',
                   questions: session.sessionData?.questions,
-                  language: selectedInterviewLanguage
+                  language: selectedInterviewLanguage,
+                  resumeContent: session.sessionData?.context?.resumeContent || null,
+                  summary: session.sessionData?.context?.summary || null,
+                  skillsList: session.sessionData?.context?.skillsList || null,
+                  aiProfile: session.sessionData?.context?.aiProfile || null,
+                  jobDescription: session.sessionData?.context?.job?.jobDescription || session.sessionData?.context?.job?.description || null,
+                  interviewContext: session.sessionData?.context?.interviewContext || null
                 });
               } catch (e) {
                 console.error('Auto voice connect failed:', e);
@@ -1339,7 +1349,11 @@ const startVoiceInterview = async () => {
       await realtimeAPI.connect({
         interviewType: 'professional',
         questions: interviewData.questions,
-        language: selectedInterviewLanguage
+        language: selectedInterviewLanguage,
+        resumeContent: interviewData.resumeContent || null,
+        summary: interviewData.summary || null,
+        skillsList: interviewData.skillsList || null,
+        aiProfile: interviewData.aiProfile || null
       });
 
       setIsStartingInterview(false);
@@ -1435,7 +1449,7 @@ const startVoiceInterview = async () => {
     }
   };
 
-  
+
   // Voice mode uses a different, full-screen interface
   if (mode === 'voice') {
     return (
@@ -1457,9 +1471,8 @@ const startVoiceInterview = async () => {
               {/* Transcription toggle */}
               <button
                 onClick={() => setShowTranscription(!showTranscription)}
-                className={`flex items-center space-x-2 px-3 py-1 rounded-lg transition-colors ${
-                  showTranscription ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
+                className={`flex items-center space-x-2 px-3 py-1 rounded-lg transition-colors ${showTranscription ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
                 title={showTranscription ? t('interview.transcriptHideTooltip') : t('interview.transcriptShowTooltip')}
               >
                 <MessageCircle className="h-4 w-4" />
