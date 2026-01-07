@@ -2,7 +2,8 @@ import OpenAI from "openai";
 import { toFile } from "openai/uploads";
 import { wrapOpenAIRequest } from "./openaiTracker";
 import fs from 'fs';
-import { INTERVIEW_PROFILE_GENERATOR_V6 } from "./prompts/interview-profile-generator-v6";
+import { INTERVIEW_PROFILE_GENERATOR_V7 } from "./prompts/interview-profile-generator-v7";
+import { storage } from "./storage";
 
 // OpenAI client - models are configured via environment variables
 const openai = new OpenAI({
@@ -1250,15 +1251,133 @@ export class AIProfileAnalysisAgent {
       return sum + (r.content?.split(/\s+/).filter(w => w.length > 0).length || 0);
     }, 0);
 
-    // Generate the V6 prompt (advanced transcription analysis and comprehensive assessment)
-    const prompt = INTERVIEW_PROFILE_GENERATOR_V6(
+    // Fetch applicant profile from database to get analyzed data
+    let applicantProfile = null;
+    if (userData?.id) {
+      try {
+        applicantProfile = await storage.getApplicantProfile(userData.id);
+        if (applicantProfile) {
+          console.log('📋 Fetched applicant profile for user:', userData.id);
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to fetch applicant profile:', error);
+        // Continue without applicant profile if fetch fails
+      }
+    }
+
+    // Log ALL final parameters that will be passed to V7 function RIGHT BEFORE calling it
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const logPath = path.join(__dirname, '../shared/core/complete_voice_log.txt');
+      fs.writeFileSync(
+        logPath,
+        JSON.stringify({
+          type: 'v7_final_parameters_before_call',
+          timestamp: new Date().toISOString(),
+          userId: userData?.id,
+          parameters: {
+            userData: {
+              hasUserData: !!userData,
+              userId: userData?.id,
+              userName: userData?.name,
+              userEmail: userData?.email,
+              keys: userData ? Object.keys(userData) : [],
+              // Full userData (might be large)
+              fullUserData: userData
+            },
+            interviewResponses: {
+              hasResponses: !!interviewResponses,
+              count: Array.isArray(interviewResponses) ? interviewResponses.length : 0,
+              userResponsesCount: Array.isArray(interviewResponses) ? interviewResponses.filter((r: any) => r.role === 'user').length : 0,
+              assistantResponsesCount: Array.isArray(interviewResponses) ? interviewResponses.filter((r: any) => r.role === 'assistant' || r.role === 'ai').length : 0,
+              // Full interview responses
+              fullInterviewResponses: interviewResponses
+            },
+            resumeAnalysis: {
+              hasResumeAnalysis: !!resumeAnalysisForPrompt,
+              type: typeof resumeAnalysisForPrompt,
+              keys: resumeAnalysisForPrompt ? Object.keys(resumeAnalysisForPrompt) : [],
+              // Full resume analysis
+              fullResumeAnalysis: resumeAnalysisForPrompt
+            },
+            resumeContent: {
+              hasResumeContent: !!resumeContent,
+              type: typeof resumeContent,
+              length: resumeContent ? (typeof resumeContent === 'string' ? resumeContent.length : JSON.stringify(resumeContent).length) : 0,
+              preview: resumeContent ? (typeof resumeContent === 'string' ? resumeContent.substring(0, 500) : JSON.stringify(resumeContent).substring(0, 500)) : null,
+              // Full resume content (might be very large)
+              fullResumeContent: resumeContent
+            },
+            jobDescription: {
+              hasJobDescription: !!jobDescription,
+              type: typeof jobDescription,
+              length: jobDescription ? jobDescription.length : 0,
+              preview: jobDescription ? jobDescription.substring(0, 500) : null,
+              // Full job description
+              fullJobDescription: jobDescription
+            },
+            jobRequirements: {
+              value: undefined,
+              note: 'jobRequirements is undefined (not passed to V7)'
+            },
+            qualityCheck: {
+              hasQualityCheck: !!qualityCheck,
+              qualityScore: qualityCheck?.qualityScore,
+              dataSufficiency: qualityCheck?.dataSufficiency,
+              isValid: qualityCheck?.isValid,
+              issuesCount: qualityCheck?.issues?.length || 0,
+              // Full quality check
+              fullQualityCheck: qualityCheck
+            },
+            applicantProfile: {
+              hasApplicantProfile: !!applicantProfile,
+              type: typeof applicantProfile,
+              keys: applicantProfile ? Object.keys(applicantProfile) : [],
+              // Full applicant profile (might be large)
+              fullApplicantProfile: applicantProfile
+            }
+          },
+          missingParameters: [
+            !userData ? 'userData is MISSING' : null,
+            !interviewResponses || (Array.isArray(interviewResponses) && interviewResponses.length === 0) ? 'interviewResponses is MISSING or EMPTY' : null,
+            !resumeAnalysisForPrompt ? 'resumeAnalysis is MISSING (optional but recommended)' : null,
+            !resumeContent ? 'resumeContent is MISSING (optional but recommended)' : null,
+            !jobDescription ? 'jobDescription is MISSING (optional)' : null,
+            !qualityCheck ? 'qualityCheck is MISSING (should be generated)' : null,
+            !applicantProfile ? 'applicantProfile is MISSING (optional but recommended)' : null
+          ].filter(Boolean),
+          v7FunctionCall: {
+            functionName: 'INTERVIEW_PROFILE_GENERATOR_V7',
+            parametersOrder: [
+              'userData',
+              'interviewResponses',
+              'resumeAnalysisForPrompt',
+              'resumeContent',
+              'jobDescription',
+              'jobRequirements (undefined)',
+              'qualityCheck',
+              'applicantProfile'
+            ]
+          }
+        }, null, 2) + '\n',
+        { flag: 'a' }
+      );
+      console.log('📝 Logged all final V7 parameters to complete_voice_log.txt (RIGHT BEFORE V7 CALL)');
+    } catch (logError) {
+      console.error('❌ Failed to log final V7 parameters:', logError);
+    }
+
+    // Generate the V7 prompt (advanced transcription analysis and comprehensive assessment)
+    const prompt = INTERVIEW_PROFILE_GENERATOR_V7(
       userData,
       interviewResponses,
       resumeAnalysisForPrompt,
       resumeContent,
       jobDescription || null,
       undefined, // jobRequirements (if exists)
-      qualityCheck // ADD THIS - pass quality check to prompt
+      qualityCheck, // pass quality check to prompt
+      applicantProfile // pass applicant profile as cv data field
     );
 
     // Log the prompt to /tmp for debugging/auditing.
@@ -1274,7 +1393,8 @@ export class AIProfileAnalysisAgent {
         interviewResponses,
         resumeAnalysisForPrompt,
         resumeContent,
-        jobDescription
+        jobDescription,
+        applicantProfile
       }, null, 2), { encoding: 'utf8' });
       console.log(`Wrote comprehensive profile prompt to ${filename}`);
     } catch (err) {
@@ -1432,7 +1552,7 @@ export class AIProfileAnalysisAgent {
         comprehensiveProfile.detailed_profile?.work_preferences?.stated_preferences?.join('; ') ||
         (isInsufficientData ? "Cannot determine work style - insufficient responses provided." : "Not assessed");
 
-      // Use scores from brutallyHonestProfile directly (V6 structure has scores at root level)
+      // Use scores from brutallyHonestProfile directly (V7 structure may have scores at root level or in score object)
       // Fallback to calculated scores if not available
       const finalOverallScore = typeof comprehensiveProfile.overallScore === 'number' ? comprehensiveProfile.overallScore : overallScore;
       const finalExperienceScore = typeof comprehensiveProfile.experienceScore === 'number' ? comprehensiveProfile.experienceScore : experienceScore;
@@ -2395,6 +2515,13 @@ Return ONLY JSON:
 
       const prompt = `You are a professional interview coach analyzing an interview transcription. Parse the conversation into question-answer pairs and provide brief, actionable feedback.
 
+CRITICAL RULES:
+1. ONLY include Q&A pairs where BOTH a question AND an answer exist
+2. If a question has NO answer (no CANDIDATE message follows), DO NOT include it in the results
+3. DO NOT invent, guess, or create answers that don't exist in the transcript
+4. DO NOT use placeholder text like "No answer" or "Answer not provided" - simply exclude that question
+5. If the transcript only contains questions with no answers, return an empty array: {"data": []}
+
 For each Q&A pair, extract:
 1. The question asked by the interviewer (INTERVIEWER messages)
 2. The answer given by the candidate (CANDIDATE messages that follow)
@@ -2471,7 +2598,7 @@ ${formattedTranscript}`;
 
         if (!qaData || !Array.isArray(qaData) || qaData.length === 0) {
           console.log('⚠️ parseInterviewTranscription - No valid QA data found in response, parsed keys:', Object.keys(parsed));
-          // Fallback to simple parsing
+          // Fallback to simple parsing - ONLY include pairs where answer exists
           return transcription
             .filter((item, index) =>
               item.role === 'assistant' &&
@@ -2482,15 +2609,20 @@ ${formattedTranscript}`;
               const nextItem = transcription.find((t, i) =>
                 i > transcription.indexOf(item) && t.role === 'user'
               );
+              // Only return if answer actually exists
+              if (!nextItem || !nextItem.content) {
+                return null;
+              }
               return {
                 question: item.content,
-                answer: nextItem?.content || '',
+                answer: nextItem.content,
                 feedbackTitle: '',
                 feedback: 'Feedback not available',
                 questionTimestamp: item.timestamp,
-                answerTimestamp: nextItem?.timestamp || item.timestamp
+                answerTimestamp: nextItem.timestamp
               };
-            });
+            })
+            .filter((qa): qa is NonNullable<typeof qa> => qa !== null);
         }
 
         console.log('✅ parseInterviewTranscription - Found QA data, count:', qaData.length);
@@ -2503,7 +2635,7 @@ ${formattedTranscript}`;
         return qaData;
       } catch (parseError) {
         console.error('Failed to parse AI response as JSON:', parseError);
-        // Fallback to simple parsing
+        // Fallback to simple parsing - ONLY include pairs where answer exists
         return transcription
           .filter((item, index) =>
             item.role === 'assistant' &&
@@ -2514,19 +2646,24 @@ ${formattedTranscript}`;
             const nextItem = transcription.find((t, i) =>
               i > transcription.indexOf(item) && t.role === 'user'
             );
+            // Only return if answer actually exists
+            if (!nextItem || !nextItem.content) {
+              return null;
+            }
             return {
               question: item.content,
-              answer: nextItem?.content || '',
+              answer: nextItem.content,
               feedbackTitle: '',
               feedback: 'Feedback not available',
               questionTimestamp: item.timestamp,
-              answerTimestamp: nextItem?.timestamp || item.timestamp
+              answerTimestamp: nextItem.timestamp
             };
-          });
+          })
+          .filter((qa): qa is NonNullable<typeof qa> => qa !== null);
       }
     } catch (error) {
       console.error('Error parsing transcription with AI:', error);
-      // Fallback to simple parsing
+      // Fallback to simple parsing - ONLY include pairs where answer exists
       return transcription
         .filter((item, index) =>
           item.role === 'assistant' &&
@@ -2537,15 +2674,20 @@ ${formattedTranscript}`;
           const nextItem = transcription.find((t, i) =>
             i > transcription.indexOf(item) && t.role === 'user'
           );
+          // Only return if answer actually exists
+          if (!nextItem || !nextItem.content) {
+            return null;
+          }
           return {
             question: item.content,
-            answer: nextItem?.content || '',
+            answer: nextItem.content,
             feedbackTitle: '',
             feedback: 'Feedback not available',
             questionTimestamp: item.timestamp,
-            answerTimestamp: nextItem?.timestamp || item.timestamp
+            answerTimestamp: nextItem.timestamp
           };
-        });
+        })
+        .filter((qa): qa is NonNullable<typeof qa> => qa !== null);
     }
   },
 

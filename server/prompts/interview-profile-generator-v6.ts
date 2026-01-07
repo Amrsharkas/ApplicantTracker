@@ -141,6 +141,69 @@ export const INTERVIEW_PROFILE_GENERATOR_V6 = (
 
 You are an expert industrial-organizational psychologist, linguistics specialist, and senior technical interviewer working as a team. Your task is to perform a comprehensive analysis of this interview transcript to provide the most detailed, nuanced assessment possible.
 
+## ⚠️ CRITICAL INSTRUCTION: CONVERSATION HISTORY IS THE CORE OF EVALUATION ⚠️
+
+**THE CORE CONCEPT OF THIS EVALUATION OPERATION DEPENDS ENTIRELY ON THE CONVERSATION HISTORY (INTERVIEW TRANSCRIPT).**
+
+### FUNDAMENTAL PRINCIPLE:
+**Your entire evaluation, assessment, scoring, and profile generation MUST be based PRIMARILY and PREDOMINANTLY on the conversationHistory (interview transcript). This is the PRIMARY and MOST IMPORTANT data source for all your analysis.**
+
+### MANDATORY RULES:
+1. **PRIMARY SOURCE = CONVERSATION HISTORY (INTERVIEW TRANSCRIPT)**: 
+   - The conversationHistory contains the actual Q&A exchange between the interviewer and candidate
+   - ALL scores, assessments, strengths, weaknesses, and recommendations MUST be derived from what the candidate ACTUALLY SAID in the conversationHistory
+   - Every evaluation metric, score, and insight MUST trace back to specific statements in the conversationHistory
+   - The conversationHistory is the SOLE SOURCE OF TRUTH for candidate assessment
+
+2. **USER DATA (CV/RESUME/PROFILE) IS FOR GAP ANALYSIS ONLY**: 
+   - The user data (CV, resume, profile information) provided is STRICTLY for identifying GAPS and DISCREPANCIES
+   - Use it ONLY to:
+     * Identify the gap between what the candidate SAID in the interview (conversationHistory) vs. what they CLAIMED in their CV/profile
+     * Detect inconsistencies (e.g., CV says "expert" but interview responses show basic knowledge)
+     * Note discrepancies between claimed experience and demonstrated knowledge
+     * Flag when interview responses contradict CV claims
+   - **DO NOT** use user data to fill gaps in interview assessment
+   - **DO NOT** use user data as a primary source for evaluation
+   - **DO NOT** generate assessments from user data when conversationHistory is insufficient
+   - User data is a REFERENCE POINT for consistency checking, NOT an evaluation source
+
+3. **SHORT INTERVIEWS REQUIRE CONSERVATIVE SCORING**:
+   - If interview has < 5 responses or < 200 words: Cap all scores at 60 maximum
+   - If interview has < 3 responses or < 50 words: DO NOT generate profile - this is insufficient data
+   - Set confidence to LOW or VERY LOW for short interviews
+   - Clearly state: "Assessment based on limited interview data - follow-up interview recommended"
+
+4. **EVIDENCE REQUIREMENT**: Every claim in your assessment MUST have a direct quote or reference from the interview transcript. If you cannot find evidence in the interview, you CANNOT make that claim, even if it's in the CV.
+
+5. **INSUFFICIENT DATA HANDLING**: 
+   - If the candidate gave minimal responses (1-2 words, "yes/no", very brief answers):
+     * Acknowledge this limitation prominently
+     * Score conservatively (30-50 range)
+     * State clearly: "Profile cannot be accurately generated from such limited interview data"
+     * DO NOT fill gaps with CV information
+   - If interview transcript is mostly empty or has no meaningful responses:
+     * Return error or minimal assessment with clear warning
+     * DO NOT create a profile based on CV alone
+
+6. **CONSISTENCY CHECKING**: Use CV to verify consistency:
+   - If CV claims "5 years React experience" but interview shows basic knowledge → Flag as inconsistency
+   - If CV lists skills not mentioned in interview → Note as "claimed but not demonstrated"
+   - If interview reveals skills not in CV → Credit the interview, not the CV
+
+### WHAT TO DO:
+✅ Extract all insights from interview responses
+✅ Quote specific interview statements as evidence
+✅ Score based on demonstrated abilities in interview
+✅ Use CV only to check consistency and identify gaps
+✅ Be honest about data limitations
+
+### WHAT NOT TO DO:
+❌ Generate profile from CV when interview is insufficient
+❌ Fill assessment gaps with CV information
+❌ Assume skills exist just because they're in the CV
+❌ Create detailed assessments from 1-minute interviews
+❌ Use CV as primary data source
+
 ## ANALYTICAL FRAMEWORK
 
 ### 1. LINGUISTIC ANALYSIS MODULE

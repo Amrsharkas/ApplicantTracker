@@ -13,8 +13,8 @@ import { ragService } from "./ragService";
 import { hlsService } from "./services/hlsService";
 import { videoQueue } from "./queues/videoQueue";
 import multer from "multer";
-import { string, z } from "zod";
-import { insertApplicantProfileSchema, insertApplicationSchema, insertResumeUploadSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, airtableJobApplications, jobs, organizations, Job } from "@shared/schema";
+import { z } from "zod";
+import { insertApplicationSchema, InsertApplicantProfile, openaiRequests, airtableJobMatches, airtableJobApplications, jobs, Job } from "@shared/schema";
 import { creditService } from './creditService';
 // Dynamic import for pdf-parse will be used when needed
 import { db } from "./db";
@@ -160,7 +160,7 @@ interface JobSummary {
   location?: string;
 }
 
-async function generateComprehensiveAIProfile(userId: string, updatedProfile: any, storage: any, aiInterviewService: any, localDatabaseService: any, job?: JobSummary, sessionId?: number) {
+async function generateComprehensiveAIProfile(userId: string, updatedProfile: any, storage: any, aiInterviewService: any, localDatabaseService: any, job?: JobSummary, sessionId?: number, conversationHistoryFromRequest?: any[]) {
   // Check if profile generation is already in progress for this user
   if (profileGenerationLock.has(userId)) {
     console.log(`📋 AI profile generation already in progress for user ${userId}, waiting...`);
@@ -181,62 +181,204 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
       // Get user data for comprehensive analysis
       const user = await storage.getUser(userId);
 
-      // Get all completed interview sessions (ALWAYS get all, not just one session)
-      // This ensures we have all interview data for comprehensive profile generation
-      const completedInterviews = await db
-        .select()
-        .from(interviewSessions)
-        .where(and(
-          eq(interviewSessions.userId, userId),
-          eq(interviewSessions.isCompleted, true)
-        ))
-        .orderBy(interviewSessions.createdAt);
+      // CRITICAL: Use conversationHistory from request if provided, otherwise fetch from database
+      let flatResponses: any[] = [];
 
-      console.log(`📊 Found ${completedInterviews.length} completed interview(s) for user ${userId}`, {
-        interviewTypes: completedInterviews.map((i: any) => i.interviewType),
-        sessionIds: completedInterviews.map((i: any) => i.id)
-      });
-
-      if (completedInterviews.length === 0) {
-        const error = new Error("No completed interviews found");
-        console.error(`📋 Profile generation failed for user ${userId}:`, error.message);
-        throw error;
-      }
-
-      // Format interview responses for comprehensive profile (same format as test route)
-      const allInterviewResponses = completedInterviews.map(session => ({
-        type: session.interviewType,
-        responses: session.sessionData?.responses || [],
-        questions: session.sessionData?.questions || [],
-        completedAt: session.completedAt
-      }));
-
-      // Flatten responses for profile generation (same format as test route)
-      const flatResponses = allInterviewResponses.flatMap(ir => {
-        const responses = Array.isArray(ir.responses) ? ir.responses : [];
-        return responses
+      if (conversationHistoryFromRequest && Array.isArray(conversationHistoryFromRequest) && conversationHistoryFromRequest.length > 0) {
+        // Use conversationHistory from request body (most recent and accurate)
+        console.log(`📋 Using conversationHistory from request: ${conversationHistoryFromRequest.length} messages`);
+        flatResponses = conversationHistoryFromRequest
           .filter((r: any) => r && r.role && r.content) // Filter out invalid responses
           .map((r: any) => ({
             role: r.role,
             content: r.content,
             timestamp: r.timestamp || Date.now()
           }));
-      });
+      } else {
+        // Fallback: Fetch from database
+        console.log(`📋 conversationHistory from request is empty or missing, fetching from database...`);
 
-      if (flatResponses.length === 0) {
-        const error = new Error("No valid interview responses found");
-        console.error(`📋 Profile generation failed for user ${userId}:`, error.message, {
-          interviewCount: completedInterviews.length,
-          interviewTypes: completedInterviews.map((i: any) => i.interviewType)
+        let completedInterviews: any[] = [];
+
+        // CRITICAL: If sessionId is provided, fetch ONLY that specific session
+        // This prevents using old interview data from previous sessions
+        if (sessionId) {
+          console.log(`📋 Fetching ONLY current session (sessionId: ${sessionId}) to avoid using old interview data`);
+          const [currentSession] = await db
+            .select()
+            .from(interviewSessions)
+            .where(and(
+              eq(interviewSessions.id, sessionId),
+              eq(interviewSessions.userId, userId)
+            ))
+            .limit(1);
+
+          if (currentSession) {
+            completedInterviews = [currentSession];
+            console.log(`✅ Found current session: ${currentSession.id}, interviewType: ${currentSession.interviewType}, isCompleted: ${currentSession.isCompleted}`);
+          } else {
+            console.warn(`⚠️ Current session ${sessionId} not found, falling back to all completed sessions`);
+            // Fallback to all completed sessions if current session not found
+            completedInterviews = await db
+              .select()
+              .from(interviewSessions)
+              .where(and(
+                eq(interviewSessions.userId, userId),
+                eq(interviewSessions.isCompleted, true)
+              ))
+              .orderBy(interviewSessions.createdAt);
+          }
+        } else {
+          // No sessionId provided - get all completed interview sessions (for regular interviews)
+          console.log(`📋 No sessionId provided, fetching all completed interview sessions`);
+          completedInterviews = await db
+            .select()
+            .from(interviewSessions)
+            .where(and(
+              eq(interviewSessions.userId, userId),
+              eq(interviewSessions.isCompleted, true)
+            ))
+            .orderBy(interviewSessions.createdAt);
+        }
+
+        console.log(`📊 Found ${completedInterviews.length} interview session(s) for user ${userId}`, {
+          sessionIds: completedInterviews.map((i: any) => i.id),
+          interviewTypes: completedInterviews.map((i: any) => i.interviewType),
+          isCompleted: completedInterviews.map((i: any) => i.isCompleted),
+          dataSource: sessionId ? 'current_session_only' : 'all_completed_sessions'
         });
-        throw error;
+
+        if (completedInterviews.length === 0) {
+          const error = new Error("No interview sessions found");
+          console.error(`📋 Profile generation failed for user ${userId}:`, error.message);
+          throw error;
+        }
+
+        // Format interview responses for comprehensive profile (same format as test route)
+        const allInterviewResponses = completedInterviews.map(session => ({
+          type: session.interviewType,
+          responses: session.sessionData?.responses || [],
+          questions: session.sessionData?.questions || [],
+          completedAt: session.completedAt
+        }));
+
+        // Flatten responses for profile generation (same format as test route)
+        flatResponses = allInterviewResponses.flatMap(ir => {
+          const responses = Array.isArray(ir.responses) ? ir.responses : [];
+          return responses
+            .filter((r: any) => r && r.role && r.content) // Filter out invalid responses
+            .map((r: any) => ({
+              role: r.role,
+              content: r.content,
+              timestamp: r.timestamp || Date.now()
+            }));
+        });
       }
 
-      console.log(`📊 Processing ${completedInterviews.length} interview(s) with ${flatResponses.length} total responses`, {
-        userId,
-        interviewTypes: completedInterviews.map((i: any) => i.interviewType),
-        userResponseCount: flatResponses.filter((r: any) => r.role === 'user').length
+      // CRITICAL: Filter ONLY user responses (candidate answers) - NOT assistant questions
+      const userResponses = flatResponses.filter((r: any) => {
+        // Only count actual user/candidate responses, not interviewer questions
+        return r.role === 'user' && r.content && r.content.trim().length > 0;
       });
+
+      const userResponseCount = userResponses.length;
+      const totalWords = userResponses.reduce((sum: number, r: any) => {
+        return sum + (r.content?.split(/\s+/).filter((w: string) => w.length > 0).length || 0);
+      }, 0);
+
+      console.log(`📊 Interview data analysis:`, {
+        userId,
+        dataSource: conversationHistoryFromRequest && conversationHistoryFromRequest.length > 0 ? 'request_body' : 'database',
+        totalResponses: flatResponses.length,
+        assistantResponses: flatResponses.filter((r: any) => r.role === 'assistant' || r.role === 'ai').length,
+        userResponseCount,
+        totalWords
+      });
+
+      // CRITICAL VALIDATION: Check if user answered ANY questions
+      // If NO answers at all, return cancelled/noResponse object
+      if (userResponseCount === 0) {
+        console.log(`❌ NO USER RESPONSES: Interview cancelled - user did not answer any questions.`);
+        return {
+          noResponse: true,
+          cancelled: true,
+          message: "Interview was cancelled - no user responses recorded."
+        };
+      }
+
+      // If not enough answers (less than 3 or less than 50 words), generate a simple response instead of full profile
+      if (userResponseCount < 3 || totalWords < 50) {
+        console.log(`⚠️ INSUFFICIENT INTERVIEW DATA: userResponseCount=${userResponseCount}, totalWords=${totalWords}. Generating simple response instead of full profile.`);
+
+        // Generate simple response with lackOfAnswers and aiThoughtsAboutCandidate
+        const simplePrompt = `You are evaluating a candidate interview. The candidate has provided ${userResponseCount} answer(s) (${totalWords} total words) in the interview, which is insufficient for a comprehensive assessment.
+
+CONVERSATION HISTORY (INTERVIEW TRANSCRIPT):
+${JSON.stringify(flatResponses, null, 2)}
+
+CANDIDATE PROFILE/CV DATA (FOR REFERENCE ONLY - TO IDENTIFY GAPS):
+${JSON.stringify({ ...user, ...updatedProfile }, null, 2)}
+
+CRITICAL INSTRUCTIONS:
+- The conversationHistory contains ${userResponseCount} candidate response(s) with only ${totalWords} words total
+- This is INSUFFICIENT data for a comprehensive profile
+- You MUST NOT generate a full profile based on CV/resume data alone
+- You MUST ONLY provide your thoughts about what little information is available from the interview
+- If there are NO candidate responses (userResponseCount = 0), state clearly that NO assessment can be made from interview data
+- Do NOT use CV/resume data to fill gaps or create a profile
+- Return ONLY a simple object with lackOfAnswers and aiThoughtsAboutCandidate
+
+Return a JSON object with exactly these keys:
+{
+  "lackOfAnswers": true,
+  "aiThoughtsAboutCandidate": "Your honest thoughts about the candidate based on the limited interview data. If there are no answers, state clearly that no assessment can be made from the interview. Mention what you observed (if anything), what gaps exist, and what cannot be assessed due to insufficient answers."
+}`;
+
+        try {
+          const simpleResponse = await wrapOpenAIRequest(
+            () => aiInterviewAgent.openai.chat.completions.create({
+              model: process.env.OPENAI_MODEL_COMPREHENSIVE_PROFILE || "gpt-4o",
+              messages: [
+                {
+                  role: "system",
+                  content: "You are a senior hiring decision-maker. When interview data is insufficient, you MUST NOT generate a full profile. Only provide honest thoughts about wha          t can and cannot be assessed from the limited interview data. Do NOT use CV/resume data to create a profile."
+                },
+                {
+                  role: "user",
+                  content: simplePrompt
+                }
+              ],
+              response_format: { type: "json_object" },
+              temperature: 0.1
+            }),
+            {
+              requestType: "generateSimpleProfileResponse",
+              model: process.env.OPENAI_MODEL_COMPREHENSIVE_PROFILE || "gpt-4o",
+              userId: userId,
+            }
+          );
+
+          const simpleProfile = JSON.parse(simpleResponse.choices?.[0]?.message?.content || '{"lackOfAnswers": true, "aiThoughtsAboutCandidate": "Insufficient interview data to generate assessment."}');
+
+          console.log(`✅ Generated simple profile response (insufficient data):`, {
+            lackOfAnswers: simpleProfile.lackOfAnswers,
+            aiThoughtsLength: simpleProfile.aiThoughtsAboutCandidate?.length
+          });
+
+          // Return the simple profile structure - THIS STOPS THE FUNCTION HERE
+          return {
+            lackOfAnswers: simpleProfile.lackOfAnswers || true,
+            aiThoughtsAboutCandidate: simpleProfile.aiThoughtsAboutCandidate || "Insufficient interview responses to generate a comprehensive assessment."
+          };
+        } catch (error) {
+          console.error(`❌ Error generating simple profile response:`, error);
+          // Fallback if AI call fails
+          return {
+            lackOfAnswers: true,
+            aiThoughtsAboutCandidate: `Insufficient interview data: Only ${userResponseCount} answer(s) (${totalWords} words) provided. Cannot generate comprehensive profile without at least 3 candidate responses with meaningful content.`
+          };
+        }
+      }
 
       // Get resume content and analysis (same format as test route)
       const resumeUpload = await storage.getActiveResume(userId);
@@ -252,13 +394,102 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
           : JSON.stringify(resumeUpload.extractedData))
         : (updatedProfile?.resumeContent || null);
 
+      // Prepare all parameters that will be passed to V7
+      const userDataForV7 = { ...user, ...updatedProfile };
+      const interviewResponsesForV7 = flatResponses;
+      const resumeAnalysisForV7 = resumeAnalysis;
+      const resumeContentForV7 = resumeContent;
+      const jobDescriptionForV7 = job?.jobDescription || undefined;
+
+      // Log ALL parameters that will be passed to V7 function BEFORE calling it
+      try {
+        const logPath = path.join(__dirname, '../shared/core/complete_voice_log.txt');
+        fs.writeFileSync(
+          logPath,
+          JSON.stringify({
+            type: 'v7_parameters_before_call',
+            timestamp: new Date().toISOString(),
+            userId,
+            sessionId,
+            jobId: job?.jobId || job?.id,
+            parameters: {
+              userData: {
+                hasUserData: !!userDataForV7,
+                userId: userDataForV7?.id,
+                userName: userDataForV7?.name,
+                userEmail: userDataForV7?.email,
+                keys: Object.keys(userDataForV7 || {}),
+                // Don't log full userData to avoid huge file, just structure
+                structure: 'userData object with user + profile merged'
+              },
+              interviewResponses: {
+                hasResponses: !!interviewResponsesForV7,
+                count: Array.isArray(interviewResponsesForV7) ? interviewResponsesForV7.length : 0,
+                userResponsesCount: Array.isArray(interviewResponsesForV7) ? interviewResponsesForV7.filter((r: any) => r.role === 'user').length : 0,
+                assistantResponsesCount: Array.isArray(interviewResponsesForV7) ? interviewResponsesForV7.filter((r: any) => r.role === 'assistant' || r.role === 'ai').length : 0,
+                sample: Array.isArray(interviewResponsesForV7) ? interviewResponsesForV7.slice(0, 2) : null,
+                // Full responses array
+                fullResponses: interviewResponsesForV7
+              },
+              resumeAnalysis: {
+                hasResumeAnalysis: !!resumeAnalysisForV7,
+                type: typeof resumeAnalysisForV7,
+                keys: resumeAnalysisForV7 ? Object.keys(resumeAnalysisForV7) : [],
+                // Full resume analysis
+                fullResumeAnalysis: resumeAnalysisForV7
+              },
+              resumeContent: {
+                hasResumeContent: !!resumeContentForV7,
+                type: typeof resumeContentForV7,
+                length: resumeContentForV7 ? (typeof resumeContentForV7 === 'string' ? resumeContentForV7.length : JSON.stringify(resumeContentForV7).length) : 0,
+                preview: resumeContentForV7 ? (typeof resumeContentForV7 === 'string' ? resumeContentForV7.substring(0, 500) : JSON.stringify(resumeContentForV7).substring(0, 500)) : null,
+                // Full resume content (might be large)
+                fullResumeContent: resumeContentForV7
+              },
+              jobDescription: {
+                hasJobDescription: !!jobDescriptionForV7,
+                type: typeof jobDescriptionForV7,
+                length: jobDescriptionForV7 ? jobDescriptionForV7.length : 0,
+                preview: jobDescriptionForV7 ? jobDescriptionForV7.substring(0, 500) : null,
+                // Full job description
+                fullJobDescription: jobDescriptionForV7
+              },
+              jobRequirements: {
+                note: 'jobRequirements parameter is undefined (not passed to V7)',
+                value: undefined
+              },
+              qualityCheck: {
+                note: 'qualityCheck will be generated inside generateComprehensiveProfile',
+                willBeGenerated: true
+              },
+              applicantProfile: {
+                note: 'applicantProfile will be fetched inside generateComprehensiveProfile from storage.getApplicantProfile',
+                willBeFetched: true,
+                userId: userDataForV7?.id
+              }
+            },
+            missingParameters: [
+              !userDataForV7 ? 'userData is MISSING' : null,
+              !interviewResponsesForV7 || (Array.isArray(interviewResponsesForV7) && interviewResponsesForV7.length === 0) ? 'interviewResponses is MISSING or EMPTY' : null,
+              !resumeAnalysisForV7 ? 'resumeAnalysis is MISSING (optional but recommended)' : null,
+              !resumeContentForV7 ? 'resumeContent is MISSING (optional but recommended)' : null,
+              !jobDescriptionForV7 ? 'jobDescription is MISSING (optional)' : null
+            ].filter(Boolean)
+          }, null, 2) + '\n',
+          { flag: 'a' }
+        );
+        console.log('📝 Logged all V7 parameters to complete_voice_log.txt');
+      } catch (logError) {
+        console.error('❌ Failed to log V7 parameters:', logError);
+      }
+
       // Use generateComprehensiveProfile directly (same as test route) - includes all updates
       const generatedProfile = await aiProfileAnalysisAgent.generateComprehensiveProfile(
-        { ...user, ...updatedProfile },
-        resumeContent,
-        flatResponses,
-        resumeAnalysis,
-        job?.jobDescription || undefined
+        userDataForV7,
+        resumeContentForV7,
+        interviewResponsesForV7,
+        resumeAnalysisForV7,
+        jobDescriptionForV7
       );
 
       console.log('✅ Comprehensive profile generated with quality checks:', {
@@ -272,9 +503,9 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
 
       // Also generate brutally honest profile (same as test route)
       console.log('🤖 Generating brutally honest profile...');
-      const honestProfile = await aiInterviewService.generateBrutallyHonestProfile(
+      const honestProfile = await aiInterviewAgent.generateBrutallyHonestProfile(
         { ...user, ...updatedProfile },
-        allInterviewResponses,
+        flatResponses, // Use flatResponses instead of allInterviewResponses
         resumeAnalysis
       );
 
@@ -338,7 +569,8 @@ async function generateComprehensiveAIProfile(userId: string, updatedProfile: an
       }
 
       console.log(`📋 Comprehensive AI profile generation completed for user ${userId}`);
-      return generatedProfile;
+      // Return generatedProfileWithHonest to ensure honestProfile is included when saving to airtable_job_applications
+      return generatedProfileWithHonest;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
@@ -3437,8 +3669,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user;
       const { conversationHistory, interviewType, job, sessionId } = req.body;
 
+      // Initialize generatedProfile variable (will be set if profile generation succeeds)
+      let generatedProfile: any = null;
+
+      console.log('🔔🔔🔔 COMPLETE-VOICE ENDPOINT CALLED!', {
+        userId,
+        interviewType,
+        sessionId,
+        conversationHistoryLength: conversationHistory?.length || 0,
+        conversationHistoryType: typeof conversationHistory,
+        conversationHistoryIsArray: Array.isArray(conversationHistory),
+        hasJob: !!job,
+        requestBodyKeys: Object.keys(req.body || {})
+      });
+
+      // Log the raw request body to understand what's being sent
+      fs.writeFileSync(
+        path.join(__dirname, '../shared/core/complete_voice_log.txt'),
+        JSON.stringify({
+          type: 'complete_voice_request',
+          timestamp: new Date().toISOString(),
+          conversationHistory: conversationHistory,
+          conversationHistoryLength: conversationHistory?.length || 0,
+          conversationHistoryType: typeof conversationHistory,
+          conversationHistoryIsArray: Array.isArray(conversationHistory),
+          interviewType: interviewType,
+          job: job,
+          sessionId: sessionId,
+          user: user,
+          requestBodyKeys: Object.keys(req.body || {})
+        }, null, 2) + '\n',
+        { flag: 'a' }
+      );
+
       if (!conversationHistory || !Array.isArray(conversationHistory)) {
+        console.error('❌ Invalid conversationHistory:', {
+          conversationHistory,
+          type: typeof conversationHistory,
+          isArray: Array.isArray(conversationHistory),
+          length: conversationHistory?.length
+        });
         return res.status(400).json({ message: "Invalid conversation history" });
+      }
+
+      // Log if conversationHistory is empty
+      if (conversationHistory.length === 0) {
+        console.warn('⚠️ WARNING: conversationHistory is EMPTY array! This means no interview data was sent from frontend.');
       }
 
       // Get user and profile data for AI Agent 2
@@ -3450,7 +3726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           resumeContent = null; // TODO: Implement resume fetching
         } catch (error) {
-          console.warn("Could not fetch resume content:", error);
+          // Resume content fetch failed, continue without it
         }
       }
 
@@ -3535,11 +3811,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
 
           const content = completion.choices?.[0]?.message?.content || '{}';
-          console.log('🔎 OpenAI voice interview scoring raw content:', content);
           const tryParse = (text: string): { score?: number; rationale?: string } | null => {
             try {
               const parsed = JSON.parse(text);
-              console.log('🔎 Parsed JSON (direct):', parsed);
               return parsed;
             } catch { }
             const stripped = text
@@ -3549,7 +3823,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .trim();
             try {
               const parsed2 = JSON.parse(stripped);
-              console.log('🔎 Parsed JSON (stripped):', parsed2);
               return parsed2;
             } catch { }
             try {
@@ -3558,7 +3831,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (start !== -1 && end !== -1 && end > start) {
                 const sub = stripped.slice(start, end + 1);
                 const parsed3 = JSON.parse(sub);
-                console.log('🔎 Parsed JSON (substring):', parsed3);
                 return parsed3;
               }
             } catch { }
@@ -3570,14 +3842,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const parsedAny = tryParse(content) || {} as any;
           if (typeof parsedAny.score === 'number') {
             score = Math.max(0, Math.min(100, Math.round(parsedAny.score)));
-          } else {
-            console.warn('⚠️ Could not parse voice interview score, using default 70');
           }
           if (typeof parsedAny.rationale === 'string') {
             rationale = parsedAny.rationale;
           }
         } catch (scoringError) {
-          console.error('⚠️ Error scoring voice interview:', scoringError);
           // Continue with default score
         }
 
@@ -3609,12 +3878,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let newStatus = 'completed'; // Default status for scores in between thresholds
             if (score >= autoShortlistThreshold) {
               newStatus = 'shortlisted';
-              console.log(`✅ Auto-shortlisted: Score ${score} >= threshold ${autoShortlistThreshold}`);
             } else if (score < autoDeniedThreshold) {
               newStatus = 'declined';
-              console.log(`❌ Auto-denied: Score ${score} < threshold ${autoDeniedThreshold}`);
-            } else {
-              console.log(`📋 Completed: Score ${score} is between thresholds (denied: ${autoDeniedThreshold}, shortlist: ${autoShortlistThreshold})`);
             }
 
             await localDatabaseService.updateJobMatch(relevantMatch.id, {
@@ -3622,12 +3887,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               status: newStatus,
               interviewComments: rationale || ''
             });
-            console.log(`✅ Updated job match with voice interview score: ${relevantMatch.id}, status: ${newStatus}`);
-          } else {
-            console.log('ℹ️ No matching job record found for voice interview score update');
           }
         } catch (e) {
-          console.warn('⚠️ Error updating local job match score/status:', e);
+          // Error updating job match, continue with flow
         }
       }
 
@@ -3667,13 +3929,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 session.id,
                 'interview_scheduling'
               );
-              console.log(`💳 Charged ${interviewCost} credits to org ${organizationId} for interview: ${job.jobTitle}`);
             } catch (creditError) {
-              console.error('⚠️ Failed to deduct interview credits:', creditError);
               // Continue with flow - log for manual review
             }
-          } else {
-            console.log('ℹ️ Job has no organization ID - skipping credit charging');
           }
 
           const userProfile = await storage.getApplicantProfile(userId);
@@ -3708,116 +3966,378 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
 
           createdApplicationId = (await localDatabaseService.createJobApplication(jobApplicationData)).id;
-          console.log('✅ Created new job application record:', createdApplicationId, 'for job:', job.jobTitle);
         } catch (applicationError) {
-          console.warn('⚠️ Error creating job application record:', applicationError);
           // Continue with flow even if application creation fails
         }
       }
 
-      // Check if all 3 interviews are completed
+      // Check if all 3 int erviews are completed (only for regular interviews, not job-practice)
       const updatedProfile = await storage.getApplicantProfile(userId);
+      const allInterviewsCompleted = updatedProfile?.personalInterviewCompleted &&
+        updatedProfile?.professionalInterviewCompleted &&
+        updatedProfile?.technicalInterviewCompleted;
 
-      // Generate final comprehensive profile only after ALL 3 interviews are complete
-      console.log(`🎯 All 3 voice interviews completed for user ${userId}. Generating final profile...`);
-      let generatedProfile = null;
-      try {
-        generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job, session.id);
-        console.log('✅ Profile generated successfully for voice interviews');
-      } catch (profileError) {
-        console.error('❌ Error generating comprehensive profile for voice interviews:', profileError);
-        // Don't fail the interview completion - profile can be generated later
-        // Continue with flow but without profile
-      }
+      console.log('📋 Session update completed:', {
+        sessionId: session?.id,
+        isCompleted: session?.isCompleted,
+        interviewType: session?.interviewType,
+        responsesCount: (session?.sessionData as any)?.responses?.length || 0
+      });
 
-      // Save the generated profile to the interview session
-      if (generatedProfile && session?.id) {
+      // Generate profile after ANY interview completion
+      console.log('🎯 Starting profile generation in complete-voice endpoint...');
+      console.log('📊 Interview data:', {
+        interviewType,
+        sessionId: session?.id,
+        conversationHistoryLength: conversationHistory?.length || 0,
+        allInterviewsCompleted,
+        aiProfileGenerated: updatedProfile?.aiProfileGenerated,
+        userResponsesCount: conversationHistory?.filter((m: any) => m.role === 'user').length || 0
+      });
+
+      // For job-practice interviews: generate profile DIRECTLY without any checks (ONE interview is enough)
+      // For regular interviews: generate profile only after ALL 3 interviews are complete
+      if (interviewType === 'job-practice') {
+        // Job-practice: Generate profile immediately, no conditions, no checks - just generate it!
+        console.log('🚀 Generating profile for job-practice interview...');
+        console.log('📋 Using conversationHistory from request:', {
+          hasConversationHistory: !!conversationHistory,
+          conversationHistoryLength: conversationHistory?.length || 0,
+          userResponsesCount: conversationHistory?.filter((m: any) => m.role === 'user').length || 0
+        });
+        let generatedProfile = null;
         try {
-          await storage.updateInterviewSession(session.id, {
-            generatedProfile: generatedProfile
-          });
-          console.log(`✅ Saved generated profile to interview session ${session.id}`);
-        } catch (sessionUpdateError) {
-          console.error('❌ Error saving generated profile to interview session:', sessionUpdateError);
-          // Continue with flow even if session update fails
-        }
-      }
+          // IMPORTANT: Pass conversationHistory directly to generateComprehensiveAIProfile
+          // This ensures we use the actual conversation from the request, not from database
+          generatedProfile = await generateComprehensiveAIProfile(
+            userId,
+            updatedProfile,
+            storage,
+            aiInterviewService,
+            localDatabaseService,
+            job,
+            session.id,
+            conversationHistory // Pass conversationHistory from request
+          );
+          console.log('✅✅✅ Profile generated successfully for job-practice interview!');
 
-      // Save the generated profile to the job application
-      if (generatedProfile && createdApplicationId) {
-        try {
-          await localDatabaseService.updateJobApplication(createdApplicationId, {
-            generatedProfile: generatedProfile
-          });
-          console.log(`✅ Saved generated profile to job application ${createdApplicationId}`);
-        } catch (profileSaveError) {
-          console.error('❌ Error saving generated profile to job application:', profileSaveError);
-          // Continue with flow even if profile save fails
-        }
-      }
-
-      // Auto-shortlist or auto-decline based on profile match score
-      const profileScore = generatedProfile?.matchScorePercentage;
-      if (typeof profileScore === 'number' && createdApplicationId) {
-        const HIRING_INTELLIGENCE_URL = process.env.HIRING_INTELLIGENCE_URL || 'http://localhost:5000';
-        const SERVICE_API_KEY = process.env.SERVICE_API_KEY;
-
-        if (SERVICE_API_KEY) {
-          if (profileScore >= 70) {
-            // Auto-shortlist high performers
+          // Save a copy of generated profile to complete_voice_log.txt
+          if (generatedProfile) {
             try {
-              const response = await fetch(`${HIRING_INTELLIGENCE_URL}/api/real-applicants/${createdApplicationId}/shortlist`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${SERVICE_API_KEY}`
-                }
-              });
-              if (response.ok) {
-                console.log(`✅ Auto-shortlisted applicant ${createdApplicationId} with profile score ${profileScore}`);
-              } else {
-                console.warn(`⚠️ Failed to auto-shortlist:`, await response.text());
-              }
-            } catch (error) {
-              console.error('❌ Error auto-shortlisting:', error);
+              fs.writeFileSync(
+                path.join(__dirname, '../shared/core/complete_voice_log.txt'),
+                JSON.stringify({
+                  type: 'generated_profile',
+                  userId,
+                  sessionId: session.id,
+                  interviewType,
+                  timestamp: new Date().toISOString(),
+                  generatedProfile: generatedProfile
+                }, null, 2) + '\n',
+                { flag: 'a' }
+              );
+            } catch (logError) {
+              // Continue even if logging fails
             }
-          } else if (profileScore < 30) {
-            // Auto-decline low performers
-            try {
-              const response = await fetch(`${HIRING_INTELLIGENCE_URL}/api/real-applicants/${createdApplicationId}/decline`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${SERVICE_API_KEY}`
-                }
-              });
-              if (response.ok) {
-                console.log(`✅ Auto-declined applicant ${createdApplicationId} with profile score ${profileScore}`);
-              } else {
-                console.warn(`⚠️ Failed to auto-decline:`, await response.text());
-              }
-            } catch (error) {
-              console.error('❌ Error auto-declining:', error);
-            }
-          } else {
-            console.log(`ℹ️ Profile score ${profileScore} in manual review range (30-69), no auto-action`);
+          }
+        } catch (profileError) {
+          console.error('❌❌❌ Profile generation FAILED for job-practice:', profileError);
+          if (profileError instanceof Error) {
+            console.error('Error details:', profileError.message, profileError.stack);
+          }
+          // Don't fail the interview completion - profile can be generated later
+          // Continue with flow but without profile
+        }
+
+        // Save the generated profile to the interview session
+        if (generatedProfile && session?.id) {
+          try {
+            console.log('💾 Saving generated profile to interview session:', session.id);
+            await storage.updateInterviewSession(session.id, {
+              generatedProfile: generatedProfile
+            });
+            console.log('✅✅✅ Profile saved to interview session successfully!');
+          } catch (sessionUpdateError) {
+            console.error('❌ Failed to save profile to interview session:', sessionUpdateError);
+            // Continue with flow even if session update fails
           }
         } else {
-          console.log('ℹ️ SERVICE_API_KEY not configured, skipping auto-shortlist/decline');
+          console.warn('⚠️ Cannot save profile to session:', { hasProfile: !!generatedProfile, hasSessionId: !!session?.id });
+        }
+
+        // Save the generated profile to airtable_job_applications
+        // IMPORTANT: If createdApplicationId is null, try to find existing application by sessionId
+        let applicationIdToUpdate = createdApplicationId;
+        if (!applicationIdToUpdate && session?.id) {
+          try {
+            // Try to find existing application by sessionId
+            const existingApps = await db
+              .select()
+              .from(airtableJobApplications)
+              .where(eq(airtableJobApplications.sessionId, session.id))
+              .limit(1);
+            if (existingApps.length > 0) {
+              applicationIdToUpdate = existingApps[0].id;
+            }
+          } catch (findError) {
+            // Error finding existing application
+          }
+        }
+
+        if (generatedProfile && applicationIdToUpdate) {
+          try {
+            console.log('💾 Saving generated profile to airtable_job_applications:', applicationIdToUpdate);
+            // Ensure generatedProfile is properly serialized as JSON
+            const profileToSave = typeof generatedProfile === 'string'
+              ? JSON.parse(generatedProfile)
+              : generatedProfile;
+
+            await localDatabaseService.updateJobApplication(applicationIdToUpdate, {
+              generatedProfile: profileToSave
+            });
+            console.log('✅✅✅ Profile saved to airtable_job_applications successfully!');
+          } catch (profileSaveError) {
+            console.error('❌ Failed to save profile to airtable_job_applications:', profileSaveError);
+            // Continue with flow even if profile save fails
+          }
+        } else {
+          console.warn('⚠️ Cannot save profile to airtable_job_applications:', {
+            hasProfile: !!generatedProfile,
+            hasApplicationId: !!applicationIdToUpdate,
+            createdApplicationId,
+            sessionId: session?.id
+          });
+        }
+
+        // Auto-shortlist or auto-decline based on profile match score
+        const profileScore = generatedProfile?.matchScorePercentage || generatedProfile?.overallScore || (generatedProfile as any)?.brutallyHonestProfile?.overallScore;
+        if (typeof profileScore === 'number' && createdApplicationId) {
+          const HIRING_INTELLIGENCE_URL = process.env.HIRING_INTELLIGENCE_URL || 'http://localhost:5000';
+          const SERVICE_API_KEY = process.env.SERVICE_API_KEY;
+
+          if (SERVICE_API_KEY) {
+            if (profileScore >= 70) {
+              // Auto-shortlist high performers
+              try {
+                const response = await fetch(`${HIRING_INTELLIGENCE_URL}/api/real-applicants/${createdApplicationId}/shortlist`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SERVICE_API_KEY}`
+                  }
+                });
+              } catch (error) {
+                // Error auto-shortlisting
+              }
+            } else if (profileScore < 30) {
+              // Auto-decline low performers
+              try {
+                await fetch(`${HIRING_INTELLIGENCE_URL}/api/real-applicants/${createdApplicationId}/decline`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SERVICE_API_KEY}`
+                  }
+                });
+              } catch (error) {
+                // Error auto-declining
+              }
+            }
+          }
+        }
+      } else if (allInterviewsCompleted && !updatedProfile?.aiProfileGenerated) {
+        // Regular interviews: Generate profile only after ALL 3 interviews are complete
+        console.log('🚀 Generating profile for regular interview (all 3 completed)...');
+        generatedProfile = null;
+        try {
+          generatedProfile = await generateComprehensiveAIProfile(userId, updatedProfile, storage, aiInterviewService, localDatabaseService, job, session.id);
+          console.log('✅✅✅ Profile generated successfully for regular interview!');
+
+          // Save a copy of generated profile to complete_voice_log.txt
+          if (generatedProfile) {
+            try {
+              fs.writeFileSync(
+                path.join(__dirname, '../shared/core/complete_voice_log.txt'),
+                JSON.stringify({
+                  type: 'generated_profile',
+                  userId,
+                  sessionId: session.id,
+                  interviewType,
+                  timestamp: new Date().toISOString(),
+                  generatedProfile: generatedProfile
+                }, null, 2) + '\n',
+                { flag: 'a' }
+              );
+            } catch (logError) {
+              // Continue even if logging fails
+            }
+          }
+        } catch (profileError) {
+          console.error('❌❌❌ Profile generation FAILED for regular interview:', profileError);
+          if (profileError instanceof Error) {
+            console.error('Error details:', profileError.message, profileError.stack);
+          }
+          // Don't fail the interview completion - profile can be generated later
+          // Continue with flow but without profile
+        }
+
+        // Save the generated profile to the interview session
+        if (generatedProfile && session?.id) {
+          try {
+            await storage.updateInterviewSession(session.id, {
+              generatedProfile: generatedProfile
+            });
+          } catch (sessionUpdateError) {
+            // Continue with flow even if session update fails
+          }
+        }
+
+        // Save the generated profile to airtable_job_applications
+        // IMPORTANT: If createdApplicationId is null, try to find existing application by sessionId
+        let applicationIdToUpdate = createdApplicationId;
+        if (!applicationIdToUpdate && session?.id) {
+          try {
+            // Try to find existing application by sessionId
+            const existingApps = await db
+              .select()
+              .from(airtableJobApplications)
+              .where(eq(airtableJobApplications.sessionId, session.id))
+              .limit(1);
+            if (existingApps.length > 0) {
+              applicationIdToUpdate = existingApps[0].id;
+            }
+          } catch (findError) {
+            // Error finding existing application
+          }
+        }
+      } else {
+        // Interview completed but profile generation deferred
+        console.log('⏳ Profile generation deferred:', {
+          interviewType,
+          allInterviewsCompleted,
+          aiProfileGenerated: updatedProfile?.aiProfileGenerated,
+          personal: updatedProfile?.personalInterviewCompleted,
+          professional: updatedProfile?.professionalInterviewCompleted,
+          technical: updatedProfile?.technicalInterviewCompleted
+        });
+      }
+
+      // Save the generated profile to airtable_job_applications (if profile was generated)
+      if (generatedProfile) {
+        let applicationIdToUpdate = createdApplicationId;
+        if (!applicationIdToUpdate && session?.id) {
+          try {
+            const existingApps = await db
+              .select()
+              .from(airtableJobApplications)
+              .where(eq(airtableJobApplications.sessionId, session.id))
+              .limit(1);
+            if (existingApps.length > 0) {
+              applicationIdToUpdate = existingApps[0].id;
+            }
+          } catch (findError) {
+            console.error('❌ Error finding existing application by session ID:', findError);
+          }
+        }
+
+        if (applicationIdToUpdate) {
+          try {
+            const profileToSave = typeof generatedProfile === 'string'
+              ? JSON.parse(generatedProfile)
+              : generatedProfile;
+
+            await localDatabaseService.updateJobApplication(applicationIdToUpdate, {
+              generatedProfile: profileToSave
+            });
+            console.log('✅✅✅ Profile saved to airtable_job_applications successfully!');
+          } catch (profileSaveError) {
+            console.error('❌ Error saving profile to airtable_job_applications:', profileSaveError);
+          }
+        }
+      }
+
+      // Auto-shortlist or auto-decline based on profile match score (if profile was generated)
+      if (generatedProfile) {
+        const profileScore = generatedProfile?.matchScorePercentage || generatedProfile?.overallScore || (generatedProfile as any)?.brutallyHonestProfile?.overallScore;
+        if (typeof profileScore === 'number' && createdApplicationId) {
+          const HIRING_INTELLIGENCE_URL = process.env.HIRING_INTELLIGENCE_URL || 'http://localhost:5000';
+          const SERVICE_API_KEY = process.env.SERVICE_API_KEY;
+
+          if (SERVICE_API_KEY) {
+            if (profileScore >= 70) {
+              // Auto-shortlist high performers
+              try {
+                const response = await fetch(`${HIRING_INTELLIGENCE_URL}/api/real-applicants/${createdApplicationId}/shortlist`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SERVICE_API_KEY}`
+                  }
+                });
+              } catch (error) {
+                // Error auto-shortlisting
+              }
+            } else if (profileScore < 30) {
+              // Auto-decline low performers
+              try {
+                await fetch(`${HIRING_INTELLIGENCE_URL}/api/real-applicants/${createdApplicationId}/decline`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SERVICE_API_KEY}`
+                  }
+                });
+              } catch (error) {
+                // Error auto-declining
+              }
+            }
+          }
         }
       }
 
       // Update profile completion percentage
       await storage.updateProfileCompletion(userId);
 
-      res.json({
-        isComplete: true,
-        allInterviewsCompleted: true,
-        profile: generatedProfile,
-        message: "All interviews completed! Your comprehensive AI profile has been generated successfully."
-      });
+      // Refresh profile to get latest status (after potential profile generation)
+      const refreshedProfile = await storage.getApplicantProfile(userId);
+
+      // Send response based on interview completion status
+      // For job-practice interviews, return immediately with profile status
+      if (interviewType === 'job-practice') {
+        res.json({
+          isComplete: true,
+          jobPractice: true,
+          allInterviewsCompleted: false, // Job-practice doesn't count toward the 3 interviews
+          profile: refreshedProfile?.aiProfile || null,
+          message: refreshedProfile?.aiProfileGenerated
+            ? "Job-practice interview completed! Your comprehensive AI profile has been generated successfully."
+            : "Job-practice interview completed! Profile generation is in progress - you can check back later or use /api/profile/generate-honest-assessment."
+        });
+      } else if (allInterviewsCompleted) {
+        res.json({
+          isComplete: true,
+          allInterviewsCompleted: true,
+          profile: refreshedProfile?.aiProfile || null,
+          message: refreshedProfile?.aiProfileGenerated
+            ? "All interviews completed! Your comprehensive AI profile has been generated successfully."
+            : "All interviews completed! Profile generation is in progress - you can check back later or use /api/profile/generate-honest-assessment."
+        });
+      } else {
+        let nextInterviewType = null;
+        if (interviewType === 'personal' && !updatedProfile?.professionalInterviewCompleted) {
+          nextInterviewType = 'professional';
+        } else if ((interviewType === 'personal' || interviewType === 'professional') && !updatedProfile?.technicalInterviewCompleted) {
+          nextInterviewType = 'technical';
+        }
+
+        res.json({
+          isComplete: true,
+          allInterviewsCompleted: false,
+          nextInterviewType,
+          message: `${interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} interview completed successfully!`
+        });
+      }
     } catch (error) {
-      console.error("Error completing voice interview:", error);
       res.status(500).json({ message: "Failed to complete voice interview" });
     }
   });
@@ -3976,16 +4496,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // 7. Update the application with new profile
-      if (generatedProfile) {
+      // 7. Update the interview session with new profile (NOT airtable_job_applications)
+      if (generatedProfile && sessionId) {
         try {
-          await localDatabaseService.updateJobApplication(applicationId, {
-            generatedProfile: generatedProfile,
-            updatedAt: new Date()
+          await storage.updateInterviewSession(sessionId, {
+            generatedProfile: generatedProfile
           });
-          console.log(`✅ Updated application ${applicationId} with regenerated profile`);
+          console.log(`✅ Updated interview session ${sessionId} with regenerated profile`);
         } catch (updateError) {
-          console.error('❌ Error updating application with regenerated profile:', updateError);
+          console.error('❌ Error updating interview session with regenerated profile:', updateError);
           // Still return success since profile was generated
         }
       }
@@ -4134,23 +4653,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create interview session
       const session = await storage.createInterviewSession({
         userId,
+        interviewType: req.body.interviewType || 'general',
         sessionData: {
           questions: responses.map((r: any) => ({ question: r.question })),
           responses,
           currentQuestionIndex: responses.length
         },
         isCompleted: true,
-        generatedProfile: null // Don't generate individual profiles
+        generatedProfile: null
       });
-
-      // Don't generate individual profiles - wait for all interviews to complete
 
       // Update profile completion percentage
       await storage.updateProfileCompletion(userId);
 
+      // Generate profile after interview completion
+      console.log('🎯 Starting profile generation for voice interview...');
+      console.log('📊 Input data:', {
+        hasResponses: !!responses,
+        responsesCount: Array.isArray(responses) ? responses.length : 0,
+        hasConversationHistory: !!conversationHistory,
+        conversationHistoryCount: Array.isArray(conversationHistory) ? conversationHistory.length : 0
+      });
+
+      // Convert responses to the format expected by generateComprehensiveProfile
+      const formattedResponses: Array<{ role: string; content: string; timestamp?: number }> = [];
+
+      // Add conversation history if available (from realtime API)
+      if (conversationHistory && Array.isArray(conversationHistory)) {
+        console.log('📝 Processing conversationHistory:', conversationHistory.length, 'messages');
+        conversationHistory.forEach((msg: any) => {
+          if (msg.role && msg.content) {
+            formattedResponses.push({
+              role: msg.role === 'assistant' ? 'ai' : msg.role,
+              content: msg.content,
+              timestamp: msg.timestamp || Date.now()
+            });
+          }
+        });
+      }
+
+      // Also add responses from the responses array if they have the right format
+      if (responses && Array.isArray(responses)) {
+        console.log('📝 Processing responses array:', responses.length, 'items');
+        responses.forEach((r: any) => {
+          if (r.answer) {
+            formattedResponses.push({
+              role: 'user',
+              content: r.answer,
+              timestamp: Date.now()
+            });
+          }
+          if (r.question) {
+            formattedResponses.push({
+              role: 'ai',
+              content: r.question,
+              timestamp: Date.now()
+            });
+          }
+        });
+      }
+
+      console.log('✅ Formatted responses count:', formattedResponses.length);
+      console.log('📊 Response breakdown:', {
+        user: formattedResponses.filter(r => r.role === 'user').length,
+        ai: formattedResponses.filter(r => r.role === 'ai').length
+      });
+
+      const updatedProfile = await storage.getApplicantProfile(userId);
+      try {
+        // Get resume content and analysis
+        const resumeUpload = await storage.getActiveResume(userId);
+        const resumeContent = resumeUpload?.extractedText || null;
+        const resumeAnalysis = resumeUpload?.aiAnalysis || null;
+
+        console.log('📄 Resume data:', {
+          hasResume: !!resumeUpload,
+          hasContent: !!resumeContent,
+          contentLength: resumeContent?.length || 0,
+          hasAnalysis: !!resumeAnalysis
+        });
+
+        // Call generateComprehensiveProfile with formatted responses
+        console.log('🚀 Calling generateComprehensiveProfile...');
+        await aiProfileAnalysisAgent.generateComprehensiveProfile(
+          { ...user, ...updatedProfile },
+          resumeContent,
+          formattedResponses,
+          resumeAnalysis,
+          undefined // jobDescription
+        );
+        console.log('✅✅✅ Profile generated successfully for voice interview!');
+      } catch (err) {
+        console.error('❌❌❌ Profile generation FAILED:', err);
+        if (err instanceof Error) {
+          console.error('Error message:', err.message);
+          console.error('Error stack:', err.stack);
+        }
+      }
+
       res.json({
         isComplete: true,
-        profile: null, // Individual profiles are no longer generated
+        profile: null,
         sessionId: session.id,
         message: "Voice interview completed successfully!"
       });

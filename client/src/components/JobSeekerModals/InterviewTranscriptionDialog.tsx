@@ -171,24 +171,57 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
 
         // Use initialTranscription if provided (for immediate display before server save completes)
         // Otherwise fall back to session data
-        const transcriptionToUse = initialTranscription && initialTranscription.length > 0
-          ? initialTranscription
-          : sessionData?.sessionData?.responses;
+        // IMPORTANT: Only use conversationHistory format (role/content), not Q&A format (question/answer)
+        let transcriptionToUse = null;
+
+        if (initialTranscription && initialTranscription.length > 0) {
+          // Validate that initialTranscription is in conversationHistory format (has role/content)
+          const isValidFormat = initialTranscription.every((item: any) =>
+            item.role && item.content && (item.role === 'assistant' || item.role === 'user')
+          );
+          if (isValidFormat) {
+            transcriptionToUse = initialTranscription;
+          }
+        }
+
+        // If no valid initialTranscription, try sessionData.responses (conversationHistory format)
+        if (!transcriptionToUse && sessionData?.sessionData?.responses) {
+          const sessionResponses = sessionData.sessionData.responses;
+          // Check if it's conversationHistory format (role/content) not Q&A format (question/answer)
+          const isConversationFormat = Array.isArray(sessionResponses) && sessionResponses.length > 0 &&
+            sessionResponses.every((item: any) =>
+              item.role && item.content && (item.role === 'assistant' || item.role === 'user')
+            );
+          if (isConversationFormat) {
+            transcriptionToUse = sessionResponses;
+          }
+        }
 
         console.log('InterviewTranscriptionDialog - Using transcription:', {
           hasInitial: !!initialTranscription,
           initialLength: initialTranscription?.length,
           hasSessionResponses: !!sessionData?.sessionData?.responses,
           sessionResponsesLength: sessionData?.sessionData?.responses?.length,
-          usingLength: transcriptionToUse?.length
+          usingLength: transcriptionToUse?.length,
+          transcriptionFormat: transcriptionToUse?.[0] ? (transcriptionToUse[0].role ? 'conversationHistory' : 'unknown') : 'none'
         });
 
         // Store transcription data for timestamp calculations
+        // Only process if we have actual conversationHistory format with both questions and answers
         if (transcriptionToUse && transcriptionToUse.length > 0) {
-          setTranscriptionData(transcriptionToUse);
-          await parseTranscription(transcriptionToUse);
+          // Validate that we have at least one user response (answer)
+          const hasUserResponses = transcriptionToUse.some((item: any) => item.role === 'user' && item.content && item.content.trim().length > 0);
+
+          if (hasUserResponses) {
+            setTranscriptionData(transcriptionToUse);
+            await parseTranscription(transcriptionToUse);
+          } else {
+            console.log('InterviewTranscriptionDialog - No user responses found, skipping parsing');
+            setParsedQA([]);
+          }
         } else {
           console.log('InterviewTranscriptionDialog - No transcription data available');
+          setParsedQA([]);
         }
       } catch (error: any) {
         toast({
@@ -308,7 +341,8 @@ export function InterviewTranscriptionDialog({ isOpen, onClose, sessionId, initi
       const current = transcription[i];
       const next = transcription[i + 1];
 
-      if (current.role === 'assistant' && next.role === 'user') {
+      // ONLY include Q&A pairs where BOTH question AND answer exist
+      if (current.role === 'assistant' && next.role === 'user' && next.content && next.content.trim().length > 0) {
         qa.push({
           question: current.content,
           answer: next.content,
