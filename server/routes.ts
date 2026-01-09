@@ -484,7 +484,7 @@ Return a JSON object with exactly these keys:
       }
 
       // Use generateComprehensiveProfile directly (same as test route) - includes all updates
-      const generatedProfile = await aiProfileAnalysisAgent.generateComprehensiveProfile(
+      const generatedProfileResult = await aiProfileAnalysisAgent.generateComprehensiveProfile(
         userDataForV7,
         resumeContentForV7,
         interviewResponsesForV7,
@@ -492,16 +492,21 @@ Return a JSON object with exactly these keys:
         jobDescriptionForV7
       );
 
+      // Extract V7 response (brutallyHonestProfile) - this is the ONLY response we want in airtable_job_applications
+      // The generatedProfile field in Airtable Job Applications should contain ONLY the V7 prompt JSON response
+      const generatedProfile = generatedProfileResult?.brutallyHonestProfile || generatedProfileResult;
+
       console.log('✅ Comprehensive profile generated with quality checks:', {
-        overallScore: generatedProfile?.overallScore,
-        gapSeverityScore: generatedProfile?.gapSeverityScore,
-        answerQualityScore: generatedProfile?.answerQualityScore,
-        cvConsistencyScore: generatedProfile?.cvConsistencyScore,
-        confidence: generatedProfile?.assessmentConfidence?.overallConfidence,
-        dataSufficiency: generatedProfile?.assessmentConfidence?.dataSufficiency
+        overallScore: generatedProfileResult?.overallScore,
+        gapSeverityScore: generatedProfileResult?.gapSeverityScore,
+        answerQualityScore: generatedProfileResult?.answerQualityScore,
+        cvConsistencyScore: generatedProfileResult?.cvConsistencyScore,
+        confidence: generatedProfileResult?.assessmentConfidence?.overallConfidence,
+        dataSufficiency: generatedProfileResult?.assessmentConfidence?.dataSufficiency,
+        hasV7Response: !!generatedProfileResult?.brutallyHonestProfile
       });
 
-      // Also generate brutally honest profile (same as test route)
+      // Also generate brutally honest profile (same as test route) - for internal use only
       console.log('🤖 Generating brutally honest profile...');
       const honestProfile = await aiInterviewAgent.generateBrutallyHonestProfile(
         { ...user, ...updatedProfile },
@@ -516,25 +521,14 @@ Return a JSON object with exactly these keys:
         redFlagsCount: honestProfile?.redFlags?.length || 0
       });
 
-      // Combine both profiles into fullResponse structure (same as test route)
-      // Structure: { ...generatedProfile, honestProfile: {...}, generatedProfile: { ...generatedProfile, brutallyHonestProfile: {...} } }
+      // Combine both profiles into fullResponse structure (for internal storage only)
+      // Structure: { ...generatedProfileResult, honestProfile: {...}, generatedProfile: { ...generatedProfileResult, brutallyHonestProfile: {...} } }
       const fullResponse = {
-        ...generatedProfile,
+        ...generatedProfileResult,
         honestProfile: honestProfile,
         generatedProfile: {
-          ...generatedProfile,
-          brutallyHonestProfile: generatedProfile?.brutallyHonestProfile || generatedProfile
-        }
-      };
-
-      // Also add honestProfile to generatedProfile for airtable_job_applications
-      // This ensures honestProfile is available when reading from airtable_job_applications.generatedProfile
-      const generatedProfileWithHonest = {
-        ...generatedProfile,
-        honestProfile: honestProfile,
-        comprehensiveProfile: {
-          ...generatedProfile,
-          brutallyHonestProfile: generatedProfile?.brutallyHonestProfile || generatedProfile
+          ...generatedProfileResult,
+          brutallyHonestProfile: generatedProfile
         }
       };
 
@@ -547,8 +541,8 @@ Return a JSON object with exactly these keys:
         honestProfile: honestProfile, // Also save separately for backward compatibility
         honestProfileGenerated: true,
         aiProfileGenerated: true,
-        summary: generatedProfile.summary,
-        skillsList: generatedProfile.skills,
+        summary: generatedProfileResult.summary,
+        skillsList: generatedProfileResult.skills,
         jobId: job?.id
       });
 
@@ -569,8 +563,9 @@ Return a JSON object with exactly these keys:
       }
 
       console.log(`📋 Comprehensive AI profile generation completed for user ${userId}`);
-      // Return generatedProfileWithHonest to ensure honestProfile is included when saving to airtable_job_applications
-      return generatedProfileWithHonest;
+      // Return ONLY V7 response (generatedProfile) for airtable_job_applications
+      // The generatedProfile field in Airtable Job Applications should contain ONLY the V7 prompt response
+      return generatedProfile;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
@@ -3667,7 +3662,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const user = req.user;
-      const { conversationHistory, interviewType, job, sessionId } = req.body;
+      const { conversationHistory: conversationHistoryFromBody, interviewType, job, sessionId, questions: questionsFromBody, responses: responsesFromBody } = req.body;
+
+      // Handle both formats: conversationHistory directly OR questions/responses format
+      let conversationHistory = conversationHistoryFromBody;
+      if (!conversationHistory && (questionsFromBody || responsesFromBody)) {
+        // Convert questions/responses format to conversationHistory format
+        console.log('📋 Converting questions/responses format to conversationHistory format...');
+        const messages: any[] = [];
+
+        // Add all responses (which already contain questions and answers in correct format)
+        if (Array.isArray(responsesFromBody)) {
+          conversationHistory = responsesFromBody;
+          console.log(`✅ Using responses array directly as conversationHistory: ${responsesFromBody.length} messages`);
+        } else {
+          // Fallback: merge questions and responses manually
+          const questionsArray = Array.isArray(questionsFromBody) ? questionsFromBody : [];
+          const responsesArray = Array.isArray(responsesFromBody) ? responsesFromBody : [];
+
+          // Interleave questions (assistant) and responses (user)
+          for (let i = 0; i < Math.max(questionsArray.length, responsesArray.length); i++) {
+            if (i < questionsArray.length && questionsArray[i]?.question) {
+              messages.push({
+                role: 'assistant',
+                content: questionsArray[i].question,
+                timestamp: Date.now() + (i * 1000)
+              });
+            }
+            if (i < responsesArray.length && responsesArray[i]) {
+              const response = responsesArray[i];
+              if (typeof response === 'string') {
+                messages.push({
+                  role: 'user',
+                  content: response,
+                  timestamp: Date.now() + (i * 1000) + 500
+                });
+              } else if (response.role && response.content) {
+                messages.push(response);
+              }
+            }
+          }
+          conversationHistory = messages;
+          console.log(`✅ Converted questions/responses to conversationHistory: ${messages.length} messages`);
+        }
+      }
 
       // Initialize generatedProfile variable (will be set if profile generation succeeds)
       let generatedProfile: any = null;
@@ -3680,6 +3718,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversationHistoryType: typeof conversationHistory,
         conversationHistoryIsArray: Array.isArray(conversationHistory),
         hasJob: !!job,
+        hasQuestions: !!questionsFromBody,
+        hasResponses: !!responsesFromBody,
         requestBodyKeys: Object.keys(req.body || {})
       });
 
@@ -3697,7 +3737,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           job: job,
           sessionId: sessionId,
           user: user,
-          requestBodyKeys: Object.keys(req.body || {})
+          requestBodyKeys: Object.keys(req.body || {}),
+          hasQuestions: !!questionsFromBody,
+          hasResponses: !!responsesFromBody,
+          questionsLength: questionsFromBody?.length || 0,
+          responsesLength: responsesFromBody?.length || 0
         }, null, 2) + '\n',
         { flag: 'a' }
       );
@@ -3707,9 +3751,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversationHistory,
           type: typeof conversationHistory,
           isArray: Array.isArray(conversationHistory),
-          length: conversationHistory?.length
+          length: conversationHistory?.length,
+          hasQuestions: !!questionsFromBody,
+          hasResponses: !!responsesFromBody,
+          questionsType: typeof questionsFromBody,
+          responsesType: typeof responsesFromBody
         });
-        return res.status(400).json({ message: "Invalid conversation history" });
+        return res.status(400).json({ message: "Invalid conversation history - expected conversationHistory array or questions/responses object" });
       }
 
       // Log if conversationHistory is empty
@@ -3736,7 +3784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Extract questions (assistant messages) and full conversation with timestamps
-      const questions = conversationHistory
+      const questionsExtracted = conversationHistory
         .filter(item => item.role === 'assistant')
         .map(item => ({ question: item.content }));
 
@@ -3746,7 +3794,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update the existing session with completion data
         await storage.updateInterviewSession(sessionId, {
           sessionData: {
-            questions,
+            questions: questionsExtracted,
             responses: conversationHistory, // Now includes timestamps
             currentQuestionIndex: conversationHistory.length
           },
@@ -3767,7 +3815,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId,
           interviewType: interviewType || 'personal',
           sessionData: {
-            questions,
+            questions: questionsExtracted,
             responses: conversationHistory,
             currentQuestionIndex: conversationHistory.length
           },
@@ -7737,6 +7785,227 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
     } catch (error) {
       console.error('Error updating applications with emails:', error);
       res.status(500).json({ message: 'Failed to update applications with emails' });
+    }
+  });
+
+  // Test endpoint for V7 generator using data from complete_voice_log.txt
+  app.post('/api/testv7generator', async (req: any, res) => {
+    try {
+      console.log('🧪 Testing V7 generator with data from complete_voice_log.txt');
+
+      const fs = await import('fs');
+      const logFilePath = path.join(__dirname, '..', 'shared', 'core', 'complete_voice_log.txt');
+
+      // Read the log file
+      if (!fs.existsSync(logFilePath)) {
+        return res.status(404).json({
+          error: 'Log file not found',
+          path: logFilePath
+        });
+      }
+
+      const logContent = fs.readFileSync(logFilePath, 'utf-8');
+
+      // Parse the first JSON object (v7_parameters_before_call)
+      // The file contains multiple JSON objects separated by newlines
+      const lines = logContent.split('\n');
+      let firstJsonStart = -1;
+      let firstJsonEnd = -1;
+      let braceCount = 0;
+
+      // Find the first complete JSON object
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.trim().startsWith('{')) {
+          if (firstJsonStart === -1) {
+            firstJsonStart = i;
+          }
+        }
+
+        for (const char of line) {
+          if (char === '{') braceCount++;
+          if (char === '}') braceCount--;
+        }
+
+        if (firstJsonStart !== -1 && braceCount === 0) {
+          firstJsonEnd = i;
+          break;
+        }
+      }
+
+      if (firstJsonStart === -1 || firstJsonEnd === -1) {
+        return res.status(400).json({
+          error: 'Could not find valid JSON object in log file'
+        });
+      }
+
+      const firstJsonText = lines.slice(firstJsonStart, firstJsonEnd + 1).join('\n');
+      const logData = JSON.parse(firstJsonText);
+
+      // Extract parameters from the log
+      if (logData.type !== 'v7_parameters_before_call') {
+        return res.status(400).json({
+          error: 'Log file does not contain v7_parameters_before_call data',
+          foundType: logData.type
+        });
+      }
+
+      const params = logData.parameters;
+
+      // Extract required data
+      const userData = params.userData?.hasUserData ? {
+        id: params.userData.userId,
+        firstName: params.userData.userName?.split(' ')[0] || '',
+        lastName: params.userData.userName?.split(' ').slice(1).join(' ') || '',
+        name: params.userData.userName || '',
+        email: params.userData.userEmail || ''
+      } : null;
+
+      const interviewResponses = params.interviewResponses?.fullResponses || [];
+      const resumeAnalysis = params.resumeAnalysis?.fullResumeAnalysis || null;
+      const resumeContent = params.resumeContent?.fullResumeContent || null;
+      const jobDescription = params.jobDescription?.fullJobDescription || null;
+
+      // Validate required data
+      if (!userData) {
+        return res.status(400).json({
+          error: 'User data not found in log file'
+        });
+      }
+
+      if (!interviewResponses || interviewResponses.length === 0) {
+        return res.status(400).json({
+          error: 'Interview responses not found or empty in log file',
+          foundCount: params.interviewResponses?.count || 0
+        });
+      }
+
+      console.log('📊 Extracted data from log file:', {
+        userId: userData.id,
+        userName: userData.name,
+        interviewResponsesCount: interviewResponses.length,
+        hasResumeAnalysis: !!resumeAnalysis,
+        hasResumeContent: !!resumeContent,
+        hasJobDescription: !!jobDescription
+      });
+
+      // Generate profile using V7
+      console.log('🤖 Generating profile with V7...');
+      const generatedProfileResult = await aiProfileAnalysisAgent.generateComprehensiveProfile(
+        userData,
+        resumeContent,
+        interviewResponses,
+        resumeAnalysis,
+        jobDescription
+      );
+
+      // Extract V7 response (brutallyHonestProfile) - this is the ONLY response we want
+      const generatedProfile = generatedProfileResult?.brutallyHonestProfile || generatedProfileResult;
+
+      console.log('✅ V7 profile generated successfully:', {
+        overallScore: generatedProfile?.scores?.overallScore,
+        technicalSkillsScore: generatedProfile?.scores?.technicalSkillsScore,
+        experienceScore: generatedProfile?.scores?.experienceScore,
+        culturalFitScore: generatedProfile?.scores?.culturalFitScore,
+        strengthsCount: generatedProfile?.strength?.length || 0,
+        gapsCount: generatedProfile?.gap?.length || 0,
+        redFlagsCount: generatedProfile?.redFlag?.length || 0,
+        resumeContradictionsCount: generatedProfile?.resumeContradiction?.length || 0,
+        hasCandidateSalary: !!generatedProfile?.candidateSalary,
+        hasRelocationVisa: !!generatedProfile?.relocationVisa
+      });
+
+      // Save generatedProfile to airtable_job_applications
+      let savedApplication = null;
+      let saveError = null;
+
+      if (logData.userId && logData.jobId) {
+        try {
+          console.log(`💾 Attempting to save generatedProfile to airtable_job_applications for userId: ${logData.userId}, jobId: ${logData.jobId}`);
+
+          // Get all applications for this user
+          const userApplications = await localDatabaseService.getJobApplicationsByUser(logData.userId);
+
+          // Find the application matching the jobId
+          const matchingApplication = userApplications.find(app =>
+            app.jobId === logData.jobId.toString() ||
+            app.jobId === logData.jobId
+          );
+
+          if (matchingApplication) {
+            console.log(`✅ Found matching application: ${matchingApplication.id} for jobId: ${logData.jobId}`);
+
+            // Update the application with generatedProfile
+            savedApplication = await localDatabaseService.updateJobApplication(
+              matchingApplication.id,
+              { generatedProfile: generatedProfile }
+            );
+
+            console.log(`✅ Successfully saved generatedProfile to application ${matchingApplication.id}`);
+          } else {
+            console.warn(`⚠️ No matching application found for userId: ${logData.userId}, jobId: ${logData.jobId}`);
+            console.log(`📋 Available applications for user:`, userApplications.map(app => ({
+              id: app.id,
+              jobId: app.jobId,
+              jobTitle: app.jobTitle
+            })));
+            saveError = `No matching application found for userId: ${logData.userId}, jobId: ${logData.jobId}`;
+          }
+        } catch (error: any) {
+          console.error('❌ Error saving generatedProfile to airtable_job_applications:', error);
+          saveError = error?.message || 'Unknown error while saving';
+        }
+      } else {
+        console.warn('⚠️ Missing userId or jobId in log data, skipping save to airtable_job_applications');
+        saveError = 'Missing userId or jobId in log data';
+      }
+
+      // Return the generated profile
+      res.json({
+        success: true,
+        message: 'V7 profile generated successfully from log file data',
+        timestamp: new Date().toISOString(),
+        source: {
+          logFile: logFilePath,
+          logEntryType: logData.type,
+          logTimestamp: logData.timestamp,
+          userId: logData.userId,
+          sessionId: logData.sessionId,
+          jobId: logData.jobId
+        },
+        generatedProfile: generatedProfile,
+        savedToDatabase: savedApplication ? {
+          success: true,
+          applicationId: savedApplication.id,
+          message: 'Generated profile saved to airtable_job_applications'
+        } : {
+          success: false,
+          error: saveError || 'Failed to save generated profile'
+        },
+        qualityCheck: {
+          overallScore: generatedProfile?.scores?.overallScore,
+          technicalSkillsScore: generatedProfile?.scores?.technicalSkillsScore,
+          experienceScore: generatedProfile?.scores?.experienceScore,
+          culturalFitScore: generatedProfile?.scores?.culturalFitScore,
+          strengthsCount: generatedProfile?.strength?.length || 0,
+          gapsCount: generatedProfile?.gap?.length || 0,
+          watchoutsCount: generatedProfile?.watchout?.length || 0,
+          concernsCount: generatedProfile?.concern?.length || 0,
+          weaknessesCount: generatedProfile?.weakness?.length || 0,
+          redFlagsCount: generatedProfile?.redFlag?.length || 0,
+          resumeContradictionsCount: generatedProfile?.resumeContradiction?.length || 0,
+          hasCandidateSalary: !!generatedProfile?.candidateSalary?.expectedRange,
+          hasRelocationVisa: !!generatedProfile?.relocationVisa?.currentLocation
+        }
+      });
+
+    } catch (error: any) {
+      console.error('❌ Error testing V7 generator:', error);
+      res.status(500).json({
+        error: 'Failed to test V7 generator',
+        message: error?.message || 'Unknown error',
+        stack: error?.stack
+      });
     }
   });
 

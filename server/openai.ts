@@ -4,6 +4,11 @@ import { wrapOpenAIRequest } from "./openaiTracker";
 import fs from 'fs';
 import { INTERVIEW_PROFILE_GENERATOR_V7 } from "./prompts/interview-profile-generator-v7";
 import { storage } from "./storage";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // OpenAI client - models are configured via environment variables
 const openai = new OpenAI({
@@ -1376,7 +1381,6 @@ export class AIProfileAnalysisAgent {
       resumeContent,
       jobDescription || null,
       undefined, // jobRequirements (if exists)
-      qualityCheck, // pass quality check to prompt
       applicantProfile // pass applicant profile as cv data field
     );
 

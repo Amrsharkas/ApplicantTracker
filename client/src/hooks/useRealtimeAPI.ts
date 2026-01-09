@@ -55,6 +55,12 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
         seniorityLevel?: string;
         industry?: string;
         employerQuestions?: string[];
+        location?: string;
+        country?: string;
+        salaryMin?: number;
+        salaryMax?: number;
+        workplaceType?: string;
+        employmentType?: string;
       };
       candidateProfile?: {
         verdict?: any;
@@ -478,23 +484,23 @@ ${interviewParams.resumeContent.length > 5000
 
 ` : ''}
 
-${interviewParams?.summary ? `
+${(interviewParams as any)?.summary ? `
 ## CANDIDATE'S PROFESSIONAL SUMMARY
-${interviewParams.summary}
+${(interviewParams as any).summary}
 
 ` : ''}
 
-${interviewParams?.skillsList && interviewParams.skillsList.length > 0 ? `
+${(interviewParams as any)?.skillsList && (interviewParams as any).skillsList.length > 0 ? `
 ## CANDIDATE'S SKILLS LIST
-${interviewParams.skillsList.join(', ')}
+${(interviewParams as any).skillsList.join(', ')}
 
 ` : ''}
 
-${interviewParams?.aiProfile ? `
+${(interviewParams as any)?.aiProfile ? `
 ## CANDIDATE'S AI PROFILE ANALYSIS
 Below is the AI-generated profile analysis of this candidate. Use this to understand their assessed strengths, weaknesses, and overall profile. Reference this when asking follow-up questions or validating claims.
 
-${JSON.stringify(interviewParams.aiProfile, null, 2).substring(0, 3000)}${JSON.stringify(interviewParams.aiProfile, null, 2).length > 3000 ? '\n\n[AI Profile truncated - showing first 3000 characters]' : ''}
+${JSON.stringify((interviewParams as any).aiProfile, null, 2).substring(0, 3000)}${JSON.stringify((interviewParams as any).aiProfile, null, 2).length > 3000 ? '\n\n[AI Profile truncated - showing first 3000 characters]' : ''}
 
 ` : ''}
 
@@ -852,7 +858,7 @@ INTERVIEW FLOW BEHAVIOR
   - You MUST begin every interview with 4-6 classic HR/screening questions before moving to behavioral or technical questions.
   - These HR questions are CRITICAL for gathering essential hiring information and MUST be asked:
 
-  **Required HR Questions (Ask ALL of these):**
+  **Required HR Questions (Ask ALL of these - MANDATORY):**
     1. "Tell me about yourself" / "Walk me through your background briefly"
        - This is your opening question to establish rapport
     2. "Why are you interested in this role/opportunity?" / "What motivated you to apply for this position?"
@@ -905,24 +911,50 @@ INTERVIEW FLOW BEHAVIOR
   - Ask these questions ONLY near the end of the interview, after assessing fit.
   - DO NOT explain why you are asking.
   - Ask plainly and move on.
+  - **CRITICAL: These questions are MANDATORY and MUST be asked before concluding the interview.**
 
-  1) Salary:
-    “If we were to proceed, what salary range would you be targeting?”
-    If vague:
-    “Could you share a specific range you’d feel comfortable with?”
+  1) Salary (MANDATORY - MUST ASK):
+    **YOU MUST ALWAYS ASK ABOUT SALARY EXPECTATIONS. THIS IS CRITICAL FOR HIRING DECISIONS.**
+    "If we were to proceed, what salary range would you be targeting?"
+    If vague or unclear:
+    "Could you share a specific range you'd feel comfortable with?"
+    If still vague:
+    "I need to understand your expectations clearly. What salary range are you looking for?"
+    **DO NOT conclude the interview without getting a clear salary expectation from the candidate.**
 
-  2) Notice period / start availability:
-    “If we were to proceed, what notice period would you need before you can start?”
+  2) Location (MANDATORY - MUST ASK):
+    "Where do you currently live?"
+    If needed for clarity:
+    "Which area or city exactly?"
+    "Which country are you currently based in?"
+
+  3) Visa / Relocation (MANDATORY IF JOB IS OUTSIDE CANDIDATE'S COUNTRY):
+    **IF the job location is in a different country than where the candidate currently lives, YOU MUST ask about visa/work permit status and relocation availability.**
+    
+    After asking location, check if the job location differs from candidate's location:
+    - If job is in a different country, ask:
+      "This position is located in [job country/location]. Do you have a valid work visa or work permit for [job country]?"
+      If they don't have a visa:
+        "Are you available and willing to relocate to [job country] if we proceed?"
+        "What would be your timeline for relocation if needed?"
+      If they have a visa:
+        "When does your current visa expire?"
+        "Would you need visa sponsorship from us?"
+    
+    **This is CRITICAL for international positions - DO NOT skip this question if the job location differs from candidate's location.**
+
+  4) Notice period / start availability (MANDATORY - MUST ASK):
+    **YOU MUST ALWAYS ASK ABOUT NOTICE PERIOD. THIS IS CRITICAL FOR HIRING DECISIONS.**
+    "If we were to proceed, what notice period would you need before you can start?"
+    If vague or unclear:
+    "Could you be more specific about your notice period?"
     If needed:
-    “Is any part of that negotiable?”
-
-  3) Location (MANDATORY):
-    “Where do you currently live?”
-    If needed:
-    “Which area or city exactly?”
+    "Is any part of that negotiable?"
+    **DO NOT conclude the interview without getting a clear notice period from the candidate.**
 
   NO-JUSTIFICATION RULE:
-  - NEVER explain why you are asking salary, notice period, or location.
+  - NEVER explain why you are asking salary, notice period, location, or visa/relocation questions.
+  - These are standard hiring logistics questions that must be addressed.
 
 - Once you decide you have asked your *final question* and the candidate has given their *final answer*, you MUST send a closing message in natural language that:
   - explicitly states that the interview has concluded,
@@ -1075,6 +1107,11 @@ This is a JOB-SPECIFIC interview for a particular role. You MUST use the followi
 ${jobContext?.title ? `- **Job Title:** ${jobContext.title}` : ''}
 ${jobContext?.seniorityLevel ? `- **Seniority Level:** ${jobContext.seniorityLevel}` : ''}
 ${jobContext?.industry ? `- **Industry:** ${jobContext.industry}` : ''}
+${(jobContext as any)?.location ? `- **Job Location:** ${(jobContext as any).location}` : ''}
+${(jobContext as any)?.country ? `- **Job Country:** ${(jobContext as any).country}` : ''}
+${(jobContext as any)?.workplaceType ? `- **Workplace Type:** ${(jobContext as any).workplaceType} (on-site, remote, hybrid)` : ''}
+${(jobContext as any)?.employmentType ? `- **Employment Type:** ${(jobContext as any).employmentType} (full-time, part-time, contract, etc.)` : ''}
+${(jobContext as any)?.salaryMin || (jobContext as any)?.salaryMax ? `- **Salary Range:** ${(jobContext as any).salaryMin ? `${(jobContext as any).salaryMin}` : 'N/A'} - ${(jobContext as any).salaryMax ? `${(jobContext as any).salaryMax}` : 'N/A'}` : ''}
 
 ## JOB DESCRIPTION
 ${jobContext?.description || 'No description available'}
@@ -1169,7 +1206,20 @@ JOB-SPECIFIC INTERVIEW INSTRUCTIONS
    - "What metrics did you achieve with [claimed accomplishment]?"
    - "How would you demonstrate [skill] in this role?"
 
-Remember: You are evaluating this candidate specifically for the ${jobContext?.title || 'target'} role. Every question should relate to their fit for THIS specific position.`;
+Remember: You are evaluating this candidate specifically for the ${jobContext?.title || 'target'} role. Every question should relate to their fit for THIS specific position.
+
+**CRITICAL REMINDER FOR MANDATORY QUESTIONS (MUST ASK ALL):**
+1. **Salary Expectations (MANDATORY):** You MUST ask about salary expectations before concluding. The candidate is the ONLY one who can mention salary numbers - you MUST NOT mention any salary range from the job description
+2. **Location (MANDATORY):** You MUST ask "Where do you currently live?" to determine the candidate's country
+3. **Visa/Relocation (MANDATORY IF JOB IS IN DIFFERENT COUNTRY):** 
+   - IF the job location (${(jobContext as any)?.location || (jobContext as any)?.country || 'job location'}) is in a DIFFERENT country than the candidate's current location, you MUST ask:
+     - "Do you have a valid work visa or work permit for [job country]?"
+     - "Are you available and willing to relocate to [job country] if we proceed?"
+     - "What would be your timeline for relocation if needed?"
+   - This is CRITICAL for international positions
+4. **Notice Period (MANDATORY):** You MUST ask "What notice period would you need before you can start?" - This is critical for hiring decisions
+
+**DO NOT conclude the interview without asking ALL of these mandatory questions.**`;
             }
           }
 
