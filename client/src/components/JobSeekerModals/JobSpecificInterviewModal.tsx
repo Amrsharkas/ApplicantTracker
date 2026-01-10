@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeAPI } from "@/hooks/useRealtimeAPI";
 import { useCameraRecorder } from '@/hooks/useCameraRecorder';
-import { MessageCircle, MessageSquare, User, Mic, MicOff, PhoneOff, Video, Circle, CheckCircle } from "lucide-react";
+import { MessageCircle, MessageSquare, User, Mic, MicOff, PhoneOff, Video, Circle, CheckCircle, AlertCircle, Wifi, Volume2, Monitor, X } from "lucide-react";
 import { CameraPreview } from '@/components/CameraPreview';
 import { getInterviewLanguage, getLanguageDisplayName } from '@/lib/interviewUtils';
 import { InterviewTranscriptionDialog } from './InterviewTranscriptionDialog';
@@ -23,7 +23,7 @@ interface JobSummary {
 }
 
 interface SessionData {
-  id: string;
+  id: number;
   sessionData: {
     questions: { question: string }[];
     responses: { question: string; answer: string }[];
@@ -57,6 +57,10 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   const [showTranscriptionDialog, setShowTranscriptionDialog] = useState(false);
   const [completedSessionId, setCompletedSessionId] = useState<number | null>(null);
   const { isRecording, uploadProgress, startRecording, stopRecording, cleanup } = useCameraRecorder();
+
+  const [interviewStartTime, setInterviewStartTime] = useState<number | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showInstructionsModal, setShowInstructionsModal] = useState(true); // Show instructions modal by default
 
   // Debug: Log the environment variable value and its type
   const enableTextInterviews = import.meta.env.VITE_ENABLE_TEXT_INTERVIEWS;
@@ -160,11 +164,181 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
     }
   }, [cameraStream, realtimeAPI.aiAudioStream, session?.id, mode, isRecording, startRecording]);
 
+  // Cancel interview function - Cancels from both frontend and backend
+  const cancelInterview = async (sessionId: number, reason: string) => {
+    try {
+      console.log(`🚫 Cancelling interview ${sessionId} - Reason: ${reason}`);
+
+      // First, stop camera and cleanup resources IMMEDIATELY
+      console.log('🛑 Stopping camera and cleaning up resources...');
+
+      // Stop camera stream immediately
+      if (cameraStream) {
+        console.log('📹 Stopping camera tracks immediately...');
+        cameraStream.getTracks().forEach(track => {
+          track.stop();
+          console.log(`✅ Stopped track: ${track.kind}`);
+        });
+        setCameraStream(null);
+      }
+
+      // Disconnect OpenAI realtime session
+      if (realtimeAPI.isConnected) {
+        console.log('🔌 Disconnecting OpenAI session...');
+        realtimeAPI.disconnect();
+      }
+
+      // Stop recording
+      cleanup();
+
+      // Cancel from backend
+      const response = await fetch(`/api/interview/cancel/${sessionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ reason })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to cancel interview');
+      }
+
+      const result = await response.json();
+      console.log('✅ Interview cancelled successfully from backend:', result);
+
+      // Show toast notification
+      toast({
+        title: 'Interview Cancelled',
+        description: reason,
+        variant: 'destructive'
+      });
+
+      // Close the interview modal
+      onClose();
+
+      // Refresh the page automatically to update the interview list
+      // This ensures the cancelled interview is removed from the list immediately
+      if (window.location.pathname.includes('/dashboard/jobinterviews')) {
+        // Wait a bit longer to ensure backend update is complete and camera is fully stopped
+        setTimeout(() => {
+          console.log('🔄 Reloading page to update interview list...');
+          window.location.reload();
+        }, 1000);
+      }
+    } catch (error: any) {
+      console.error('❌ Error cancelling interview:', error);
+
+      // Still stop camera even if backend call failed
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        setCameraStream(null);
+      }
+      if (realtimeAPI.isConnected) {
+        realtimeAPI.disconnect();
+      }
+      cleanup();
+
+      toast({
+        title: 'Error',
+        description: error?.message || 'Failed to cancel interview. Please try again.',
+        variant: 'destructive'
+      });
+      onClose();
+    }
+  };
+
+  // Request fullscreen (F11-like) - Default behavior when page opens
+  const requestFullscreen = async () => {
+    try {
+      const element = document.documentElement;
+
+      // Check if already in fullscreen
+      const isAlreadyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+
+      if (isAlreadyFullscreen) {
+        setIsFullscreen(true);
+        return;
+      }
+
+      // Request fullscreen
+      if (element.requestFullscreen) {
+        await element.requestFullscreen();
+        setIsFullscreen(true);
+        console.log('✅ Fullscreen activated (F11-like)');
+      } else if ((element as any).webkitRequestFullscreen) {
+        await (element as any).webkitRequestFullscreen();
+        setIsFullscreen(true);
+        console.log('✅ Fullscreen activated (webkit)');
+      } else if ((element as any).mozRequestFullScreen) {
+        await (element as any).mozRequestFullScreen();
+        setIsFullscreen(true);
+        console.log('✅ Fullscreen activated (moz)');
+      } else if ((element as any).msRequestFullscreen) {
+        await (element as any).msRequestFullscreen();
+        setIsFullscreen(true);
+        console.log('✅ Fullscreen activated (ms)');
+      }
+    } catch (error) {
+      console.error('❌ Error requesting fullscreen:', error);
+      // Don't block interview if fullscreen fails
+    }
+  };
+
+  // Handle F11 key press to toggle fullscreen
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !session) return;
+
+    const handleKeyPress = async (e: KeyboardEvent) => {
+      // F11 key for fullscreen
+      if (e.key === 'F11') {
+        e.preventDefault();
+        if (!document.fullscreenElement && !(document as any).webkitFullscreenElement && !(document as any).mozFullScreenElement) {
+          await requestFullscreen();
+        } else {
+          if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          } else if ((document as any).webkitExitFullscreen) {
+            await (document as any).webkitExitFullscreen();
+          } else if ((document as any).mozCancelFullScreen) {
+            await (document as any).mozCancelFullScreen();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [isOpen, session]);
+
+
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset instructions modal when modal closes
+      setShowInstructionsModal(true);
+      return;
+    }
+
+    // Don't start interview until instructions modal is closed
+    if (showInstructionsModal) {
+      return;
+    }
+
     (async () => {
       try {
         setLoading(true);
+        setInterviewStartTime(Date.now());
+
+        // Request fullscreen automatically (F11-like) - AFTER instructions are closed
+        await requestFullscreen();
+
         // Fetch current session – job-practice already started by options modal
         const res = await fetch('/api/interview/session', { credentials: 'include' });
         const data = await res.json();
@@ -208,9 +382,11 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
             summary: data.summary || null,
             skillsList: data.skillsList || null,
             aiProfile: data.aiProfile || null,
-            jobDescription: data.jobDescription || job?.jobDescription || job?.description || null,
+            jobDescription: data.jobDescription || job?.jobDescription || null,
             interviewContext
           });
+
+          // Interview started successfully - no auto-close timer needed
         }
       } catch (e: any) {
         toast({ title: 'Error', description: e?.message || 'Failed to load session', variant: 'destructive' });
@@ -241,10 +417,50 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         setCameraStream(null);
       }
 
+      // Exit fullscreen
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(console.error);
+      }
+
       console.log('✅ Cleanup complete');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, showInstructionsModal]);
+
+  // Monitor fullscreen changes - Cancel interview if exited fullscreen
+  useEffect(() => {
+    if (!isOpen || !session?.id) return;
+
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+
+      const wasFullscreen = isFullscreen;
+      setIsFullscreen(isCurrentlyFullscreen);
+
+      // If exited fullscreen and interview is active, cancel it immediately
+      if (wasFullscreen && !isCurrentlyFullscreen && isOpen && session?.id && !isInterviewComplete) {
+        console.log('🚫 Fullscreen exited - cancelling interview immediately');
+        cancelInterview(session.id, 'Interview cancelled: Candidate exited fullscreen mode');
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, [isOpen, session?.id, isInterviewComplete]);
 
   // Centralized cleanup function
   const performCleanup = useCallback(() => {
@@ -419,6 +635,86 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   if (mode === 'voice') {
     return (
       <>
+        {/* Instructions Modal - Shows BEFORE interview starts */}
+        <Dialog
+          open={showInstructionsModal && isOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowInstructionsModal(false);
+              // Interview will start automatically via useEffect when showInstructionsModal becomes false
+            }
+          }}
+        >
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                <AlertCircle className="w-6 h-6 text-blue-600" />
+                Interview Instructions
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <p className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
+                  Please read these instructions carefully before starting your interview:
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <Monitor className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">Do NOT Exit Fullscreen</h4>
+                    <p className="text-sm text-red-800 dark:text-red-300">
+                      <strong>CRITICAL:</strong> The interview will automatically start in fullscreen mode (F11). <strong>Do NOT exit fullscreen mode</strong> during the interview. If you exit fullscreen, your interview will be automatically cancelled.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">Do NOT Close the Interview Before It Ends</h4>
+                    <p className="text-sm text-red-800 dark:text-red-300">
+                      <strong>IMPORTANT:</strong> Do not close or exit the interview before it ends. If you exit the interview before it ends, your interview will be cancelled.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <X className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">You Cannot Exit or Leave</h4>
+                    <p className="text-sm text-red-800 dark:text-red-300">
+                      <strong>WARNING:</strong> You cannot exit the interview. You cannot go to another place. You cannot use any other application because the video is being recorded and will be sent to the interviewer.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-yellow-600 mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-yellow-900 dark:text-yellow-200 mb-1">End Interview Button</h4>
+                    <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                      When the AI interviewer says the interview is over, the <strong>"End Interview"</strong> button will turn into a green <strong>"Complete Interview"</strong> button. You <strong>MUST</strong> click this button to finish your interview.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <Button
+                onClick={() => {
+                  setShowInstructionsModal(false);
+                  // Interview will start automatically via useEffect when showInstructionsModal becomes false
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                I Understand, Start Interview
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <div className="fixed inset-0 w-full h-screen bg-white dark:bg-gray-950 flex flex-col z-50">
           {/* Header with enhanced controls */}
           <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-border px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
@@ -568,65 +864,58 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                 </div>
 
                 <div className="flex items-center space-x-3">
+                  {/* Exit Interview Button - Red, cancels interview */}
                   <button
                     onClick={async () => {
                       if (processing || isUploading) {
                         return;
                       }
 
-                      console.log('🚪 Exiting interview...');
-                      setIsUploading(true);
+                      console.log('🚪 Exiting interview - will cancel...');
 
-                      try {
-                        // Stop recording and finalize (uploads chunks + generates HLS)
-                        console.log('Stopping recording and finalizing on exit...');
-                        const result = await stopRecording();
-
-                        if (result.success) {
-                          console.log('✅ Recording saved on exit:', result.playlistUrl);
-                        } else {
-                          console.warn('⚠️ Recording finalization had issues on exit:', result.error);
-                        }
-                      } catch (error) {
-                        console.error('Error saving recording on exit:', error);
-                      } finally {
-                        // Always cleanup and exit
-                        setIsUploading(false);
+                      // Cancel interview if session exists
+                      if (session?.id) {
+                        await cancelInterview(session.id, 'Interview cancelled: Candidate exited before completion');
+                      } else {
                         performCleanup();
                         onClose();
                       }
                     }}
-                    className="text-muted-foreground hover:text-foreground px-4 py-2 rounded-lg hover:bg-accent transition-colors text-sm font-medium border border-border"
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium border border-red-700 flex items-center space-x-2"
                     disabled={processing || isUploading}
                   >
-                    {isUploading ? '⏳ Saving...' : '← Exit Interview'}
+                    <X className="h-4 w-4" />
+                    <span>Exit Interview</span>
                   </button>
 
-                  <button
-                    onClick={submitVoiceInterview}
-                    disabled={processing || !realtimeAPI.isConnected || isUploading}
-                    className={`${realtimeAPI.isInterviewComplete || isInterviewComplete
-                      ? 'bg-green-600 hover:bg-green-700'
-                      : 'bg-destructive hover:bg-destructive/90'
-                      } disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg font-medium transition-all flex items-center space-x-2 shadow-lg`}
-                  >
-                    {processing || isUploading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                        <span>{isUploading ? 'Uploading...' : 'Processing...'}</span>
-                      </>
-                    ) : realtimeAPI.isInterviewComplete || isInterviewComplete ? (
-                      <>
-                        <CheckCircle className="h-4 w-4" />
-                        <span>Submit Interview</span>
-                      </>
-                    ) : (
-                      <>
-                        <PhoneOff className="h-4 w-4" />
-                        <span>End Interview</span>
-                      </>
-                    )}
-                  </button>
+                  {/* End Interview / Complete Interview Button - Green when AI finishes */}
+                  {realtimeAPI.isInterviewComplete || isInterviewComplete ? (
+                    <button
+                      onClick={submitVoiceInterview}
+                      disabled={processing || !realtimeAPI.isConnected || isUploading}
+                      className="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg font-medium transition-all flex items-center space-x-2 shadow-lg"
+                    >
+                      {processing || isUploading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                          <span>{isUploading ? 'Uploading...' : 'Processing...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4" />
+                          <span>Complete Interview</span>
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      disabled={true}
+                      className="bg-gray-400 text-white px-6 py-2.5 rounded-lg font-medium flex items-center space-x-2 shadow-lg cursor-not-allowed opacity-50"
+                    >
+                      <PhoneOff className="h-4 w-4" />
+                      <span>End Interview</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -809,18 +1098,10 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                     console.log('🚪 Exiting interview from dialog mode...');
 
                     try {
-                      // Stop recording and get the blob
-                      const recordedBlob = await stopRecording();
-
-                      // Upload the recording if we have data
-                      if (recordedBlob && recordedBlob.size > 0) {
-                        console.log('Uploading recorded blob...');
-                        await uploadRecording(recordedBlob);
-                      } else {
-                        console.log('No recording data to upload');
-                      }
+                      // Stop recording
+                      await stopRecording();
                     } catch (error) {
-                      console.error('Error saving recording on exit:', error);
+                      console.error('Error stopping recording on exit:', error);
                     } finally {
                       // Always cleanup and exit
                       performCleanup();

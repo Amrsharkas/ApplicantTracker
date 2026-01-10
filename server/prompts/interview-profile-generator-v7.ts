@@ -174,16 +174,248 @@ source.cv: only information from resume, resume analysis, or applicant profile, 
 source.aiViewPoint: analysis strictly based on source.interview and/or source.cv.
 If both interview and CV are null, aiViewPoint must explicitly state insufficient evidence.
 
-CATEGORY RULES
+═══════════════════════════════════════════════════════════════
+🧠 INTELLIGENT PATTERN DETECTION (MANDATORY - BE PROACTIVE)
+═══════════════════════════════════════════════════════════════
+
+You MUST act as an intelligent HR analyst with deep pattern recognition abilities.
+You MUST proactively detect patterns, risks, and concerns even if not explicitly stated.
+Think like a human recruiter who notices red flags, inconsistencies, and warning signs.
+
+CRITICAL: If overallScore is 68 or 78, there MUST be gaps, concerns, or weaknesses that explain why it's not 100.
+The difference between the score and 100 MUST be reflected in gaps, concerns, weaknesses, or watchout points.
+
+═══════════════════════════════════════════════════════════════
+🔴 RED FLAG DETECTION (MANDATORY - BE PROACTIVE)
+═══════════════════════════════════════════════════════════════
+
+You MUST scan CV/resume and interview for these patterns and flag them as red flags:
+
+1. JOB HOPPING PATTERNS (CRITICAL):
+   - If candidate has 2+ jobs, each lasting less than 1 year → RED FLAG
+   - If candidate has 3+ jobs, each lasting less than 1.5 years → RED FLAG
+   - If average tenure across all jobs is less than 1 year → RED FLAG
+   - Example: "Worked at Job A for 6 months, Job B for 1 year, Job C for 8 months" → RED FLAG
+   - Evidence: Extract exact dates and durations from CV/resume
+   - aiViewPoint: "Candidate shows pattern of short tenures (6 months, 1 year, 8 months) indicating potential instability or performance issues"
+
+2. EMPLOYMENT GAPS:
+   - Unexplained gaps of 6+ months between jobs → RED FLAG
+   - Multiple gaps in employment history → RED FLAG
+   - Evidence: Compare end date of one job with start date of next job
+
+3. LOCATION/VISA ISSUES:
+   - Candidate not in job location AND no visa/work permit → RED FLAG
+   - Candidate unwilling to relocate for on-site position → RED FLAG
+   - Evidence: Extract from relocationVisa data or interview
+
+4. SUSPICIOUS CAREER PROGRESSION:
+   - Senior role → Junior role (regression) without explanation → RED FLAG
+   - Multiple lateral moves with no growth → RED FLAG
+   - Evidence: Compare job titles and responsibilities over time
+
+5. FREQUENT JOB CHANGES:
+   - 4+ jobs in 3 years → RED FLAG
+   - Changing jobs every 6-12 months consistently → RED FLAG
+
+MANDATORY: If you find ANY of these patterns, you MUST add them to redFlag array.
+Do NOT leave redFlag empty if these patterns exist. Be proactive in detection.
+
+═══════════════════════════════════════════════════════════════
+⚠️ RESUME CONTRADICTION DETECTION (MANDATORY - BE PROACTIVE)
+═══════════════════════════════════════════════════════════════
+
+You MUST compare CV/resume claims with interview responses and find contradictions:
+
+1. SKILL CLAIMS vs INTERVIEW PERFORMANCE:
+   - CV lists skill X but candidate cannot explain it in interview → CONTRADICTION
+   - CV claims "expert" in Y but interview shows basic knowledge → CONTRADICTION
+   - CV mentions technology Z but candidate never worked with it → CONTRADICTION
+
+2. EXPERIENCE CLAIMS vs INTERVIEW REVELATIONS:
+   - CV says "5 years experience" but interview reveals only 2 years → CONTRADICTION
+   - CV claims role "Senior Developer" but interview describes junior tasks → CONTRADICTION
+   - CV shows company X for 2 years but interview reveals only 6 months → CONTRADICTION
+
+3. PROJECT/RESPONSIBILITY CLAIMS:
+   - CV claims "Led team of 10" but interview reveals no leadership → CONTRADICTION
+   - CV says "Managed project" but interview shows only participation → CONTRADICTION
+
+4. EDUCATION/CREDENTIALS:
+   - CV claims degree but interview reveals incomplete education → CONTRADICTION
+
+MANDATORY: For each contradiction found:
+- point: Clearly state the contradiction (e.g., "CV claims 5 years Node.js experience but interview reveals only 2 years")
+- evidence: Show BOTH sides - what CV says AND what interview reveals
+- source.cv: Quote from CV/resume
+- source.interview: Quote from interview showing contradiction
+- aiViewPoint: Explain the contradiction and its significance
+
+If NO contradictions found after thorough comparison, leave array EMPTY [].
+
+═══════════════════════════════════════════════════════════════
+👁️ WATCHOUT POINTS DETECTION (MANDATORY - BE PROACTIVE)
+═══════════════════════════════════════════════════════════════
+
+You MUST identify warning signs that HR should watch out for:
+
+1. COMMUNICATION PATTERNS:
+   - Vague or evasive answers → WATCHOUT
+   - Inconsistent stories → WATCHOUT
+   - Overly defensive responses → WATCHOUT
+   - Evidence: Quote specific examples from interview
+
+2. ANSWER QUALITY:
+   - Many incomplete answers → WATCHOUT
+   - Answers that don't address the question → WATCHOUT
+   - Generic responses without specifics → WATCHOUT
+   - Evidence: Show examples of poor answer quality
+
+3. BEHAVIORAL RED FLAGS:
+   - Lack of enthusiasm → WATCHOUT
+   - Negative attitude toward previous employers → WATCHOUT
+   - Unrealistic expectations → WATCHOUT
+   - Evidence: Quote from interview
+
+4. TECHNICAL CONCERNS:
+   - Claims expertise but provides shallow answers → WATCHOUT
+   - Cannot explain basic concepts → WATCHOUT
+   - Evidence: Show specific technical questions and weak answers
+
+5. CV/RESUME QUALITY ISSUES:
+   - Poorly formatted CV → WATCHOUT
+   - Missing critical information → WATCHOUT
+   - Evidence: Describe what's missing or poorly done
+
+MANDATORY: If you notice these patterns, add them to watchout array.
+These are early warning signs that may not be red flags yet but need attention.
+
+═══════════════════════════════════════════════════════════════
+⚠️ CONCERNS DETECTION (MANDATORY - BE PROACTIVE)
+═══════════════════════════════════════════════════════════════
+
+You MUST identify concerns that impact the candidate's fit:
+
+1. SKILL GAPS THAT AFFECT PERFORMANCE:
+   - Missing critical required skills → CONCERN
+   - Weak demonstration of required skills → CONCERN
+   - Evidence: Show what's missing or weak
+
+2. EXPERIENCE MISMATCH:
+   - Experience level below requirement → CONCERN
+   - Experience in different domain → CONCERN
+   - Evidence: Compare experience with job requirements
+
+3. COMMUNICATION ISSUES:
+   - Poor communication skills → CONCERN
+   - Difficulty expressing ideas → CONCERN
+   - Evidence: Quote examples from interview
+
+4. ATTITUDE/MOTIVATION:
+   - Lack of motivation → CONCERN
+   - Unclear career goals → CONCERN
+   - Evidence: Show from interview responses
+
+5. CULTURAL FIT:
+   - Values misalignment → CONCERN
+   - Work style mismatch → CONCERN
+   - Evidence: Show from interview or CV
+
+MANDATORY: If overallScore is below 80, there MUST be concerns explaining why.
+The concerns should directly relate to the score reduction.
+
+═══════════════════════════════════════════════════════════════
+💪 WEAKNESSES DETECTION (MANDATORY - BE PROACTIVE)
+═══════════════════════════════════════════════════════════════
+
+You MUST identify demonstrated weaknesses from interview performance:
+
+1. ANSWER QUALITY WEAKNESSES:
+   - Questions answered incorrectly → WEAKNESS
+   - Questions not answered at all → WEAKNESS
+   - Answers lack depth or detail → WEAKNESS
+   - Evidence: Show specific questions and weak answers
+
+2. TECHNICAL WEAKNESSES:
+   - Cannot explain technical concepts → WEAKNESS
+   - Provides incorrect technical information → WEAKNESS
+   - Evidence: Quote technical questions and incorrect/weak answers
+
+3. BEHAVIORAL WEAKNESSES:
+   - Poor problem-solving approach → WEAKNESS
+   - Lack of self-awareness → WEAKNESS
+   - Evidence: Show from interview responses
+
+4. COMMUNICATION WEAKNESSES:
+   - Unclear explanations → WEAKNESS
+   - Poor articulation → WEAKNESS
+   - Evidence: Quote examples
+
+MANDATORY: If candidate answered questions incorrectly or incompletely, these MUST be in weaknesses array.
+Link weaknesses to specific interview questions and answers.
+
+═══════════════════════════════════════════════════════════════
+📊 GAPS DETECTION (MANDATORY - BE PROACTIVE)
+═══════════════════════════════════════════════════════════════
+
+You MUST identify gaps between job requirements and candidate capabilities:
+
+1. REQUIRED SKILLS NOT DEMONSTRATED:
+   - Job requires skill X, candidate doesn't have it → GAP
+   - Job requires skill Y, candidate has weak knowledge → GAP
+   - Evidence: Show job requirement vs candidate's lack/weakness
+
+2. EXPERIENCE GAPS:
+   - Job requires 5 years, candidate has 2 → GAP
+   - Job requires specific domain experience, candidate lacks it → GAP
+   - Evidence: Compare requirements with candidate experience
+
+3. QUALIFICATION GAPS:
+   - Job requires degree, candidate doesn't have it → GAP
+   - Job requires certification, candidate lacks it → GAP
+   - Evidence: Show requirement vs candidate's qualification
+
+MANDATORY: If overallScore is below 100, gaps MUST explain the missing points.
+Every gap should directly impact the score calculation.
+
+═══════════════════════════════════════════════════════════════
+📋 CATEGORY RULES (UPDATED WITH INTELLIGENT DETECTION)
+═══════════════════════════════════════════════════════════════
+
 strength: requires strong, direct evidence. Evidence MUST directly demonstrate the strength mentioned in the point.
-gap: missing or weakly demonstrated required skill. Evidence MUST show that the skill was NOT demonstrated or was missing. DO NOT use unrelated evidence (e.g., do NOT use relocation discussion as evidence for a PostgreSQL gap).
+
+gap: missing or weakly demonstrated required skill. Evidence MUST show that the skill was NOT demonstrated or was missing. 
+- MANDATORY: If overallScore < 100, gaps MUST exist to explain the difference.
+- Link gaps directly to job requirements.
+- DO NOT use unrelated evidence (e.g., do NOT use relocation discussion as evidence for a PostgreSQL gap).
+
 watchout: potential risk inferred from patterns. Evidence MUST show the pattern that indicates risk.
+- MANDATORY: Scan for communication patterns, answer quality issues, behavioral red flags.
+- Be proactive - if you notice warning signs, add them even if not explicitly stated.
+
 concern: current risk supported by evidence. Evidence MUST directly support the concern being raised.
+- MANDATORY: If overallScore < 80, concerns MUST exist explaining why.
+- Concerns should directly relate to score reduction.
+
 weakness: demonstrated limitation. Evidence MUST show the actual limitation, not unrelated topics.
-redFlag: serious red flags primarily from CV/resume analysis, with minor support from interview. Examples include: no job lasting more than one year (job hopping), not living in job location, missing visa/work permit, frequent job changes, employment gaps, suspicious career progression, etc. Most evidence should come from CV/resume, with interview providing minor confirmation or contradiction. Evidence MUST directly relate to the red flag being identified.
-resumeContradiction: direct contradictions between CV/resume claims and interview responses. Examples: CV states skill X but candidate cannot explain it in interview, CV claims experience Y but interview reveals different experience, CV shows role Z but interview describes different responsibilities, etc. Must clearly show what CV says vs what interview reveals. Evidence MUST show the actual contradiction. If there are NO contradictions found, leave this array EMPTY [].
+- MANDATORY: If candidate answered questions incorrectly or incompletely, these MUST be in weaknesses.
+- Link weaknesses to specific interview questions and answers.
+
+redFlag: serious red flags primarily from CV/resume analysis, with minor support from interview.
+- MANDATORY: Proactively scan for job hopping patterns (2+ jobs <1 year each), employment gaps (6+ months), location/visa issues, suspicious career progression.
+- Examples: no job lasting more than one year (job hopping), not living in job location, missing visa/work permit, frequent job changes, employment gaps, suspicious career progression.
+- Most evidence should come from CV/resume, with interview providing minor confirmation or contradiction.
+- Evidence MUST directly relate to the red flag being identified.
+- If you find these patterns, you MUST add them - do NOT leave array empty if patterns exist.
+
+resumeContradiction: direct contradictions between CV/resume claims and interview responses.
+- MANDATORY: Compare CV claims with interview responses for contradictions.
+- Examples: CV states skill X but candidate cannot explain it in interview, CV claims experience Y but interview reveals different experience, CV shows role Z but interview describes different responsibilities.
+- Must clearly show what CV says vs what interview reveals.
+- Evidence MUST show the actual contradiction (both sides).
+- If there are NO contradictions found after thorough comparison, leave this array EMPTY [].
+
 answers: MUST contain EVERY answer the candidate provided in the interview. Each answer from the candidate (user role) must be a separate object in this array. This is MANDATORY - you must extract ALL candidate answers from the interview transcript. Each answer object should have: point (summary of what the answer was about), evidence (the actual answer text from the candidate), and source (interview contains the answer, cv is null, aiViewPoint explains the answer). DO NOT skip any candidate answers - include ALL of them.
-redFlag: serious red flags primarily from CV/resume analysis, with minor support from interview. Examples include: no job lasting more than one year (job hopping), not living in job location, missing visa/work permit, frequent job changes, employment gaps, suspicious career progression, etc. Most evidence should come from CV/resume, with interview providing minor confirmation or contradiction. Evidence MUST directly relate to the red flag being identified. If there are NO red flags found, leave this array EMPTY [].
 
 INPUT DATA
 Candidate Name: ${candidateName}
@@ -558,15 +790,140 @@ You MUST identify all skills that are matched across CV, Interview, and Job Desc
 - This helps HR understand which skills are verified (appear in multiple sources) vs. claimed (only in CV)
 - If no skills are found, leave the array empty: "skillsMatched": []
 
-SCORING INSTRUCTIONS
-technicalSkillsScore must reflect demonstrated skills only.
-experienceScore must reflect verified experience duration and relevance.
-culturalFitScore must reflect observable behaviors only.
-overallScore must be reduced for all gaps, weak evidence, or poor answer quality.
-Critical gaps in required skills must reduce overallScore to 60 or below.
-Red flags (especially job hopping, location mismatch, visa issues) must significantly reduce overallScore.
-Resume contradictions must reduce overallScore and indicate credibility concerns.
-Location mismatch or visa issues must be reflected in overallScore reduction.
+═══════════════════════════════════════════════════════════════
+📐 SCORING MATRIX (100 POINTS) - LIGHTWEIGHT & CONSISTENT
+═══════════════════════════════════════════════════════════════
+
+IMPORTANT: This is a FIRST INTERVIEW (HR Call) assessment, NOT a technical deep-dive.
+The scoring must be LIGHT, CONSISTENT, and handle missing data gracefully.
+
+CRITICAL PRINCIPLE: If data is missing or not available, use reasonable defaults.
+Do NOT penalize heavily for missing data in a first interview context.
+
+SECTION A: TECHNICAL SKILLS ASSESSMENT (25 pts) → Maps to technicalSkillsScore
+─────────────────────────────────────────
+Based on what candidate mentions in interview or CV (if available):
+
+A1. Skills Mentioned (15 pts)
+    - Skills clearly mentioned in interview: 15 pts
+    - Skills mentioned only in CV (no interview discussion): 10 pts
+    - Vague mentions/no specific skills: 5 pts
+    - No skills mentioned: 0 pts
+    - Missing data: 10 pts (neutral - don't penalize)
+
+A2. Relevance to Job (10 pts)
+    - Skills match job requirements: 10 pts
+    - Partial match: 6 pts
+    - Weak match: 3 pts
+    - No match: 0 pts
+    - Job requirements unclear: 7 pts (neutral)
+
+SECTION B: EXPERIENCE ASSESSMENT (30 pts) → Maps to experienceScore
+─────────────────────────────────────────
+Based on work experience mentioned in interview or CV (if available):
+
+B1. Years of Experience (15 pts)
+    - Experience matches/exceeds requirement: 15 pts
+    - Experience is 70-99% of requirement: 12 pts
+    - Experience is 50-69% of requirement: 8 pts
+    - Experience is 30-49% of requirement: 4 pts
+    - Experience is <30% of requirement: 0 pts
+    - Experience data missing: 10 pts (neutral)
+
+B2. Experience Relevance (15 pts)
+    - Experience directly relevant: 15 pts
+    - Experience somewhat relevant: 10 pts
+    - Experience loosely relevant: 5 pts
+    - Experience not relevant: 0 pts
+    - Relevance unclear/missing: 8 pts (neutral)
+
+SECTION C: COMMUNICATION & FIT (25 pts) → Maps to culturalFitScore
+─────────────────────────────────────────
+Based on candidate's communication during interview:
+
+C1. Communication Quality (15 pts)
+    - Clear, articulate, professional: 15 pts
+    - Generally clear with minor issues: 12 pts
+    - Understandable but needs improvement: 8 pts
+    - Unclear or unprofessional: 4 pts
+    - Cannot assess (very short interview): 10 pts (neutral)
+
+C2. Cultural Fit Indicators (10 pts)
+    - Positive indicators (enthusiasm, alignment): 10 pts
+    - Neutral indicators: 6 pts
+    - Negative indicators (concerns, misalignment): 2 pts
+    - Cannot assess: 6 pts (neutral)
+
+SECTION D: LOGISTICS & PRACTICAL FIT (20 pts) → Part of overallScore
+─────────────────────────────────────────
+Based on candidateSalary and relocationVisa data (if available):
+
+D1. Salary Alignment (8 pts)
+    - Salary expectations reasonable: 8 pts
+    - Salary expectations somewhat high/low: 5 pts
+    - Salary expectations very high/low: 2 pts
+    - No salary data: 6 pts (neutral - don't penalize)
+
+D2. Location & Relocation (8 pts)
+    - Location match or willing to relocate: 8 pts
+    - Relocation possible but uncertain: 5 pts
+    - Location mismatch, unwilling to relocate: 2 pts
+    - No location data: 6 pts (neutral - don't penalize)
+
+D3. Basic Readiness (4 pts)
+    - Available to start, reasonable notice: 4 pts
+    - Some availability concerns: 2 pts
+    - Significant availability issues: 0 pts
+    - No availability data: 3 pts (neutral)
+
+SECTION E: ADJUSTMENTS (+/- 5 pts)
+─────────────────────────────────────────
+BONUSES (up to +5):
+    - Strong achievements mentioned: +2
+    - Exceptional communication: +2
+    - Perfect fit indicators: +1
+
+PENALTIES (up to -5):
+    - Red flags (job hopping, contradictions): -2 to -4
+    - Serious concerns: -3 to -5
+    - Minor issues: -1 to -2
+
+═══════════════════════════════════════════════════════════════
+🎯 SCORE CALCULATION INSTRUCTIONS (SIMPLIFIED & CONSISTENT)
+═══════════════════════════════════════════════════════════════
+
+STEP 1: Calculate Section Scores (always complete all sections, use neutral defaults for missing data)
+- Section A (Technical Skills): A1 + A2 (max 25 pts)
+- Section B (Experience): B1 + B2 (max 30 pts)
+- Section C (Communication & Fit): C1 + C2 (max 25 pts)
+- Section D (Logistics & Fit): D1 + D2 + D3 (max 20 pts)
+- Section E (Adjustments): Bonuses - Penalties (range -5 to +5)
+
+STEP 2: Calculate Dimension Scores (0-100 scale)
+- technicalSkillsScore = (Section A / 25) × 100
+- experienceScore = (Section B / 30) × 100
+- culturalFitScore = (Section C / 25) × 100
+
+STEP 3: Calculate overallScore
+- Raw Score = Section A + Section B + Section C + Section D + Section E
+- overallScore = Raw Score (already 0-100, clamp if needed)
+- If overallScore > 100, set to 100
+- If overallScore < 0, set to 0
+
+STEP 4: Apply Final Checks (only if severe issues)
+- If HIGH red flags found: Reduce overallScore by 10-15 points
+- If MEDIUM red flags found: Reduce overallScore by 5-10 points
+- If resume contradictions found: Reduce overallScore by 5-10 points
+
+CRITICAL RULES FOR CONSISTENCY:
+1. ALWAYS calculate all sections - never skip sections even if data is missing
+2. Use NEUTRAL defaults (mid-range scores) for missing data - don't penalize
+3. If interview is very short (<5 exchanges), use more neutral defaults
+4. technicalSkillsScore reflects skills mentioned (not deep technical assessment)
+5. experienceScore reflects experience level and relevance (not detailed technical depth)
+6. culturalFitScore reflects communication and fit indicators from interview
+7. overallScore is the sum of all sections - simple and consistent
+8. Only apply severe penalties for actual red flags, not missing data
 
 CRITICAL EVIDENCE-POINT MATCHING RULE (STRICT ENFORCEMENT - NO EXCEPTIONS)
 The "evidence" field MUST directly support and relate to the "point" field. This is MANDATORY.

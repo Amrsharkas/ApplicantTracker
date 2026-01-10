@@ -2526,6 +2526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }, job, language);
 
         // Create a session indicating voice mode
+        // Store jobId explicitly in sessionData for easy retrieval during cancellation
         const session = await storage.createInterviewSession({
           userId,
           interviewType: 'job-practice',
@@ -2535,10 +2536,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             currentQuestionIndex: 0,
             interviewSet: practiceSet,
             context: { job, interviewContext },
+            jobId: job?.jobId || job?.id || null, // Store jobId explicitly for cancellation
             mode: 'voice'
           },
           isCompleted: false
         });
+
+        console.log(`💾 Created interview session ${session.id} with jobId: ${job?.jobId || job?.id || 'NOT FOUND'}`);
 
         // Prepare welcome message similar to other voice start endpoints
         const welcomeMessage = await aiInterviewService.generateWelcomeMessage({
@@ -4390,6 +4394,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cancel interview session
+  app.post('/api/interview/cancel/:sessionId', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const sessionId = parseInt(req.params.sessionId);
+      const { reason } = req.body;
+
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ message: "Invalid session ID" });
+      }
+
+      // Get session to verify ownership
+      const session = await storage.getInterviewSessionById(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: "Interview session not found" });
+      }
+
+      if (session.userId !== userId) {
+        return res.status(403).json({ message: "Unauthorized: Session does not belong to user" });
+      }
+
+      // Mark session as cancelled
+      const sessionData = session.sessionData as any;
+      await storage.updateInterviewSession(sessionId, {
+        isCompleted: false,
+        sessionData: {
+          ...sessionData,
+          isCancelled: true,
+          cancellationReason: reason || 'Interview cancelled by candidate',
+          cancelledAt: new Date().toISOString(),
+          cancelledBy: 'candidate',
+          status: 'cancelled'
+        }
+      });
+
+      // Also update the session status in the database
+      try {
+        await db
+          .update(interviewSessions)
+          .set({
+            isCompleted: false,
+            updatedAt: new Date()
+          })
+          .where(eq(interviewSessions.id, sessionId));
+      } catch (dbError) {
+        console.error('⚠️ Error updating session status in DB:', dbError);
+        // Continue anyway - sessionData update is more important
+      }
+
+      // CRITICAL: Update job match status to 'cancelled' so it doesn't appear in the interview list
+      // This MUST work - the interview must be removed from the candidate's list
+      try {
+        console.log(`🔍 [CANCEL] Attempting to find and cancel job match for session ${sessionId}, user ${userId}...`);
+
+        // Try multiple ways to get jobId from session data (in order of reliability)
+        let jobId = null;
+
+        // Method 1: Direct from sessionData.jobId (most reliable - we store it explicitly)
+        if (sessionData?.jobId) {
+          jobId = sessionData.jobId;
+          console.log(`✅ [CANCEL] Found jobId from sessionData.jobId: ${jobId}`);
+        }
+
+        // Method 2: From context.job
+        if (!jobId && sessionData?.context?.job) {
+          const contextJob = sessionData.context.job;
+          if (contextJob.jobId) {
+            jobId = contextJob.jobId;
+            console.log(`✅ [CANCEL] Found jobId from context.job.jobId: ${jobId}`);
+          } else if (contextJob.id) {
+            jobId = contextJob.id;
+            console.log(`✅ [CANCEL] Found jobId from context.job.id: ${jobId}`);
+          }
+        }
+
+        // Method 3: From context directly
+        if (!jobId && sessionData?.context?.jobId) {
+          jobId = sessionData.context.jobId;
+          console.log(`✅ [CANCEL] Found jobId from context.jobId: ${jobId}`);
+        }
+
+        if (jobId) {
+          // Convert jobId to string and number for flexible comparison
+          const jobIdStr = String(jobId);
+          const jobIdNum = !isNaN(Number(jobId)) ? Number(jobId) : null;
+          console.log(`🔍 [CANCEL] Looking for job match with jobId: ${jobIdStr} (original: ${jobId}, type: ${typeof jobId})`);
+
+          // Get ALL job matches for this user
+          const allJobMatches = await localDatabaseService.getJobMatchesByUser(userId);
+          console.log(`📊 [CANCEL] Found ${allJobMatches.length} total job matches for user ${userId}`);
+
+          // CRITICAL: Cancel ALL job matches for this user and job ID
+          // This ensures that when a user cancels one interview, all their interviews for that job are cancelled
+          // User isolation is maintained - only affects the specific userId
+          const cancelledCount = await localDatabaseService.cancelAllJobMatchesForUserAndJob(userId, jobId);
+
+          if (cancelledCount > 0) {
+            console.log(`✅ [CANCEL] SUCCESS: Cancelled ${cancelledCount} job match(es) for user ${userId} and job ${jobId}`);
+
+            // Log details of cancelled matches for debugging
+            const cancelledMatches = allJobMatches.filter(match => {
+              const matchJobIdStr = String(match.jobId);
+              const matchJobIdNum = !isNaN(Number(match.jobId)) ? Number(match.jobId) : null;
+
+              // Try string comparison
+              if (matchJobIdStr === jobIdStr) return true;
+              // Try number comparison
+              if (jobIdNum !== null && matchJobIdNum !== null && matchJobIdNum === jobIdNum) return true;
+              // Try loose string comparison
+              if (matchJobIdStr === String(jobId) || String(match.jobId) === jobIdStr) return true;
+
+              return false;
+            });
+
+            console.log(`✅ [CANCEL] Cancelled job matches details:`, cancelledMatches.map(m => ({
+              id: m.id,
+              jobId: m.jobId,
+              status: 'cancelled',
+              userId: m.userId
+            })));
+          } else {
+            console.error(`❌ [CANCEL] ERROR: No job matches found to cancel for jobId ${jobId} and userId ${userId}`);
+            console.log(`📋 [CANCEL] Available job matches:`, allJobMatches.map(m => ({
+              id: m.id,
+              jobId: m.jobId,
+              jobIdType: typeof m.jobId,
+              status: m.status,
+              userId: m.userId
+            })));
+          }
+        } else {
+          console.error(`❌ [CANCEL] CRITICAL ERROR: Could not find jobId in session data for session ${sessionId}`);
+          console.log(`📋 [CANCEL] Session data structure:`, {
+            hasContext: !!sessionData?.context,
+            hasJob: !!sessionData?.context?.job,
+            hasJobId: !!sessionData?.jobId,
+            contextKeys: sessionData?.context ? Object.keys(sessionData.context) : [],
+            sessionDataKeys: Object.keys(sessionData || {})
+          });
+        }
+      } catch (jobMatchError: any) {
+        console.error('❌ [CANCEL] CRITICAL ERROR updating job match status:', jobMatchError);
+        console.error('❌ [CANCEL] Error message:', jobMatchError?.message);
+        console.error('❌ [CANCEL] Error stack:', jobMatchError?.stack);
+        // DO NOT continue silently - this is critical
+        // But we still return success for the session cancellation to prevent blocking
+      }
+
+      console.log(`🚫 Interview session ${sessionId} cancelled by user ${userId}. Reason: ${reason || 'No reason provided'}`);
+
+      res.json({
+        success: true,
+        message: "Interview session cancelled successfully",
+        sessionId: sessionId,
+        cancelledAt: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error('Error cancelling interview session:', error);
+      res.status(500).json({
+        message: "Failed to cancel interview session",
+        error: error.message
+      });
+    }
+  });
+
   app.get('/api/interview/session', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -5223,6 +5392,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get job matches from local database
       let jobMatches = await localDatabaseService.getJobMatchesByUser(userId);
+
+      // Always exclude cancelled interviews from the list
+      jobMatches = jobMatches.filter(match => match.status !== 'cancelled');
 
       // Filter by status if specified
       if (statusFilter) {
@@ -7789,7 +7961,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
   });
 
   // Test endpoint for V7 generator using data from complete_voice_log.txt
-  app.post('/api/testv7generator', async (req: any, res) => {
+  app.get('/api/testv7generator', async (req: any, res) => {
     try {
       console.log('🧪 Testing V7 generator with data from complete_voice_log.txt');
 

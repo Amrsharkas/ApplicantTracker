@@ -62,6 +62,9 @@ export default function JobInterviewsPage() {
     }
   });
 
+  // Note: Page refresh is handled in JobSpecificInterviewModal after cancellation
+  // No need for event listener here since we're using window.location.reload()
+
   const invitedJobs: InvitedJob[] = useMemo(() => {
     const list = Array.isArray(items) ? items : [];
     if (!searchQuery) return list;
@@ -83,10 +86,33 @@ export default function JobInterviewsPage() {
   };
 
   const handleInterviewComplete = async () => {
+    console.log('✅ Interview completed - refreshing page data...');
+    
+    // Close the interview modal first
+    setInterviewOpen(false);
+    
+    // Show success toast
+    toast({
+      title: 'Interview Completed',
+      description: 'Your interview has been completed successfully. Refreshing data...',
+      variant: 'default',
+    });
+    
+    // Wait a moment for the modal to close
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
     // Refresh the interview data
     await refetch();
+    
     // Switch to completed tab to show the finished interview
     setActiveTab('completed');
+    
+    // Force a full page refresh to ensure all data is up-to-date
+    // This ensures the interview list is completely fresh
+    setTimeout(() => {
+      console.log('🔄 Refreshing page to show updated interview list...');
+      window.location.reload();
+    }, 1000);
   };
 
   // Check if job has assessment questions that need to be completed

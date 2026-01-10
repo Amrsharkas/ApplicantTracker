@@ -1,6 +1,6 @@
 import { db } from './db';
 import * as schema from '../shared/schema';
-import { eq, and, or, ilike, desc, asc, gte, lte, sql, isNotNull } from 'drizzle-orm';
+import { eq, and, or, ilike, desc, asc, gte, lte, sql, isNotNull, inArray } from 'drizzle-orm';
 import {
   AirtableUserProfile,
   InsertAirtableUserProfile,
@@ -545,6 +545,65 @@ export class LocalDatabaseService {
       return match || null;
     } catch (error) {
       console.error('Error updating job match status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel ALL job matches for a specific user and job ID
+   * This ensures that when a user cancels one interview, all their interviews for that job are cancelled
+   * User isolation is maintained - only affects the specific userId
+   */
+  async cancelAllJobMatchesForUserAndJob(userId: string, jobId: string | number): Promise<number> {
+    try {
+      const jobIdStr = String(jobId);
+      const jobIdNum = !isNaN(Number(jobId)) ? Number(jobId) : null;
+
+      // Build flexible where condition to match jobId as string or number
+      // First, get all job matches for this user
+      const allUserMatches = await db
+        .select()
+        .from(schema.airtableJobMatches)
+        .where(eq(schema.airtableJobMatches.userId, userId));
+
+      // Filter matches that match the jobId (flexible comparison)
+      const matchingMatches = allUserMatches.filter(match => {
+        const matchJobIdStr = String(match.jobId);
+        const matchJobIdNum = !isNaN(Number(match.jobId)) ? Number(match.jobId) : null;
+
+        // Try string comparison
+        if (matchJobIdStr === jobIdStr) return true;
+        // Try number comparison
+        if (jobIdNum !== null && matchJobIdNum !== null && matchJobIdNum === jobIdNum) return true;
+        // Try loose string comparison
+        if (matchJobIdStr === String(jobId) || String(match.jobId) === jobIdStr) return true;
+
+        return false;
+      });
+
+      if (matchingMatches.length === 0) {
+        console.log(`⚠️ [BULK CANCEL] No matching job matches found for user ${userId} and job ${jobId}`);
+        return 0;
+      }
+
+      // Update all matching job matches to 'cancelled'
+      const matchIds = matchingMatches.map(m => m.id);
+      const updated = await db
+        .update(schema.airtableJobMatches)
+        .set({ status: 'cancelled', updatedAt: new Date() })
+        .where(
+          and(
+            eq(schema.airtableJobMatches.userId, userId),
+            inArray(schema.airtableJobMatches.id, matchIds)
+          )
+        )
+        .returning();
+
+      console.log(`✅ [BULK CANCEL] Cancelled ${updated.length} job match(es) for user ${userId} and job ${jobId}`);
+      console.log(`✅ [BULK CANCEL] Cancelled match IDs:`, matchIds);
+      return updated.length;
+    } catch (error) {
+      console.error('❌ [BULK CANCEL] Error cancelling all job matches:', error);
       throw error;
     }
   }
