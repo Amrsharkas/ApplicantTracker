@@ -40,9 +40,10 @@ interface JobSpecificInterviewModalProps {
   mode: 'text' | 'voice';
   language: 'english' | 'arabic';
   onInterviewComplete?: () => void;
+  onInterviewCancelled?: () => void;
 }
 
-export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language, onInterviewComplete }: JobSpecificInterviewModalProps) {
+export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language, onInterviewComplete, onInterviewCancelled }: JobSpecificInterviewModalProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<SessionData | null>(null);
@@ -217,14 +218,22 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       // Close the interview modal
       onClose();
 
-      // Refresh the page automatically to update the interview list
-      // This ensures the cancelled interview is removed from the list immediately
-      if (window.location.pathname.includes('/dashboard/jobinterviews')) {
-        // Wait a bit longer to ensure backend update is complete and camera is fully stopped
+      // Call the cancellation callback to refetch interviews list
+      // This is preferred over page reload as it's faster and more React-friendly
+      if (onInterviewCancelled) {
+        console.log('🔄 Calling onInterviewCancelled to refetch interviews...');
+        // Small delay to ensure backend update is complete
         setTimeout(() => {
-          console.log('🔄 Reloading page to update interview list...');
-          window.location.reload();
-        }, 1000);
+          onInterviewCancelled();
+        }, 500);
+      } else {
+        // Fallback to page reload if no callback provided
+        if (window.location.pathname.includes('/dashboard/job-interviews') || window.location.pathname.includes('/dashboard/jobinterviews')) {
+          setTimeout(() => {
+            console.log('🔄 Reloading page to update interview list...');
+            window.location.reload();
+          }, 1000);
+        }
       }
     } catch (error: any) {
       console.error('❌ Error cancelling interview:', error);

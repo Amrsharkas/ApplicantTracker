@@ -62,8 +62,8 @@ export default function JobInterviewsPage() {
     }
   });
 
-  // Note: Page refresh is handled in JobSpecificInterviewModal after cancellation
-  // No need for event listener here since we're using window.location.reload()
+  // Note: Interview cancellation is handled via onInterviewCancelled callback
+  // which refetches the interview list instead of reloading the page
 
   const invitedJobs: InvitedJob[] = useMemo(() => {
     const list = Array.isArray(items) ? items : [];
@@ -115,6 +115,21 @@ export default function JobInterviewsPage() {
     }, 1000);
   };
 
+  const handleInterviewCancelled = async () => {
+    console.log('❌ Interview cancelled - refreshing interview list...');
+    
+    // Close the interview modal first
+    setInterviewOpen(false);
+    
+    // Wait a moment for the modal to close
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Refresh the interview data to remove the cancelled interview from the list
+    await refetch();
+    
+    console.log('✅ Interview list refreshed after cancellation');
+  };
+
   // Check if job has assessment questions that need to be completed
   const needsAssessment = (job: InvitedJob | null): boolean => {
     if (!job) return false;
@@ -156,6 +171,7 @@ export default function JobInterviewsPage() {
             mode={interviewMode}
             language={interviewLanguage}
             onInterviewComplete={handleInterviewComplete}
+            onInterviewCancelled={handleInterviewCancelled}
           />
         </div>
       )}

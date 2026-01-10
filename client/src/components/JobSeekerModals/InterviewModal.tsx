@@ -784,7 +784,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         audio: true,
       });
       setCameraStream(videoStream);
-      startRecording(videoStream);
+      // Don't start recording here - we need sessionId first, which comes from API response
       return videoStream;
     } catch (error) {
       console.error('Camera access error:', error);
@@ -844,7 +844,32 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
   // Listen for fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const wasFullscreen = isFullscreen;
+      const nowFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(nowFullscreen);
+
+      // If we exit fullscreen while in voice interview mode, stop camera and warn user
+      // But don't cancel the interview - user must use exit button to cancel
+      // Only do this if interview is actually running (not just starting)
+      if (wasFullscreen && !nowFullscreen && mode === 'voice' && cameraStream && !isStartingInterview && realtimeAPI.isConnected) {
+        console.log('Fullscreen exited during voice interview - stopping camera');
+
+        // Stop camera stream when exiting fullscreen
+        cameraStream.getTracks().forEach(track => {
+          track.stop();
+        });
+        setCameraStream(null);
+
+        // Stop recording if active
+        cleanup();
+
+        // Warn user but don't cancel interview
+        toast({
+          title: t('interview.fullscreenExited') || "Fullscreen Exited",
+          description: t('interview.fullscreenExitedWarning') || "Fullscreen mode was exited. Camera has been stopped. You can continue with audio only or re-enter fullscreen.",
+          variant: "default",
+        });
+      }
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -858,7 +883,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
       document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
     };
-  }, []);
+  }, [isFullscreen, mode, cameraStream, cleanup, toast, t, isStartingInterview, realtimeAPI.isConnected]);
 
   const startVoiceInterview = async () => {
 
@@ -874,13 +899,7 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
     setIsInterviewConcluded(false);
     setConversationHistory([]);
 
-    // Start camera access immediately when voice mode is selected
-    await startCameraAccess();
-
-    // Try to enter fullscreen immediately when switching to voice mode
-    enterFullscreen();
-
-    // Show loading message
+    // Show loading message first
     const loadingMessage: InterviewMessage = {
       type: 'question',
       content: t('interview.startingVoiceInterviewConnecting') || 'Starting your voice interview... Camera enabled, connecting to AI interviewer...',
@@ -889,6 +908,22 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
     setMessages([loadingMessage]);
 
     try {
+      // Start camera access - continue even if it fails
+      try {
+        await startCameraAccess();
+      } catch (cameraError) {
+        console.warn('Camera access failed, continuing with audio only:', cameraError);
+        // Continue without camera
+      }
+
+      // Try to enter fullscreen - don't fail if this doesn't work
+      try {
+        await enterFullscreen();
+      } catch (fullscreenError) {
+        console.warn('Fullscreen failed, continuing anyway:', fullscreenError);
+        // Continue without fullscreen - user can enter manually
+      }
+
       // Call the dedicated voice interview route
       const response = await fetch('/api/interview/start-voice', {
         method: 'POST',
@@ -929,6 +964,16 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         isCompleted: false
       });
 
+      // Start recording now that we have sessionId and camera stream
+      if (cameraStream && interviewData.sessionId) {
+        try {
+          startRecording(cameraStream, interviewData.sessionId.toString(), realtimeAPI.aiAudioStream);
+        } catch (recordingError) {
+          console.warn('Failed to start recording:', recordingError);
+          // Continue without recording
+        }
+      }
+
       // Update with welcome message
       if (interviewData.welcomeMessage) {
         const welcomeMessage: InterviewMessage = {
@@ -940,15 +985,22 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
       }
 
       // Connect to realtime API with the interview data
-      await realtimeAPI.connect({
-        interviewType: 'professional',
-        questions: interviewData.questions,
-        language: selectedInterviewLanguage,
-        resumeContent: interviewData.resumeContent || null,
-        summary: interviewData.summary || null,
-        skillsList: interviewData.skillsList || null,
-        aiProfile: interviewData.aiProfile || null
-      });
+      // Wrap in try-catch to handle connection errors gracefully
+      try {
+        await realtimeAPI.connect({
+          interviewType: 'professional',
+          questions: interviewData.questions,
+          language: selectedInterviewLanguage,
+          resumeContent: interviewData.resumeContent || null,
+          summary: interviewData.summary || null,
+          skillsList: interviewData.skillsList || null,
+          aiProfile: interviewData.aiProfile || null
+        });
+      } catch (connectError) {
+        console.error('Realtime API connection failed:', connectError);
+        // Don't cancel the interview if connection fails - let user retry
+        throw new Error('Failed to connect to AI interviewer. Please try again.');
+      }
 
       setIsStartingInterview(false);
 
@@ -957,13 +1009,27 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         description: t('interview.voiceInterviewStartedDescription') || "You can now speak naturally with the AI interviewer.",
       });
 
-      // Auto-enter fullscreen for voice mode with a small delay to ensure UI is ready
+      // Try to enter fullscreen again with a delay if not already in fullscreen
       setTimeout(async () => {
-        await enterFullscreen();
+        if (!document.fullscreenElement) {
+          try {
+            await enterFullscreen();
+          } catch (e) {
+            console.warn('Delayed fullscreen entry failed:', e);
+            // Not critical - continue anyway
+          }
+        }
       }, 500);
     } catch (error) {
       setIsStartingInterview(false);
       console.error('Voice interview error:', error);
+
+      // Cleanup on error
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        setCameraStream(null);
+      }
+      cleanup();
 
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
@@ -1274,26 +1340,38 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
     setViolationRulesAccepted(true);
 
     // Start voice interview directly after accepting rules
+    // We manually start here since violationRulesAccepted state update might not be immediate
+    // Copy the logic from startVoiceInterview but skip the violation check
+    setIsStartingInterview(true);
+    setMode('voice');
+    setMessages([]);
+    setIsInterviewConcluded(false);
+    setConversationHistory([]);
+
+    // Show loading message first
+    const loadingMessage: InterviewMessage = {
+      type: 'question',
+      content: t('interview.startingVoiceInterviewConnecting') || 'Starting your voice interview... Camera enabled, connecting to AI interviewer...',
+      timestamp: new Date()
+    };
+    setMessages([loadingMessage]);
+
     try {
-      setIsStartingInterview(true);
-      setMode('voice');
-      setMessages([]);
-      setIsInterviewConcluded(false);
-      setConversationHistory([]);
+      // Start camera access - continue even if it fails
+      try {
+        await startCameraAccess();
+      } catch (cameraError) {
+        console.warn('Camera access failed, continuing with audio only:', cameraError);
+        // Continue without camera
+      }
 
-      // Start camera access immediately when voice mode is selected
-      await startCameraAccess();
-
-      // Try to enter fullscreen immediately when switching to voice mode
-      enterFullscreen();
-
-      // Show loading message
-      const loadingMessage: InterviewMessage = {
-        type: 'question',
-        content: t('interview.startingVoiceInterviewConnecting') || 'Starting your voice interview... Camera enabled, connecting to AI interviewer...',
-        timestamp: new Date()
-      };
-      setMessages([loadingMessage]);
+      // Try to enter fullscreen - don't fail if this doesn't work
+      try {
+        await enterFullscreen();
+      } catch (fullscreenError) {
+        console.warn('Fullscreen failed, continuing anyway:', fullscreenError);
+        // Continue without fullscreen - user can enter manually
+      }
 
       // Call the dedicated voice interview route
       const response = await fetch('/api/interview/start-voice', {
@@ -1335,6 +1413,16 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         isCompleted: false
       });
 
+      // Start recording now that we have sessionId and camera stream
+      if (cameraStream && interviewData.sessionId) {
+        try {
+          startRecording(cameraStream, interviewData.sessionId.toString(), realtimeAPI.aiAudioStream);
+        } catch (recordingError) {
+          console.warn('Failed to start recording:', recordingError);
+          // Continue without recording
+        }
+      }
+
       // Update with welcome message
       if (interviewData.welcomeMessage) {
         const welcomeMessage: InterviewMessage = {
@@ -1346,15 +1434,22 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
       }
 
       // Connect to realtime API with the interview data
-      await realtimeAPI.connect({
-        interviewType: 'professional',
-        questions: interviewData.questions,
-        language: selectedInterviewLanguage,
-        resumeContent: interviewData.resumeContent || null,
-        summary: interviewData.summary || null,
-        skillsList: interviewData.skillsList || null,
-        aiProfile: interviewData.aiProfile || null
-      });
+      // Wrap in try-catch to handle connection errors gracefully
+      try {
+        await realtimeAPI.connect({
+          interviewType: 'professional',
+          questions: interviewData.questions,
+          language: selectedInterviewLanguage,
+          resumeContent: interviewData.resumeContent || null,
+          summary: interviewData.summary || null,
+          skillsList: interviewData.skillsList || null,
+          aiProfile: interviewData.aiProfile || null
+        });
+      } catch (connectError) {
+        console.error('Realtime API connection failed:', connectError);
+        // Don't cancel the interview if connection fails - let user retry
+        throw new Error('Failed to connect to AI interviewer. Please try again.');
+      }
 
       setIsStartingInterview(false);
 
@@ -1363,13 +1458,27 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         description: t('interview.voiceInterviewStartedDescription') || "You can now speak naturally with the AI interviewer.",
       });
 
-      // Auto-enter fullscreen for voice mode with a small delay to ensure UI is ready
+      // Try to enter fullscreen again with a delay if not already in fullscreen
       setTimeout(async () => {
-        await enterFullscreen();
+        if (!document.fullscreenElement) {
+          try {
+            await enterFullscreen();
+          } catch (e) {
+            console.warn('Delayed fullscreen entry failed:', e);
+            // Not critical - continue anyway
+          }
+        }
       }, 500);
     } catch (error) {
       setIsStartingInterview(false);
       console.error('Voice interview error:', error);
+
+      // Cleanup on error
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        setCameraStream(null);
+      }
+      cleanup();
 
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
@@ -1411,6 +1520,15 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
         realtimeAPI.disconnect();
       }
 
+      // Stop camera stream explicitly
+      if (cameraStream) {
+        console.log('Stopping camera stream...');
+        cameraStream.getTracks().forEach(track => {
+          track.stop();
+        });
+        setCameraStream(null);
+      }
+
       // Stop recording and get the blob
       console.log('Stopping recording...');
       const recordedBlob = await stopRecording();
@@ -1433,6 +1551,13 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
     } finally {
       // Always cleanup and exit
       cleanup();
+
+      // Ensure camera is stopped
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        setCameraStream(null);
+      }
+
       exitFullscreen();
       setMode('select');
     }
