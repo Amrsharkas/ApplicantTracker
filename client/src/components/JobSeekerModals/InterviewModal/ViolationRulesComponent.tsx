@@ -40,6 +40,7 @@ export function ViolationRulesComponent({ onAccept, onDecline }: ViolationRulesC
             'interview.violationRules.rule8',
             'interview.violationRules.rule9',
             'interview.violationRules.rule10',
+            'interview.violationRules.rule11',
           ].map((ruleKey, index) => (
             <div key={index} className="flex items-start space-x-3">
               <div className="shrink-0 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold">

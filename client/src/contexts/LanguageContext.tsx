@@ -41,11 +41,11 @@ const translations = {
     typeYourAnswer: "Type your answer here...",
     submitAnswers: "Submit Answers",
     submitting: "Submitting...",
-    
+
     // Steps
     step1: "Build your complete profile including personal details, education, work experience, skills, and career preferences.",
     step2: "Answer 5 profile questions to generate your AI-powered professional analysis.",
-    
+
     // Common buttons
     save: "Save",
     cancel: "Cancel",
@@ -55,7 +55,7 @@ const translations = {
     close: "Close",
     signOut: "Sign Out",
     signingOut: "Signing Out...",
-    
+
     // Interview specific
     selectLanguage: "Select Interview Language",
     interviewLanguagePrompt: "Which language would you like to take the interview in?",
@@ -66,22 +66,22 @@ const translations = {
     chooseStyle: "Choose Your Interview Style",
     selectExperience: "Interview - Select how you'd like to experience your AI interview",
     languageNote: "The AI interviewer will ask questions and expect responses in your selected language",
-    
+
     // Profile completion
     profileProgress: "Profile progress saved!",
     profileComplete: "Your profile is {{percentage}}% complete. {{status}}",
     interviewsUnlocked: "Great! Your profile is ready for interviews (75%+ complete).",
     continueBuilding: "Continue building to unlock interviews at 75%.",
-    
+
     // Dashboard
     jobDashboard: "Your Job Dashboard",
-    
+
     // Dashboard sections
     jobMatches: "Job Matches",
-    applications: "Applications", 
+    applications: "Applications",
     upcomingInterviews: "Upcoming Interviews",
     jobPostings: "Job Postings",
-    
+
     // Dashboard content
     aiCuratedOpportunities: "AI-Curated Opportunities",
     discoverPersonalizedJobs: "Discover personalized job matches based on your AI interview analysis and profile data",
@@ -91,47 +91,47 @@ const translations = {
     browseLatestJobs: "Browse the latest job openings that match your skills and career goals",
     viewUpcomingSchedule: "View Your Upcoming Schedule",
     stayUpdated: "Stay updated with your confirmed interviews and important dates",
-    
+
     // Stats and labels
     responseRate: "response rate",
     applicationResponseRate: "application response rate",
     whyJobSeekingChallenging: "Why Job Seeking Is So Challenging",
-    
+
     // Common actions
     viewAll: "View All",
     noDataAvailable: "No data available",
     loadingData: "Loading data...",
-    
+
     // Applications section
     myApplications: "My Applications",
     trackApplicationStatus: "Track your application status and progress",
-    
+
     // Quick stats
     quickStats: "Quick Stats",
     jobMatchesLabel: "Job Matches",
     applicationsLabel: "Applications",
     profileCompletionLabel: "Profile Completion",
-    
+
     // Industry challenge stats
     avgJobSearchTime: "average job search time",
     applicationsToGetOffer: "applications to get one offer",
     sixMonths: "6 months",
     oneHundredEighteen: "118",
     twoPercent: "2%",
-    
+
     // Forms
     personalDetails: "Personal",
     workExperience: "Experience",
     education: "Education",
     skills: "Skills",
     jobTarget: "Target",
-    
+
     // Language switch
     switchLanguage: "العربية",
     languageSwitcher: {
       placeholder: "Select language",
     },
-    
+
     // Landing page
     landing: {
       hero: {
@@ -142,7 +142,7 @@ const translations = {
       },
       features: {
         aiPoweredMatching: "AI-Powered Matching",
-        smartInterviews: "Smart Interviews", 
+        smartInterviews: "Smart Interviews",
         instantResults: "Instant Results",
         aiInterview: {
           title: "AI Interview",
@@ -179,11 +179,11 @@ const translations = {
         startJourney: "Start Your Journey"
       }
     },
-    
+
     // Auth
     auth: {
       signIn: "Sign In",
-      signUp: "Sign Up", 
+      signUp: "Sign Up",
       email: "Email",
       password: "Password",
       newPassword: "New Password",
@@ -848,7 +848,7 @@ const translations = {
       resumeUploaded: "Resume uploaded (+15% completion)",
       resumeUploadPrompt: "Upload your resume for AI analysis (+15% completion)",
     },
-    
+
     // Interview Modal
     interview: {
       chooseStyle: "Choose Interview Style",
@@ -993,17 +993,18 @@ const translations = {
         rule8: "Random verification — follow live instructions immediately when prompted.",
         rule9: "Exiting full screen = disqualification.",
         rule10: "One-strike policy — no warnings, no retries.",
+        rule11: "No copy or paste — copying or pasting text during the interview = automatic failure.",
         decline: "Decline",
         accept: "I Agree & Continue",
       }
     },
-    
+
     // Interview Types
     voiceInterview: "Voice Interview",
     textInterview: "Text Interview",
     startingVoiceInterview: "Starting voice interview...",
     speakNaturally: "Speak naturally with the AI interviewer",
-    
+
     // Interview type descriptions
     personalInterview: "Personal Interview",
     personalInterviewDescription: "Understanding your personal self, background, and history",
@@ -1011,7 +1012,7 @@ const translations = {
     professionalInterviewDescription: "Exploring your career background and professional experience",
     technicalInterview: "Technical Interview",
     technicalInterviewDescription: "Dynamic assessment based on your field - problem solving and IQ evaluation",
-    
+
     // Languages
     languages: {
       english: "English",
@@ -1057,7 +1058,7 @@ const translations = {
       getStartedWithPlatoDescription: "Complete both steps above to unlock your personalized job dashboard with matches, applications, and career insights.",
       step1Description: "Step 1: Build your complete profile including personal details, education, work experience, skills, and career preferences.",
       step2Description: "Step 2: Complete your AI interview to generate your comprehensive professional analysis.",
-      
+
       // Additional missing translations
       phone: "Phone",
       selectGender: "Select gender",
@@ -1196,7 +1197,7 @@ const translations = {
       addOtherBenefit: "Add Other Benefit",
       otherBenefitPlaceholder: "e.g., Company Car, Gym Membership",
     },
-    
+
     // Comprehensive Profile Modal
     governmentIdSubmission: "Government ID",
     linksPortfolio: "Portfolio",
@@ -1586,11 +1587,11 @@ const translations = {
     typeYourAnswer: "اكتب إجابتك هنا...",
     submitAnswers: "إرسال الإجابات",
     submitting: "جاري الإرسال...",
-    
+
     // Steps
     step1: "أنشئ ملفك الشخصي الكامل بما في التفاصيل الشخصية والتعليم وخبرة العمل والمهارات والتفضيلات المهنية.",
     step2: "أجب على 5 أسئلة الملف الشخصي لإنشاء تحليلك المهني بالذكاء الاصطناعي.",
-    
+
     // Common buttons
     save: "حفظ",
     cancel: "إلغاء",
@@ -1600,7 +1601,7 @@ const translations = {
     close: "إغلاق",
     signOut: "تسجيل الخروج",
     signingOut: "جاري تسجيل الخروج...",
-    
+
     // Interview specific
     selectLanguage: "اختر لغة المقابلة",
     interviewLanguagePrompt: "بأي لغة تريد إجراء المقابلة؟",
@@ -1611,7 +1612,7 @@ const translations = {
     chooseStyle: "اختر أسلوب المقابلة",
     selectExperience: "المقابلة - اختر كيف تريد خوض تجربة مقابلة الذكاء الاصطناعي",
     languageNote: "سيطرح المحاور الذكي الأسئلة ويتوقع الإجابات باللغة التي اخترتها",
-    
+
     applicationsModal: {
       title: "طلباتي",
       refresh: "تحديث",
@@ -2056,7 +2057,7 @@ const translations = {
         summary: "يرجى تقديم ملخص مهني مفصل (50 حرفًا على الأقل)",
       },
     },
-    
+
     // Interview Modal
     interview: {
       chooseStyle: "اختر أسلوب المقابلة",
@@ -2200,17 +2201,18 @@ const translations = {
         rule8: "تحقق عشوائي — اتبع التعليمات المباشرة فور ظهورها.",
         rule9: "مغادرة وضع ملء الشاشة = استبعاد.",
         rule10: "سياسة فرصة واحدة — لا تحذيرات ولا محاولات أخرى.",
+        rule11: "ممنوع النسخ أو اللصق — نسخ أو لصق النص أثناء المقابلة = فشل تلقائي.",
         decline: "رفض",
         accept: "أوافق وأكمل",
       }
     },
-    
+
     // Interview Types
     voiceInterview: "مقابلة صوتية",
     textInterview: "مقابلة نصية",
     startingVoiceInterview: "بدء المقابلة الصوتية...",
     speakNaturally: "تحدث بطبيعية مع المحاور الذكي",
-    
+
     // Interview type descriptions
     personalInterview: "مقابلة شخصية",
     personalInterviewDescription: "فهمك الشخصي، وخلفيتك، وتاريخك",
@@ -2218,35 +2220,35 @@ const translations = {
     professionalInterviewDescription: "استكشاف خلفيتك المهنية وخبرتك العملية",
     technicalInterview: "مقابلة تقنية",
     technicalInterviewDescription: "تقييم ديناميكي يعتمد على مجالك - حل المشكلات وتقييم الذكاء",
-    
+
     // Languages
     languages: {
       english: "English",
       arabic: "العربية"
     },
-    
+
     // Brand name
     plato: "بلاتو",
 
     app: {
       loadingAccount: "جارٍ تحميل حسابك...",
     },
-    
+
     // Profile completion
     profileProgress: "تم حفظ تقدم الملف الشخصي!",
     profileComplete: "ملفك الشخصي مكتمل بنسبة {{percentage}}%. {{status}}",
     interviewsUnlocked: "رائع! ملفك الشخصي جاهز للمقابلات (مكتمل 75%+).",
     continueBuilding: "تابع البناء لفتح المقابلات عند 75%.",
-    
+
     // Dashboard
     jobDashboard: "لوحة الوظائف الخاصة بك",
-    
+
     // Dashboard sections
     jobMatches: "الوظائف المناسبة",
     applications: "الطلبات",
     upcomingInterviews: "المقابلات القادمة",
     jobPostings: "الوظائف المتاحة",
-    
+
     // Dashboard content
     aiCuratedOpportunities: "الفرص المختارة بالذكاء الاصطناعي",
     discoverPersonalizedJobs: "اكتشف الوظائف المخصصة لك بناءً على تحليل مقابلة الذكاء الاصطناعي وبيانات ملفك الشخصي",
@@ -2256,47 +2258,47 @@ const translations = {
     browseLatestJobs: "تصفح أحدث الوظائف المتاحة التي تناسب مهاراتك وأهدافك المهنية",
     viewUpcomingSchedule: "اعرض جدولك القادم",
     stayUpdated: "ابق محدثاً بمقابلاتك المؤكدة والتواريخ المهمة",
-    
+
     // Stats and labels
     responseRate: "معدل الرد",
     applicationResponseRate: "معدل الرد على الطلبات",
     whyJobSeekingChallenging: "لماذا البحث عن عمل صعب للغاية؟",
-    
+
     // Common actions
     viewAll: "عرض الكل",
     noDataAvailable: "لا توجد بيانات متاحة",
     loadingData: "جاري تحميل البيانات...",
-    
+
     // Applications section
     myApplications: "طلباتي",
     trackApplicationStatus: "تتبع حالة وتقدم طلباتك",
-    
+
     // Quick stats
     quickStats: "إحصائيات سريعة",
     jobMatchesLabel: "الوظائف المناسبة",
     applicationsLabel: "الطلبات",
     profileCompletionLabel: "اكتمال الملف",
-    
+
     // Industry challenge stats
     avgJobSearchTime: "متوسط وقت البحث عن عمل",
     applicationsToGetOffer: "طلب للحصول على عرض واحد",
     sixMonths: "٦ أشهر",
     oneHundredEighteen: "١١٨",
     twoPercent: "٢٪",
-    
+
     // Forms
     personalDetails: "التفاصيل الشخصية",
     workExperience: "خبرة العمل",
     education: "التعليم",
     skills: "المهارات",
     jobTarget: "الهدف الوظيفي",
-    
+
     // Language switch
     switchLanguage: "English",
     languageSwitcher: {
       placeholder: "اختر اللغة",
     },
-    
+
     // Landing page
     landing: {
       hero: {
@@ -2314,7 +2316,7 @@ const translations = {
           description: "أجرِ محادثة طبيعية مع الذكاء الاصطناعي لبناء ملفك المهني تلقائياً"
         },
         smartMatching: {
-          title: "المطابقة الذكية", 
+          title: "المطابقة الذكية",
           description: "احصل على وظائف مطابقة بدقة مع تقييم شامل يعتمد على مهاراتك وخبرتك وأهدافك"
         },
         instantResultsFeature: {
@@ -2344,7 +2346,7 @@ const translations = {
         startJourney: "ابدأ رحلتك"
       }
     },
-    
+
     // Auth
     auth: {
       signIn: "تسجيل الدخول",
@@ -2559,7 +2561,7 @@ const translations = {
         submit: "إعادة تعيين كلمة المرور",
       }
     },
-    
+
     // Dashboard
     dashboard: {
       invalidFileType: "نوع ملف غير صالح",
@@ -2599,7 +2601,7 @@ const translations = {
       getStartedWithPlatoDescription: "أكمل الخطوتين أعلاه لفتح لوحة تحكم وظيفية مخصصة مع المطابقات والطلبات والرؤى المهنية.",
       step1Description: "الخطوة 1: أنشئ ملفك الشخصي الكامل بما في التفاصيل الشخصية والتعليم وخبرة العمل والمهارات والتفضيلات المهنية.",
       step2Description: "الخطوة 2: أكمل مقابلة الذكاء الاصطناعي لإنشاء تحليلك المهني الشامل.",
-      
+
       // Additional missing translations
       phone: "هاتف",
       selectGender: "اختر الجنس",
@@ -2738,7 +2740,7 @@ const translations = {
       addOtherBenefit: "إضافة ميزة أخرى",
       otherBenefitPlaceholder: "مثال: سيارة الشركة، عضوية نادي رياضي",
     },
-    
+
     // Comprehensive Profile Modal
     governmentIdSubmission: "تقديم الهوية الحكومية",
     linksPortfolio: "الروابط والمعرض",
@@ -3120,15 +3122,15 @@ const translations = {
     complete: "Terminé",
     startInterview: "Commencer l'entretien",
     buildProfileButton: "Créer le profil",
-    
+
     // Profile Section
     profileDescription: "Créez votre profil professionnel incluant les détails personnels, l'éducation, l'expérience de travail, les compétences et les préférences de carrière. Atteignez 85% pour débloquer les entretiens.",
     interviewDescription: "Créez votre profil à 85% d'achèvement pour débloquer l'entretien IA.",
-    
+
     // Steps
     step1: "Créez votre profil complet incluant les détails personnels, l'éducation, l'expérience de travail, les compétences et les préférences de carrière.",
     step2: "Terminez votre entretien IA pour générer votre analyse professionnelle complète.",
-    
+
     // Common buttons
     save: "Enregistrer",
     cancel: "Annuler",
@@ -3138,7 +3140,7 @@ const translations = {
     close: "Fermer",
     signOut: "Se déconnecter",
     signingOut: "Déconnexion...",
-    
+
     // Interview specific
     selectLanguage: "Sélectionner la langue de l'entretien",
     interviewLanguagePrompt: "Dans quelle langue souhaitez-vous passer l'entretien ?",
@@ -3151,22 +3153,22 @@ const translations = {
     chooseStyle: "Choisissez votre style d'entretien",
     selectExperience: "Entretien - Sélectionnez comment vous souhaitez vivre votre entretien IA",
     languageNote: "L'intervieweur IA posera des questions et s'attendra à des réponses dans votre langue sélectionnée",
-    
+
     // Profile completion
     profileProgress: "Profil sauvegardé !",
     profileComplete: "Votre profil est terminé à {{percentage}}%. {{status}}",
     interviewsUnlocked: "Excellent ! Votre profil est prêt pour les entretiens (75%+ complété).",
     continueBuilding: "Continuez à construire pour débloquer les entretiens à 75%.",
-    
+
     // Dashboard
     jobDashboard: "Votre tableau de bord d'emploi",
-    
+
     // Dashboard sections
     jobMatches: "Correspondances d'emploi",
-    applications: "Candidatures", 
+    applications: "Candidatures",
     upcomingInterviews: "Entretiens à venir",
     jobPostings: "Offres d'emploi",
-    
+
     // Dashboard content
     aiCuratedOpportunities: "Opportunités sélectionnées par IA",
     discoverPersonalizedJobs: "Découvrez les correspondances d'emploi personnalisées basées sur votre analyse d'entretien IA et vos données de profil",
@@ -3176,54 +3178,54 @@ const translations = {
     browseLatestJobs: "Parcourez les dernières offres d'emploi qui correspondent à vos compétences et objectifs de carrière",
     viewUpcomingSchedule: "Voir votre calendrier à venir",
     stayUpdated: "Restez informé de vos entretiens confirmés et dates importantes",
-    
+
     // Stats and labels
     responseRate: "taux de réponse",
     applicationResponseRate: "taux de réponse aux candidatures",
     whyJobSeekingChallenging: "Pourquoi la recherche d'emploi est si difficile",
-    
+
     // Common actions
     viewAll: "Voir tout",
     noDataAvailable: "Aucune donnée disponible",
     loadingData: "Chargement des données...",
-    
+
     // Applications section
     myApplications: "Mes candidatures",
     trackApplicationStatus: "Suivez le statut et la progression de vos candidatures",
-    
+
     // Quick stats
     quickStats: "Statistiques rapides",
     jobMatchesLabel: "Correspondances d'emploi",
     applicationsLabel: "Candidatures",
     profileCompletionLabel: "Achèvement du profil",
-    
+
     // Industry challenge stats
     avgJobSearchTime: "temps moyen de recherche d'emploi",
     applicationsToGetOffer: "candidatures pour obtenir une offre",
     sixMonths: "6 mois",
     oneHundredEighteen: "118",
     twoPercent: "2%",
-    
+
     // Forms
     personalDetails: "Informations personnelles",
     workExperience: "Expérience",
     education: "Éducation",
     skills: "Compétences",
     jobTarget: "Objectif",
-    
+
     // Language switch
     switchLanguage: "English",
     languageSwitcher: {
       placeholder: "Sélectionner la langue",
     },
-    
+
     // Languages
     languages: {
       english: "English",
       arabic: "العربية",
       french: "Français"
     },
-    
+
     // Landing page
     landing: {
       hero: {
@@ -3234,7 +3236,7 @@ const translations = {
       },
       features: {
         aiPoweredMatching: "Correspondance alimentée par IA",
-        smartInterviews: "Entretiens intelligents", 
+        smartInterviews: "Entretiens intelligents",
         instantResults: "Résultats instantanés",
         aiInterview: {
           title: "Entretien IA",
@@ -3271,7 +3273,7 @@ const translations = {
         startJourney: "Commencer votre parcours"
       }
     },
-    
+
     manualCvModal: {
       title: "Complétez vos informations CV",
       subtitle: "Entrez vos détails professionnels pour débloquer les entretiens et la correspondance d'emploi",
@@ -3725,7 +3727,7 @@ const translations = {
       resumeUploaded: "CV téléchargé (+15% d'achèvement)",
       resumeUploadPrompt: "Téléchargez votre CV pour analyse IA (+15% d'achèvement)",
     },
-    
+
     // Interview Modal
     interview: {
       chooseStyle: "Choisissez votre style d'entretien",
@@ -3869,17 +3871,18 @@ const translations = {
         rule8: "Vérifications aléatoires — suivez immédiatement les instructions en direct.",
         rule9: "Quitter le plein écran = disqualification.",
         rule10: "Politique tolérance zéro — aucun avertissement, aucune nouvelle tentative.",
+        rule11: "Pas de copier-coller — copier ou coller du texte pendant l'entretien = échec automatique.",
         decline: "Refuser",
         accept: "J'accepte et je continue",
       }
     },
-    
+
     // Interview Types
     voiceInterview: "Entretien vocal",
     textInterview: "Entretien textuel",
     startingVoiceInterview: "Démarrage de l'entretien vocal...",
     speakNaturally: "Parlez naturellement avec l'intervieweur IA",
-    
+
     // Interview type descriptions
     personalInterview: "Entretien personnel",
     personalInterviewDescription: "Comprendre votre moi personnel, votre histoire et votre origine",
@@ -3887,7 +3890,7 @@ const translations = {
     professionalInterviewDescription: "Explorer votre parcours professionnel et votre expérience de travail",
     technicalInterview: "Entretien technique",
     technicalInterviewDescription: "Évaluation dynamique basée sur votre domaine - résolution de problèmes et évaluation du QI",
-    
+
     // Comprehensive Dashboard (partial - would need complete translation)
     dashboard: {
       invalidFileType: "Type de fichier invalide",
@@ -3927,7 +3930,7 @@ const translations = {
       getStartedWithPlatoDescription: "Complétez les deux étapes ci-dessus pour débloquer votre tableau de bord d'emploi personnalisé avec correspondances, candidatures et aperçus de carrière.",
       step1Description: "Étape 1 : Créez votre profil complet incluant les détails personnels, l'éducation, l'expérience de travail, les compétences et les préférences de carrière.",
       step2Description: "Étape 2 : Complétez votre entretien IA pour générer votre analyse professionnelle complète.",
-      
+
       // Additional missing translations
       phone: "Téléphone",
       selectGender: "Sélectionner le sexe",
@@ -4313,7 +4316,7 @@ const translations = {
     // Complete Auth section
     auth: {
       signIn: "Se connecter",
-      signUp: "S'inscrire", 
+      signUp: "S'inscrire",
       email: "E-mail",
       password: "Mot de passe",
       newPassword: "Nouveau mot de passe",
@@ -4674,7 +4677,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
 
     setLanguageState(lang);
     localStorage.setItem('plato-language', lang);
-    
+
     // Update document direction and language
     document.documentElement.dir = RTL_LANGUAGES.has(lang) ? 'rtl' : 'ltr';
     document.documentElement.lang = lang;
@@ -4683,7 +4686,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
   const t = (key: string): string => {
     const keys = key.split('.');
     let translation: any = translations[language];
-    
+
     for (const k of keys) {
       if (translation && typeof translation === 'object' && k in translation) {
         translation = translation[k];
@@ -4691,7 +4694,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
         return key; // Return the key if translation not found
       }
     }
-    
+
     return typeof translation === 'string' ? translation : key;
   };
 
