@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeAPI } from "@/hooks/useRealtimeAPI";
 import { useCameraRecorder } from '@/hooks/useCameraRecorder';
-import { MessageCircle, MessageSquare, User, Mic, MicOff, PhoneOff, Video, Circle, CheckCircle, AlertCircle, Wifi, Volume2, Monitor, X } from "lucide-react";
+import { MessageCircle, MessageSquare, User, Mic, MicOff, PhoneOff, Video, Circle, CheckCircle, AlertCircle, Wifi, Volume2, Monitor, X, Eye, Copy } from "lucide-react";
 import { CameraPreview } from '@/components/CameraPreview';
 import { getInterviewLanguage, getLanguageDisplayName } from '@/lib/interviewUtils';
 import { InterviewTranscriptionDialog } from './InterviewTranscriptionDialog';
@@ -62,6 +62,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   const [interviewStartTime, setInterviewStartTime] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showInstructionsModal, setShowInstructionsModal] = useState(true); // Show instructions modal by default
+  const [instructionsCountdown, setInstructionsCountdown] = useState(60); // 1 minute countdown
   const isEnteringFullscreenRef = useRef(false); // Track if we're entering fullscreen to skip first change event
   const fullscreenExitTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track timeout for fullscreen exit
 
@@ -320,41 +321,87 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
     }
   };
 
-  // Disable ALL keyboard actions during interview - cancel interview if any keyboard action is triggered
+  // Disable keyboard actions during interview - but allow volume and microphone controls
   useEffect(() => {
     if (!isOpen || !session?.id || showInstructionsModal || isInterviewComplete) return;
 
     const handleKeyboardEvent = async (e: KeyboardEvent) => {
-      // Prevent all keyboard actions
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
+      // Allow volume and microphone control keys
+      const allowedKeys = [
+        'ArrowUp', 'ArrowDown',           // Volume control
+        'AudioVolumeUp', 'AudioVolumeDown', 'AudioVolumeMute', // Media keys
+        'VolumeUp', 'VolumeDown', 'VolumeMute', // Alternative media key names
+        'MediaTrackNext', 'MediaTrackPrevious', 'MediaPlayPause', // Media control
+        'F7', 'F8', 'F9', 'F10', 'F12', // Function keys (F11 blocked separately for fullscreen)
+      ];
 
-      console.log('🚫 Keyboard action detected - cancelling interview:', e.key);
+      // Allow if it's a volume/microphone control key
+      if (allowedKeys.includes(e.key)) {
+        return; // Allow these keys to pass through
+      }
 
-      // Cancel the interview immediately
-      if (session?.id) {
-        await cancelInterview(session.id, 'Interview cancelled: Keyboard action detected during interview');
+      // Block F11 specifically (fullscreen exit)
+      if (e.key === 'F11') {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        console.log('🚫 F11 pressed - cancelling interview');
+        if (session?.id) {
+          await cancelInterview(session.id, 'Interview cancelled: F11 (fullscreen exit) pressed during interview');
+        }
+        return;
+      }
+
+      // Block copy/paste shortcuts and other text manipulation
+      const isCopyPaste = (e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'a', 'z', 'y'].includes(e.key.toLowerCase());
+      const isTyping = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
+      
+      if (isCopyPaste || isTyping) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        console.log('🚫 Keyboard action detected - cancelling interview:', e.key);
+        if (session?.id) {
+          await cancelInterview(session.id, 'Interview cancelled: Keyboard action detected during interview');
+        }
       }
     };
 
-    // Listen to all keyboard events
+    // Listen to keyboard events
     window.addEventListener('keydown', handleKeyboardEvent, true);
-    window.addEventListener('keyup', handleKeyboardEvent, true);
-    window.addEventListener('keypress', handleKeyboardEvent, true);
 
     return () => {
       window.removeEventListener('keydown', handleKeyboardEvent, true);
-      window.removeEventListener('keyup', handleKeyboardEvent, true);
-      window.removeEventListener('keypress', handleKeyboardEvent, true);
     };
   }, [isOpen, session?.id, showInstructionsModal, isInterviewComplete]);
 
+
+  // Countdown timer for instructions modal
+  useEffect(() => {
+    if (!isOpen || !showInstructionsModal) {
+      // Reset countdown when modal closes or instructions modal is hidden
+      setInstructionsCountdown(60);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setInstructionsCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isOpen, showInstructionsModal]);
 
   useEffect(() => {
     if (!isOpen) {
       // Reset instructions modal when modal closes
       setShowInstructionsModal(true);
+      setInstructionsCountdown(60);
       // Reset fullscreen entry flag
       isEnteringFullscreenRef.current = false;
       // Clear any pending fullscreen exit timeout
@@ -725,20 +772,43 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         <Dialog
           open={showInstructionsModal && isOpen}
           onOpenChange={(open) => {
+            // Prevent closing if countdown is not finished
+            if (!open && instructionsCountdown > 0) {
+              return;
+            }
             if (!open) {
               setShowInstructionsModal(false);
               // Interview will start automatically via useEffect when showInstructionsModal becomes false
             }
           }}
         >
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
+          <DialogContent 
+            className={`max-w-2xl max-h-[70vh] flex flex-col ${instructionsCountdown > 0 ? '[&>button]:hidden' : ''}`}
+            onInteractOutside={(e) => {
+              // Prevent closing by clicking outside if countdown is not finished
+              if (instructionsCountdown > 0) {
+                e.preventDefault();
+              }
+            }}
+            onEscapeKeyDown={(e) => {
+              // Prevent closing with Escape key if countdown is not finished
+              if (instructionsCountdown > 0) {
+                e.preventDefault();
+              }
+            }}
+          >
+            <DialogHeader className="shrink-0">
               <DialogTitle className="text-2xl font-bold flex items-center gap-2">
                 <AlertCircle className="w-6 h-6 text-blue-600" />
                 Interview Instructions
+                {instructionsCountdown > 0 && (
+                  <span className="ml-auto text-lg font-normal text-red-600 font-mono">
+                    Please wait {Math.floor(instructionsCountdown / 60)}:{(instructionsCountdown % 60).toString().padStart(2, '0')}
+                  </span>
+                )}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4 overflow-y-auto flex-1 min-h-0">
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                 <p className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
                   Please read these instructions carefully before starting your interview:
@@ -749,19 +819,39 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                 <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                   <Monitor className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
                   <div>
-                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">Fullscreen Mode Required</h4>
+                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">Don't Press F11 or Exit Fullscreen Mode</h4>
                     <p className="text-sm text-red-800 dark:text-red-300">
-                      <strong>CRITICAL:</strong> The interview will automatically start in fullscreen mode (F11-like). <strong>Do NOT exit fullscreen mode</strong> during the interview. If you exit fullscreen, your interview will be automatically cancelled.
+                      <strong>CRITICAL:</strong> The interview will automatically start in fullscreen mode. <strong>Do NOT press F11 or exit fullscreen mode</strong> during the interview. If you exit fullscreen, your interview will be automatically cancelled.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  <Copy className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
                   <div>
-                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">NO Keyboard Actions Allowed</h4>
+                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">Don't Copy Anything or Use Keyboard Keys</h4>
                     <p className="text-sm text-red-800 dark:text-red-300">
-                      <strong>CRITICAL:</strong> During the interview, <strong>NO keyboard actions are allowed</strong>. Do not press any keys on your keyboard. If any keyboard action is detected, your interview will be immediately cancelled. Only mouse clicks and touchpad interactions are allowed.
+                      <strong>CRITICAL:</strong> During the interview, <strong>do NOT copy anything or use keyboard keys</strong> for typing or shortcuts. However, you may use keyboard keys to adjust speaker volume or toggle microphone if needed. Copying, pasting, or typing text will result in immediate interview cancellation.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <Eye className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">Don't Look Away While Interview</h4>
+                    <p className="text-sm text-red-800 dark:text-red-300">
+                      <strong>IMPORTANT:</strong> Stay focused and engaged throughout the interview. <strong>Do NOT look away</strong> from the screen or camera during the interview. Maintain eye contact with the camera to show your engagement and professionalism.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <Video className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">Stay Always in Front of the Camera</h4>
+                    <p className="text-sm text-red-800 dark:text-red-300">
+                      <strong>REQUIRED:</strong> You must <strong>stay always in front of the camera</strong> during the entire interview. Do not move away from the camera or leave the frame. Ensure your face is clearly visible and well-lit throughout the interview session.
                     </p>
                   </div>
                 </div>
@@ -769,53 +859,46 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                 <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                   <X className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
                   <div>
-                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">X Icon and Exit Button</h4>
+                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">Don't Click Exit Button or X Icon</h4>
                     <p className="text-sm text-red-800 dark:text-red-300">
-                      <strong>WARNING:</strong> The X icon (close button) in the top-right corner works exactly like the "Exit Interview" button. Clicking either will <strong>cancel your interview</strong>. Only use these buttons if you need to exit the interview, as it will be cancelled.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-                  <div>
-                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">Do NOT Close the Interview Before It Ends</h4>
-                    <p className="text-sm text-red-800 dark:text-red-300">
-                      <strong>IMPORTANT:</strong> Do not close or exit the interview before it ends. If you exit the interview before it ends, your interview will be cancelled. You cannot go to another place or use any other application because the video is being recorded and will be sent to the interviewer.
+                      <strong>WARNING:</strong> <strong>Do NOT click the exit button or X icon</strong> because your interview will be cancelled. The X icon (close button) in the top-right corner works exactly like the "Exit Interview" button. Clicking either will <strong>cancel your interview immediately</strong>. Only use these buttons if you absolutely need to exit, as it will result in interview cancellation.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                  <CheckCircle className="w-5 h-5 text-yellow-600 mt-0.5 shrink-0" />
+                  <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 shrink-0" />
                   <div>
-                    <h4 className="font-semibold text-yellow-900 dark:text-yellow-200 mb-1">End Interview Button</h4>
+                    <h4 className="font-semibold text-yellow-900 dark:text-yellow-200 mb-1">No Tab Switching or Window Changes</h4>
                     <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                      When the AI interviewer says the interview is over, the <strong>"End Interview"</strong> button will turn into a green <strong>"Complete Interview"</strong> button. You <strong>MUST</strong> click this button to finish your interview.
+                      <strong>IMPORTANT:</strong> Do not switch tabs, minimize the window, or open other applications during the interview. The system monitors your activity, and switching away from the interview may result in cancellation.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                  <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                  <Volume2 className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
                   <div>
-                    <h4 className="font-semibold text-green-900 dark:text-green-200 mb-1">Allowed Interactions</h4>
+                    <h4 className="font-semibold text-green-900 dark:text-green-200 mb-1">Allowed: Volume and Microphone Controls</h4>
                     <p className="text-sm text-green-800 dark:text-green-300">
-                      <strong>ONLY</strong> mouse clicks and touchpad interactions are allowed during the interview. You can click buttons, interact with UI elements, and use touchpad gestures. All other input methods are disabled.
+                      You may use keyboard keys to <strong>adjust speaker volume</strong> (volume up/down keys) or <strong>toggle microphone</strong> if needed. These controls are allowed to ensure you can properly hear and be heard during the interview.
                     </p>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700 shrink-0">
               <Button
                 onClick={() => {
                   setShowInstructionsModal(false);
                   // Interview will start automatically via useEffect when showInstructionsModal becomes false
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={instructionsCountdown > 0}
               >
-                I Understand, Start Interview
+                {instructionsCountdown > 0 
+                  ? `Please wait ${Math.floor(instructionsCountdown / 60)}:${(instructionsCountdown % 60).toString().padStart(2, '0')}...` 
+                  : "I Understand, Start Interview"}
               </Button>
             </div>
           </DialogContent>
