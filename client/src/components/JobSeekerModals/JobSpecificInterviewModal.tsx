@@ -62,6 +62,8 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   const [interviewStartTime, setInterviewStartTime] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showInstructionsModal, setShowInstructionsModal] = useState(true); // Show instructions modal by default
+  const isEnteringFullscreenRef = useRef(false); // Track if we're entering fullscreen to skip first change event
+  const fullscreenExitTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track timeout for fullscreen exit
 
   // Debug: Log the environment variable value and its type
   const enableTextInterviews = import.meta.env.VITE_ENABLE_TEXT_INTERVIEWS;
@@ -272,66 +274,94 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
 
       if (isAlreadyFullscreen) {
         setIsFullscreen(true);
+        isEnteringFullscreenRef.current = false;
         return;
       }
+
+      // Set flag to indicate we're entering fullscreen (to skip first change event)
+      isEnteringFullscreenRef.current = true;
+      console.log('🔄 Requesting fullscreen - setting flag to skip first change event');
 
       // Request fullscreen
       if (element.requestFullscreen) {
         await element.requestFullscreen();
         setIsFullscreen(true);
-        console.log('✅ Fullscreen activated (F11-like)');
+        // Reset flag after a short delay to allow the change event to fire and be ignored
+        setTimeout(() => {
+          isEnteringFullscreenRef.current = false;
+          console.log('✅ Fullscreen activated (F11-like) - flag reset');
+        }, 500);
       } else if ((element as any).webkitRequestFullscreen) {
         await (element as any).webkitRequestFullscreen();
         setIsFullscreen(true);
-        console.log('✅ Fullscreen activated (webkit)');
+        setTimeout(() => {
+          isEnteringFullscreenRef.current = false;
+          console.log('✅ Fullscreen activated (webkit) - flag reset');
+        }, 500);
       } else if ((element as any).mozRequestFullScreen) {
         await (element as any).mozRequestFullScreen();
         setIsFullscreen(true);
-        console.log('✅ Fullscreen activated (moz)');
+        setTimeout(() => {
+          isEnteringFullscreenRef.current = false;
+          console.log('✅ Fullscreen activated (moz) - flag reset');
+        }, 500);
       } else if ((element as any).msRequestFullscreen) {
         await (element as any).msRequestFullscreen();
         setIsFullscreen(true);
-        console.log('✅ Fullscreen activated (ms)');
+        setTimeout(() => {
+          isEnteringFullscreenRef.current = false;
+          console.log('✅ Fullscreen activated (ms) - flag reset');
+        }, 500);
       }
     } catch (error) {
       console.error('❌ Error requesting fullscreen:', error);
+      isEnteringFullscreenRef.current = false;
       // Don't block interview if fullscreen fails
     }
   };
 
-  // Handle F11 key press to toggle fullscreen
+  // Disable ALL keyboard actions during interview - cancel interview if any keyboard action is triggered
   useEffect(() => {
-    if (!isOpen || !session) return;
+    if (!isOpen || !session?.id || showInstructionsModal || isInterviewComplete) return;
 
-    const handleKeyPress = async (e: KeyboardEvent) => {
-      // F11 key for fullscreen
-      if (e.key === 'F11') {
-        e.preventDefault();
-        if (!document.fullscreenElement && !(document as any).webkitFullscreenElement && !(document as any).mozFullScreenElement) {
-          await requestFullscreen();
-        } else {
-          if (document.exitFullscreen) {
-            await document.exitFullscreen();
-          } else if ((document as any).webkitExitFullscreen) {
-            await (document as any).webkitExitFullscreen();
-          } else if ((document as any).mozCancelFullScreen) {
-            await (document as any).mozCancelFullScreen();
-          }
-        }
+    const handleKeyboardEvent = async (e: KeyboardEvent) => {
+      // Prevent all keyboard actions
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      console.log('🚫 Keyboard action detected - cancelling interview:', e.key);
+
+      // Cancel the interview immediately
+      if (session?.id) {
+        await cancelInterview(session.id, 'Interview cancelled: Keyboard action detected during interview');
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
+    // Listen to all keyboard events
+    window.addEventListener('keydown', handleKeyboardEvent, true);
+    window.addEventListener('keyup', handleKeyboardEvent, true);
+    window.addEventListener('keypress', handleKeyboardEvent, true);
+
     return () => {
-      window.removeEventListener('keydown', handleKeyPress);
+      window.removeEventListener('keydown', handleKeyboardEvent, true);
+      window.removeEventListener('keyup', handleKeyboardEvent, true);
+      window.removeEventListener('keypress', handleKeyboardEvent, true);
     };
-  }, [isOpen, session]);
+  }, [isOpen, session?.id, showInstructionsModal, isInterviewComplete]);
 
 
   useEffect(() => {
     if (!isOpen) {
       // Reset instructions modal when modal closes
       setShowInstructionsModal(true);
+      // Reset fullscreen entry flag
+      isEnteringFullscreenRef.current = false;
+      // Clear any pending fullscreen exit timeout
+      if (fullscreenExitTimeoutRef.current) {
+        clearTimeout(fullscreenExitTimeoutRef.current);
+        fullscreenExitTimeoutRef.current = null;
+      }
       return;
     }
 
@@ -344,9 +374,6 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       try {
         setLoading(true);
         setInterviewStartTime(Date.now());
-
-        // Request fullscreen automatically (F11-like) - AFTER instructions are closed
-        await requestFullscreen();
 
         // Fetch current session – job-practice already started by options modal
         const res = await fetch('/api/interview/session', { credentials: 'include' });
@@ -371,8 +398,17 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         }
 
         if (mode === 'voice' && data?.sessionData?.questions) {
-          // Start camera access first (pass data directly since state hasn't updated yet)
+          // IMPORTANT: Request camera access FIRST (before fullscreen)
+          // This prevents browser from exiting fullscreen when showing permission dialog
+          console.log('📹 Requesting camera access before entering fullscreen...');
           await startCameraAccess(data);
+          console.log('✅ Camera access granted');
+
+          // NOW request fullscreen after camera permission is granted
+          // This ensures fullscreen won't be interrupted by permission dialogs
+          console.log('🖥️ Entering fullscreen mode...');
+          await requestFullscreen();
+
           // Use job-specific interview language, fallback to provided language
           const interviewLanguage = getInterviewLanguage(job, language);
           console.log('🎤 Using interview language:', interviewLanguage, 'from job:', job?.interviewLanguage);
@@ -396,6 +432,9 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           });
 
           // Interview started successfully - no auto-close timer needed
+        } else {
+          // For non-voice mode, just enter fullscreen
+          await requestFullscreen();
         }
       } catch (e: any) {
         toast({ title: 'Error', description: e?.message || 'Failed to load session', variant: 'destructive' });
@@ -436,7 +475,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, showInstructionsModal]);
 
-  // Monitor fullscreen changes - Cancel interview if exited fullscreen
+  // Monitor fullscreen changes - Cancel interview if exited fullscreen (but allow re-entry)
   useEffect(() => {
     if (!isOpen || !session?.id) return;
 
@@ -448,13 +487,51 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         (document as any).msFullscreenElement
       );
 
+      // Skip the first fullscreen change event (when entering fullscreen)
+      if (isEnteringFullscreenRef.current && isCurrentlyFullscreen) {
+        console.log('⏭️ Skipping fullscreen change event - we are entering fullscreen');
+        setIsFullscreen(true);
+        return;
+      }
+
+      // If we're entering fullscreen and the flag is set, just update state
+      if (isEnteringFullscreenRef.current && isCurrentlyFullscreen) {
+        setIsFullscreen(true);
+        return;
+      }
+
       const wasFullscreen = isFullscreen;
       setIsFullscreen(isCurrentlyFullscreen);
 
-      // If exited fullscreen and interview is active, cancel it immediately
-      if (wasFullscreen && !isCurrentlyFullscreen && isOpen && session?.id && !isInterviewComplete) {
-        console.log('🚫 Fullscreen exited - cancelling interview immediately');
-        cancelInterview(session.id, 'Interview cancelled: Candidate exited fullscreen mode');
+      // Only cancel if we were in fullscreen and now we're not (exited fullscreen)
+      // AND we're not in the process of entering fullscreen
+      // Add a small delay to avoid false positives from temporary exits (like permission dialogs)
+      if (wasFullscreen && !isCurrentlyFullscreen && !isEnteringFullscreenRef.current && isOpen && session?.id && !isInterviewComplete) {
+        // Clear any existing timeout
+        if (fullscreenExitTimeoutRef.current) {
+          clearTimeout(fullscreenExitTimeoutRef.current);
+        }
+
+        // Wait a bit to see if it's a temporary exit (browser might exit/re-enter for permission dialogs)
+        fullscreenExitTimeoutRef.current = setTimeout(() => {
+          const stillNotFullscreen = !!(
+            document.fullscreenElement ||
+            (document as any).webkitFullscreenElement ||
+            (document as any).mozFullScreenElement ||
+            (document as any).msFullscreenElement
+          );
+
+          if (!stillNotFullscreen && !isEnteringFullscreenRef.current && isOpen && session?.id && !isInterviewComplete) {
+            console.log('🚫 Fullscreen exited and not re-entered - cancelling interview');
+            cancelInterview(session.id, 'Interview cancelled: Candidate exited fullscreen mode');
+          }
+          fullscreenExitTimeoutRef.current = null;
+        }, 2000); // Wait 2 seconds to allow for temporary exits (permission dialogs, etc.)
+      } else if (isCurrentlyFullscreen && fullscreenExitTimeoutRef.current) {
+        // If fullscreen is re-entered, clear the cancellation timeout
+        clearTimeout(fullscreenExitTimeoutRef.current);
+        fullscreenExitTimeoutRef.current = null;
+        console.log('✅ Fullscreen re-entered - cancellation timeout cleared');
       }
     };
 
@@ -469,7 +546,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
       document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
     };
-  }, [isOpen, session?.id, isInterviewComplete]);
+  }, [isOpen, session?.id, isInterviewComplete, isFullscreen]);
 
   // Centralized cleanup function
   const performCleanup = useCallback(() => {
@@ -672,9 +749,29 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                 <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                   <Monitor className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
                   <div>
-                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">Do NOT Exit Fullscreen</h4>
+                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">Fullscreen Mode Required</h4>
                     <p className="text-sm text-red-800 dark:text-red-300">
-                      <strong>CRITICAL:</strong> The interview will automatically start in fullscreen mode (F11). <strong>Do NOT exit fullscreen mode</strong> during the interview. If you exit fullscreen, your interview will be automatically cancelled.
+                      <strong>CRITICAL:</strong> The interview will automatically start in fullscreen mode (F11-like). <strong>Do NOT exit fullscreen mode</strong> during the interview. If you exit fullscreen, your interview will be automatically cancelled.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">NO Keyboard Actions Allowed</h4>
+                    <p className="text-sm text-red-800 dark:text-red-300">
+                      <strong>CRITICAL:</strong> During the interview, <strong>NO keyboard actions are allowed</strong>. Do not press any keys on your keyboard. If any keyboard action is detected, your interview will be immediately cancelled. Only mouse clicks and touchpad interactions are allowed.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <X className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">X Icon and Exit Button</h4>
+                    <p className="text-sm text-red-800 dark:text-red-300">
+                      <strong>WARNING:</strong> The X icon (close button) in the top-right corner works exactly like the "Exit Interview" button. Clicking either will <strong>cancel your interview</strong>. Only use these buttons if you need to exit the interview, as it will be cancelled.
                     </p>
                   </div>
                 </div>
@@ -684,17 +781,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                   <div>
                     <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">Do NOT Close the Interview Before It Ends</h4>
                     <p className="text-sm text-red-800 dark:text-red-300">
-                      <strong>IMPORTANT:</strong> Do not close or exit the interview before it ends. If you exit the interview before it ends, your interview will be cancelled.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <X className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-                  <div>
-                    <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">You Cannot Exit or Leave</h4>
-                    <p className="text-sm text-red-800 dark:text-red-300">
-                      <strong>WARNING:</strong> You cannot exit the interview. You cannot go to another place. You cannot use any other application because the video is being recorded and will be sent to the interviewer.
+                      <strong>IMPORTANT:</strong> Do not close or exit the interview before it ends. If you exit the interview before it ends, your interview will be cancelled. You cannot go to another place or use any other application because the video is being recorded and will be sent to the interviewer.
                     </p>
                   </div>
                 </div>
@@ -705,6 +792,16 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                     <h4 className="font-semibold text-yellow-900 dark:text-yellow-200 mb-1">End Interview Button</h4>
                     <p className="text-sm text-yellow-800 dark:text-yellow-300">
                       When the AI interviewer says the interview is over, the <strong>"End Interview"</strong> button will turn into a green <strong>"Complete Interview"</strong> button. You <strong>MUST</strong> click this button to finish your interview.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-green-900 dark:text-green-200 mb-1">Allowed Interactions</h4>
+                    <p className="text-sm text-green-800 dark:text-green-300">
+                      <strong>ONLY</strong> mouse clicks and touchpad interactions are allowed during the interview. You can click buttons, interact with UI elements, and use touchpad gestures. All other input methods are disabled.
                     </p>
                   </div>
                 </div>
@@ -752,13 +849,23 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
               </button>
 
               <button
-                onClick={() => {
-                  console.log('❌ Close button clicked');
-                  performCleanup();
-                  onClose();
+                onClick={async () => {
+                  if (processing || isUploading) {
+                    return;
+                  }
+
+                  console.log('❌ X icon clicked - cancelling interview...');
+
+                  // Cancel interview if session exists (exactly like exit button)
+                  if (session?.id) {
+                    await cancelInterview(session.id, 'Interview cancelled: Candidate closed the interview');
+                  } else {
+                    performCleanup();
+                    onClose();
+                  }
                 }}
                 className="text-muted-foreground hover:text-foreground p-2 rounded-lg hover:bg-accent transition-colors"
-                disabled={processing}
+                disabled={processing || isUploading}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
