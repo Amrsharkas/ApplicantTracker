@@ -355,7 +355,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       // Block copy/paste shortcuts and other text manipulation
       const isCopyPaste = (e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'a', 'z', 'y'].includes(e.key.toLowerCase());
       const isTyping = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
-      
+
       if (isCopyPaste || isTyping) {
         e.preventDefault();
         e.stopPropagation();
@@ -473,9 +473,14 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
             resumeContent: data.resumeContent || null,
             summary: data.summary || null,
             skillsList: data.skillsList || null,
+            experience: data.experience || null,
+            education: data.education || null,
+            certifications: data.certifications || null,
+            languages: data.languages || null,
             aiProfile: data.aiProfile || null,
             jobDescription: data.jobDescription || job?.jobDescription || null,
-            interviewContext
+            interviewContext,
+            resumeProfileId: data.resumeProfileId || null
           });
 
           // Interview started successfully - no auto-close timer needed
@@ -782,7 +787,7 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
             }
           }}
         >
-          <DialogContent 
+          <DialogContent
             className={`max-w-2xl max-h-[70vh] flex flex-col ${instructionsCountdown > 0 ? '[&>button]:hidden' : ''}`}
             onInteractOutside={(e) => {
               // Prevent closing by clicking outside if countdown is not finished
@@ -896,8 +901,8 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
                 className="bg-blue-600 hover:bg-blue-700 text-white"
                 disabled={instructionsCountdown > 0}
               >
-                {instructionsCountdown > 0 
-                  ? `Please wait ${Math.floor(instructionsCountdown / 60)}:${(instructionsCountdown % 60).toString().padStart(2, '0')}...` 
+                {instructionsCountdown > 0
+                  ? `Please wait ${Math.floor(instructionsCountdown / 60)}:${(instructionsCountdown % 60).toString().padStart(2, '0')}...`
                   : "I Understand, Start Interview"}
               </Button>
             </div>

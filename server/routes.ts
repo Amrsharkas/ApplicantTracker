@@ -2358,6 +2358,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
   // Interview routes
+  // Load latest resume profile by email and use it for interview profile data
+  app.post('/api/interview/use-resume-profile',
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.id;
+        const email = (req.body?.email || '').toString().trim().toLowerCase();
+
+        if (!email) {
+          return res.status(400).json({ message: 'Email is required' });
+        }
+
+        const resumeProfile = await localDatabaseService.getResumeProfileByEmail(email);
+        if (!resumeProfile) {
+          return res.status(404).json({ message: 'Resume profile not found' });
+        }
+
+        let resumeContent: string | null = null;
+        if (resumeProfile.resumeText?.trim().length >= 100) {
+          resumeContent = sanitizeTextForDatabase(resumeProfile.resumeText);
+        } else if (resumeProfile.fileId) {
+          const extractedText = await aiProfileAnalysisAgent.extractResumeTextFromOpenAIFileId(
+            resumeProfile.fileId.trim()
+          );
+          resumeContent = sanitizeTextForDatabase(extractedText);
+        }
+
+        if (!resumeContent) {
+          return res.status(400).json({
+            message: 'Resume content is missing for this profile',
+            requiresResume: true
+          });
+        }
+
+        await storage.updateApplicantProfile(userId, {
+          resumeContent,
+          summary: resumeProfile.summary || null,
+          skillsList: resumeProfile.skills || null,
+          email: resumeProfile.email || undefined,
+          name: resumeProfile.name || undefined
+        });
+
+        return res.json({
+          success: true,
+          resumeProfileId: resumeProfile.id,
+          resumeContentLength: resumeContent.length
+        });
+      } catch (error) {
+        console.error('Error using resume profile for interview:', error);
+        return res.status(500).json({ message: 'Failed to use resume profile for interview' });
+      }
+    });
   // Start a job-specific practice interview (voice)
   app.post('/api/interview/start-job-practice-voice',
     requireAuth,
@@ -2373,13 +2425,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const user = await storage.getUser(userId);
         const profile = await storage.getApplicantProfile(userId);
 
+        let resumeProfileId: string | null = null;
+        const jobMatchId = (job as any)?.recordId;
+        if (jobMatchId) {
+          try {
+            const jobMatch = await localDatabaseService.getJobMatch(jobMatchId);
+            resumeProfileId = jobMatch?.userId || null;
+          } catch (error) {
+            console.log('No resume profile ID available from job match:', error);
+          }
+        }
+
+        const jobIdValue = (job as any)?.jobId ?? (job as any)?.id ?? null;
+        const jobIdNumber = typeof jobIdValue === 'string' ? Number(jobIdValue) : jobIdValue;
+
         // Deduct credits at the start of the interview
-        if (job.jobId) {
+        if (jobIdNumber && Number.isFinite(jobIdNumber)) {
           try {
             const jobRecord = await db
               .select()
               .from(jobs)
-              .where(eq(jobs.id, job.jobId))
+              .where(eq(jobs.id, jobIdNumber))
               .limit(1);
 
             if (jobRecord[0]?.organizationId) {
@@ -2417,25 +2483,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Build interview context with job data and AI profile for realtime interview
         // Get full job data if we have a jobId (define outside try block for use later)
         let fullJobData = job;
-        if (job.jobId) {
+        if (jobIdNumber && Number.isFinite(jobIdNumber)) {
           try {
             const fullJobRecord = await db
               .select()
               .from(jobs)
-              .where(eq(jobs.id, job.jobId))
+              .where(eq(jobs.id, jobIdNumber))
               .limit(1);
 
             if (fullJobRecord[0]) {
               fullJobData = {
                 ...job,
-                title: fullJobRecord[0].title || job.jobTitle,
-                description: fullJobRecord[0].description,
-                requirements: fullJobRecord[0].requirements,
-                technicalSkills: fullJobRecord[0].technicalSkills,
-                softSkills: fullJobRecord[0].softSkills,
-                seniorityLevel: fullJobRecord[0].seniorityLevel,
-                industry: fullJobRecord[0].industry,
-                employerQuestions: fullJobRecord[0].employerQuestions
+                ...fullJobRecord[0],
+                jobId: jobIdValue,
+                jobTitle: fullJobRecord[0].title || job.jobTitle || job.title,
+                companyName: fullJobRecord[0].company || job.companyName || job.company
               };
             }
           } catch (dbError) {
@@ -2491,7 +2553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const practiceSet = await aiInterviewService.generateJobPracticeInterview({
           ...user,
           ...profile
-        }, job, language);
+        }, fullJobData, language);
 
         // Create a session indicating voice mode
         // Store jobId explicitly in sessionData for easy retrieval during cancellation
@@ -2503,8 +2565,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             responses: [],
             currentQuestionIndex: 0,
             interviewSet: practiceSet,
-            context: { job, interviewContext },
-            jobId: job?.jobId || job?.id || null, // Store jobId explicitly for cancellation
+            context: { job: fullJobData, interviewContext },
+            jobId: jobIdValue || null, // Store jobId explicitly for cancellation
+            resumeProfileId: resumeProfileId || null,
             mode: 'voice'
           },
           isCompleted: false
@@ -2528,8 +2591,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let aiProfile = profile?.aiProfile || null;
         let resumeProfileFound = false;
 
+        if (resumeProfileId) {
+          try {
+            const initialResumeProfile = await localDatabaseService.getUserProfile(resumeProfileId);
+            const resumeProfileEmail = initialResumeProfile?.email || null;
+            const resumeProfile = resumeProfileEmail
+              ? await localDatabaseService.getResumeProfileByEmail(resumeProfileEmail)
+              : initialResumeProfile;
+
+            if (resumeProfile) {
+              resumeProfileFound = true;
+              resumeProfileId = resumeProfile.id || resumeProfileId;
+              if (resumeProfile.resumeText?.trim().length >= 100) {
+                resumeContent = sanitizeTextForDatabase(resumeProfile.resumeText);
+              } else if (resumeProfile.fileId) {
+                const extractedText = await aiProfileAnalysisAgent.extractResumeTextFromOpenAIFileId(
+                  resumeProfile.fileId.trim()
+                );
+                resumeContent = sanitizeTextForDatabase(extractedText);
+              }
+              summary = resumeProfile.summary || null;
+              skillsList = resumeProfile.skills || null;
+            }
+          } catch (error) {
+            console.log('No resume profile available from job match:', error);
+          }
+        }
+
         const resumeProfileEmail = profile?.email || user?.email;
-        if (resumeProfileEmail) {
+        if (!resumeProfileFound && resumeProfileEmail) {
           try {
             const resumeProfile = await localDatabaseService.getResumeProfileByEmail(resumeProfileEmail);
             if (resumeProfile) {
@@ -2563,6 +2653,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           skillsList = profile?.skillsList || null;
         }
 
+        if (summary === null) {
+          summary = profile?.summary || null;
+        }
+
+        if (skillsList === null) {
+          skillsList = profile?.skillsList || null;
+        }
+
         // Try to get from active resume if not in profile
         try {
           const activeResume = await storage.getActiveResume(userId);
@@ -2571,6 +2669,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } catch (error) {
           console.log("No active resume found for job practice interview");
+        }
+
+        if (!resumeContent) {
+          return res.status(400).json({
+            message: "Resume content is missing. Please upload a resume to continue.",
+            requiresResume: true
+          });
         }
 
         res.json({
@@ -2608,13 +2713,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const user = await storage.getUser(userId);
         const profile = await storage.getApplicantProfile(userId);
 
+        const jobIdValue = (job as any)?.jobId ?? (job as any)?.id ?? null;
+        const jobIdNumber = typeof jobIdValue === 'string' ? Number(jobIdValue) : jobIdValue;
+
         // Deduct credits at the start of the interview
-        if (job.jobId) {
+        if (jobIdNumber && Number.isFinite(jobIdNumber)) {
           try {
             const jobRecord = await db
               .select()
               .from(jobs)
-              .where(eq(jobs.id, job.jobId))
+              .where(eq(jobs.id, jobIdNumber))
               .limit(1);
 
             if (jobRecord[0]?.organizationId) {
@@ -2649,11 +2757,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
+        // Get full job data if we have a jobId
+        let fullJobData = job;
+        if (jobIdNumber && Number.isFinite(jobIdNumber)) {
+          try {
+            const fullJobRecord = await db
+              .select()
+              .from(jobs)
+              .where(eq(jobs.id, jobIdNumber))
+              .limit(1);
+
+            if (fullJobRecord[0]) {
+              fullJobData = {
+                ...job,
+                ...fullJobRecord[0],
+                jobId: jobIdValue,
+                jobTitle: fullJobRecord[0].title || job.jobTitle || job.title,
+                companyName: fullJobRecord[0].company || job.companyName || job.company
+              };
+            }
+          } catch (dbError) {
+            console.error('⚠️ Failed to fetch full job data from DB:', dbError);
+            // Continue with job data from request
+          }
+        }
+
         // Generate job-specific practice set
         const practiceSet = await aiInterviewService.generateJobPracticeInterview({
           ...user,
           ...profile
-        }, job, language);
+        }, fullJobData, language);
 
         // Create a temporary interview session to reuse existing modal flow
         const session = await storage.createInterviewSession({
@@ -2664,7 +2797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             responses: [],
             currentQuestionIndex: 0,
             interviewSet: practiceSet,
-            context: { job }
+            context: { job: fullJobData }
           },
           isCompleted: false
         });
@@ -4632,17 +4765,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(null);
       }
 
-      // Get profile data to include in response
-      const profile = await storage.getApplicantProfile(userId);
-      const resumeContent = profile?.resumeContent || null;
-      const summary = profile?.summary || null;
-      const skillsList = profile?.skillsList || null;
-      const aiProfile = profile?.aiProfile || null;
-
       // Get job description from session context if available
       const sessionData = session.sessionData as any;
-      const jobDescription = sessionData?.context?.job?.jobDescription
-        || sessionData?.context?.job?.description
+
+      // Get profile data to include in response
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+      let resumeContent = profile?.resumeContent || null;
+      let summary = profile?.summary || null;
+      let skillsList = profile?.skillsList || null;
+      let experience = null;
+      let education = null;
+      let certifications = null;
+      let languages = null;
+      const aiProfile = profile?.aiProfile || null;
+
+      if (sessionData?.resumeProfileId || user?.email) {
+        try {
+          const initialResumeProfile = sessionData?.resumeProfileId
+            ? await localDatabaseService.getUserProfile(sessionData.resumeProfileId)
+            : null;
+          const resumeProfileEmail = initialResumeProfile?.email || user?.email || null;
+          const resumeProfile = resumeProfileEmail
+            ? await localDatabaseService.getResumeProfileByEmail(resumeProfileEmail)
+            : initialResumeProfile;
+
+          if (resumeProfile) {
+            if (!resumeContent) {
+              if (resumeProfile.resumeText?.trim().length >= 100) {
+                resumeContent = sanitizeTextForDatabase(resumeProfile.resumeText);
+              } else if (resumeProfile.fileId) {
+                const extractedText = await aiProfileAnalysisAgent.extractResumeTextFromOpenAIFileId(
+                  resumeProfile.fileId.trim()
+                );
+                resumeContent = sanitizeTextForDatabase(extractedText);
+              }
+            }
+            summary = resumeProfile.summary || summary;
+            skillsList = resumeProfile.skills || skillsList;
+            experience = resumeProfile.experience ?? experience;
+            education = resumeProfile.education ?? education;
+            certifications = resumeProfile.certifications ?? certifications;
+            languages = resumeProfile.languages ?? languages;
+          }
+        } catch (error) {
+          console.warn('Failed to load resume profile by ID:', error);
+        }
+      }
+
+      const jobDescription = sessionData?.context?.job?.description
+        || sessionData?.context?.job?.jobDescription
         || null;
 
       // Return session with additional profile data
@@ -4652,7 +4824,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         summary,
         skillsList,
         aiProfile,
-        jobDescription
+        jobDescription,
+        experience,
+        education,
+        certifications,
+        languages,
+        resumeProfileId: sessionData?.resumeProfileId || null
       });
     } catch (error) {
       console.error("Error fetching interview session:", error);
@@ -4686,17 +4863,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized" });
       }
 
-      // Get profile data to include in response
-      const profile = await storage.getApplicantProfile(userId);
-      const resumeContent = profile?.resumeContent || null;
-      const summary = profile?.summary || null;
-      const skillsList = profile?.skillsList || null;
-      const aiProfile = profile?.aiProfile || null;
-
       // Get job description from session context if available
       const sessionData = session.sessionData as any;
-      const jobDescription = sessionData?.context?.job?.jobDescription
-        || sessionData?.context?.job?.description
+
+      // Get profile data to include in response
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+      let resumeContent = profile?.resumeContent || null;
+      let summary = profile?.summary || null;
+      let skillsList = profile?.skillsList || null;
+      let experience = null;
+      let education = null;
+      let certifications = null;
+      let languages = null;
+      const aiProfile = profile?.aiProfile || null;
+
+      if (sessionData?.resumeProfileId || user?.email) {
+        try {
+          const initialResumeProfile = sessionData?.resumeProfileId
+            ? await localDatabaseService.getUserProfile(sessionData.resumeProfileId)
+            : null;
+          const resumeProfileEmail = initialResumeProfile?.email || user?.email || null;
+          const resumeProfile = resumeProfileEmail
+            ? await localDatabaseService.getResumeProfileByEmail(resumeProfileEmail)
+            : initialResumeProfile;
+
+          if (resumeProfile) {
+            if (!resumeContent) {
+              if (resumeProfile.resumeText?.trim().length >= 100) {
+                resumeContent = sanitizeTextForDatabase(resumeProfile.resumeText);
+              } else if (resumeProfile.fileId) {
+                const extractedText = await aiProfileAnalysisAgent.extractResumeTextFromOpenAIFileId(
+                  resumeProfile.fileId.trim()
+                );
+                resumeContent = sanitizeTextForDatabase(extractedText);
+              }
+            }
+            summary = resumeProfile.summary || summary;
+            skillsList = resumeProfile.skills || skillsList;
+            experience = resumeProfile.experience ?? experience;
+            education = resumeProfile.education ?? education;
+            certifications = resumeProfile.certifications ?? certifications;
+            languages = resumeProfile.languages ?? languages;
+          }
+        } catch (error) {
+          console.warn('Failed to load resume profile by ID:', error);
+        }
+      }
+
+      const jobDescription = sessionData?.context?.job?.description
+        || sessionData?.context?.job?.jobDescription
         || null;
 
       // Return session with additional profile data
@@ -4706,7 +4922,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         summary,
         skillsList,
         aiProfile,
-        jobDescription
+        jobDescription,
+        experience,
+        education,
+        certifications,
+        languages,
+        resumeProfileId: sessionData?.resumeProfileId || null
       });
     } catch (error) {
       console.error("Error fetching interview session:", error);

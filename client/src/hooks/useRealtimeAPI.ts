@@ -43,8 +43,13 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
     resumeContent?: string;
     summary?: string;
     skillsList?: string[];
+    experience?: string[] | string | null;
+    education?: string[] | string | null;
+    certifications?: string[] | string | null;
+    languages?: string[] | string | null;
     aiProfile?: any;
     jobDescription?: string;
+    resumeProfileId?: string | null;
     interviewContext?: {
       jobContext?: {
         title?: string;
@@ -78,6 +83,23 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
       };
     } | null;
   }) => {
+    console.log('useRealtimeAPI connect params:', interviewParams);
+    console.log('useRealtimeAPI connect state:', { isConnecting, isConnected });
+    console.log('useRealtimeAPI resume_profiles params:', {
+      resumeContent: interviewParams?.resumeContent ?? null,
+      summary: interviewParams?.summary ?? null,
+      skillsList: interviewParams?.skillsList ?? null,
+      experience: (interviewParams as any)?.experience ?? null,
+      education: (interviewParams as any)?.education ?? null,
+      certifications: (interviewParams as any)?.certifications ?? null,
+      languages: (interviewParams as any)?.languages ?? null,
+      aiProfile: interviewParams?.aiProfile ?? null,
+      resumeProfileId: (interviewParams as any)?.resumeProfileId ?? null
+    });
+    console.log('useRealtimeAPI job context params:', {
+      jobContext: interviewParams?.interviewContext?.jobContext ?? null,
+      jobDescription: interviewParams?.jobDescription ?? null
+    });
     if (isConnecting || isConnected) return;
 
     setIsConnecting(true);
@@ -308,6 +330,12 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
           language?: string;
           aiPrompt?: string;
           resumeContent?: string;
+          summary?: string;
+          skillsList?: string[];
+          experience?: string[] | string | null;
+          education?: string[] | string | null;
+          certifications?: string[] | string | null;
+          languages?: string[] | string | null;
           jobDescription?: string;
           interviewContext?: {
             jobContext?: {
@@ -337,6 +365,12 @@ export function useRealtimeAPI(options: RealtimeAPIOptions = {}) {
           } | null;
         }) => {
           const language = interviewParams?.language || 'english';
+          const jobContext = interviewParams?.interviewContext?.jobContext as any;
+          const formatList = (value?: string[] | string | null) => {
+            if (!value) return '';
+            if (Array.isArray(value)) return value.join('\n');
+            return String(value);
+          };
 
           // Get custom AI prompt if available
           const customPrompt = interviewParams?.aiPrompt;
@@ -478,19 +512,36 @@ Never describe the candidate's personal qualities; only discuss their facts, cho
 CANDIDATE DATA & CONTEXT
 --------------------
 
-${interviewParams?.resumeContent ? `
-## CANDIDATE'S RESUME/CV CONTENT
-Below is the candidate's resume/CV content. Use this to understand their background, experience, skills, and achievements. Reference specific details from their CV when asking questions, but do NOT simply repeat CV information - go deeper into their experiences and decisions.
+## CANDIDATE'S RESUME PROFILE (STRUCTURED DATA)
+Use ONLY the structured resume profile fields below. Do NOT rely on any raw resume text.
 
-${interviewParams.resumeContent.length > 5000
-                ? interviewParams.resumeContent.substring(0, 5000) + '\n\n[CV content truncated - showing first 5000 characters]'
-                : interviewParams.resumeContent}
+${(interviewParams as any)?.summary ? `
+## PROFESSIONAL SUMMARY
+${(interviewParams as any).summary}
 
 ` : ''}
 
-${(interviewParams as any)?.summary ? `
-## CANDIDATE'S PROFESSIONAL SUMMARY
-${(interviewParams as any).summary}
+${(interviewParams as any)?.experience ? `
+## EXPERIENCE
+${formatList((interviewParams as any).experience)}
+
+` : ''}
+
+${(interviewParams as any)?.education ? `
+## EDUCATION
+${formatList((interviewParams as any).education)}
+
+` : ''}
+
+${(interviewParams as any)?.certifications ? `
+## CERTIFICATIONS
+${formatList((interviewParams as any).certifications)}
+
+` : ''}
+
+${(interviewParams as any)?.languages ? `
+## LANGUAGES
+${formatList((interviewParams as any).languages)}
 
 ` : ''}
 
@@ -508,20 +559,34 @@ ${JSON.stringify((interviewParams as any).aiProfile, null, 2).substring(0, 3000)
 
 ` : ''}
 
-${interviewParams?.jobDescription || interviewParams?.interviewContext?.jobContext?.description ? `
-## TARGET JOB DESCRIPTION
-${interviewParams.jobDescription || interviewParams.interviewContext?.jobContext?.description || ''}
+${jobContext || interviewParams?.jobDescription ? `
+## TARGET JOB PROFILE
+${jobContext?.title ? `Title: ${jobContext.title}` : ''}
+${jobContext?.industry ? `Industry: ${jobContext.industry}` : ''}
+${jobContext?.seniorityLevel ? `Seniority Level: ${jobContext.seniorityLevel}` : ''}
+${jobContext?.location ? `Location: ${jobContext.location}` : ''}
+${jobContext?.country ? `Country: ${jobContext.country}` : ''}
+${jobContext?.employmentType ? `Employment Type: ${jobContext.employmentType}` : ''}
+${jobContext?.workplaceType ? `Workplace Type: ${jobContext.workplaceType}` : ''}
+${typeof jobContext?.salaryMin === 'number' ? `Salary Min: ${jobContext.salaryMin}` : ''}
+${typeof jobContext?.salaryMax === 'number' ? `Salary Max: ${jobContext.salaryMax}` : ''}
 
-${interviewParams.interviewContext?.jobContext?.requirements ? `### Additional Requirements:
-${interviewParams.interviewContext.jobContext.requirements}` : ''}
+${jobContext?.description || interviewParams?.jobDescription ? `## JOB DESCRIPTION
+${jobContext?.description || interviewParams?.jobDescription || ''}` : ''}
 
-${interviewParams.interviewContext?.jobContext?.technicalSkills && interviewParams.interviewContext.jobContext.technicalSkills.length > 0 ? `### Required Technical Skills:
-${interviewParams.interviewContext.jobContext.technicalSkills.join(', ')}` : ''}
+${jobContext?.requirements ? `## REQUIREMENTS
+${jobContext.requirements}` : ''}
 
-${interviewParams.interviewContext?.jobContext?.softSkills && interviewParams.interviewContext.jobContext.softSkills.length > 0 ? `### Required Soft Skills:
-${interviewParams.interviewContext.jobContext.softSkills.join(', ')}` : ''}
+${jobContext?.technicalSkills && jobContext.technicalSkills.length > 0 ? `## REQUIRED TECHNICAL SKILLS
+${jobContext.technicalSkills.join(', ')}` : ''}
 
-**IMPORTANT:** When asking questions, reference specific requirements from the job description and assess how the candidate's experience and skills align with these requirements. Ask about specific projects or experiences that demonstrate their fit for this role.
+${jobContext?.softSkills && jobContext.softSkills.length > 0 ? `## REQUIRED SOFT SKILLS
+${jobContext.softSkills.join(', ')}` : ''}
+
+${jobContext?.employerQuestions && jobContext.employerQuestions.length > 0 ? `## EMPLOYER QUESTIONS
+${jobContext.employerQuestions.join('\n')}` : ''}
+
+**IMPORTANT:** When asking questions, reference specific requirements from the job profile and assess how the candidate's experience and skills align with these requirements. Ask about specific projects or experiences that demonstrate their fit for this role.
 
 ` : ''}
 
@@ -541,7 +606,7 @@ You have a DATA TREASURE. Use it with precision:
    - Nice-to-have skills
    - Work context and expectations
 
-Your intelligence is NOT asking about everything.
+Your intelligence is to ask about everything that's relevant to the job refered  at the top of the prompt.
 It is focusing on the GAP between CV and Job:
 - If the job requires leadership and the CV never shows "led", ask:
   "Have you led a team before, even informally? If yes, tell me about a specific situation."
@@ -552,6 +617,10 @@ Avoid common AI interview mistakes:
 - Do NOT follow a one-size-fits-all script
 - Do NOT act like a survey; be a real interviewer
 - ALWAYS ask follow-up questions that probe evidence and specifics
+- Do NOT telegraph the “expected” requirement or answer.
+  - Use free-recall questions first (let the candidate surface their reality).
+  - Only after free recall, verify required skills/tools explicitly if they weren’t mentioned.
+  - Do NOT phrase requirements as “this role needs X” or “we require X”.
 
 Because this is a live meet with transcription:
 - Keep questions short and clear
@@ -689,9 +758,23 @@ GENERAL INTERVIEW PRINCIPLES
 
   1) Requirements-first mapping:
   - When a job description or requirements are available, you MUST explicitly map the candidate’s background to them through questions.
-  - Ask targeted questions such as:
-    “Which part of your background matches [specific requirement]?”
-    Then follow up with depth: ownership, steps, metrics, and trade-offs.
+  - Requirement testing must be NON-LEADING.
+  - Use a 2-step approach:
+    Step 1 (free recall, no hints):
+      Ask the candidate to describe what they did and which tools/methods they used, without naming the requirement.
+    Step 2 (verification, allowed):
+      If the required tool/skill did NOT come up naturally, ask directly whether they have used it.
+      If they mention adjacent tools instead, verify the gap explicitly and probe transferability.
+
+  Examples (NON-LEADING → then VERIFICATION):
+    1) Free recall:
+       “In your most relevant project for this role, what did you personally do day-to-day, and what tools or systems did you use?”
+    2) If they name tools B/C but not A:
+       “Got it. Have you personally used A at any point?”
+    3) If they say “no”:
+       “Okay. What’s the closest similar tool or workflow you’ve used, and how would you ramp up to A quickly?”
+    4) If they say “yes”:
+       “Walk me through exactly how you used A — what you owned, the steps, and how you validated it worked.”
 
   2) Resume deep-dive discipline:
   - You MUST ask high-signal, CV-anchored questions ONLY for:
@@ -711,6 +794,20 @@ GENERAL INTERVIEW PRINCIPLES
     - constraints/trade-offs (“what did you choose not to do, and why?”),
     - artifacts when appropriate (portfolio, GitHub, case study, sample outputs).
   - Do NOT request personal references during the interview.
+
+  3B) DEPTH WITHOUT LEADING (MANDATORY)
+  When an answer is vague or requirement-relevant, you MUST drill down using neutral probes:
+  
+  - “What was the context and goal?”
+  - “What part did you personally own?”
+  - “Talk me through what you did, step by step.”
+  - “What decision points did you face, and what did you choose?”
+  - “What constraints were you working with?”
+  - “How did you judge whether it worked?” (avoid implying there MUST be big metrics)
+  - “If you did it again, what would you change?”
+  
+  Rule:
+  - - If the answer lacks ownership OR steps OR validation, ask follow-up questions as needed (often 1–2, sometimes more) until ownership, steps, and validation are clear. The bullets above are examples, not a limit.
 
   4) Clarify before assuming:
   - If any answer or profile detail is unclear or missing AND it affects interpretation, you MUST ask ONE clarification question before proceeding.
@@ -741,6 +838,11 @@ Primary focus is HR + behavioral questions, with only light role-related clarifi
 - Do NOT run deep technical drills or case studies in this mode.
 - Use resume + job data ONLY to personalize HR questions and target gaps.
 - Keep a stable, predictable question order while still probing for evidence.
+JD COVERAGE OVERLAY (DO NOT CHANGE THE BASE QUESTIONS)
+- You MUST NOT change the existing base HR question set or their order.
+- You MAY add short follow-up questions ONLY to test untested must-have requirements.
+- Use free recall first, then verify missing required tools/skills directly if not mentioned.
+- Continue the same flow; requirements coverage happens as brief inserts, not a new interview section.
 
 --------------------
 HOW TO DESIGN YOUR QUESTIONS
