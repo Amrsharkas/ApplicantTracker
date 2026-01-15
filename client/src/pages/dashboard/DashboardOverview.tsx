@@ -87,9 +87,17 @@ export default function DashboardOverview() {
     enabled: !!user,
   });
 
+  const { data: resumeProfileStatus } = useQuery({
+    queryKey: ["/api/resume-profile/exists"],
+    retry: false,
+    refetchOnWindowFocus: false,
+    enabled: !!user,
+  });
+
   // Profile completion logic
   const profileProgress = (comprehensiveProfile as any)?.completionPercentage || 0;
-  const hasCompleteProfile = profileProgress >= 75;
+  const hasResumeProfile = !!(resumeProfileStatus as any)?.hasResumeProfile;
+  const hasCompleteProfile = profileProgress >= 75 || hasResumeProfile;
   // Interview step removed - show full dashboard when profile is complete
   const showFullDashboard = hasCompleteProfile;
   const invitedJobsTotal = invitedJobsCount ? (invitedJobsCount as any).count : 0;
@@ -187,7 +195,7 @@ export default function DashboardOverview() {
 
       {/* Invited Jobs Alert - Enhanced */}
       <AnimatePresence>
-        {showFullDashboard && invitedJobsTotal > 0 && (
+        {(showFullDashboard || hasResumeProfile) && invitedJobsTotal > 0 && (
           <motion.div
             initial={{ opacity: 0, y: -10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -242,7 +250,7 @@ export default function DashboardOverview() {
       </AnimatePresence>
 
       {/* Enhanced Onboarding Section with Stepper */}
-      {!showFullDashboard && (
+      {!showFullDashboard && !hasResumeProfile && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -568,11 +576,11 @@ export default function DashboardOverview() {
                             <span>
                               {interview.scheduledDate
                                 ? new Date(interview.scheduledDate).toLocaleDateString('en-US', {
-                                    weekday: 'short',
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric'
-                                  })
+                                  weekday: 'short',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })
                                 : 'Date TBD'}
                             </span>
                           </div>
@@ -597,8 +605,8 @@ export default function DashboardOverview() {
       <InvitedJobsModal
         isOpen={activeModal === 'invitedJobs'}
         onClose={closeModal}
-        onStartJobPractice={async () => {}}
-        onStartJobPracticeVoice={async () => {}}
+        onStartJobPractice={async () => { }}
+        onStartJobPracticeVoice={async () => { }}
       />
     </div>
   );

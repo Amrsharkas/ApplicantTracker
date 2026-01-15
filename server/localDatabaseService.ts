@@ -50,6 +50,25 @@ export class LocalDatabaseService {
   }
 
   /**
+   * Get a resume profile by email. Returns the most recent one if multiple exist.
+   */
+  async getResumeProfileByEmail(email: string): Promise<ResumeProfile | null> {
+    try {
+      const normalizedEmail = email.trim().toLowerCase();
+      const [profile] = await db
+        .select()
+        .from(schema.resumeProfiles)
+        .where(sql`lower(trim(${schema.resumeProfiles.email})) = ${normalizedEmail}`)
+        .orderBy(desc(schema.resumeProfiles.createdAt))
+        .limit(1);
+      return profile || null;
+    } catch (error) {
+      console.error('Error getting resume profile by email:', error);
+      throw error;
+    }
+  }
+
+  /**
    * @deprecated Use resume_profiles table instead. This method updates the deprecated airtable_user_profiles table.
    */
   async updateUserProfile(userId: string, data: Partial<InsertAirtableUserProfile>): Promise<AirtableUserProfile | null> {

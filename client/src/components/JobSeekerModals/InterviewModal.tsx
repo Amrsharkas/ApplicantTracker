@@ -298,12 +298,29 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
 
       setMessages(messages);
     },
-    onError: (error: any) => {
+    onError: async (error: any) => {
       setIsStartingInterview(false);
       console.error('Start interview error:', error);
 
       // Check if the error is due to missing resume
       if (error?.message?.includes("Resume required") || error?.message?.includes("requiresResume")) {
+        try {
+          const resumeCheck = await apiRequest("GET", "/api/interview/resume-check");
+          if (resumeCheck?.hasResume) {
+            queryClient.invalidateQueries({ queryKey: ['/api/interview/resume-check'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/interview/types'] });
+            toast({
+              title: t('interview.startError') || "Error",
+              description: t('interview.startErrorDescription') || "Failed to start interview. Please try again.",
+              variant: "destructive",
+            });
+            setMode('select');
+            return;
+          }
+        } catch (resumeCheckError) {
+          console.warn('Resume check failed after resume-required error:', resumeCheckError);
+        }
+
         setShowResumeModal(true);
         return;
       }
@@ -1255,6 +1272,24 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
     };
   }, [cleanup]);
 
+  // Safety cleanup whenever the modal closes
+  useEffect(() => {
+    if (isOpen) return;
+
+    if (realtimeAPI.isConnected) {
+      realtimeAPI.disconnect();
+    }
+
+    cleanup();
+
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+
+    exitFullscreen();
+  }, [isOpen, realtimeAPI.isConnected, cleanup, cameraStream]);
+
   const handleClose = () => {
     // Prevent closing during active AI speech or processing
     if (isAiSpeaking || isProcessingInterview || isStartingInterview) {
@@ -1568,7 +1603,19 @@ export function InterviewModal({ isOpen, onClose, onAllInterviewsCompleted }: In
       processVoiceInterviewMutation.mutate();
     } else {
       // Allow ending interview early but don't allow submit unless completed
-      realtimeAPI.disconnect();
+      if (realtimeAPI.isConnected) {
+        realtimeAPI.disconnect();
+      }
+
+      // Stop any active recording
+      cleanup();
+
+      // Stop camera stream explicitly
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        setCameraStream(null);
+      }
+
       exitFullscreen();
       setMode('select');
     }

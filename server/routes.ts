@@ -724,6 +724,13 @@ function sanitizeTextForDatabase(text: string): string {
     .trim();
 }
 
+function isProfileCompleteForInterview(candidateProfile: any): boolean {
+  const hasBasicInfo = !!(candidateProfile?.name && candidateProfile?.summary);
+  const hasExperience = !!(candidateProfile?.workExperiences && Array.isArray(candidateProfile.workExperiences) && candidateProfile.workExperiences.length > 0);
+  const hasEducation = !!(candidateProfile?.degrees && Array.isArray(candidateProfile.degrees) && candidateProfile.degrees.length > 0);
+  return hasBasicInfo && (hasExperience || hasEducation);
+}
+
 // Helper function to sanitize JSON data for database storage
 function sanitizeJsonForDatabase(data: any): any {
   if (!data) return data;
@@ -1028,51 +1035,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`✅ Found job match: ${jobMatch.name} for job: ${jobMatch.jobTitle}`);
+      console.log(`🔍 Job match details: userId=${jobMatch.userId}, name=${jobMatch.name}`);
 
-      // Extract user information from the job match
+      // STEP 1: Get the resume profile by ID (from jobMatch.userId) to get the EMAIL
+      // This is just to get the email - we'll use the email to find the correct resume profile
       const resumeProfileId = jobMatch.userId;
-
-      // Get the resume profile to extract the email
-      let resumeProfile;
-      let user;
+      let initialResumeProfile;
+      let resumeProfileEmail: string | null = null;
 
       try {
-        resumeProfile = await localDatabaseService.getUserProfile(resumeProfileId);
-        console.log(`📄 Retrieved resume profile for user ID: ${resumeProfileId}`);
-
-        user = await storage.getUserByEmail(resumeProfile?.email ?? '')
+        initialResumeProfile = await localDatabaseService.getUserProfile(resumeProfileId);
+        resumeProfileEmail = initialResumeProfile?.email ?? null;
+        console.log(`📄 Initial resume profile (by ID): id=${initialResumeProfile?.id}, name=${initialResumeProfile?.name}, email=${resumeProfileEmail}`);
       } catch (profileError) {
-        console.warn('Failed to retrieve resume profile:', profileError);
+        console.warn('Failed to retrieve initial resume profile by ID:', profileError);
       }
 
-      // If user doesn't exist, create one (this should not happen normally, but handle it)
+      // STEP 2: Use EMAIL as the key to find the CORRECT resume profile
+      // This ensures we get the right resume profile even if the ID was wrong
+      let resumeProfile: typeof initialResumeProfile = null;
+      let user;
+
+      if (resumeProfileEmail) {
+        try {
+          // Use EMAIL to find the correct resume profile (most recent one if multiple exist)
+          resumeProfile = await localDatabaseService.getResumeProfileByEmail(resumeProfileEmail);
+          console.log(`✅ Found resume profile by EMAIL (${resumeProfileEmail}): id=${resumeProfile?.id}, name=${resumeProfile?.name}`);
+
+          // Check if user exists by email
+          user = await storage.getUserByEmail(resumeProfileEmail);
+          if (user) {
+            console.log(`✅ Found existing user by email: ${user.email} (${user.id})`);
+          }
+        } catch (emailError) {
+          console.warn('Failed to retrieve resume profile by email:', emailError);
+          // Fallback to initial resume profile if email lookup fails
+          resumeProfile = initialResumeProfile;
+        }
+      } else {
+        // Fallback: if no email found, use the initial resume profile
+        resumeProfile = initialResumeProfile;
+        console.warn('⚠️ No email found in resume profile, using initial resume profile');
+      }
+
+      const emailForUser = resumeProfileEmail || resumeProfile?.email || `interview_${resumeProfileId}@candidate.local`;
+      const emailLocalPart = emailForUser.split('@')[0] || 'candidate';
+      const firstName = emailLocalPart;
+      const lastName = emailLocalPart;
+
+      // If user doesn't exist, create one using the parsed name from resume
       if (!user) {
         try {
           console.log(`🔍 Creating new user for job match user ID: ${resumeProfileId}`);
 
-          // Use email from resume profile if available, otherwise generate a unique email
-          const email = resumeProfile?.email || `interview_${resumeProfileId}@candidate.local`;
+          const email = emailForUser;
 
           // Create user with empty password and flag for password setup
+          // Use the parsed name from resume (most accurate)
           user = await storage.createUser({
             email,
             password: '', // Empty password for now
-            firstName: resumeProfile?.name?.split(' ')[0] || jobMatch.name?.split(' ')[0] || 'Interview',
-            lastName: resumeProfile?.name?.split(' ').slice(1).join(' ') || jobMatch.name?.split(' ').slice(1).join(' ') || 'Candidate',
+            firstName,
+            lastName,
             username: `candidate_${resumeProfileId}_${Math.random().toString(36).substr(2, 9)}`,
             role: 'applicant',
             isVerified: true,
             passwordNeedsSetup: true // Flag to indicate password needs to be set
           });
 
-          console.log(`✅ Created new user for job match: ${user.id} with email: ${email}`);
+          console.log(`✅ Created new user for job match: ${user.id} with email: ${email}, name: ${firstName} ${lastName}`);
 
         } catch (createError) {
           console.error('Error creating user for job match:', createError);
           return res.status(500).json({ error: 'Failed to create user account' });
         }
       }
-
 
       if (!user) {
         return res.status(404).json({ error: 'User not found for job match' });
@@ -1082,76 +1119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.userId = user.id;
       console.log(`✅ User authenticated via token: ${user.email} (${user.id})`);
 
-      let profileFound = false
-
-      // Create or update applicant profile if needed
-      try {
-        let profile = await storage.getApplicantProfile(user.id);
-
-        if (profile) {
-          profileFound = true;
-        } else {
-          profile = await storage.upsertApplicantProfile({
-            userId: user.id,
-            name: resumeProfile?.name || jobMatch.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-            email: resumeProfile?.email || user.email
-          } as any);
-          console.log(`✅ Created applicant profile for user: ${user.id} with email: ${resumeProfile?.email || user.email}`);
-        }
-      } catch (profileError) {
-        console.warn('Failed to create/update applicant profile:', profileError);
-      }
-
-      // Create applicant profile from the file if fileId is available
-      if (resumeProfile?.fileId && !profileFound) {
-        try {
-          console.log(`📄 Found OpenAI file_id on resume profile: ${resumeProfile.fileId}`);
-
-          // Extract text via OpenAI file_id
-          let resumeContent = await aiProfileAnalysisAgent.extractResumeTextFromOpenAIFileId(resumeProfile.fileId.trim());
-          resumeContent = sanitizeTextForDatabase(resumeContent);
-
-          if (resumeContent && resumeContent.trim().length >= 100) {
-            // Parse and map to profile
-            const parsedResumeData = await aiInterviewService.parseResumeForProfile(resumeContent);
-            const profileData = mapResumeDataToProfile(parsedResumeData, user.id);
-            const existingProfile = await storage.getApplicantProfile(user.id);
-            const mergedProfile = {
-              ...existingProfile,
-              ...profileData,
-              resumeContent: resumeContent.substring(0, 10000),
-              updatedAt: new Date(),
-              completionPercentage: calculateProfileCompletion(profileData)
-            };
-
-            await storage.upsertApplicantProfile(mergedProfile);
-            await storage.updateProfileCompletion(user.id);
-
-            // Store a resume record for tracking
-            try {
-              const resumeRecord = await storage.createResumeUpload({
-                userId: user.id,
-                filename: `openai_${resumeProfile.fileId}.txt`,
-                originalName: `openai_file_${resumeProfile.fileId}`,
-                filePath: `/openai/${resumeProfile.fileId}`,
-                fileSize: resumeContent.length,
-                mimeType: 'text/plain',
-                extractedText: resumeContent,
-                aiAnalysis: parsedResumeData
-              } as any);
-              await storage.setActiveResume(user.id, (resumeRecord as any).id);
-            } catch (resumeErr) {
-              console.warn('Failed to create resume record from OpenAI file_id:', resumeErr);
-            }
-
-            console.log('✅ Profile auto-populated from OpenAI file before redirect');
-          } else {
-            console.warn('⚠️ Resume content from OpenAI file_id was empty or too short; skipping auto-population');
-          }
-        } catch (fileError) {
-          console.warn('Failed to process resume from file_id:', fileError);
-        }
-      }
+      // Do NOT auto-fill applicant profile from resume_profile on invitation flow.
 
       // Update the job match to link it to the user (this replaces the Airtable user_id update)
       try {
@@ -2290,8 +2258,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const user = await storage.getUser(userId);
         const profile = await storage.getApplicantProfile(userId);
 
-        // Get resume content and analysis from profile
         const resumeContent = profile?.resumeContent || null;
+        const summary = profile?.summary || null;
+        const skillsList = profile?.skillsList || null;
+        const aiProfile = profile?.aiProfile || null;
+
         let resumeAnalysis = null;
 
         if (userId) {
@@ -2357,10 +2328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? (typeof currentSet.questions[0] === 'string' ? currentSet.questions[0] : currentSet.questions[0]?.question || '')
           : '';
 
-        // Get additional profile data from applicant_profiles table
-        const summary = profile?.summary || null;
-        const skillsList = profile?.skillsList || null;
-        const aiProfile = profile?.aiProfile || null;
+        // summary / skillsList / aiProfile already resolved (profile or resume_profiles fallback)
 
 
         res.json({
@@ -2554,11 +2522,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? (typeof practiceSet.questions[0] === 'string' ? practiceSet.questions[0] : practiceSet.questions[0]?.question || '')
           : '';
 
-        // Get resume content and other profile data from applicant_profiles table
-        let resumeContent = profile?.resumeContent || null;
-        let summary = profile?.summary || null;
-        let skillsList = profile?.skillsList || null;
+        let resumeContent: string | null = null;
+        let summary: string | null = null;
+        let skillsList: string[] | null = null;
         let aiProfile = profile?.aiProfile || null;
+        let resumeProfileFound = false;
+
+        const resumeProfileEmail = profile?.email || user?.email;
+        if (resumeProfileEmail) {
+          try {
+            const resumeProfile = await localDatabaseService.getResumeProfileByEmail(resumeProfileEmail);
+            if (resumeProfile) {
+              resumeProfileFound = true;
+              if (resumeProfile.resumeText?.trim().length >= 100) {
+                resumeContent = sanitizeTextForDatabase(resumeProfile.resumeText);
+              } else if (resumeProfile.fileId) {
+                const extractedText = await aiProfileAnalysisAgent.extractResumeTextFromOpenAIFileId(
+                  resumeProfile.fileId.trim()
+                );
+                resumeContent = sanitizeTextForDatabase(extractedText);
+              }
+              summary = resumeProfile.summary || null;
+              skillsList = resumeProfile.skills || null;
+            }
+          } catch (error) {
+            console.log("No resume profile available for job practice voice:", error);
+          }
+        }
+
+        if (!resumeProfileFound) {
+          if (!isProfileCompleteForInterview(profile)) {
+            return res.status(400).json({
+              message: "Profile incomplete. Please complete your profile before starting the interview.",
+              requiresProfile: true
+            });
+          }
+
+          resumeContent = profile?.resumeContent || null;
+          summary = profile?.summary || null;
+          skillsList = profile?.skillsList || null;
+        }
 
         // Try to get from active resume if not in profile
         try {
@@ -2910,13 +2913,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get user profile to check for manual CV data
       const profile = await storage.getApplicantProfile(userId);
+      const user = await storage.getUser(userId);
+      const email = profile?.email || user?.email;
+      const resumeProfile = email ? await localDatabaseService.getResumeProfileByEmail(email) : null;
 
       // Check if user has completed manual CV data entry
       // Consider CV complete if they have essential info: name, summary, and at least one experience/education
       const hasBasicInfo = !!(profile?.name && profile?.summary);
       const hasExperience = !!(profile?.workExperiences && Array.isArray(profile.workExperiences) && profile.workExperiences.length > 0);
       const hasEducation = !!(profile?.degrees && Array.isArray(profile.degrees) && profile.degrees.length > 0);
-      const hasCV = hasBasicInfo && (hasExperience || hasEducation);
+      const hasManualCV = hasBasicInfo && (hasExperience || hasEducation);
+      const hasCV = hasManualCV || !!resumeProfile;
 
       res.json({
         hasResume: hasCV, // For backward compatibility, keep the same field name
@@ -2924,9 +2931,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         requiresResume: true, // Always require CV for interviews
         cvComplete: hasCV,
         resume: hasCV ? {
-          id: 'manual-cv',
-          originalName: 'Manual CV Data',
-          uploadedAt: profile?.updatedAt || profile?.createdAt
+          id: hasManualCV ? 'manual-cv' : resumeProfile?.id,
+          originalName: hasManualCV ? 'Manual CV Data' : 'Resume Profile',
+          uploadedAt: hasManualCV ? (profile?.updatedAt || profile?.createdAt) : resumeProfile?.updatedAt
         } : null
       });
     } catch (error) {
@@ -2935,15 +2942,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check if a resume_profile exists for the logged-in user's email
+  app.get('/api/resume-profile/exists', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      const profile = await storage.getApplicantProfile(userId);
+      const email = profile?.email || user?.email;
+
+      if (!email) {
+        return res.json({ hasResumeProfile: false, resumeProfileId: null });
+      }
+
+      const resumeProfile = await localDatabaseService.getResumeProfileByEmail(email);
+      return res.json({
+        hasResumeProfile: !!resumeProfile,
+        resumeProfileId: resumeProfile?.id || null
+      });
+    } catch (error) {
+      console.error("Error checking resume_profile by email:", error);
+      return res.json({ hasResumeProfile: false, resumeProfileId: null });
+    }
+  });
+
   // Get available interview types for a user
   app.get('/api/interview/types', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const profile = await storage.getApplicantProfile(userId);
+      const user = await storage.getUser(userId);
+      const email = profile?.email || user?.email;
+      const resumeProfile = email ? await localDatabaseService.getResumeProfileByEmail(email) : null;
 
       // Check if user has uploaded a resume (required for interviews)
       const activeResume = await storage.getActiveResume(userId);
-      if (!activeResume) {
+      if (!activeResume && !resumeProfile) {
         return res.status(400).json({
           message: "Resume required before starting interviews",
           requiresResume: true
@@ -3116,11 +3149,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const user = await storage.getUser(userId);
         const profile = await storage.getApplicantProfile(userId);
 
-        // Get resume content from active resume
-        let resumeContent = profile?.resumeContent || null;
+        let resumeContent: string | null = null;
         let resumeContext = null;
+        let resumeProfileFound = false;
 
-        if (activeResume?.aiAnalysis) {
+        const resumeProfileEmail = profile?.email || user?.email;
+        if (resumeProfileEmail) {
+          try {
+            const resumeProfile = await localDatabaseService.getResumeProfileByEmail(resumeProfileEmail);
+            if (resumeProfile) {
+              resumeProfileFound = true;
+              if (resumeProfile.resumeText?.trim().length >= 100) {
+                resumeContent = sanitizeTextForDatabase(resumeProfile.resumeText);
+              } else if (resumeProfile.fileId) {
+                const extractedText = await aiProfileAnalysisAgent.extractResumeTextFromOpenAIFileId(
+                  resumeProfile.fileId.trim()
+                );
+                resumeContent = sanitizeTextForDatabase(extractedText);
+              }
+            }
+          } catch (error) {
+            console.log("No resume profile available for job practice:", error);
+          }
+        }
+
+        if (!resumeProfileFound) {
+          if (!isProfileCompleteForInterview(profile)) {
+            return res.status(400).json({
+              message: "Profile incomplete. Please complete your profile before starting the interview.",
+              requiresProfile: true
+            });
+          }
+
+          resumeContent = profile?.resumeContent || null;
+        }
+
+        if (!resumeContent && activeResume?.aiAnalysis) {
           resumeContext = await resumeService.generateInterviewContext(activeResume.aiAnalysis);
           resumeContent = activeResume.extractedText || resumeContent;
         }
@@ -7553,7 +7617,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
 
         // Experience - Enhanced with years calculation
         workExperiences: profileData.experience,
-        totalYearsOfExperience: profileData.experience?.reduce((total: number, exp: any) => {
+        totalYearsOfExperience: profileData.experience ? Math.round(profileData.experience.reduce((total: number, exp: any) => {
           if (exp.startDate && exp.endDate) {
             const start = new Date(exp.startDate);
             const end = new Date(exp.endDate);
@@ -7561,7 +7625,7 @@ IMPORTANT: Only include items in missingRequirements that the user clearly lacks
             return total + Math.max(0, years);
           }
           return total;
-        }, 0),
+        }, 0)) : undefined,
 
         // Certifications & Training
         certifications: profileData.certifications,

@@ -356,6 +356,11 @@ export function useCameraRecorder() {
       }
     }
 
+    // Ensure any recorder stream tracks are stopped
+    if (mediaRecorderRef.current?.stream) {
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+
     mediaRecorderRef.current = null;
     chunkIndexRef.current = 0;
     sessionIdRef.current = null;

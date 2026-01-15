@@ -7,6 +7,7 @@ import {
   FileText,
   TrendingUp,
   MessageCircle,
+  Mic,
   Briefcase,
   Upload,
   AlertCircle,
@@ -42,10 +43,10 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const { t, isRTL } = useLanguage();
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [selectedJobDetails, setSelectedJobDetails] = useState<{title: string, id: string} | null>(null);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<{ title: string, id: string } | null>(null);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [pendingJobApplication, setPendingJobApplication] = useState<{jobId: string, jobTitle: string, timestamp: number, isActive: boolean} | null>(null);
+  const [pendingJobApplication, setPendingJobApplication] = useState<{ jobId: string, jobTitle: string, timestamp: number, isActive: boolean } | null>(null);
 
   const { data: profile, refetch: refetchProfile } = useQuery({
     queryKey: ["/api/candidate/profile"],
@@ -92,7 +93,15 @@ export default function Dashboard() {
     enabled: !!user, // Only run query if user is authenticated
   });
 
+  const { data: resumeProfileStatus } = useQuery({
+    queryKey: ["/api/resume-profile/exists"],
+    retry: false,
+    refetchOnWindowFocus: false,
+    enabled: !!user,
+  });
+
   const invitedJobsTotal = invitedJobsCount ? (invitedJobsCount as any).count : 0;
+  const hasResumeProfile = !!(resumeProfileStatus as any)?.hasResumeProfile;
   const invitedJobsLabel = invitedJobsTotal === 1
     ? t('dashboard.invitedJobsAlert.singleLabel')
     : t('dashboard.invitedJobsAlert.pluralLabel');
@@ -184,11 +193,11 @@ export default function Dashboard() {
         method: 'POST',
         body: formData,
       });
-      
+
       if (!response.ok) {
         throw new Error(`Upload failed: ${response.statusText}`);
       }
-      
+
       const result = await response.json();
 
       const sectionsCount = Object.keys(result.extractedFields || {}).filter(key => result.extractedFields[key]).length;
@@ -221,7 +230,8 @@ export default function Dashboard() {
   const profileProgress = (comprehensiveProfile as any)?.completionPercentage || 0;
 
   // Check if comprehensive profile has required fields completed (75% threshold for interviews)
-  const hasCompleteProfile = profileProgress >= 75;
+  // If a resume_profile exists, skip profile completion gating
+  const hasCompleteProfile = profileProgress >= 75 || hasResumeProfile;
 
   // Interview step removed - consider all interviews complete by default
   const hasCompletedAllInterviews = true;
@@ -235,14 +245,14 @@ export default function Dashboard() {
     if (showFullDashboard && (profile as any)?.aiProfileGenerated) {
       // Check if we've already shown this toast
       const hasShownWelcomeToast = localStorage.getItem(`welcomeToast_${(user as any)?.id}`);
-      
+
       if (!hasShownWelcomeToast) {
         toast({
           title: t('dashboard.readyToFindRole'),
           description: t('dashboard.readyToFindRoleDescription'),
           duration: 8000, // Show for 8 seconds
         });
-        
+
         // Mark that we've shown the toast for this user
         localStorage.setItem(`welcomeToast_${(user as any)?.id}`, 'shown');
       }
@@ -356,7 +366,7 @@ export default function Dashboard() {
             <div className="space-y-6">
               {/* Removed congratulations message - now shown as toast notification */}
             </div>
-          ) : (
+          ) : !hasResumeProfile ? (
             /* Show getting started checklist for incomplete users */
             <div>
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">{t('welcome')}</h2>
@@ -366,16 +376,14 @@ export default function Dashboard() {
 
               <div className="space-y-3 sm:space-y-4">
                 {/* Step 1: Build Complete Profile (includes CV data) */}
-                <div className={`bg-white rounded-lg p-4 sm:p-6 border-2 transition-all ${
-                  hasCompleteProfile
-                    ? 'border-green-200 bg-green-50'
-                    : 'border-blue-200 shadow-md'
-                }`}>
+                <div className={`bg-white rounded-lg p-4 sm:p-6 border-2 transition-all ${hasCompleteProfile
+                  ? 'border-green-200 bg-green-50'
+                  : 'border-blue-200 shadow-md'
+                  }`}>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-start space-x-3 sm:space-x-4 rtl:space-x-reverse">
-                      <div className={`min-w-8 min-h-8 sm:min-w-10 sm:min-h-10 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-lg shrink-0 ${
-                        hasCompleteProfile ? 'bg-green-600' : 'bg-blue-600'
-                      }`}>
+                      <div className={`min-w-8 min-h-8 sm:min-w-10 sm:min-h-10 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-lg shrink-0 ${hasCompleteProfile ? 'bg-green-600' : 'bg-blue-600'
+                        }`}>
                         {hasCompleteProfile ? '✓' : '1'}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -420,13 +428,12 @@ export default function Dashboard() {
                         </button>
                         <button
                           onClick={() => openModal('profile')}
-                          className={`px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
-                            hasCompleteProfile
-                              ? 'bg-green-600 text-white hover:bg-green-700'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          }`}
+                          className={`px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${hasCompleteProfile
+                            ? 'bg-green-600 text-white hover:bg-green-700'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
                         >
-{hasCompleteProfile ? t('dashboard.editProfile') : t('buildProfileButton')}
+                          {hasCompleteProfile ? t('dashboard.editProfile') : t('buildProfileButton')}
                         </button>
                       </div>
                     </div>
@@ -435,7 +442,7 @@ export default function Dashboard() {
 
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Pending Job Application Banner */}
@@ -480,7 +487,7 @@ export default function Dashboard() {
         )}
 
         {/* Invited Jobs Alert */}
-        {showFullDashboard && invitedJobsTotal > 0 && (
+        {(showFullDashboard || hasResumeProfile) && invitedJobsTotal > 0 && (
           <div className="mb-6 sm:mb-8 animate-in fade-in slide-in-from-top duration-500">
             <div className="bg-linear-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 shadow-lg">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -594,25 +601,22 @@ export default function Dashboard() {
               {/* Job specific AI interviews - New widget (above upcoming) */}
               <button
                 onClick={() => openModal('jobSpecificAI')}
-                className={`w-full rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-6 ${
-                  hasCompletedAllInterviews
-                    ? 'bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white'
-                    : 'bg-linear-to-r from-gray-400 to-gray-500 text-gray-200 cursor-not-allowed opacity-70'
-                }`}
+                className={`w-full rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-6 ${hasCompletedAllInterviews
+                  ? 'bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white'
+                  : 'bg-linear-to-r from-gray-400 to-gray-500 text-gray-200 cursor-not-allowed opacity-70'
+                  }`}
                 disabled={!hasCompletedAllInterviews}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4 rtl:space-x-reverse">
-                    <div className={`bg-white bg-opacity-20 rounded-lg p-3 ${
-                      !hasCompletedAllInterviews ? 'opacity-50' : ''
-                    }`}>
+                    <div className={`bg-white bg-opacity-20 rounded-lg p-3 ${!hasCompletedAllInterviews ? 'opacity-50' : ''
+                      }`}>
                       <Briefcase className="h-6 w-6 text-white" />
                     </div>
                     <div className="text-start">
                       <h4 className="text-xl font-bold">{t('dashboard.jobSpecificAI')}</h4>
-                      <p className={`${
-                        hasCompletedAllInterviews ? 'text-emerald-100' : 'text-gray-300'
-                      }`}>
+                      <p className={`${hasCompletedAllInterviews ? 'text-emerald-100' : 'text-gray-300'
+                        }`}>
                         {hasCompletedAllInterviews
                           ? t('dashboard.jobSpecificAIDescription')
                           : 'Complete all 3 interviews first to unlock job-specific interviews'
@@ -644,7 +648,7 @@ export default function Dashboard() {
                     <div className="text-start">
                       <h4 className="text-xl font-bold">{t('upcomingInterviews')}</h4>
                       <p className="text-blue-100">
-                        {(upcomingInterviews as any[]).length > 0 
+                        {(upcomingInterviews as any[]).length > 0
                           ? `${(upcomingInterviews as any[]).length} interview${(upcomingInterviews as any[]).length > 1 ? 's' : ''} scheduled`
                           : t('stayUpdated')
                         }
@@ -774,18 +778,18 @@ export default function Dashboard() {
       </main>
 
       {/* Modals */}
-      <UserProfileModal 
-        isOpen={activeModal === 'userProfile'} 
-        onClose={closeModal} 
+      <UserProfileModal
+        isOpen={activeModal === 'userProfile'}
+        onClose={closeModal}
       />
       <ComprehensiveProfileModal
         isOpen={activeModal === 'profile'}
         onClose={closeModal}
       />
 
-      <MatchesModal 
-        isOpen={activeModal === 'matches'} 
-        onClose={closeModal} 
+      <MatchesModal
+        isOpen={activeModal === 'matches'}
+        onClose={closeModal}
       />
       <ApplicationsModal
         isOpen={activeModal === 'applications'}
@@ -847,9 +851,9 @@ export default function Dashboard() {
           }
         }}
       />
-      <JobPostingsModal 
-        isOpen={activeModal === 'jobPostings'} 
-        onClose={closeModal} 
+      <JobPostingsModal
+        isOpen={activeModal === 'jobPostings'}
+        onClose={closeModal}
         initialJobTitle={selectedJobDetails?.title}
         initialJobId={selectedJobDetails?.id}
         onStartJobPractice={(job) => {

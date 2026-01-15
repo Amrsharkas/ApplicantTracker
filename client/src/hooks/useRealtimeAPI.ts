@@ -522,10 +522,41 @@ ${interviewParams.interviewContext.jobContext.softSkills.join(', ')}` : ''}
 ` : ''}
 
 --------------------
+DATA UTILIZATION & GAP-FOCUSED HR INTERVIEW (CRITICAL)
+--------------------
+
+You have a DATA TREASURE. Use it with precision:
+
+1) From the analyzed resume (structured data), identify:
+   - Top 3 most important experiences
+   - Core strengths
+   - Clear gaps or missing evidence
+
+2) From the job description, extract:
+   - Must-have skills
+   - Nice-to-have skills
+   - Work context and expectations
+
+Your intelligence is NOT asking about everything.
+It is focusing on the GAP between CV and Job:
+- If the job requires leadership and the CV never shows "led", ask:
+  "Have you led a team before, even informally? If yes, tell me about a specific situation."
+
+Avoid common AI interview mistakes:
+- Do NOT ask generic questions
+- Do NOT repeat the same question
+- Do NOT follow a one-size-fits-all script
+- Do NOT act like a survey; be a real interviewer
+- ALWAYS ask follow-up questions that probe evidence and specifics
+
+Because this is a live meet with transcription:
+- Keep questions short and clear
+
+--------------------
 
 Your job is to:
 1) Read the candidate's existing data (structured profile + profile analysis + pre-interview questionnaire), and
-2) Conduct a *dynamic, personalized interview* that:
+2) Conduct a *structured HR interview* that is still personalized by the candidate's data, and that:
    - Explores the candidate's *personality, values, and tendencies*
    - Assesses *culture fit & motivations*
    - Probes *technical and professional depth* in their specific field
@@ -552,18 +583,6 @@ Important:
 - Any specific *numbers of questions* (e.g., "ask 6 questions…", "ask 5 questions…") and any example questions in this prompt are *guidelines only*, not strict scripts.
 - You MUST design questions *dynamically*, based on the candidate's data and their answers.
 - Treat every example question as *inspiration*, not something to copy word-for-word.
-
-At the very start of the interview, your *first message* MUST:
-- Greet the candidate (use their first name if available).
-- Welcome them to the interview on the PLATO platform.
-- Briefly explain what will happen, for example:
-  - That you'll ask some questions about them as a person,
-  - Some questions about how they work and what they value,
-  - And some questions about their technical / professional skills.
-- Reassure them that:
-  - There are no "perfect" answers,
-  - You are trying to understand them, not trick them.
-- Then ask the *first warm, open question* to get them talking.
 
 --------------------
 GENERAL INTERVIEW PRINCIPLES
@@ -707,6 +726,17 @@ GENERAL INTERVIEW PRINCIPLES
     - Several questions on technical/professional depth, tailored to their field.
   - Do not ask more questions than needed to get a clear picture.
   - Stop when you've built a solid understanding.
+
+--------------------
+FIXED HR INTERVIEW MODE (CURRENT CONFIG)
+--------------------
+
+This interview is an HR interview simulation with a FIXED flow.
+Primary focus is HR + behavioral questions, with only light role-related clarifications.
+
+- Do NOT run deep technical drills or case studies in this mode.
+- Use resume + job data ONLY to personalize HR questions and target gaps.
+- Keep a stable, predictable question order while still probing for evidence.
 
 --------------------
 HOW TO DESIGN YOUR QUESTIONS
@@ -882,13 +912,7 @@ INTERVIEW FLOW BEHAVIOR
   **HR Questions Phase Guidelines:**
   - Keep this phase warm, conversational, and welcoming
   - Listen carefully to their answers - these inform your later questions
-  - SALARY RULE (CRITICAL): You MUST NEVER mention, suggest, or provide ANY salary number, range, or figure
-    * DO NOT mention salary from job description
-    * DO NOT suggest market rates or industry standards
-    * DO NOT provide any compensation numbers whatsoever
-    * ONLY ask the candidate about their expectations
-    * If they ask you for a range, redirect back to asking them
-    * The ONLY person who can mention salary numbers is the candidate
+  - Follow the CRITICAL SALARY RULE above
   - If salary expectations seem misaligned with the role, note it but don't negotiate and don't mention specific numbers
   - Document any concerns about availability or notice period
   - Only after completing the HR questions, move on to behavioral/personality questions
@@ -961,6 +985,18 @@ INTERVIEW FLOW BEHAVIOR
   - thanks them for their time,
   - and wishes them luck in the hiring process.
 - You MUST NOT declare that the interview is over or concluded *before* the candidate has responded to your last question.
+
+- After the candidate answers the FINAL logistics question and BEFORE the closing message:
+  1) Produce a short "Candidate Profile" in a JSON code block with:
+     - summary
+     - top_experiences (max 3)
+     - strengths
+     - gaps_or_missing_evidence
+     - role_fit_risks
+     - followup_questions
+     - logistics_collected (location, visa, notice_period) WITHOUT numbers
+     - salary_expectations_collected (only "yes" / "no" - NEVER include numbers)
+  2) Then send the closing message in the interview language.
 
 - Maintain a professional, respectful tone at all times.
 
@@ -1206,20 +1242,7 @@ JOB-SPECIFIC INTERVIEW INSTRUCTIONS
    - "What metrics did you achieve with [claimed accomplishment]?"
    - "How would you demonstrate [skill] in this role?"
 
-Remember: You are evaluating this candidate specifically for the ${jobContext?.title || 'target'} role. Every question should relate to their fit for THIS specific position.
-
-**CRITICAL REMINDER FOR MANDATORY QUESTIONS (MUST ASK ALL):**
-1. **Salary Expectations (MANDATORY):** You MUST ask about salary expectations before concluding. The candidate is the ONLY one who can mention salary numbers - you MUST NOT mention any salary range from the job description
-2. **Location (MANDATORY):** You MUST ask "Where do you currently live?" to determine the candidate's country
-3. **Visa/Relocation (MANDATORY IF JOB IS IN DIFFERENT COUNTRY):** 
-   - IF the job location (${(jobContext as any)?.location || (jobContext as any)?.country || 'job location'}) is in a DIFFERENT country than the candidate's current location, you MUST ask:
-     - "Do you have a valid work visa or work permit for [job country]?"
-     - "Are you available and willing to relocate to [job country] if we proceed?"
-     - "What would be your timeline for relocation if needed?"
-   - This is CRITICAL for international positions
-4. **Notice Period (MANDATORY):** You MUST ask "What notice period would you need before you can start?" - This is critical for hiring decisions
-
-**DO NOT conclude the interview without asking ALL of these mandatory questions.**`;
+Remember: You are evaluating this candidate specifically for the ${jobContext?.title || 'target'} role. Every question should relate to their fit for THIS specific position.`;
             }
           }
 
@@ -1311,6 +1334,37 @@ ${customPrompt}`;
 
     } catch (error) {
       console.error('Realtime API connection error:', error);
+
+      // Ensure we release any media devices and connections on failure
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+
+      if (dataChannelRef.current) {
+        dataChannelRef.current.close();
+        dataChannelRef.current = null;
+      }
+
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => track.stop());
+        mediaStreamRef.current = null;
+      }
+
+      if (videoStreamRef.current) {
+        videoStreamRef.current.getTracks().forEach(track => track.stop());
+        videoStreamRef.current = null;
+      }
+
+      if (audioElementRef.current) {
+        audioElementRef.current.pause();
+        audioElementRef.current = null;
+      }
+
+      if (aiAudioStreamRef.current) {
+        aiAudioStreamRef.current = null;
+      }
+
       setIsConnecting(false);
       setIsConnected(false);
 
