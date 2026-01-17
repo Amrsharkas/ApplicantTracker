@@ -57,6 +57,12 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
   const [isInterviewComplete, setIsInterviewComplete] = useState(false);
   const [showTranscriptionDialog, setShowTranscriptionDialog] = useState(false);
   const [completedSessionId, setCompletedSessionId] = useState<number | null>(null);
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [isRetryingPermissions, setIsRetryingPermissions] = useState(false);
+  const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
+  const [permissionsError, setPermissionsError] = useState<string | null>(null);
+  const [pendingSessionData, setPendingSessionData] = useState<any | null>(null);
   const { isRecording, uploadProgress, startRecording, stopRecording, cleanup } = useCameraRecorder();
 
   const [interviewStartTime, setInterviewStartTime] = useState<number | null>(null);
@@ -105,15 +111,108 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
       return videoStream;
     } catch (error) {
       console.error('Camera access error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to access camera';
-      toast({
-        title: 'Camera Access Failed',
-        description: 'Could not access camera. You can continue with audio only.',
-        variant: 'destructive'
-      });
       return null;
     }
   };
+
+  const startVoiceInterview = async (sessionData: any) => {
+    const stream = await startCameraAccess(sessionData);
+    if (!stream) {
+      setPendingSessionData(sessionData);
+      setShowPermissionsModal(true);
+      return;
+    }
+
+    setShowPermissionsModal(false);
+    setPendingSessionData(null);
+    setPermissionsGranted(false);
+
+    console.log('✅ Camera & microphone access granted');
+    console.log('🖥️ Entering fullscreen mode...');
+    await requestFullscreen();
+
+    if (!realtimeAPI.isConnected && sessionData?.sessionData?.questions) {
+      const interviewLanguage = getInterviewLanguage(job, language);
+      const interviewContext = sessionData.sessionData?.context?.interviewContext || null;
+      await realtimeAPI.connect({
+        interviewType: 'job-practice',
+        questions: sessionData.sessionData.questions,
+        language: interviewLanguage,
+        aiPrompt: job?.aiPrompt,
+        resumeContent: sessionData.resumeContent || null,
+        summary: sessionData.summary || null,
+        skillsList: sessionData.skillsList || null,
+        experience: sessionData.experience || null,
+        education: sessionData.education || null,
+        certifications: sessionData.certifications || null,
+        languages: sessionData.languages || null,
+        aiProfile: sessionData.aiProfile || null,
+        jobDescription: sessionData.jobDescription || job?.jobDescription || null,
+        interviewContext,
+        resumeProfileId: sessionData.resumeProfileId || null
+      });
+    }
+  };
+
+  const handleRetryPermissions = async () => {
+    if (!pendingSessionData) {
+      return;
+    }
+    setIsRetryingPermissions(true);
+    try {
+      await startVoiceInterview(pendingSessionData);
+    } finally {
+      setIsRetryingPermissions(false);
+    }
+  };
+
+  const requestBrowserPermissions = async () => {
+    setIsCheckingPermissions(true);
+    try {
+      const tempStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 640, max: 854 },
+          height: { ideal: 480, max: 480 },
+          frameRate: { ideal: 15, max: 20 },
+          facingMode: 'user'
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 16000,
+          channelCount: 1
+        }
+      });
+
+      tempStream.getTracks().forEach(track => track.stop());
+      setPermissionsGranted(true);
+      setPermissionsError(null);
+    } catch (error) {
+      console.error('Permission prompt error:', error);
+      setPermissionsGranted(false);
+      setPermissionsError(null);
+    } finally {
+      setIsCheckingPermissions(false);
+    }
+  };
+
+  const handlePermissionsContinue = async () => {
+    if (!permissionsGranted) {
+      setPermissionsError('You must allow camera and microphone access first.');
+      await requestBrowserPermissions();
+      return;
+    }
+    setPermissionsError(null);
+    await handleRetryPermissions();
+  };
+
+  useEffect(() => {
+    if (showPermissionsModal) {
+      setPermissionsGranted(false);
+      setPermissionsError(null);
+      requestBrowserPermissions();
+    }
+  }, [showPermissionsModal]);
 
   // Voice realtime
   const realtimeAPI = useRealtimeAPI({
@@ -414,45 +513,10 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
         }
 
         if (mode === 'voice' && data?.sessionData?.questions) {
-          // IMPORTANT: Request camera access FIRST (before fullscreen)
+          // IMPORTANT: Request camera/microphone access FIRST (before fullscreen)
           // This prevents browser from exiting fullscreen when showing permission dialog
-          console.log('📹 Requesting camera access before entering fullscreen...');
-          await startCameraAccess(data);
-          console.log('✅ Camera access granted');
-
-          // NOW request fullscreen after camera permission is granted
-          // This ensures fullscreen won't be interrupted by permission dialogs
-          console.log('🖥️ Entering fullscreen mode...');
-          await requestFullscreen();
-
-          // Use job-specific interview language, fallback to provided language
-          const interviewLanguage = getInterviewLanguage(job, language);
-          console.log('🎤 Using interview language:', interviewLanguage, 'from job:', job?.interviewLanguage);
-          // Then connect voice session with job and AI profile context
-          const interviewContext = data.sessionData?.context?.interviewContext || null;
-          console.log('📋 Passing interview context to realtime API:', {
-            hasJobContext: !!interviewContext?.jobContext,
-            hasCandidateProfile: !!interviewContext?.candidateProfile
-          });
-          await realtimeAPI.connect({
-            interviewType: 'job-practice',
-            questions: data.sessionData.questions,
-            language: interviewLanguage,
-            aiPrompt: job?.aiPrompt,
-            resumeContent: data.resumeContent || null,
-            summary: data.summary || null,
-            skillsList: data.skillsList || null,
-            experience: data.experience || null,
-            education: data.education || null,
-            certifications: data.certifications || null,
-            languages: data.languages || null,
-            aiProfile: data.aiProfile || null,
-            jobDescription: data.jobDescription || job?.jobDescription || null,
-            interviewContext,
-            resumeProfileId: data.resumeProfileId || null
-          });
-
-          // Interview started successfully - no auto-close timer needed
+          console.log('📹 Requesting camera & microphone access before entering fullscreen...');
+          await startVoiceInterview(data);
         } else {
           // For non-voice mode, just enter fullscreen
           await requestFullscreen();
@@ -738,6 +802,42 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
     }
   };
 
+  const permissionsModal = (
+    <Dialog open={showPermissionsModal} onOpenChange={() => { }}>
+      <DialogContent
+        className="max-w-md"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
+        <DialogHeader>
+          <DialogTitle>Allow Camera & Microphone</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm text-slate-700 dark:text-slate-300">
+          <p>This interview cannot start without camera and microphone access.</p>
+          <p className="text-yellow-700 dark:text-yellow-300">
+            Do not refresh this page — refreshing will cancel your session.
+          </p>
+          <p>Please allow the camera and microphone permissions.</p>
+          {permissionsError && (
+            <p className="text-red-600 font-semibold">{permissionsError}</p>
+          )}
+        </div>
+        <div className="flex justify-end pt-2">
+          <Button
+            onClick={handlePermissionsContinue}
+            disabled={isRetryingPermissions || isCheckingPermissions}
+          >
+            {isCheckingPermissions
+              ? 'Requesting permissions...'
+              : isRetryingPermissions
+                ? 'Continuing...'
+                : 'Continue'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   // Voice mode uses a different, full-screen interface
   if (mode === 'voice') {
     return (
@@ -959,6 +1059,8 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           </div>
         </div>
 
+        {permissionsModal}
+
         {/* Show transcription dialog after interview completion */}
         {showTranscriptionDialog && completedSessionId && (
           <InterviewTranscriptionDialog
@@ -1162,6 +1264,8 @@ export function JobSpecificInterviewModal({ isOpen, onClose, job, mode, language
           </div>
         </DialogContent>
       </Dialog>
+
+      {permissionsModal}
 
       {/* Show transcription dialog after interview completion */}
       {showTranscriptionDialog && completedSessionId && (

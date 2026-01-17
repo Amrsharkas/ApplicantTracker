@@ -155,15 +155,6 @@ export function JobSpecificInterviewOptionsModal({ isOpen, onClose, job, onConfi
                 Please read these instructions carefully before starting your interview.
               </p>
               <div className="space-y-3">
-                <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                  <span className="mt-0.5 text-amber-600">⚠️</span>
-                  <div>
-                    <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-1">Invitation will be canceled if you exit now</h4>
-                    <p className="text-sm text-amber-800 dark:text-amber-300">
-                      If you read all instructions, wait for the 1-minute countdown, then click Continue, leaving at this stage will cancel your invitation.
-                    </p>
-                  </div>
-                </div>
                 <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                   <span className="mt-0.5 text-red-600">🖥️</span>
                   <div>
