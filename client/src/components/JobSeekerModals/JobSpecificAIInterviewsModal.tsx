@@ -515,7 +515,10 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
                 credentials: 'include',
                 body: JSON.stringify({ job: selectedJob, language: interviewLanguage })
               });
-              if (!res.ok) throw new Error('Failed to start');
+              if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to start');
+              }
               // leave options open until interview modal opens
               // Let parent open interview modal if handlers were passed
               if (mode === 'voice') {
@@ -527,7 +530,7 @@ export function JobSpecificAIInterviewsModal({ isOpen, onClose, onStartJobPracti
               setInterviewOpen(true);
               setOptionsOpen(false);
             } catch (e: any) {
-              // Simple toast; reuse parent toast
+              toast({ title: "Error", description: e?.message || "Failed to start interview", variant: "destructive" });
             }
           }}
         />

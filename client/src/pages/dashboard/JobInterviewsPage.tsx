@@ -57,7 +57,7 @@ export default function JobInterviewsPage() {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
         setTimeout(() => { window.location.href = "/api/login"; }, 500);
       } else {
-        toast({ title: "Error", description: err.message || "Failed to load invitations" , variant: "destructive" });
+        toast({ title: "Error", description: err.message || "Failed to load invitations", variant: "destructive" });
       }
     }
   });
@@ -87,26 +87,28 @@ export default function JobInterviewsPage() {
 
   const handleInterviewComplete = async () => {
     console.log('✅ Interview completed - refreshing page data...');
-    
+
     // Close the interview modal first
     setInterviewOpen(false);
-    
+    // Close job details side modal
+    setSelectedJob(null);
+
     // Show success toast
     toast({
       title: 'Interview Completed',
       description: 'Your interview has been completed successfully. Refreshing data...',
       variant: 'default',
     });
-    
+
     // Wait a moment for the modal to close
     await new Promise(resolve => setTimeout(resolve, 300));
-    
+
     // Refresh the interview data
     await refetch();
-    
+
     // Switch to completed tab to show the finished interview
     setActiveTab('completed');
-    
+
     // Force a full page refresh to ensure all data is up-to-date
     // This ensures the interview list is completely fresh
     setTimeout(() => {
@@ -117,16 +119,18 @@ export default function JobInterviewsPage() {
 
   const handleInterviewCancelled = async () => {
     console.log('❌ Interview cancelled - refreshing interview list...');
-    
+
     // Close the interview modal first
     setInterviewOpen(false);
-    
+    // Close job details side modal
+    setSelectedJob(null);
+
     // Wait a moment for the modal to close
     await new Promise(resolve => setTimeout(resolve, 300));
-    
+
     // Refresh the interview data to remove the cancelled interview from the list
     await refetch();
-    
+
     console.log('✅ Interview list refreshed after cancellation');
   };
 
@@ -205,6 +209,12 @@ export default function JobInterviewsPage() {
             Refresh
           </Button>
         </div>
+
+        {invitedJobs.length > 0 && (
+          <div className="rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+            The invitation is available only for one-time use.
+          </div>
+        )}
 
         {/* Tabs and Content */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
@@ -618,11 +628,10 @@ export default function JobInterviewsPage() {
                 {/* Header */}
                 <div className="relative bg-linear-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-b border-slate-200 dark:border-slate-700">
                   {/* Status accent bar */}
-                  <div className={`absolute top-0 left-0 right-0 h-1.5 ${
-                    selectedJob.status === 'completed'
-                      ? 'bg-linear-to-r from-green-500 via-emerald-500 to-green-500'
-                      : 'bg-linear-to-r from-blue-500 via-blue-600 to-blue-500'
-                  }`}></div>
+                  <div className={`absolute top-0 left-0 right-0 h-1.5 ${selectedJob.status === 'completed'
+                    ? 'bg-linear-to-r from-green-500 via-emerald-500 to-green-500'
+                    : 'bg-linear-to-r from-blue-500 via-blue-600 to-blue-500'
+                    }`}></div>
 
                   <div className="p-6">
                     <div className="flex items-start justify-between gap-4 mb-4">
@@ -631,11 +640,10 @@ export default function JobInterviewsPage() {
                           <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 truncate">
                             {selectedJob.jobTitle}
                           </h2>
-                          <Badge className={`shrink-0 ${
-                            selectedJob.status === 'completed'
-                              ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800'
-                              : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                          }`}>
+                          <Badge className={`shrink-0 ${selectedJob.status === 'completed'
+                            ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800'
+                            : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                            }`}>
                             {selectedJob.status === 'completed' ? (
                               <><CheckCircle2 className="w-3 h-3 mr-1" /> Completed</>
                             ) : (
@@ -675,20 +683,18 @@ export default function JobInterviewsPage() {
                       >
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                              selectedJob.score >= 80
-                                ? 'bg-green-100 dark:bg-green-900/50'
-                                : selectedJob.score >= 60
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${selectedJob.score >= 80
+                              ? 'bg-green-100 dark:bg-green-900/50'
+                              : selectedJob.score >= 60
                                 ? 'bg-yellow-100 dark:bg-yellow-900/50'
                                 : 'bg-red-100 dark:bg-red-900/50'
-                            }`}>
-                              <Award className={`h-5 w-5 ${
-                                selectedJob.score >= 80
-                                  ? 'text-green-600 dark:text-green-400'
-                                  : selectedJob.score >= 60
+                              }`}>
+                              <Award className={`h-5 w-5 ${selectedJob.score >= 80
+                                ? 'text-green-600 dark:text-green-400'
+                                : selectedJob.score >= 60
                                   ? 'text-yellow-600 dark:text-yellow-400'
                                   : 'text-red-600 dark:text-red-400'
-                              }`} />
+                                }`} />
                             </div>
                             <div>
                               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Interview Score</p>
@@ -696,13 +702,12 @@ export default function JobInterviewsPage() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className={`text-3xl font-bold ${
-                              selectedJob.score >= 80
-                                ? 'text-green-600 dark:text-green-400'
-                                : selectedJob.score >= 60
+                            <div className={`text-3xl font-bold ${selectedJob.score >= 80
+                              ? 'text-green-600 dark:text-green-400'
+                              : selectedJob.score >= 60
                                 ? 'text-yellow-600 dark:text-yellow-400'
                                 : 'text-red-600 dark:text-red-400'
-                            }`}>
+                              }`}>
                               {selectedJob.score}
                               <span className="text-lg text-slate-500 dark:text-slate-400">/100</span>
                             </div>
@@ -713,8 +718,8 @@ export default function JobInterviewsPage() {
                           selectedJob.score >= 80
                             ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800'
                             : selectedJob.score >= 60
-                            ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800'
-                            : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800'
+                              ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800'
+                              : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800'
                         }>
                           {selectedJob.score >= 80 ? 'Excellent Performance' : selectedJob.score >= 60 ? 'Good Performance' : 'Needs Improvement'}
                         </Badge>
@@ -837,7 +842,10 @@ export default function JobInterviewsPage() {
                 credentials: 'include',
                 body: JSON.stringify({ job: selectedJob, language: interviewLanguage })
               });
-              if (!res.ok) throw new Error('Failed to start');
+              if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to start');
+              }
               // leave options open until interview modal opens
               // Let parent open interview modal if handlers were passed
               if (mode === 'voice') {

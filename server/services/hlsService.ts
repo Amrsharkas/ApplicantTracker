@@ -18,12 +18,49 @@ const writeFile = promisify(fs.writeFile);
 const unlink = promisify(fs.unlink);
 const rmdir = promisify(fs.rmdir);
 
-// Set FFmpeg path to the static binary
-if (ffmpegStatic) {
-  ffmpeg.setFfmpegPath(ffmpegStatic);
-  console.log('✅ Using FFmpeg from ffmpeg-static package');
+// Set FFmpeg/FFprobe paths
+const systemFfmpegPath = '/usr/bin/ffmpeg';
+const systemFfprobePath = '/usr/bin/ffprobe';
+const envFfmpegPath = process.env.FFMPEG_PATH;
+const envFfprobePath = process.env.FFPROBE_PATH;
+
+const pickFfmpegPath = () => {
+  if (envFfmpegPath && fs.existsSync(envFfmpegPath)) {
+    return envFfmpegPath;
+  }
+  if (ffmpegStatic && fs.existsSync(ffmpegStatic)) {
+    return ffmpegStatic;
+  }
+  if (fs.existsSync(systemFfmpegPath)) {
+    return systemFfmpegPath;
+  }
+  return null;
+};
+
+const pickFfprobePath = () => {
+  if (envFfprobePath && fs.existsSync(envFfprobePath)) {
+    return envFfprobePath;
+  }
+  if (fs.existsSync(systemFfprobePath)) {
+    return systemFfprobePath;
+  }
+  return null;
+};
+
+const resolvedFfmpegPath = pickFfmpegPath();
+if (resolvedFfmpegPath) {
+  ffmpeg.setFfmpegPath(resolvedFfmpegPath);
+  console.log(`✅ Using FFmpeg at ${resolvedFfmpegPath}`);
 } else {
-  console.warn('⚠️ ffmpeg-static not found, using system FFmpeg');
+  console.warn('⚠️ FFmpeg binary not found (ffmpeg-static and system ffmpeg missing)');
+}
+
+const resolvedFfprobePath = pickFfprobePath();
+if (resolvedFfprobePath) {
+  ffmpeg.setFfprobePath(resolvedFfprobePath);
+  console.log(`✅ Using FFprobe at ${resolvedFfprobePath}`);
+} else {
+  console.warn('⚠️ FFprobe binary not found');
 }
 
 // Get the base uploads directory

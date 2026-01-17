@@ -48,6 +48,17 @@ export default function AIInterviewInitiation() {
           }
         } else {
           const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          if (response.status === 410 || errorData?.code === 'invitation_used') {
+            toast({
+              title: "Invitation Already Used",
+              description: "This interview invitation has already been used and can only be used once.",
+              variant: "destructive",
+            });
+            setTimeout(() => {
+              window.location.href = '/dashboard/job-interviews';
+            }, 3000);
+            return;
+          }
           toast({
             title: "Initiation Failed",
             description: errorData.error || "Failed to initiate interview process. Please try again.",

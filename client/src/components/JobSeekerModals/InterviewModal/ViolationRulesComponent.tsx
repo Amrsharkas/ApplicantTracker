@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -9,6 +10,27 @@ interface ViolationRulesComponentProps {
 
 export function ViolationRulesComponent({ onAccept, onDecline }: ViolationRulesComponentProps) {
   const { t } = useLanguage();
+  const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const checkDevice = () => {
+      const userAgent = navigator.userAgent || '';
+      const isTouchDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Tablet/i.test(userAgent);
+      const isSmallViewport = window.matchMedia('(max-width: 1024px)').matches;
+      setIsMobileOrTablet(isTouchDevice || isSmallViewport);
+    };
+
+    checkDevice();
+    const mediaQuery = window.matchMedia('(max-width: 1024px)');
+    const handleChange = () => checkDevice();
+    mediaQuery.addEventListener('change', handleChange);
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange);
+    };
+  }, []);
 
   return (
     <div className="space-y-6 px-2">
@@ -27,6 +49,12 @@ export function ViolationRulesComponent({ onAccept, onDecline }: ViolationRulesC
         <p className="text-sm text-red-800 mb-4">
           {t('interview.violationRules.consentNotice')}
         </p>
+
+        {isMobileOrTablet && (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
+            This interview not allowd to be done on mobile or tablet and its allowd only on desktop devices.
+          </p>
+        )}
 
         <div className="space-y-3">
           {[
@@ -60,7 +88,8 @@ export function ViolationRulesComponent({ onAccept, onDecline }: ViolationRulesC
           {t('interview.violationRules.decline')}
         </Button>
         <Button
-          onClick={onAccept}
+          onClick={isMobileOrTablet ? undefined : onAccept}
+          disabled={isMobileOrTablet}
           className="bg-red-600 hover:bg-red-700 text-white"
         >
           {t('interview.violationRules.accept')}

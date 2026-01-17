@@ -1023,7 +1023,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Missing token' });
       }
 
-
       console.log(`🔍 Looking up job match for token: ${token}`);
 
       // First, try to find the job match by token (this replaces the Airtable record lookup)
@@ -1032,6 +1031,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!jobMatch) {
         console.error('Job match record not found for token', token);
         return res.status(404).json({ error: 'Invalid or expired token' });
+      }
+
+      if (jobMatch.status && jobMatch.status !== 'invited') {
+        console.warn(`❌ Invitation already used. Status: ${jobMatch.status}`);
+        return res.status(410).json({ error: 'Invitation already used', code: 'invitation_used' });
       }
 
       console.log(`✅ Found job match: ${jobMatch.name} for job: ${jobMatch.jobTitle}`);
@@ -1054,7 +1058,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // STEP 2: Use EMAIL as the key to find the CORRECT resume profile
       // This ensures we get the right resume profile even if the ID was wrong
       let resumeProfile: typeof initialResumeProfile = null;
-      let user;
+      let user = await storage.getUser(jobMatch.userId);
+
+      if (user) {
+        console.log(`✅ Found existing user by job match userId: ${user.email} (${user.id})`);
+      }
 
       if (resumeProfileEmail) {
         try {
@@ -1063,8 +1071,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`✅ Found resume profile by EMAIL (${resumeProfileEmail}): id=${resumeProfile?.id}, name=${resumeProfile?.name}`);
 
           // Check if user exists by email
-          user = await storage.getUserByEmail(resumeProfileEmail);
-          if (user) {
+          if (!user) {
+            user = await storage.getUserByEmail(resumeProfileEmail);
+          }
+          if (user && user.email === resumeProfileEmail) {
             console.log(`✅ Found existing user by email: ${user.email} (${user.id})`);
           }
         } catch (emailError) {
@@ -1139,7 +1149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       return res.json({
         success: true,
-        redirect: '/dashboard',
+        redirect: '/dashboard/job-interviews',
         userId: user.id,
         email: user.email,
         jobMatch: {
@@ -2427,10 +2437,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         let resumeProfileId: string | null = null;
         const jobMatchId = (job as any)?.recordId;
+        let jobMatchRecord: any = null;
         if (jobMatchId) {
           try {
-            const jobMatch = await localDatabaseService.getJobMatch(jobMatchId);
-            resumeProfileId = jobMatch?.userId || null;
+            jobMatchRecord = await localDatabaseService.getJobMatch(jobMatchId);
+            if (!jobMatchRecord) {
+              return res.status(404).json({ message: 'Job match not found' });
+            }
+            if (jobMatchRecord.userId !== userId) {
+              return res.status(403).json({ message: 'Unauthorized access to job match' });
+            }
+            if (jobMatchRecord.status && jobMatchRecord.status !== 'invited') {
+              return res.status(409).json({ message: 'Invitation already used' });
+            }
+            resumeProfileId = jobMatchRecord.userId || null;
           } catch (error) {
             console.log('No resume profile ID available from job match:', error);
           }
@@ -2572,6 +2592,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           isCompleted: false
         });
+
+        if (jobMatchId) {
+          try {
+            await localDatabaseService.updateJobMatch(jobMatchId, {
+              status: 'interview_started'
+            });
+          } catch (updateError) {
+            console.warn('⚠️ Failed to mark invitation as used:', updateError);
+          }
+        }
 
         console.log(`💾 Created interview session ${session.id} with jobId: ${job?.jobId || job?.id || 'NOT FOUND'}`);
 
@@ -2715,6 +2745,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const jobIdValue = (job as any)?.jobId ?? (job as any)?.id ?? null;
         const jobIdNumber = typeof jobIdValue === 'string' ? Number(jobIdValue) : jobIdValue;
+        const jobMatchId = (job as any)?.recordId;
+        if (jobMatchId) {
+          const jobMatchRecord = await localDatabaseService.getJobMatch(jobMatchId);
+          if (!jobMatchRecord) {
+            return res.status(404).json({ message: 'Job match not found' });
+          }
+          if (jobMatchRecord.userId !== userId) {
+            return res.status(403).json({ message: 'Unauthorized access to job match' });
+          }
+          if (jobMatchRecord.status && jobMatchRecord.status !== 'invited') {
+            return res.status(409).json({ message: 'Invitation already used' });
+          }
+        }
 
         // Deduct credits at the start of the interview
         if (jobIdNumber && Number.isFinite(jobIdNumber)) {
@@ -2801,6 +2844,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           isCompleted: false
         });
+
+        if (jobMatchId) {
+          try {
+            await localDatabaseService.updateJobMatch(jobMatchId, {
+              status: 'interview_started'
+            });
+          } catch (updateError) {
+            console.warn('⚠️ Failed to mark invitation as used:', updateError);
+          }
+        }
 
         const firstQuestion = Array.isArray(practiceSet.questions) && practiceSet.questions.length > 0
           ? (typeof practiceSet.questions[0] === 'string' ? practiceSet.questions[0] : practiceSet.questions[0]?.question || '')

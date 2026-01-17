@@ -33,7 +33,9 @@ export default function JobSeekerDashboard() {
   return (
     <JobSeekerLayout activePage={activePage}>
       <Switch>
-        <Route path="/dashboard" component={DashboardOverview} />
+        <Route path="/dashboard">
+          <Redirect to="/dashboard/job-interviews" />
+        </Route>
         <Route path="/dashboard/profile" component={ProfilePage} />
         <Route path="/dashboard/jobs/:jobId" component={JobDetailsPage} />
         <Route path="/dashboard/jobs" component={JobsPage} />
